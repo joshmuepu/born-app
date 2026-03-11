@@ -14,7 +14,6 @@ export default function SearchBar({ onResults }: Props) {
   const [titleFilter, setTitleFilter] = useState('')
   const [forceTokens, setForceTokens] = useState(false)
 
-  // Autocomplete state
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [hitCount, setHitCount] = useState<number | null>(null)
@@ -25,22 +24,21 @@ export default function SearchBar({ onResults }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Debounced autocomplete + hit count
   useEffect(() => {
     const word = query.trim().split(/\s+/).pop() ?? ''
 
     if (suggestTimer.current) clearTimeout(suggestTimer.current)
     if (word.length >= 2) {
-      suggestTimer.current = setTimeout(() => {
+      suggestTimer.current = setTimeout(async () => {
         try {
-          window.electronAPI.getAutocompleteSuggestions(word)
-            .then((s) => {
-              setSuggestions(s)
-              setShowSuggestions(s.length > 0)
-              setActiveSuggestion(-1)
-            })
-            .catch(() => { /* best-effort */ })
-        } catch { /* IPC not ready */ }
+          const s = await window.electronAPI.getAutocompleteSuggestions(word)
+          setSuggestions(s)
+          setShowSuggestions(s.length > 0)
+          setActiveSuggestion(-1)
+        } catch {
+          setSuggestions([])
+          setShowSuggestions(false)
+        }
       }, 300)
     } else {
       setSuggestions([])
@@ -50,13 +48,14 @@ export default function SearchBar({ onResults }: Props) {
     if (countTimer.current) clearTimeout(countTimer.current)
     if (query.trim().length >= 2) {
       const captured = query.trim()
-      countTimer.current = setTimeout(() => {
-        const searchType = forceTokens ? 'AllWords' : 'ExactPhrase'
+      countTimer.current = setTimeout(async () => {
         try {
-          window.electronAPI.getHitsCountPreview(captured, searchType)
-            .then((count) => setHitCount(count))
-            .catch(() => { /* best-effort */ })
-        } catch { /* IPC not ready */ }
+          const searchType = forceTokens ? 'AllWords' : 'ExactPhrase'
+          const count = await window.electronAPI.getHitsCountPreview(captured, searchType)
+          setHitCount(count)
+        } catch {
+          setHitCount(null)
+        }
       }, 400)
     } else {
       setHitCount(null)
@@ -68,7 +67,6 @@ export default function SearchBar({ onResults }: Props) {
     }
   }, [query, forceTokens])
 
-  // Close suggestions on outside click
   useEffect(() => {
     const onOutside = (e: MouseEvent): void => {
       if (

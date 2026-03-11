@@ -354,12 +354,12 @@ ipcMain.handle('service:open', async () => {
 
 // ── Autocomplete IPC ──────────────────────────────────────────────────────────
 
-ipcMain.handle('autocomplete:suggestions', (_event, wordPart: string) => {
-  return fetchAutocompleteSuggestions(wordPart)
+ipcMain.handle('autocomplete:suggestions', async (_event, wordPart: string) => {
+  try { return await fetchAutocompleteSuggestions(wordPart) } catch { return [] }
 })
 
-ipcMain.handle('autocomplete:count', (_event, text: string, searchType: 'AllWords' | 'ExactPhrase') => {
-  return fetchHitsCountPreview(text, searchType)
+ipcMain.handle('autocomplete:count', async (_event, text: string, searchType: 'AllWords' | 'ExactPhrase') => {
+  try { return await fetchHitsCountPreview(text, searchType) } catch { return 0 }
 })
 
 // ── Server search (fallback) ──────────────────────────────────────────────────
