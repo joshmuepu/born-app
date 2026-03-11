@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { Quote } from '../types'
 
 interface Props {
@@ -14,77 +14,11 @@ export default function SearchBar({ onResults }: Props) {
   const [titleFilter, setTitleFilter] = useState('')
   const [forceTokens, setForceTokens] = useState(false)
 
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [hitCount, setHitCount] = useState<number | null>(null)
-  const [activeSuggestion, setActiveSuggestion] = useState(-1)
-
-  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const countTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const word = query.trim().split(/\s+/).pop() ?? ''
-
-    if (suggestTimer.current) clearTimeout(suggestTimer.current)
-    if (word.length >= 2) {
-      suggestTimer.current = setTimeout(async () => {
-        try {
-          const s = await window.electronAPI.getAutocompleteSuggestions(word)
-          setSuggestions(s)
-          setShowSuggestions(s.length > 0)
-          setActiveSuggestion(-1)
-        } catch {
-          setSuggestions([])
-          setShowSuggestions(false)
-        }
-      }, 300)
-    } else {
-      setSuggestions([])
-      setShowSuggestions(false)
-    }
-
-    if (countTimer.current) clearTimeout(countTimer.current)
-    if (query.trim().length >= 2) {
-      const captured = query.trim()
-      countTimer.current = setTimeout(async () => {
-        try {
-          const searchType = forceTokens ? 'AllWords' : 'ExactPhrase'
-          const count = await window.electronAPI.getHitsCountPreview(captured, searchType)
-          setHitCount(count)
-        } catch {
-          setHitCount(null)
-        }
-      }, 400)
-    } else {
-      setHitCount(null)
-    }
-
-    return () => {
-      if (suggestTimer.current) clearTimeout(suggestTimer.current)
-      if (countTimer.current) clearTimeout(countTimer.current)
-    }
-  }, [query, forceTokens])
-
-  useEffect(() => {
-    const onOutside = (e: MouseEvent): void => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        !inputRef.current?.contains(e.target as Node)
-      ) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', onOutside)
-    return () => document.removeEventListener('mousedown', onOutside)
-  }, [])
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return
     setIsSearching(true)
-    setShowSuggestions(false)
     try {
       const filters = {
         yearFrom: yearFrom.trim() || undefined,
@@ -99,38 +33,11 @@ export default function SearchBar({ onResults }: Props) {
     }
   }, [query, yearFrom, yearTo, titleFilter, forceTokens, onResults])
 
-  const applySuggestion = useCallback(
-    (suggestion: string) => {
-      const words = query.trimEnd().split(/\s+/)
-      words[words.length - 1] = suggestion
-      setQuery(words.join(' ') + ' ')
-      setSuggestions([])
-      setShowSuggestions(false)
-      setActiveSuggestion(-1)
-      inputRef.current?.focus()
-    },
-    [query]
-  )
-
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        if (showSuggestions && activeSuggestion >= 0) {
-          applySuggestion(suggestions[activeSuggestion])
-        } else {
-          handleSearch()
-        }
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setActiveSuggestion((prev) => Math.min(prev + 1, suggestions.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveSuggestion((prev) => Math.max(prev - 1, -1))
-      } else if (e.key === 'Escape') {
-        setShowSuggestions(false)
-      }
+      if (e.key === 'Enter') handleSearch()
     },
-    [handleSearch, showSuggestions, activeSuggestion, suggestions, applySuggestion]
+    [handleSearch]
   )
 
   const hasFilters = yearFrom || yearTo || titleFilter
@@ -147,22 +54,8 @@ export default function SearchBar({ onResults }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="autocomplete-dropdown" ref={dropdownRef}>
-              {suggestions.map((s, i) => (
-                <div
-                  key={s}
-                  className={`autocomplete-item${i === activeSuggestion ? ' active' : ''}`}
-                  onMouseDown={() => applySuggestion(s)}
-                >
-                  {s}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
         <button
           className={`btn-secondary btn-sm filter-toggle${hasFilters ? ' filter-toggle--active' : ''}`}
@@ -177,9 +70,6 @@ export default function SearchBar({ onResults }: Props) {
           disabled={isSearching || !query.trim()}
         >
           {isSearching ? 'Searching…' : 'Search'}
-          {!isSearching && hitCount !== null && hitCount > 0 && (
-            <span className="hit-count">~{hitCount.toLocaleString()}</span>
-          )}
         </button>
       </div>
 
