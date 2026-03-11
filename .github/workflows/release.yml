@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -19,16 +22,12 @@ jobs:
         run: npm ci
 
       - name: Build and package (Mac)
-        run: npm run dist:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:mac -- --publish never
 
       - name: Upload Mac artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: dist-installers/*.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-win:
     runs-on: windows-latest
@@ -43,16 +42,12 @@ jobs:
         run: npm ci
 
       - name: Build and package (Windows)
-        run: npm run dist:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:win -- --publish never
 
       - name: Upload Windows artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: dist-installers/*.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-linux:
     runs-on: ubuntu-latest
@@ -67,13 +62,9 @@ jobs:
         run: npm ci
 
       - name: Build and package (Linux)
-        run: npm run dist:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:linux -- --publish never
 
       - name: Upload Linux artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: dist-installers/*.AppImage
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
