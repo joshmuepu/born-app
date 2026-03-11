@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+dist-installers/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.db.old
+
+# Logs
+*.log
+*.log.old
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V4
+.Trashes
+
+# Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Electron packager output
+release/

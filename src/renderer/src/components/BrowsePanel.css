@@ -1,0 +1,172 @@
+.browse-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.browse-tabs {
+  display: flex;
+  border-bottom: 1px solid #21262d;
+  flex-shrink: 0;
+}
+
+.browse-tab {
+  flex: 1;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.browse-tab:hover {
+  color: #c9d1d9;
+}
+
+.browse-tab.active {
+  color: #58a6ff;
+  border-bottom-color: #58a6ff;
+}
+
+.browse-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.browse-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.browse-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.browse-item:hover {
+  background: #161b22;
+}
+
+.browse-item.selected {
+  background: rgba(88, 166, 255, 0.08);
+  border-left: 2px solid #58a6ff;
+  padding-left: 12px;
+}
+
+.browse-item-code {
+  font-size: 0.7rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #58a6ff;
+  margin-bottom: 2px;
+}
+
+.browse-item-title {
+  font-size: 0.85rem;
+  color: #c9d1d9;
+  line-height: 1.35;
+}
+
+.browse-item-meta {
+  font-size: 0.7rem;
+  color: #484f58;
+  margin-top: 3px;
+}
+
+.browse-loading {
+  padding: 24px 14px;
+  color: #484f58;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.browse-empty {
+  padding: 24px 14px;
+  color: #484f58;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Back navigation row */
+.browse-sermons,
+.browse-paragraphs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.browse-back-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #21262d;
+  flex-shrink: 0;
+}
+
+.browse-back {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.browse-back:hover {
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.browse-group-label {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c9d1d9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.browse-count {
+  font-size: 0.7rem;
+  color: #484f58;
+  flex-shrink: 0;
+}
+
+/* Paragraph items */
+.browse-para-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #161b22;
+}
+
+.browse-para-ref {
+  font-size: 0.68rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #58a6ff;
+  margin-bottom: 4px;
+}
+
+.browse-para-text {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #c9d1d9;
+  margin-bottom: 8px;
+}
+
+.browse-para-actions {
+  display: flex;
+  gap: 6px;
+}
