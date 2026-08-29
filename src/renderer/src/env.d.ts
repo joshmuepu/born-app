@@ -110,6 +110,13 @@ declare global {
         translation: string
       ) => Promise<ResolvedPassage | { error: string }>
       searchBible: (query: string, translation: string) => Promise<BibleSearchHit[]>
+      getAdjacentVerse: (
+        translation: string,
+        bookNum: number,
+        chapter: number,
+        verse: number,
+        direction: 'next' | 'prev'
+      ) => Promise<AdjacentVerse | null>
       // Songs
       searchSongs: (query: string) => Promise<SongSummary[]>
       getSong: (id: number) => Promise<SongDetail | null>

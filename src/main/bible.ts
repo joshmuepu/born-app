@@ -101,6 +101,64 @@ export function lookupPassage(
   }
 }
 
+export interface AdjacentVerse {
+  reference: string
+  translation: string
+  bookNum: number
+  chapter: number
+  verse: number
+  text: string
+}
+
+/**
+ * The verse immediately before/after a given one, rolling across chapter and
+ * book boundaries. Returns null at the very start/end of the Bible. Used when
+ * the operator keeps pressing Next past the end of a queued passage.
+ */
+export function getAdjacentVerse(
+  translation: string,
+  bookNum: number,
+  chapter: number,
+  verse: number,
+  direction: 'next' | 'prev'
+): AdjacentVerse | null {
+  try {
+    const db = getLibraryDb()
+    const trans =
+      db
+        .prepare<[string], { code: string }>('SELECT code FROM bible_translations WHERE code = ?')
+        .get(translation)?.code ?? 'KJV'
+    const cmp = direction === 'next' ? '>' : '<'
+    const order = direction === 'next' ? 'ASC' : 'DESC'
+    const row = db
+      .prepare<
+        [string, number, number, number, number, number],
+        { book: number; chapter: number; verse: number; text: string }
+      >(
+        `SELECT book, chapter, verse, text FROM bible_verses
+         WHERE translation = ?
+           AND ( book ${cmp} ?
+              OR (book = ? AND (chapter ${cmp} ?
+              OR (chapter = ? AND verse ${cmp} ?))) )
+         ORDER BY book ${order}, chapter ${order}, verse ${order}
+         LIMIT 1`
+      )
+      .get(trans, bookNum, bookNum, chapter, chapter, verse)
+    if (!row) return null
+    return {
+      reference: formatVerse(row.book, row.chapter, row.verse),
+      translation: trans,
+      bookNum: row.book,
+      chapter: row.chapter,
+      verse: row.verse,
+      text: row.text
+    }
+  } catch (e) {
+    log.error('getAdjacentVerse error', e)
+    return null
+  }
+}
+
 export function searchBible(query: string, translation: string, limit = 50): BibleSearchHit[] {
   const q = (query ?? '').trim()
   if (q.length < 2) return []

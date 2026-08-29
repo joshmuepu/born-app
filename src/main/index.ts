@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
 import { closeLibraryDb } from './libraryDb'
-import { getBibleTranslations, lookupPassage, searchBible } from './bible'
+import { getBibleTranslations, lookupPassage, searchBible, getAdjacentVerse } from './bible'
 import { searchSongs, getSong, importSongs, deleteSong } from './songs'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
@@ -723,6 +723,12 @@ ipcMain.handle('bible:lookup', (_event, reference: string, translation: string) 
 
 ipcMain.handle('bible:search', (_event, query: string, translation: string) =>
   searchBible(query, translation)
+)
+
+ipcMain.handle(
+  'bible:adjacent-verse',
+  (_event, translation: string, bookNum: number, chapter: number, verse: number, direction: 'next' | 'prev') =>
+    getAdjacentVerse(translation, bookNum, chapter, verse, direction)
 )
 
 // ── Songs IPC ─────────────────────────────────────────────────────────────────

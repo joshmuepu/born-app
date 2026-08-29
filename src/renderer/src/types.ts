@@ -42,6 +42,8 @@ export interface BibleSearchHit {
   text: string
 }
 
+export type AdjacentVerse = BibleSearchHit
+
 export interface SongSummary {
   id: number
   title: string

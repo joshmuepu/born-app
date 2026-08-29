@@ -6,6 +6,8 @@ interface Props {
   queue: QueueItem[]
   activeIndex: number | null
   activeSlide: number
+  /** What's actually on the projector right now (follows Next/Prev flow-through). */
+  onScreenText?: string
   projectionOpen: boolean
   blanked: boolean
   onProject: (index: number) => void
@@ -32,6 +34,7 @@ export default function ServiceQueue({
   queue,
   activeIndex,
   activeSlide,
+  onScreenText,
   projectionOpen,
   blanked,
   onProject,
@@ -52,14 +55,11 @@ export default function ServiceQueue({
       activeIndex < queue.length - 1 ||
       activeSlide < (queue[activeIndex]?.slides.length ?? 1) - 1)
 
-  const activeItem = activeIndex !== null ? queue[activeIndex] : undefined
   const nowLine = !projectionOpen
     ? 'Projection window is closed'
     : blanked
       ? 'Screen is hidden'
-      : activeItem
-        ? `${itemTitle(activeItem)}${activeItem.slides.length > 1 ? `  ·  ${activeSlide + 1} of ${activeItem.slides.length}` : ''}`
-        : 'Nothing on screen yet'
+      : onScreenText || 'Nothing on screen yet'
 
   return (
     <div className="service-queue">

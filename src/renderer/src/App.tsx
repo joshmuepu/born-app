@@ -14,8 +14,8 @@ import type {
   SongDetail
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
-import { stepForward, stepBack, type Position } from '../../shared/queueNav'
 import { reorder } from './queueUtils'
+import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 
 type TopTab = 'sermons' | 'bible' | 'songs'
 type SermonsSubTab = 'search' | 'browse'
@@ -25,6 +25,9 @@ interface Projected {
   slide: number
   /** Index into serviceQueue, or null when projecting a preview not in the queue. */
   queueIndex: number | null
+  /** Source positions of the first / last loaded slide, for Next/Prev flow-through. */
+  head?: FlowCursors['head']
+  tail?: FlowCursors['tail']
 }
 
 function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
@@ -62,6 +65,7 @@ export default function App() {
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
+  const sermonCacheRef = useRef<Map<number, Quote[]>>(new Map())
   const queueLoaded = useRef(false)
   const projectionOpenRef = useRef(false)
 
@@ -134,49 +138,65 @@ export default function App() {
   }, [])
 
   const doProject = useCallback(
-    async (item: QueueItem, slide: number, queueIndex: number | null) => {
+    async (
+      item: QueueItem,
+      slide: number,
+      queueIndex: number | null,
+      cursors?: FlowCursors
+    ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
       await ensureProjectionOpen()
 
-      const next: Projected = { item, slide, queueIndex }
+      // Private copy so Next/Prev flow-through never mutates the queued item.
+      const stored: QueueItem = { ...item, slides: item.slides.map((s) => ({ ...s })) }
+      const c = cursors ?? cursorsFor(item)
+      const next: Projected = { item: stored, slide, queueIndex, head: c.head, tail: c.tail }
       projectedRef.current = next
       setProjected(next)
       setIsScreenBlanked(false)
       window.electronAPI.showSlide(payload)
 
-      // Stage view: current slide + the slide that Next would show.
-      const q = queueRef.current
-      let nextPayload: SlidePayload | null = null
-      if (queueIndex !== null && q[queueIndex]?.id === item.id) {
-        const np = stepForward(q, { itemIndex: queueIndex, slideIndex: slide })
-        if (np && !(np.itemIndex === queueIndex && np.slideIndex === slide)) {
-          nextPayload = slidePayload(q[np.itemIndex], np.slideIndex)
-        }
-      } else if (slide + 1 < item.slides.length) {
-        nextPayload = slidePayload(item, slide + 1)
-      }
+      // Stage view: current slide + the next one, when it's already loaded.
+      const nextPayload =
+        slide + 1 < stored.slides.length ? slidePayload(stored, slide + 1) : null
       window.electronAPI.updateStage(payload, nextPayload)
     },
     [ensureProjectionOpen]
   )
 
+  // Next / Prev walk the current item's slides; past either end they flow into
+  // the source (next sermon paragraph, next Bible verse — rolling across
+  // chapters). They never jump to another queue item — that's a click.
   const advance = useCallback(
-    (dir: 'next' | 'prev') => {
+    async (dir: 'next' | 'prev') => {
       const p = projectedRef.current
       const q = queueRef.current
       if (!p) {
         if (q.length > 0) doProject(q[0], 0, 0)
         return
       }
-      const inQueue = p.queueIndex !== null && q[p.queueIndex]?.id === p.item.id
-      if (inQueue) {
-        const pos: Position = { itemIndex: p.queueIndex as number, slideIndex: p.slide }
-        const nextPos = dir === 'next' ? stepForward(q, pos) : stepBack(q, pos)
-        if (nextPos) doProject(q[nextPos.itemIndex], nextPos.slideIndex, nextPos.itemIndex)
+      const step = dir === 'next' ? 1 : -1
+      const target = p.slide + step
+
+      if (target >= 0 && target < p.item.slides.length) {
+        doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
+        return
+      }
+
+      if (dir === 'next') {
+        const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
+        if (!ext) return
+        const slides = [...p.item.slides, ext.slide]
+        doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
+          head: p.head,
+          tail: ext.cursor
+        })
       } else {
-        const n = dir === 'next' ? p.slide + 1 : p.slide - 1
-        if (n >= 0 && n < p.item.slides.length) doProject(p.item, n, p.queueIndex)
+        const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
+        if (!ext) return
+        const slides = [ext.slide, ...p.item.slides]
+        doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
       }
     },
     [doProject]
@@ -618,6 +638,16 @@ export default function App() {
             queue={serviceQueue}
             activeIndex={activeQueueIndex}
             activeSlide={projected?.slide ?? 0}
+            onScreenText={
+              projected
+                ? projected.item.slides[projected.slide]?.reference ??
+                  `${itemTitle(projected.item)}${
+                    projected.item.slides.length > 1
+                      ? `  ·  ${projected.slide + 1} of ${projected.item.slides.length}`
+                      : ''
+                  }`
+                : undefined
+            }
             projectionOpen={projectionOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
@@ -657,8 +687,8 @@ export default function App() {
           <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
-              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next slide</dd></div>
-              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous slide</dd></div>
+              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next slide — keeps going to the next verse / paragraph</dd></div>
+              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the screen</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
