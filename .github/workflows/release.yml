@@ -112,40 +112,16 @@ jobs:
       - name: Build and package
         run: npm run ${{ matrix.script }} -- --publish never
 
-      # ── Smoke test: install/extract the freshly built artifact on this real
-      #    target OS, launch it, and fail if the window doesn't load. The macOS
-      #    leg builds both arches and tests each (x64 runs under Rosetta 2, which
-      #    is pre-installed on the Apple-Silicon runner). ──
-      - name: Smoke test (macOS)
+      # ── Smoke test: launch the freshly built artifact on this real target OS
+      #    and fail if the window doesn't load. The macOS leg builds both arches;
+      #    the arm64 DMG is tested here, the x64 DMG on a native Intel runner
+      #    (smoke-macos-x64 job). ──
+      - name: Smoke test (macOS, arm64)
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
-          LOG="$HOME/Library/Application Support/Branham or Nothing/born.log"
-          for DMG in dist-installers/*.dmg; do
-            echo "==================  $DMG  =================="
-            MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's/.*\(\/Volumes\/.*\)/\1/')
-            rm -rf /tmp/BORN-smoke.app
-            cp -R "$MP"/*.app /tmp/BORN-smoke.app
-            hdiutil detach "$MP" -quiet
-            xattr -cr /tmp/BORN-smoke.app
-            rm -f "$LOG"
-            BIN=$(ls "/tmp/BORN-smoke.app/Contents/MacOS/")
-            echo "binary archs: $(lipo -archs "/tmp/BORN-smoke.app/Contents/MacOS/$BIN")"
-            "/tmp/BORN-smoke.app/Contents/MacOS/$BIN" &
-            PID=$!
-            OK=
-            for i in $(seq 1 45); do
-              sleep 1
-              if [ -f "$LOG" ] && grep -q "mainWindow did-finish-load" "$LOG"; then OK=1; break; fi
-              kill -0 $PID 2>/dev/null || { echo "::error::$DMG exited early"; cat "$LOG" 2>/dev/null; exit 1; }
-            done
-            [ "$OK" = 1 ] || { echo "::error::$DMG window never loaded"; cat "$LOG" 2>/dev/null; kill $PID 2>/dev/null; exit 1; }
-            echo "PASS — $DMG window loaded"
-            grep -E "BORN starting|did-finish-load|seed complete|already complete" "$LOG" || true
-            kill $PID 2>/dev/null || true
-            sleep 2
-          done
+          DMG=$(ls dist-installers/*arm64*.dmg)
+          bash .github/scripts/smoke-macos.sh "$DMG"
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -203,8 +179,28 @@ jobs:
           path: ${{ matrix.pattern }}
           retention-days: 1
 
-  release:
+  # The Intel DMG is cross-packaged on the Apple-Silicon runner (real x64 Electron
+  # + prebuilt x64 better-sqlite3); this job launches it on a native Intel Mac to
+  # prove it actually runs. Separate job = no rebuild, just download + launch, so
+  # a slow Intel-runner queue doesn't hold up the platform builds.
+  smoke-macos-x64:
     needs: build
+    runs-on: macos-13
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: installers-macOS
+          path: dist-installers
+      - name: Smoke test (macOS, x64 — native Intel)
+        run: |
+          set -euo pipefail
+          DMG=$(ls dist-installers/*.dmg | grep -v arm64)
+          bash .github/scripts/smoke-macos.sh "$DMG"
+
+  release:
+    needs: [build, smoke-macos-x64]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
