@@ -22,6 +22,7 @@ import {
   type QuoteRow
 } from './search'
 import { pickProjectionDisplay, describeDisplay, type DisplayLike } from './displays'
+import { checkForUpdate, getCachedUpdate, openReleasePage } from './updateCheck'
 import { getSettings, updateSettings } from './settings'
 import {
   serverSearch,
@@ -395,6 +396,13 @@ ipcMain.on('projection:set-font-size', (_event, size: number) => {
   }
   sendToProjection('projection:set-font-size', size)
 })
+
+// ── App / update IPC ──────────────────────────────────────────────────────────
+
+ipcMain.handle('app:version', () => app.getVersion())
+ipcMain.handle('app:check-update', () => checkForUpdate())
+ipcMain.handle('app:update-info', () => getCachedUpdate())
+ipcMain.handle('app:open-release-page', () => openReleasePage())
 
 // ── Display IPC ───────────────────────────────────────────────────────────────
 
@@ -830,6 +838,14 @@ app.whenReady().then(() => {
       log.info('auto-starting indexer after window load')
       startIndexer(mainWindow)
     }
+    // Quietly check whether a newer BORN build is out.
+    setTimeout(() => {
+      checkForUpdate().then((info) => {
+        if (info.hasUpdate && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('app:update-available', info)
+        }
+      })
+    }, 4000)
   })
 
   // React to monitors being plugged / unplugged / rearranged mid-session.

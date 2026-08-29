@@ -57,6 +57,10 @@ export default function App() {
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [webRemoteURL, setWebRemoteURL] = useState('')
+  const [appVersion, setAppVersion] = useState('')
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  const [updateMsg, setUpdateMsg] = useState('')
+  const [updateDismissed, setUpdateDismissed] = useState(false)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
@@ -87,6 +91,23 @@ export default function App() {
   useEffect(() => {
     if (queueLoaded.current) window.electronAPI.saveQueue(serviceQueue)
   }, [serviceQueue])
+
+  // App version + "is there a newer build?" check.
+  useEffect(() => {
+    window.electronAPI.getAppVersion().then(setAppVersion)
+    window.electronAPI.checkForUpdate().then(setUpdate)
+    return window.electronAPI.onUpdateAvailable(setUpdate)
+  }, [])
+
+  const handleCheckForUpdate = useCallback(() => {
+    setUpdateMsg('Checking…')
+    window.electronAPI.checkForUpdate().then((u) => {
+      setUpdate(u)
+      setUpdateDismissed(false)
+      setUpdateMsg(u.hasUpdate ? '' : `You're on the latest version (${u.current}).`)
+      if (!u.hasUpdate) setTimeout(() => setUpdateMsg(''), 4000)
+    })
+  }, [])
 
   // Web remote URL (retry once — the HTTP server may still be binding).
   useEffect(() => {
@@ -583,6 +604,22 @@ export default function App() {
         </div>
       )}
 
+      {update?.hasUpdate && !updateDismissed && (
+        <div className="update-banner">
+          <span>
+            <strong>BORN {update.latest}</strong> is available — you have {update.current}.
+          </span>
+          <span className="update-banner-actions">
+            <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
+              Download
+            </button>
+            <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
+              Later
+            </button>
+          </span>
+        </div>
+      )}
+
       <main className="app-main">
         <div className="search-panel">
           <div className="panel-tab-bar">
@@ -703,6 +740,28 @@ export default function App() {
       )}
 
       <footer className="status-bar">
+        <span className="status-version">
+          BORN v{appVersion || '—'}
+          {update?.hasUpdate ? (
+            <button
+              className="status-update-link"
+              onClick={() => window.electronAPI.openReleasePage()}
+              title={`Version ${update.latest} is available`}
+            >
+              · update to {update.latest} →
+            </button>
+          ) : (
+            <button
+              className="status-update-link status-update-link--check"
+              onClick={handleCheckForUpdate}
+              title="Check for a newer version of BORN"
+            >
+              · check for updates
+            </button>
+          )}
+        </span>
+        {updateMsg && <span className="status-text">{updateMsg}</span>}
+
         {webRemoteURL && (
           <span className="status-remote" title="Open this address on a phone to control the service">
             📱 {webRemoteURL}
@@ -727,7 +786,7 @@ export default function App() {
         ) : indexer.status === 'done' ? (
           <>
             <span className="status-text status-ready">● {indexer.indexed.toLocaleString()} sermons ready</span>
-            <button className="btn-secondary btn-sm" title="Fetch any sermons added since this database was built" onClick={() => window.electronAPI.startIndexer()}>Check for updates</button>
+            <button className="btn-secondary btn-sm" title="Re-check the sermon library for any additions or corrections" onClick={() => window.electronAPI.startIndexer()}>Refresh sermon list</button>
           </>
         ) : (
           <>

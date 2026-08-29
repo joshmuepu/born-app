@@ -34,7 +34,26 @@ export interface SlidePayload {
   marker?: string
 }
 
+export interface UpdateInfo {
+  current: string
+  latest: string | null
+  hasUpdate: boolean
+  url: string
+  notes?: string
+}
+
 const api = {
+  // App / updates
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  checkForUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('app:check-update'),
+  getUpdateInfo: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('app:update-info'),
+  openReleasePage: (): Promise<void> => ipcRenderer.invoke('app:open-release-page'),
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, info: UpdateInfo): void => callback(info)
+    ipcRenderer.on('app:update-available', handler)
+    return () => ipcRenderer.removeListener('app:update-available', handler)
+  },
+
   // Projection
   openProjection: (): Promise<void> => ipcRenderer.invoke('projection:open'),
   closeProjection: (): Promise<void> => ipcRenderer.invoke('projection:close'),

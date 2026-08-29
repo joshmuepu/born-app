@@ -28,8 +28,22 @@ declare global {
     hasExternal: boolean
   }
 
+  interface UpdateInfo {
+    current: string
+    latest: string | null
+    hasUpdate: boolean
+    url: string
+    notes?: string
+  }
+
   interface Window {
     electronAPI: {
+      // App / updates
+      getAppVersion: () => Promise<string>
+      checkForUpdate: () => Promise<UpdateInfo>
+      getUpdateInfo: () => Promise<UpdateInfo | null>
+      openReleasePage: () => Promise<void>
+      onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
       // Projection
       openProjection: () => Promise<void>
       closeProjection: () => Promise<void>

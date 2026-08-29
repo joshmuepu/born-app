@@ -1113,6 +1113,49 @@ mark.hl {
   text-align: center;
 }
 
+.update-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 7px 20px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+.update-banner-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.status-version {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  padding-right: 10px;
+  margin-right: 4px;
+}
+.status-update-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0 0 4px;
+  color: var(--accent);
+}
+.status-update-link--check {
+  color: var(--text-secondary);
+}
+.status-update-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 kbd {
   display: inline-block;
   padding: 1px 6px;
