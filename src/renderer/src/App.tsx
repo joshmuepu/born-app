@@ -33,6 +33,13 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
   return { kind: item.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker }
 }
 
+/** "PA278QV (2) (2560×1440)" → "PA278QV (2)" — drop the resolution/notes so the
+ *  screen picker stays short in the header. */
+function shortDisplayName(label: string): string {
+  const m = /^(.*?)\s*\(\d{3,}[×x]\d{3,}/.exec(label)
+  return (m ? m[1] : label).trim()
+}
+
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -505,36 +512,46 @@ export default function App() {
             </div>
           )}
 
-          {displayInfo && displayInfo.displays.length > 1 && (
-            <label className="display-picker" title="Choose which screen the projection appears on">
-              <span className="display-picker-label">Show on</span>
-              <select
-                className="language-select"
-                value={displayInfo.isOverride ? displayInfo.targetId : ''}
-                onChange={(e) =>
-                  window.electronAPI
-                    .setProjectionDisplay(e.target.value ? Number(e.target.value) : null)
-                    .then(setDisplayInfo)
-                }
-              >
-                <option value="">Projector (auto)</option>
-                {displayInfo.displays.map((d) => (
-                  <option key={d.id} value={d.id}>{d.label}</option>
-                ))}
-              </select>
-            </label>
-          )}
-
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">Shortcuts</button>
           <button className="btn-quiet btn-sm" onClick={handleToggleStage} title="Open a second window showing the current and next slide (for musicians)">
             {stageOpen ? 'Close monitor' : 'Stage monitor'}
           </button>
-          <button
-            className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
-            onClick={handleToggleProjection}
-          >
-            {projectionOpen ? 'Close projection' : 'Open projection'}
-          </button>
+
+          <div className="projection-controls">
+            {displayInfo && (
+              displayInfo.displays.length > 1 ? (
+                <label className="display-picker" title="Which screen the congregation sees">
+                  <span className="display-picker-label">Screen</span>
+                  <select
+                    className="language-select"
+                    value={displayInfo.isOverride ? displayInfo.targetId : ''}
+                    onChange={(e) =>
+                      window.electronAPI
+                        .setProjectionDisplay(e.target.value ? Number(e.target.value) : null)
+                        .then(setDisplayInfo)
+                    }
+                  >
+                    <option value="">
+                      {targetDisplay ? `Auto: ${shortDisplayName(targetDisplay.label)}` : 'Automatic'}
+                    </option>
+                    {displayInfo.displays.map((d) => (
+                      <option key={d.id} value={d.id}>{shortDisplayName(d.label)}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <span className="display-status" title="Connect a second screen or projector, then it appears here">
+                  No second screen — will use this one
+                </span>
+              )
+            )}
+            <button
+              className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
+              onClick={handleToggleProjection}
+            >
+              {projectionOpen ? 'Close projection' : 'Open projection'}
+            </button>
+          </div>
         </div>
       </header>
 

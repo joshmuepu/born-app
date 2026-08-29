@@ -70,8 +70,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  height: 52px;
+  gap: 16px;
+  padding: 6px 20px;
+  min-height: 52px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -98,6 +99,8 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1072,10 +1075,25 @@ mark.hl {
 
 /* ── Display picker / fallback banner ─────────────────────── */
 
+/* "which screen" + "open projection" travel together — same spot every time. */
+.projection-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+}
+
 .display-picker {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.display-picker .language-select {
+  max-width: 190px;
+  text-overflow: ellipsis;
 }
 
 .display-picker-label,

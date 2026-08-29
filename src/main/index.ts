@@ -100,8 +100,8 @@ function createMainWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 1040,
+    minHeight: 640,
     title: 'BORN — Branham or Nothing',
     backgroundColor: '#0d1117',
     webPreferences: {
