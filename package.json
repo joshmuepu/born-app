@@ -1,7 +1,7 @@
 {
   "name": "born",
   "productName": "Branham or Nothing",
-  "version": "0.1.1",
+  "version": "1.0.2",
   "description": "BORN — Branham or Nothing: sermon quote search and projection tool",
   "main": "out/main/index.js",
   "scripts": {
@@ -10,8 +10,13 @@
     "preview": "electron-vite preview",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "npm rebuild better-sqlite3 && vitest run; npm run rebuild:native",
     "test:watch": "npm rebuild better-sqlite3 && vitest; npm run rebuild:native",
+    "_run-build-script": "node -e \"const v=+process.versions.node.split('.')[0];process.exit(v>=23?1:0)\"",
+    "build:db": "esbuild scripts/build-sermon-db.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.build-sermon-db.mjs && (npm run -s _run-build-script && node scripts/.build-sermon-db.mjs || ELECTRON_RUN_AS_NODE=1 electron scripts/.build-sermon-db.mjs)",
+    "prepare:songs": "mkdir -p resources/songs-source && unzip -o -q Songs.zip -d resources/songs-source",
+    "build:library": "npm run prepare:songs && esbuild scripts/build-library-db.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.build-library-db.mjs && (npm run -s _run-build-script && node scripts/.build-library-db.mjs || ELECTRON_RUN_AS_NODE=1 electron scripts/.build-library-db.mjs)",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
     "dist:linux": "electron-vite build && electron-builder --linux",
@@ -28,26 +33,55 @@
       "node_modules/**/*",
       "package.json"
     ],
-    "extraResources": [],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "",
+        "filter": [
+          "sermons.db.gz",
+          "library.db.gz"
+        ]
+      }
+    ],
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "category": "public.app-category.utilities",
-      "icon": "build/icons/icon.icns"
+      "icon": "build/icons/icon.icns",
+      "artifactName": "BORN-${version}-macOS-${arch}.${ext}"
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "icon": "build/icons/icon.ico"
+      "icon": "build/icons/icon.ico",
+      "artifactName": "BORN-${version}-Windows-Setup.${ext}"
     },
     "linux": {
       "target": [
-        { "target": "AppImage", "arch": ["x64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icons/",
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "BORN-${version}-Linux-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -56,6 +90,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
+    "fast-xml-parser": "^5.11.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
