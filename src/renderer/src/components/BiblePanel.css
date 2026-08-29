@@ -113,19 +113,35 @@
   color: var(--text-primary);
 }
 
-.bible-verse-project {
-  opacity: 0.55;
+.bible-verse-actions {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  opacity: 0.6;
   transition: opacity 0.1s;
 }
-.bible-verse:hover .bible-verse-project,
-.bible-verse:focus-within .bible-verse-project {
+.bible-verse:hover .bible-verse-actions,
+.bible-verse:focus-within .bible-verse-actions {
   opacity: 1;
 }
 
 .bible-verse--hit {
-  cursor: pointer;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr auto;
+  align-items: center;
 }
 .bible-verse--hit:hover {
   border-color: var(--accent);
+}
+
+.bible-hit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  min-width: 0;
+}
+.bible-hit-body:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 4px;
 }

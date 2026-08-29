@@ -43,14 +43,37 @@
 }
 
 .song-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid transparent;
-  cursor: pointer;
 }
 .song-row:hover {
   background: var(--bg-secondary);
   border-color: var(--border);
+}
+.song-row-body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.song-row-body:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 4px;
+}
+.song-row-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.1s;
+}
+.song-row:hover .song-row-actions,
+.song-row:focus-within .song-row-actions {
+  opacity: 1;
 }
 .song-row-title {
   font-size: 0.9rem;

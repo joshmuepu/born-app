@@ -39,6 +39,20 @@ export default function SongsPanel({ visible, onAddSong, onProjectSong }: Props)
     window.electronAPI.getSong(id).then(setSelected)
   }, [])
 
+  /** Queue / project a song straight from the results list, no need to open it. */
+  const queueSong = useCallback(
+    (id: number) => {
+      window.electronAPI.getSong(id).then((d) => d && onAddSong(d))
+    },
+    [onAddSong]
+  )
+  const projectSong = useCallback(
+    (id: number) => {
+      window.electronAPI.getSong(id).then((d) => d && onProjectSong(d, 0))
+    },
+    [onProjectSong]
+  )
+
   const handleImport = useCallback(async () => {
     setImportMsg('Importing…')
     const r = await window.electronAPI.importSongs()
@@ -130,13 +144,34 @@ export default function SongsPanel({ visible, onAddSong, onProjectSong }: Props)
             </div>
           )}
           {results.map((s) => (
-            <div key={s.id} className="song-row" onClick={() => openSong(s.id)}>
-              <div className="song-row-title">{s.title}</div>
-              <div className="song-row-meta">
-                {s.author ? `${s.author} · ` : ''}
-                {s.songKey ? `Key of ${s.songKey} · ` : ''}
-                {s.slideCount} slide{s.slideCount === 1 ? '' : 's'}
-                {s.source === 'import' ? ' · imported' : ''}
+            <div key={s.id} className="song-row">
+              <div
+                className="song-row-body"
+                role="button"
+                tabIndex={0}
+                onClick={() => openSong(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openSong(s.id)
+                  }
+                }}
+              >
+                <div className="song-row-title">{s.title}</div>
+                <div className="song-row-meta">
+                  {s.author ? `${s.author} · ` : ''}
+                  {s.songKey ? `Key of ${s.songKey} · ` : ''}
+                  {s.slideCount} slide{s.slideCount === 1 ? '' : 's'}
+                  {s.source === 'import' ? ' · imported' : ''}
+                </div>
+              </div>
+              <div className="song-row-actions">
+                <button className="btn-quiet btn-sm" title="Add to the queue" onClick={() => queueSong(s.id)}>
+                  + Queue
+                </button>
+                <button className="btn-secondary btn-sm" title="Put on the screen now" onClick={() => projectSong(s.id)}>
+                  Project
+                </button>
               </div>
             </div>
           ))}

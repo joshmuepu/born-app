@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { BibleTranslation, ResolvedPassage, BibleSearchHit } from '../types'
-import { parseReference, isRefError } from '../../../shared/bibleRef'
+import { parseReference, isRefError, formatVerse } from '../../../shared/bibleRef'
 import './BiblePanel.css'
 
 interface Props {
@@ -55,6 +55,21 @@ export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: 
       }
     },
     []
+  )
+
+  /** Queue or project a single verse (or any reference) straight from a result,
+   *  without opening it first. */
+  const resolveThen = useCallback(
+    async (ref: string, then: (p: ResolvedPassage) => void) => {
+      const res = await window.electronAPI.lookupPassage(ref, translation)
+      if (res && !(res as { error?: string }).error) then(res as ResolvedPassage)
+    },
+    [translation]
+  )
+  const queueRef = useCallback((ref: string) => resolveThen(ref, onAddPassage), [resolveThen, onAddPassage])
+  const projectRef = useCallback(
+    (ref: string) => resolveThen(ref, (p) => onProjectPassage(p, 0)),
+    [resolveThen, onProjectPassage]
   )
 
   const changeTranslation = (code: string): void => {
@@ -134,13 +149,22 @@ export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: 
                   <div key={v.verse} className="bible-verse">
                     <span className="bible-verse-num">{v.verse}</span>
                     <span className="bible-verse-text">{v.text}</span>
-                    <button
-                      className="btn-secondary btn-sm bible-verse-project"
-                      title={`Project verse ${v.verse}`}
-                      onClick={() => onProjectPassage(passage, passage.slideStarts[i] ?? 0)}
-                    >
-                      Project
-                    </button>
+                    <div className="bible-verse-actions">
+                      <button
+                        className="btn-quiet btn-sm"
+                        title={`Add verse ${v.verse} to the queue`}
+                        onClick={() => queueRef(formatVerse(passage.bookNum, passage.chapter, v.verse))}
+                      >
+                        + Queue
+                      </button>
+                      <button
+                        className="btn-secondary btn-sm"
+                        title={`Put verse ${v.verse} on the screen`}
+                        onClick={() => onProjectPassage(passage, passage.slideStarts[i] ?? 0)}
+                      >
+                        Project
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -163,13 +187,31 @@ export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: 
               <div className="bible-hint">No verses found.</div>
             )}
             {hits.map((h) => (
-              <div
-                key={`${h.bookNum}-${h.chapter}-${h.verse}`}
-                className="bible-verse bible-verse--hit"
-                onClick={() => { setMode('reference'); setRefInput(h.reference); doLookup(h.reference, translation) }}
-              >
-                <span className="bible-verse-ref">{h.reference}</span>
-                <span className="bible-verse-text">{h.text}</span>
+              <div key={`${h.bookNum}-${h.chapter}-${h.verse}`} className="bible-verse bible-verse--hit">
+                <div
+                  className="bible-hit-body"
+                  role="button"
+                  tabIndex={0}
+                  title="Open this passage"
+                  onClick={() => { setMode('reference'); setRefInput(h.reference); doLookup(h.reference, translation) }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setMode('reference'); setRefInput(h.reference); doLookup(h.reference, translation)
+                    }
+                  }}
+                >
+                  <span className="bible-verse-ref">{h.reference}</span>
+                  <span className="bible-verse-text">{h.text}</span>
+                </div>
+                <div className="bible-verse-actions">
+                  <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={() => queueRef(h.reference)}>
+                    + Queue
+                  </button>
+                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={() => projectRef(h.reference)}>
+                    Project
+                  </button>
+                </div>
               </div>
             ))}
           </div>
