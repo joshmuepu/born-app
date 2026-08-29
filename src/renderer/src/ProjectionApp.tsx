@@ -75,26 +75,17 @@ export default function ProjectionApp() {
   }, [slide, fontSize])
 
   useEffect(() => {
+    // Esc (blackout toggle) is owned by the main process so both windows agree;
+    // here we only handle slide navigation. Showing a slide auto-unblanks.
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        setBlanked(true)
-      } else if (e.key === 'ArrowRight' || e.key === ' ') {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
         window.electronAPI.navigateQueue('next')
-        setBlanked(false)
       } else if (e.key === 'ArrowLeft') {
         window.electronAPI.navigateQueue('prev')
-        setBlanked(false)
-      } else {
-        setBlanked(false)
       }
     }
-    const onClick = (): void => setBlanked(false)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('click', onClick)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('click', onClick)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const alertBanner = alertText && (

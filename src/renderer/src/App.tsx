@@ -324,11 +324,6 @@ export default function App() {
     window.electronAPI.setBlankScreen(b)
   }, [isScreenBlanked])
 
-  const handleBlank = useCallback((blank: boolean) => {
-    setIsScreenBlanked(blank)
-    window.electronAPI.setBlankScreen(blank)
-  }, [])
-
   const handleFontSizeChange = useCallback((delta: number) => {
     setFontSize((prev) => {
       const next = Math.min(8, Math.max(1.5, parseFloat((prev + delta).toFixed(2))))
@@ -372,6 +367,14 @@ export default function App() {
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
 
+      // Esc toggles the projector blackout from anywhere in the control window —
+      // including while a search box has focus, so it works under live pressure.
+      if (e.key === 'Escape' && projectionOpen) {
+        e.preventDefault()
+        handleToggleBlank()
+        return
+      }
+
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'Enter') {
         if (searchResults[0]) { e.preventDefault(); handleProjectQuote(searchResults[0]) }
@@ -410,10 +413,6 @@ export default function App() {
           e.preventDefault()
           handlePrev()
           break
-        case 'Escape':
-          e.preventDefault()
-          handleBlank(true)
-          break
         case 'b':
         case 'B':
           e.preventDefault()
@@ -427,13 +426,13 @@ export default function App() {
   }, [
     showAlertDialog,
     showShortcuts,
+    projectionOpen,
     searchResults,
     activeQueueIndex,
     handleProjectQuote,
     handleReorder,
     handlePrev,
     handleNext,
-    handleBlank,
     handleToggleBlank
   ])
 
@@ -560,7 +559,7 @@ export default function App() {
           {displayInfo?.isOverride
             ? 'Projection is set to this screen. '
             : 'No external display detected — projecting to this screen. '}
-          Press <kbd>Esc</kbd> to blank{displayInfo && displayInfo.displays.length > 1 ? ', or pick a screen above' : ''}.
+          Press <kbd>Esc</kbd> to hide or show it{displayInfo && displayInfo.displays.length > 1 ? ', or pick a screen above' : ''}.
         </div>
       )}
 
@@ -660,8 +659,7 @@ export default function App() {
             <dl className="shortcuts-list">
               <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next slide</dd></div>
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous slide</dd></div>
-              <div><dt><kbd>B</kbd></dt><dd>Hide / show the screen</dd></div>
-              <div><dt><kbd>Esc</kbd></dt><dd>Hide the screen</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the screen</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>

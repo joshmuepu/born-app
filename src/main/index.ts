@@ -130,15 +130,8 @@ function createMainWindow(): void {
     log.warn('mainWindow renderer unresponsive')
   })
 
-  // Relay queue navigation / blank shortcuts from the operator window to the
-  // projection window. Only real control keys — never plain typing.
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
-    if (input.type !== 'keyDown') return
-    if (!projectionWindow || projectionWindow.isDestroyed()) return
-    if (input.key === 'Escape') {
-      setProjectionBlank(true)
-    }
-  })
+  // Esc from the operator window is handled in the renderer (App.tsx) so it can
+  // respect focus / typing state; nothing to relay here.
 
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
@@ -182,7 +175,7 @@ function createProjectionWindow(): void {
   projectionWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown' && input.key === 'Escape') {
       event.preventDefault()
-      setProjectionBlank(true)
+      setProjectionBlank(!projectionState.blank) // Esc toggles the blackout
     }
   })
 
@@ -277,15 +270,27 @@ function broadcastDisplayInfo(): void {
   sendToProjection('projection:display-info', payload)
 }
 
+// Toggling fullscreen + setBounds itself emits `display-metrics-changed`, so a
+// naive "reposition on every display event" loops forever and the projection
+// visibly shakes. Guard: skip when the window is already full-screen on the
+// right display, and ignore the events our own move produces.
+let repositioning = false
+
 /** Re-place the projection window on the correct display after a hotplug. */
-function repositionProjectionWindow(): void {
+function repositionProjectionWindow(force = false): void {
   if (!projectionWindow || projectionWindow.isDestroyed()) return
+  const onMac = process.platform === 'darwin'
   const target = resolveProjectionTarget()
   const area = target.display.workArea ?? target.display.bounds
+
+  const winDisplay = screen.getDisplayMatching(projectionWindow.getBounds())
+  const isFs = onMac ? projectionWindow.isSimpleFullScreen() : projectionWindow.isFullScreen()
+  if (!force && winDisplay.id === target.display.id && isFs) return // already correct — leave it alone
+
   log.info(
     `repositioning projection → ${describeDisplay(target.display, screen.getPrimaryDisplay().id)}`
   )
-  const onMac = process.platform === 'darwin'
+  repositioning = true
   try {
     if (onMac) projectionWindow.setSimpleFullScreen(false)
     else projectionWindow.setFullScreen(false)
@@ -295,17 +300,21 @@ function repositionProjectionWindow(): void {
   } catch (e) {
     log.error('repositionProjectionWindow failed', e)
   }
+  setTimeout(() => {
+    repositioning = false
+  }, 700)
 }
 
 let displayChangeTimer: ReturnType<typeof setTimeout> | null = null
 function onDisplayLayoutChanged(reason: string): void {
+  if (repositioning) return // don't react to the metrics-changed events our own move fires
   log.info(`display layout changed: ${reason}`)
   if (displayChangeTimer) clearTimeout(displayChangeTimer)
   displayChangeTimer = setTimeout(() => {
     displayChangeTimer = null
     repositionProjectionWindow()
     broadcastDisplayInfo()
-  }, 250)
+  }, 400)
 }
 
 // ── Projection control helpers ────────────────────────────────────────────────
@@ -398,7 +407,7 @@ ipcMain.handle('projection:set-display', (_event, displayId: number | null) => {
   } catch (e) {
     log.error('persist projectionDisplayId failed', e)
   }
-  repositionProjectionWindow()
+  repositionProjectionWindow(true)
   broadcastDisplayInfo()
   return displayInfoPayload()
 })
