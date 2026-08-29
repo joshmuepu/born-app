@@ -81,7 +81,7 @@
       ],
       "icon": "build/icons/",
       "category": "Utility",
-      "artifactName": "BORN-${version}-Linux-${arch}.${ext}"
+      "artifactName": "BORN-${version}-Linux-x86_64.${ext}"
     },
     "nsis": {
       "oneClick": false,

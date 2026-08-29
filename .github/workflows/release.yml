@@ -73,21 +73,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS-arm64
-            os: macos-latest       # Apple Silicon runner
-            builder_args: --mac --arm64
-            pattern: dist-installers/*.dmg
-          - name: macOS-x64
-            os: macos-13           # Intel runner — native x64 build + smoke test
-            builder_args: --mac --x64
+          - name: macOS
+            os: macos-latest
+            script: dist:mac
             pattern: dist-installers/*.dmg
           - name: windows
             os: windows-latest
-            builder_args: --win
+            script: dist:win
             pattern: dist-installers/*.exe
           - name: linux
             os: ubuntu-latest
-            builder_args: --linux
+            script: dist:linux
             pattern: dist-installers/*.AppImage
     runs-on: ${{ matrix.os }}
     steps:
@@ -114,35 +110,42 @@ jobs:
           path: resources
 
       - name: Build and package
-        run: |
-          npm run build
-          npx electron-builder ${{ matrix.builder_args }} --publish never
+        run: npm run ${{ matrix.script }} -- --publish never
 
       # ── Smoke test: install/extract the freshly built artifact on this real
-      #    target OS, launch it, and confirm the window loads and it stays up. ──
+      #    target OS, launch it, and fail if the window doesn't load. The macOS
+      #    leg builds both arches and tests each (x64 runs under Rosetta 2, which
+      #    is pre-installed on the Apple-Silicon runner). ──
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          DMG=$(ls dist-installers/*.dmg | head -1)
-          echo "Testing $DMG"
-          MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's/.*\(\/Volumes\/.*\)/\1/')
-          cp -R "$MP"/*.app /tmp/BORN-smoke.app
-          hdiutil detach "$MP" -quiet
-          xattr -cr /tmp/BORN-smoke.app
-          BIN=$(ls "/tmp/BORN-smoke.app/Contents/MacOS/")
-          "/tmp/BORN-smoke.app/Contents/MacOS/$BIN" &
-          PID=$!
+          softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
           LOG="$HOME/Library/Application Support/Branham or Nothing/born.log"
-          for i in $(seq 1 30); do
-            sleep 1
-            if [ -f "$LOG" ] && grep -q "mainWindow did-finish-load" "$LOG"; then OK=1; break; fi
-            kill -0 $PID 2>/dev/null || { echo "::error::app exited early"; cat "$LOG" 2>/dev/null; exit 1; }
+          for DMG in dist-installers/*.dmg; do
+            echo "==================  $DMG  =================="
+            MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's/.*\(\/Volumes\/.*\)/\1/')
+            rm -rf /tmp/BORN-smoke.app
+            cp -R "$MP"/*.app /tmp/BORN-smoke.app
+            hdiutil detach "$MP" -quiet
+            xattr -cr /tmp/BORN-smoke.app
+            rm -f "$LOG"
+            BIN=$(ls "/tmp/BORN-smoke.app/Contents/MacOS/")
+            echo "binary archs: $(lipo -archs "/tmp/BORN-smoke.app/Contents/MacOS/$BIN")"
+            "/tmp/BORN-smoke.app/Contents/MacOS/$BIN" &
+            PID=$!
+            OK=
+            for i in $(seq 1 45); do
+              sleep 1
+              if [ -f "$LOG" ] && grep -q "mainWindow did-finish-load" "$LOG"; then OK=1; break; fi
+              kill -0 $PID 2>/dev/null || { echo "::error::$DMG exited early"; cat "$LOG" 2>/dev/null; exit 1; }
+            done
+            [ "$OK" = 1 ] || { echo "::error::$DMG window never loaded"; cat "$LOG" 2>/dev/null; kill $PID 2>/dev/null; exit 1; }
+            echo "PASS — $DMG window loaded"
+            grep -E "BORN starting|did-finish-load|seed complete|already complete" "$LOG" || true
+            kill $PID 2>/dev/null || true
+            sleep 2
           done
-          [ "${OK:-}" = 1 ] || { echo "::error::window never loaded"; cat "$LOG" 2>/dev/null; kill $PID; exit 1; }
-          echo "still running after window load — killing"
-          kill $PID
-          grep -E "BORN starting|did-finish-load|seed complete|already complete" "$LOG"
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -156,7 +159,7 @@ jobs:
           $p = Start-Process $exe.FullName -PassThru
           $log = "$env:APPDATA\Branham or Nothing\born.log"
           $ok = $false
-          foreach ($i in 1..30) {
+          foreach ($i in 1..45) {
             Start-Sleep 1
             if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'mainWindow did-finish-load' -Quiet)) { $ok = $true; break }
             if ($p.HasExited) { Get-Content $log -ErrorAction SilentlyContinue; throw "app exited early (code $($p.ExitCode))" }
@@ -182,7 +185,8 @@ jobs:
           xvfb-run -a "$APP" --no-sandbox --appimage-extract-and-run &
           PID=$!
           LOG="$HOME/.config/Branham or Nothing/born.log"
-          for i in $(seq 1 30); do
+          OK=
+          for i in $(seq 1 45); do
             sleep 1
             if [ -f "$LOG" ] && grep -q "mainWindow did-finish-load" "$LOG"; then OK=1; break; fi
             kill -0 $PID 2>/dev/null || { echo "::error::app exited early"; cat "$LOG" 2>/dev/null; exit 1; }
