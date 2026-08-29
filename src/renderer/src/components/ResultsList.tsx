@@ -1,68 +1,75 @@
-import { useState } from 'react'
 import type { Quote } from '../types'
+import { highlight, yearFromDateCode } from '../highlight'
 
 interface Props {
   results: Quote[]
+  query?: string
+  loading?: boolean
+  searched?: boolean
   onAddToQueue: (quote: Quote) => void
   onSendToProjection: (quote: Quote) => void
-  fontSize: number
 }
 
-export default function ResultsList({ results, onAddToQueue, onSendToProjection, fontSize }: Props) {
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+/** Strip a leading "146 " / "146-147 " paragraph number the API prepends. */
+function bodyOf(text: string): string {
+  return text.replace(/^\s*\d+(?:[-–]\d+)?\s+/, '')
+}
 
-  if (results.length === 0) {
+export default function ResultsList({
+  results,
+  query,
+  loading,
+  searched,
+  onAddToQueue,
+  onSendToProjection
+}: Props) {
+  if (loading) {
     return (
-      <div className="results-empty">
-        <p>Search for sermon quotes above</p>
+      <div className="results-loading">
+        <div className="spinner" />
+        <span>Searching…</span>
       </div>
     )
   }
 
-  const previewQuote = previewIndex !== null ? results[previewIndex] : null
+  if (results.length === 0) {
+    return (
+      <div className="results-empty">
+        {searched ? (
+          <>
+            <p>No quotes found for “{query}”.</p>
+            <p className="results-empty-hint">Try fewer words, or switch to “Any of these words” in Filters.</p>
+          </>
+        ) : (
+          <p>Type a word or phrase above to search {results.length ? '' : 'sermon quotes'}.</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="results-panel">
-      {previewQuote && (
-        <div className="preview-pane">
-          <div className="preview-label">Preview</div>
-          <div className="preview-screen">
-            <div className="preview-text" style={{ fontSize: `${Math.max(0.75, fontSize * 0.22)}rem` }}>
-              {previewQuote.text}
-            </div>
-            <div className="preview-reference">
-              <span className="preview-ref-title">{previewQuote.sermonTitle}</span>
-              <span className="preview-ref-sep">·</span>
-              <span className="preview-ref-date">{previewQuote.dateCode}</span>
-              <span className="preview-ref-sep">·</span>
-              <span className="preview-ref-para">{previewQuote.paragraphRef}</span>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="results-count">{results.length} result{results.length === 1 ? '' : 's'}</div>
       <div className="results-list">
         {results.map((quote, index) => (
-          <div
-            key={index}
-            className={`result-item${previewIndex === index ? ' result-item--selected' : ''}`}
-            onClick={() => setPreviewIndex(previewIndex === index ? null : index)}
-          >
-            <div className="result-meta">
-              <span className="result-date">{quote.dateCode}</span>
+          <div key={index} className="result-item">
+            <div className="result-head">
               <span className="result-title">{quote.sermonTitle}</span>
-              <span className="result-ref">{quote.paragraphRef}</span>
+              <span className="result-meta">
+                {yearFromDateCode(quote.dateCode)} · ¶{quote.paragraphRef}
+              </span>
             </div>
-            <p className="result-text">{quote.text}</p>
+            <p className="result-text">{highlight(bodyOf(quote.text), query)}</p>
             <div className="result-actions">
               <button
                 className="btn-secondary btn-sm"
-                onClick={(e) => { e.stopPropagation(); onAddToQueue(quote) }}
+                onClick={() => onAddToQueue(quote)}
               >
-                + Queue
+                Add to Queue
               </button>
               <button
                 className="btn-primary btn-sm"
-                onClick={(e) => { e.stopPropagation(); onSendToProjection(quote) }}
+                onClick={() => onSendToProjection(quote)}
               >
                 Project
               </button>

@@ -1,5 +1,32 @@
 import { describe, it, expect } from 'vitest'
-import { buildSearchSQL, rowToQuote, SEARCH_BASE } from '../../main/search'
+import {
+  buildSearchSQL,
+  buildPhraseQuery,
+  buildTokenQuery,
+  rowToQuote,
+  SEARCH_BASE
+} from '../../main/search'
+
+describe('buildPhraseQuery', () => {
+  it('wraps the whole query in quotes', () => {
+    expect(buildPhraseQuery('holy spirit')).toBe('"holy spirit"')
+  })
+  it('doubles embedded quotes so the FTS expression stays valid', () => {
+    expect(buildPhraseQuery('the "rapture"')).toBe('"the ""rapture"""')
+  })
+})
+
+describe('buildTokenQuery', () => {
+  it('AND-joins the words', () => {
+    expect(buildTokenQuery('faith  hope   love')).toBe('faith hope love')
+  })
+  it('strips FTS operator characters that would break MATCH', () => {
+    expect(buildTokenQuery('faith* (hope) "love" ^x col:on')).toBe('faith hope love x colon')
+  })
+  it('returns an empty string when nothing usable remains', () => {
+    expect(buildTokenQuery('  ** () ')).toBe('')
+  })
+})
 
 describe('buildSearchSQL', () => {
   it('returns base SQL with no filters', () => {

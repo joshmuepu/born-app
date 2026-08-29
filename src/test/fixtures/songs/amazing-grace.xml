@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.8">
+  <properties>
+    <titles><title>Amazing Grace</title></titles>
+    <authors><author>John Newton</author></authors>
+    <key>G</key>
+    <ccliNo>22025</ccliNo>
+  </properties>
+  <lyrics>
+    <verse name="v1">
+      <lines>Amazing grace how sweet the sound<br/>That saved a wretch like me</lines>
+    </verse>
+    <verse name="v2">
+      <lines>'Twas grace that taught my heart to fear<br/>And grace my fears relieved</lines>
+    </verse>
+    <verse name="c">
+      <lines>My chains are gone, I've been set free<br/>My God, my Saviour has ransomed me</lines>
+    </verse>
+  </lyrics>
+</song>

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import type { Quote } from './types'
+import type { SlidePayload } from './types'
 
 export default function StageApp() {
-  const [current, setCurrent] = useState<Quote | null>(null)
-  const [next, setNext] = useState<Quote | null>(null)
+  const [current, setCurrent] = useState<SlidePayload | null>(null)
+  const [next, setNext] = useState<SlidePayload | null>(null)
 
   useEffect(() => {
     const unsub = window.electronAPI.onStageUpdate((data) => {
       setCurrent(data.current)
       setNext(data.next)
     })
+    window.electronAPI.notifyStageReady()
     return unsub
   }, [])
 
@@ -18,29 +19,23 @@ export default function StageApp() {
       <div className="stage-current">
         {current ? (
           <>
-            <div className="stage-current-text">{current.text}</div>
-            <div className="stage-current-ref">
-              <span>{current.sermonTitle}</span>
-              <span className="stage-sep">·</span>
-              <span>{current.dateCode}</span>
-              <span className="stage-sep">·</span>
-              <span>{current.paragraphRef}</span>
+            {current.label && <div className="stage-current-label">{current.label}</div>}
+            <div className="stage-current-text">
+              {current.marker && <span className="stage-marker">{current.marker}</span>}
+              {current.text}
             </div>
+            {current.reference && <div className="stage-current-ref">{current.reference}</div>}
           </>
         ) : (
-          <div className="stage-idle">No quote projected</div>
+          <div className="stage-idle">Nothing projected</div>
         )}
       </div>
 
       {next && (
         <div className="stage-next">
-          <div className="stage-next-label">Next</div>
+          <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
           <div className="stage-next-text">{next.text}</div>
-          <div className="stage-next-ref">
-            <span>{next.sermonTitle}</span>
-            <span className="stage-sep">·</span>
-            <span>{next.dateCode}</span>
-          </div>
+          {next.reference && <div className="stage-next-ref">{next.reference}</div>}
         </div>
       )}
     </div>

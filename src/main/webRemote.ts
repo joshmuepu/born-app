@@ -2,25 +2,41 @@ import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { networkInterfaces } from 'os'
 
 export interface WebRemoteState {
-  queue: Array<{ text: string; sermonTitle: string; dateCode: string; paragraphRef: string }>
+  queue: Array<{ title: string; kind: string; subtitle: string; slideCount: number }>
   activeIndex: number | null
+  activeSlide: number
   blanked: boolean
 }
 
 type CommandCallback = (cmd: { action: string; index?: number }) => void
 
 const PORT = 4316
-let currentState: WebRemoteState = { queue: [], activeIndex: null, blanked: false }
+let currentState: WebRemoteState = {
+  queue: [],
+  activeIndex: null,
+  activeSlide: 0,
+  blanked: false
+}
 let commandCallback: CommandCallback | null = null
+
+function isPrivate(addr: string): boolean {
+  return (
+    addr.startsWith('192.168.') ||
+    addr.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(addr)
+  )
+}
 
 export function getLocalIP(): string {
   const nets = networkInterfaces()
+  const candidates: string[] = []
   for (const ifaces of Object.values(nets)) {
     for (const net of ifaces ?? []) {
-      if (net.family === 'IPv4' && !net.internal) return net.address
+      if (net.family === 'IPv4' && !net.internal) candidates.push(net.address)
     }
   }
-  return 'localhost'
+  // Prefer a real LAN address (192.168/10/172.16-31) over VPN / virtual adapters.
+  return candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
 }
 
 // Inline mobile-friendly HTML (no template literals in the embedded JS to avoid escaping issues)
@@ -46,7 +62,8 @@ button:active{background:#21262d}
 .q-item.active{border-left-color:#58a6ff;background:rgba(88,166,255,0.08)}
 .q-item:active{background:#21262d}
 .q-meta{font-size:0.72rem;color:#58a6ff;font-family:monospace;margin-bottom:4px}
-.q-text{font-size:0.85rem;line-height:1.4;color:#c9d1d9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.q-text{font-size:0.9rem;font-weight:600;line-height:1.35;color:#c9d1d9}
+.q-sub{font-size:0.75rem;color:#8b949e;margin-top:3px;font-family:monospace}
 .status{text-align:center;font-size:0.72rem;color:#8b949e;margin-top:16px;padding:8px}
 .empty{text-align:center;color:#8b949e;padding:24px;font-size:0.85rem}
 </style>
@@ -62,11 +79,12 @@ button:active{background:#21262d}
 <div class="queue" id="queue"></div>
 <div class="status" id="status">Connecting&#8230;</div>
 <script>
-var state = {queue:[],activeIndex:null,blanked:false};
+var state = {queue:[],activeIndex:null,activeSlide:0,blanked:false};
 function cmd(action,index){
   var body = JSON.stringify({action:action,index:index});
   fetch('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:body});
 }
+function esc(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function toggleBlank(){ cmd(state.blanked ? 'unblank' : 'blank'); }
 function render(){
   var blankBtn = document.getElementById('blankBtn');
@@ -74,16 +92,23 @@ function render(){
   blankBtn.className = 'btn-blank' + (state.blanked ? ' active' : '');
   var qEl = document.getElementById('queue');
   if(!state.queue || state.queue.length === 0){
-    qEl.innerHTML = '<div class="empty">No quotes in queue</div>';
+    qEl.innerHTML = '<div class="empty">Nothing in the service queue</div>';
     return;
   }
   var html = '';
   for(var i=0;i<state.queue.length;i++){
     var q = state.queue[i];
-    var cls = 'q-item' + (i === state.activeIndex ? ' active' : '');
+    var active = (i === state.activeIndex);
+    var cls = 'q-item' + (active ? ' active' : '');
+    var progress = '';
+    if(q.slideCount > 1){
+      progress = active ? (' &middot; ' + (state.activeSlide+1) + '/' + q.slideCount)
+                        : (' &middot; ' + q.slideCount + ' slides');
+    }
     html += '<div class="' + cls + '" onclick="cmd(\'project\',' + i + ')">';
-    html += '<div class="q-meta">' + q.dateCode + ' &middot; ' + q.paragraphRef + '</div>';
-    html += '<div class="q-text">' + q.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+    html += '<div class="q-meta">' + esc(q.kind).toUpperCase() + progress + '</div>';
+    html += '<div class="q-text">' + esc(q.title) + '</div>';
+    if(q.subtitle) html += '<div class="q-sub">' + esc(q.subtitle) + '</div>';
     html += '</div>';
   }
   qEl.innerHTML = html;
@@ -125,10 +150,25 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   res.end(buildHTML())
 }
 
+let remoteAvailable = false
+
+export function isWebRemoteAvailable(): boolean {
+  return remoteAvailable
+}
+
 export function startWebRemote(onCommand: CommandCallback): void {
   commandCallback = onCommand
   const server = createServer(handleRequest)
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    remoteAvailable = false
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Web remote: port ${PORT} is already in use — remote disabled`)
+    } else {
+      console.error('Web remote server error', err)
+    }
+  })
   server.listen(PORT, () => {
+    remoteAvailable = true
     console.log(`Web remote available at http://${getLocalIP()}:${PORT}`)
   })
 }

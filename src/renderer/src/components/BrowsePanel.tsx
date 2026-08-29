@@ -1,16 +1,23 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Quote, SermonIndexItem, SeriesEntry, StateEntry, CityEntry, DateGroup } from '../types'
 import './BrowsePanel.css'
 
 interface Props {
+  visible: boolean
   onAddToQueue: (quote: Quote) => void
   onSendToProjection: (quote: Quote) => void
 }
 
 type BrowseTab = 'series' | 'location' | 'date'
 
-export default function BrowsePanel({ onAddToQueue, onSendToProjection }: Props) {
+export default function BrowsePanel({ visible, onAddToQueue, onSendToProjection }: Props) {
   const [tab, setTab] = useState<BrowseTab>('series')
+
+  // Language for paragraph drill-down (English by default; others fetched + cached).
+  const [language, setLanguage] = useState<string>(
+    () => localStorage.getItem('born.browseLanguage') || 'en'
+  )
+  const [languages, setLanguages] = useState<Record<string, string>>({})
 
   // Series tab
   const [seriesList, setSeriesList] = useState<SeriesEntry[]>([])
@@ -86,17 +93,33 @@ export default function BrowsePanel({ onAddToQueue, onSendToProjection }: Props)
 
   // ── Paragraph loading ─────────────────────────────────────────────────────────
 
-  const loadParagraphs = useCallback(async (sermon: SermonIndexItem) => {
-    setSelectedSermon(sermon)
-    setLoadingParagraphs(true)
-    setParagraphs([])
-    try {
-      const paras = await window.electronAPI.getSermonParagraphs(sermon.id, 'en')
-      setParagraphs(paras)
-    } finally {
-      setLoadingParagraphs(false)
-    }
-  }, [])
+  const loadParagraphs = useCallback(
+    async (sermon: SermonIndexItem, lang = language) => {
+      setSelectedSermon(sermon)
+      setLoadingParagraphs(true)
+      setParagraphs([])
+      try {
+        const paras = await window.electronAPI.getSermonParagraphs(sermon.id, lang)
+        setParagraphs(paras)
+      } finally {
+        setLoadingParagraphs(false)
+      }
+    },
+    [language]
+  )
+
+  const changeLanguage = useCallback(
+    (lang: string) => {
+      setLanguage(lang)
+      try {
+        localStorage.setItem('born.browseLanguage', lang)
+      } catch {
+        /* ignore */
+      }
+      if (selectedSermon) loadParagraphs(selectedSermon, lang)
+    },
+    [selectedSermon, loadParagraphs]
+  )
 
   // ── Render helpers ────────────────────────────────────────────────────────────
 
@@ -251,10 +274,18 @@ export default function BrowsePanel({ onAddToQueue, onSendToProjection }: Props)
     )
   }
 
-  // Load the first tab on mount
+  // Load the first tab + language list the first time the panel becomes visible
+  // (not before — keeps startup light and avoids a network call if Browse is
+  // never opened).
+  const langsRequested = useRef(false)
   useEffect(() => {
+    if (!visible) return
     loadSeries()
-  }, [loadSeries])
+    if (!langsRequested.current) {
+      langsRequested.current = true
+      window.electronAPI.getLanguages().then((l) => setLanguages(l ?? {}))
+    }
+  }, [visible, loadSeries])
 
   return (
     <div className="browse-panel">
@@ -277,6 +308,24 @@ export default function BrowsePanel({ onAddToQueue, onSendToProjection }: Props)
         >
           Date
         </button>
+        {Object.keys(languages).length > 0 && (
+          <select
+            className="language-select browse-language"
+            value={language}
+            onChange={(e) => changeLanguage(e.target.value)}
+            title="Quote language"
+          >
+            <option value="en">English</option>
+            {Object.entries(languages)
+              .filter(([code]) => code !== 'en')
+              .sort((a, b) => a[1].localeCompare(b[1]))
+              .map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+          </select>
+        )}
       </div>
 
       <div className="browse-content">

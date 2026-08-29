@@ -1,41 +1,41 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SearchBar from '../../renderer/src/components/SearchBar'
 
 // window.electronAPI is mocked in src/test/setup.ts
 
+const PLACEHOLDER = /Search for a word or phrase/i
+
 beforeEach(() => {
   vi.clearAllMocks()
-  // Default: searchSermons returns empty array
   window.electronAPI.searchSermons = vi.fn(() => Promise.resolve([]))
   window.electronAPI.getAutocompleteSuggestions = vi.fn(() => Promise.resolve([]))
-  window.electronAPI.getHitsCountPreview = vi.fn(() => Promise.resolve(0))
 })
 
 describe('SearchBar', () => {
   it('renders the search input and Search button', () => {
     render(<SearchBar onResults={vi.fn()} />)
-    expect(screen.getByPlaceholderText(/Search sermons/i)).toBeDefined()
-    expect(screen.getByRole('button', { name: /search/i })).toBeDefined()
+    expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeDefined()
+    expect(screen.getByRole('button', { name: /^search$/i })).toBeDefined()
   })
 
   it('Search button is disabled when input is empty', () => {
     render(<SearchBar onResults={vi.fn()} />)
-    const btn = screen.getByRole('button', { name: /search/i }) as HTMLButtonElement
+    const btn = screen.getByRole('button', { name: /^search$/i }) as HTMLButtonElement
     expect(btn.disabled).toBe(true)
   })
 
   it('Search button enables after typing', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
-    await user.type(screen.getByPlaceholderText(/Search sermons/i), 'faith')
-    const btn = screen.getByRole('button', { name: /search/i }) as HTMLButtonElement
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'faith')
+    const btn = screen.getByRole('button', { name: /^search$/i }) as HTMLButtonElement
     expect(btn.disabled).toBe(false)
   })
 
-  it('calls searchSermons and onResults when Search button clicked', async () => {
+  it('calls searchSermons and onResults with the query when Search is clicked', async () => {
     const mockResults = [
       {
         text: 'By faith Abraham obeyed',
@@ -51,10 +51,10 @@ describe('SearchBar', () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={onResults} />)
 
-    await user.type(screen.getByPlaceholderText(/Search sermons/i), 'faith')
-    await user.click(screen.getByRole('button', { name: /search/i }))
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'faith')
+    await user.click(screen.getByRole('button', { name: /^search$/i }))
 
-    await waitFor(() => expect(onResults).toHaveBeenCalledWith(mockResults))
+    await waitFor(() => expect(onResults).toHaveBeenCalledWith(mockResults, 'faith'))
   })
 
   it('calls searchSermons on Enter key press', async () => {
@@ -62,30 +62,43 @@ describe('SearchBar', () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={onResults} />)
 
-    await user.type(screen.getByPlaceholderText(/Search sermons/i), 'grace{Enter}')
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'grace{Enter}')
 
-    await waitFor(() => expect(window.electronAPI.searchSermons).toHaveBeenCalledWith('grace', expect.any(Object)))
+    await waitFor(() =>
+      expect(window.electronAPI.searchSermons).toHaveBeenCalledWith('grace', expect.any(Object))
+    )
   })
 
-  it('shows Filters panel when Filters button is clicked', async () => {
+  it('reports searching state through onSearchingChange', async () => {
+    const onSearchingChange = vi.fn()
+    const user = userEvent.setup()
+    render(<SearchBar onResults={vi.fn()} onSearchingChange={onSearchingChange} />)
+
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'grace{Enter}')
+
+    await waitFor(() => expect(onSearchingChange).toHaveBeenCalledWith(true))
+    await waitFor(() => expect(onSearchingChange).toHaveBeenCalledWith(false))
+  })
+
+  it('shows the Filters panel when Filters is clicked', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    expect(screen.getByPlaceholderText(/From/i)).toBeDefined()
-    expect(screen.getByPlaceholderText(/To/i)).toBeDefined()
-    expect(screen.getByPlaceholderText(/Filter by sermon title/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/^From$/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/^To$/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/whose title contains/i)).toBeDefined()
   })
 
   it('passes filter values to searchSermons', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
 
-    await user.type(screen.getByPlaceholderText(/Search sermons/i), 'holy')
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'holy')
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    await user.type(screen.getByPlaceholderText(/From/i), '1960')
-    await user.type(screen.getByPlaceholderText(/To/i), '1965')
-    await user.type(screen.getByPlaceholderText(/Filter by sermon title/i), 'Spirit')
-    await user.click(screen.getByRole('button', { name: /search/i }))
+    await user.type(screen.getByPlaceholderText(/^From$/i), '1960')
+    await user.type(screen.getByPlaceholderText(/^To$/i), '1965')
+    await user.type(screen.getByPlaceholderText(/whose title contains/i), 'Spirit')
+    await user.click(screen.getByRole('button', { name: /^search$/i }))
 
     await waitFor(() =>
       expect(window.electronAPI.searchSermons).toHaveBeenCalledWith('holy', {
@@ -97,20 +110,34 @@ describe('SearchBar', () => {
     )
   })
 
-  it('switches to All words mode', async () => {
+  it('switches to "Any of these words" mode', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    await user.click(screen.getByRole('button', { name: /all words/i }))
-    await user.type(screen.getByPlaceholderText(/Search sermons/i), 'faith hope')
-    await user.click(screen.getByRole('button', { name: /search/i }))
+    await user.click(screen.getByRole('button', { name: /any of these words/i }))
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'faith hope')
+    await user.click(screen.getByRole('button', { name: /^search$/i }))
 
     await waitFor(() =>
-      expect(window.electronAPI.searchSermons).toHaveBeenCalledWith('faith hope', expect.objectContaining({
-        forceTokens: true
-      }))
+      expect(window.electronAPI.searchSermons).toHaveBeenCalledWith(
+        'faith hope',
+        expect.objectContaining({ forceTokens: true })
+      )
     )
+  })
+
+  it('shows a Clear filters button once a filter is set', async () => {
+    const user = userEvent.setup()
+    render(<SearchBar onResults={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /filters/i }))
+    expect(screen.queryByRole('button', { name: /clear filters/i })).toBeNull()
+    await user.type(screen.getByPlaceholderText(/^From$/i), '1960')
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeDefined()
+
+    await user.click(screen.getByRole('button', { name: /clear filters/i }))
+    expect((screen.getByPlaceholderText(/^From$/i) as HTMLInputElement).value).toBe('')
   })
 
   it('shows autocomplete suggestions after typing 2+ chars', async () => {
@@ -119,93 +146,84 @@ describe('SearchBar', () => {
     )
 
     render(<SearchBar onResults={vi.fn()} />)
-    fireEvent.change(screen.getByPlaceholderText(/Search sermons/i), { target: { value: 'fa' } })
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'fa' } })
 
-    // Wait for 300ms debounce + promise resolution
     await waitFor(() => expect(screen.queryByText('faith')).not.toBeNull(), { timeout: 2000 })
   })
 
-  it('does not show suggestions for single character', async () => {
+  it('does not request suggestions for a single character', async () => {
     render(<SearchBar onResults={vi.fn()} />)
-    fireEvent.change(screen.getByPlaceholderText(/Search sermons/i), { target: { value: 'f' } })
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'f' } })
 
-    // Wait longer than the 300ms debounce to ensure it didn't fire
     await new Promise((r) => setTimeout(r, 500))
     expect(window.electronAPI.getAutocompleteSuggestions).not.toHaveBeenCalled()
   })
 
-  it('handles getAutocompleteSuggestions error gracefully (no crash)', async () => {
+  it('handles a getAutocompleteSuggestions error gracefully (no crash)', async () => {
     window.electronAPI.getAutocompleteSuggestions = vi.fn(() => Promise.reject(new Error('IPC error')))
 
     render(<SearchBar onResults={vi.fn()} />)
-    fireEvent.change(screen.getByPlaceholderText(/Search sermons/i), { target: { value: 'ho' } })
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'ho' } })
 
-    // Wait for debounce + promise rejection to settle
     await new Promise((r) => setTimeout(r, 500))
-
-    // Should not crash — input still present
-    expect(screen.getByPlaceholderText(/Search sermons/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeDefined()
   })
 
-  it('handles getHitsCountPreview error gracefully (no crash)', async () => {
-    window.electronAPI.getHitsCountPreview = vi.fn(() => Promise.reject(new Error('IPC error')))
+  it('applies a suggestion on click', async () => {
+    window.electronAPI.getAutocompleteSuggestions = vi.fn(() => Promise.resolve(['faithful']))
 
     render(<SearchBar onResults={vi.fn()} />)
-    fireEvent.change(screen.getByPlaceholderText(/Search sermons/i), { target: { value: 'ho' } })
-
-    await new Promise((r) => setTimeout(r, 600))
-
-    expect(screen.getByPlaceholderText(/Search sermons/i)).toBeDefined()
-  })
-
-  it('applies suggestion on click', async () => {
-    window.electronAPI.getAutocompleteSuggestions = vi.fn(() =>
-      Promise.resolve(['faithful'])
-    )
-
-    render(<SearchBar onResults={vi.fn()} />)
-    const input = screen.getByPlaceholderText(/Search sermons/i) as HTMLInputElement
+    const input = screen.getByPlaceholderText(PLACEHOLDER) as HTMLInputElement
 
     fireEvent.change(input, { target: { value: 'fa' } })
-
     await waitFor(() => expect(screen.queryByText('faithful')).not.toBeNull(), { timeout: 2000 })
-
     fireEvent.mouseDown(screen.getByText('faithful'))
 
     await waitFor(() => expect(input.value).toContain('faithful'))
   })
 
-  it('navigates suggestions with arrow keys', async () => {
-    window.electronAPI.getAutocompleteSuggestions = vi.fn(() =>
-      Promise.resolve(['faith', 'faithful'])
-    )
-
-    render(<SearchBar onResults={vi.fn()} />)
-    const input = screen.getByPlaceholderText(/Search sermons/i)
-
-    fireEvent.change(input, { target: { value: 'fa' } })
-
-    await waitFor(() => expect(screen.queryByText('faith')).not.toBeNull(), { timeout: 2000 })
-
-    fireEvent.keyDown(input, { key: 'ArrowDown' })
-    const items = screen.getAllByText(/faith/)
-    expect(items.length).toBeGreaterThan(0)
-  })
-
   it('closes suggestions on Escape', async () => {
-    window.electronAPI.getAutocompleteSuggestions = vi.fn(() =>
-      Promise.resolve(['faith', 'faithful'])
-    )
+    window.electronAPI.getAutocompleteSuggestions = vi.fn(() => Promise.resolve(['faith', 'faithful']))
 
     render(<SearchBar onResults={vi.fn()} />)
-    const input = screen.getByPlaceholderText(/Search sermons/i)
+    const input = screen.getByPlaceholderText(PLACEHOLDER)
 
     fireEvent.change(input, { target: { value: 'fa' } })
-
     await waitFor(() => expect(screen.queryByText('faith')).not.toBeNull(), { timeout: 2000 })
     fireEvent.keyDown(input, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByText('faith')).toBeNull())
+  })
 
-    vi.useRealTimers()
+  it('only replaces the last word when a suggestion is applied', async () => {
+    window.electronAPI.getAutocompleteSuggestions = vi.fn(() => Promise.resolve(['spirit']))
+    render(<SearchBar onResults={vi.fn()} />)
+    const input = screen.getByPlaceholderText(PLACEHOLDER) as HTMLInputElement
+
+    fireEvent.change(input, { target: { value: 'holy spi' } })
+    await waitFor(() => expect(screen.queryByText('spirit')).not.toBeNull(), { timeout: 2000 })
+    fireEvent.mouseDown(screen.getByText('spirit'))
+
+    await waitFor(() => expect(input.value).toBe('holy spirit '))
+  })
+
+  it('ignores a stale suggestion response that resolves after a newer keystroke', async () => {
+    let resolveFirst: (v: string[]) => void = () => {}
+    window.electronAPI.getAutocompleteSuggestions = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<string[]>((r) => (resolveFirst = r)))
+      .mockImplementationOnce(() => Promise.resolve(['newer']))
+
+    render(<SearchBar onResults={vi.fn()} />)
+    const input = screen.getByPlaceholderText(PLACEHOLDER)
+
+    fireEvent.change(input, { target: { value: 'ab' } })
+    await new Promise((r) => setTimeout(r, 300))
+    fireEvent.change(input, { target: { value: 'abc' } })
+    await waitFor(() => expect(screen.queryByText('newer')).not.toBeNull(), { timeout: 2000 })
+
+    resolveFirst(['stale'])
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText('stale')).toBeNull()
+    expect(screen.queryByText('newer')).not.toBeNull()
   })
 })

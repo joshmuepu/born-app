@@ -3,9 +3,26 @@ import { join } from 'path'
 import { readFileSync, writeFileSync } from 'fs'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
+import { closeLibraryDb } from './libraryDb'
+import { getBibleTranslations, lookupPassage, searchBible } from './bible'
+import { searchSongs, getSong, importSongs, deleteSong } from './songs'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
-import { startWebRemote, updateWebRemoteState, getLocalIP } from './webRemote'
-import { buildSearchSQL, rowToQuote, type SearchFilters, type QuoteRow } from './search'
+import {
+  startWebRemote,
+  updateWebRemoteState,
+  getLocalIP,
+  isWebRemoteAvailable
+} from './webRemote'
+import {
+  buildSearchSQL,
+  buildPhraseQuery,
+  buildTokenQuery,
+  rowToQuote,
+  type SearchFilters,
+  type QuoteRow
+} from './search'
+import { pickProjectionDisplay, describeDisplay, type DisplayLike } from './displays'
+import { getSettings, updateSettings } from './settings'
 import {
   serverSearch,
   fetchAutocompleteSuggestions,
@@ -25,6 +42,58 @@ let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
+
+// ── Projection state (replayed to the projection window when it (re)connects) ──
+
+/** One slide on the projector: quote text, a Bible verse, or a song section. */
+export interface SlidePayload {
+  kind: 'quote' | 'bible' | 'song'
+  text: string
+  label?: string
+  reference?: string
+  marker?: string
+}
+
+interface ProjectionState {
+  slide: SlidePayload | null
+  blank: boolean
+  fontSize: number
+}
+let projectionState: ProjectionState = {
+  slide: null,
+  blank: false,
+  fontSize: getSettingsSafe().fontSize
+}
+let projectionReady = false
+
+interface StageState {
+  current: SlidePayload | null
+  next: SlidePayload | null
+}
+let stageState: StageState = { current: null, next: null }
+let stageReady = false
+
+function getSettingsSafe(): { fontSize: number; projectionDisplayId: number | null } {
+  try {
+    return getSettings()
+  } catch {
+    return { fontSize: 3.0, projectionDisplayId: null }
+  }
+}
+
+function sendToMain(channel: string, ...args: unknown[]): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
+}
+function sendToProjection(channel: string, ...args: unknown[]): void {
+  if (projectionWindow && !projectionWindow.isDestroyed()) {
+    projectionWindow.webContents.send(channel, ...args)
+  }
+}
+function sendToStage(channel: string, ...args: unknown[]): void {
+  if (stageWindow && !stageWindow.isDestroyed()) stageWindow.webContents.send(channel, ...args)
+}
+
+// ── Windows ───────────────────────────────────────────────────────────────────
 
 function createMainWindow(): void {
   log.info('createMainWindow')
@@ -50,6 +119,7 @@ function createMainWindow(): void {
 
   mainWindow.webContents.on('did-finish-load', () => {
     log.info('mainWindow did-finish-load')
+    broadcastDisplayInfo()
   })
 
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
@@ -60,14 +130,13 @@ function createMainWindow(): void {
     log.warn('mainWindow renderer unresponsive')
   })
 
-  // When the operator window has focus relay Escape/unblank to projection.
+  // Relay queue navigation / blank shortcuts from the operator window to the
+  // projection window. Only real control keys — never plain typing.
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.type !== 'keyDown') return
     if (!projectionWindow || projectionWindow.isDestroyed()) return
     if (input.key === 'Escape') {
-      projectionWindow.webContents.send('projection:set-blank', true)
-    } else {
-      projectionWindow.webContents.send('projection:set-blank', false)
+      setProjectionBlank(true)
     }
   })
 
@@ -79,22 +148,27 @@ function createMainWindow(): void {
 
 function createProjectionWindow(): void {
   log.info('createProjectionWindow')
-  const displays = screen.getAllDisplays()
-  const primary = screen.getPrimaryDisplay()
-  const external = displays.find((d) => d.id !== primary.id)
-  const target = external ?? primary
-  const { x, y, width, height } = target.bounds
-  log.info(`projection target display: ${target.id} bounds=${JSON.stringify(target.bounds)}`)
+  projectionReady = false
 
+  const target = resolveProjectionTarget()
+  const area = target.display.workArea ?? target.display.bounds
+  log.info(
+    `projection target: ${describeDisplay(target.display, screen.getPrimaryDisplay().id)} ` +
+      `fallback=${target.isFallback} override=${target.isOverride}`
+  )
+  if (target.isFallback) log.warn('projection: no external display — using operator screen')
+
+  const onMac = process.platform === 'darwin'
   projectionWindow = new BrowserWindow({
-    x,
-    y,
-    width,
-    height,
-    fullscreen: process.platform !== 'darwin',
-    simpleFullscreen: process.platform === 'darwin',
+    x: area.x,
+    y: area.y,
+    width: area.width,
+    height: area.height,
     backgroundColor: '#000000',
     title: 'BORN — Output',
+    show: false,
+    fullscreen: !onMac,
+    simpleFullscreen: onMac,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -102,15 +176,22 @@ function createProjectionWindow(): void {
     }
   })
 
+  if (onMac) projectionWindow.setSimpleFullScreen(true)
+  projectionWindow.once('ready-to-show', () => projectionWindow?.show())
+
   projectionWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown' && input.key === 'Escape') {
       event.preventDefault()
-      projectionWindow?.webContents.send('projection:set-blank', true)
+      setProjectionBlank(true)
     }
   })
 
   projectionWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('projectionWindow renderer process gone', details)
+  })
+
+  projectionWindow.webContents.on('did-fail-load', (_e, code, desc) => {
+    log.error(`projectionWindow did-fail-load ${code} ${desc}`)
   })
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
@@ -122,11 +203,15 @@ function createProjectionWindow(): void {
   projectionWindow.on('closed', () => {
     log.info('projectionWindow closed')
     projectionWindow = null
+    projectionReady = false
+    projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
+    sendToMain('projection:closed')
   })
 }
 
 function createStageWindow(): void {
   log.info('createStageWindow')
+  stageReady = false
   stageWindow = new BrowserWindow({
     width: 900,
     height: 600,
@@ -150,46 +235,172 @@ function createStageWindow(): void {
   stageWindow.on('closed', () => {
     log.info('stageWindow closed')
     stageWindow = null
+    stageReady = false
+    sendToMain('stage:closed')
   })
+}
+
+// ── Display detection ─────────────────────────────────────────────────────────
+
+function toDisplayLike(d: Electron.Display): DisplayLike {
+  return { id: d.id, label: d.label, internal: d.internal, bounds: d.bounds, workArea: d.workArea }
+}
+
+function resolveProjectionTarget() {
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const primary = screen.getPrimaryDisplay()
+  const overrideId = getSettingsSafe().projectionDisplayId
+  return pickProjectionDisplay(displays, primary.id, overrideId)
+}
+
+function displayInfoPayload() {
+  const primary = screen.getPrimaryDisplay()
+  const displays = screen.getAllDisplays()
+  const target = resolveProjectionTarget()
+  return {
+    displays: displays.map((d) => ({
+      id: d.id,
+      label: describeDisplay(toDisplayLike(d), primary.id),
+      isPrimary: d.id === primary.id,
+      isInternal: !!d.internal
+    })),
+    targetId: target.display.id,
+    isFallback: target.isFallback,
+    isOverride: target.isOverride,
+    hasExternal: displays.length > 1
+  }
+}
+
+function broadcastDisplayInfo(): void {
+  const payload = displayInfoPayload()
+  sendToMain('displays:info', payload)
+  sendToProjection('projection:display-info', payload)
+}
+
+/** Re-place the projection window on the correct display after a hotplug. */
+function repositionProjectionWindow(): void {
+  if (!projectionWindow || projectionWindow.isDestroyed()) return
+  const target = resolveProjectionTarget()
+  const area = target.display.workArea ?? target.display.bounds
+  log.info(
+    `repositioning projection → ${describeDisplay(target.display, screen.getPrimaryDisplay().id)}`
+  )
+  const onMac = process.platform === 'darwin'
+  try {
+    if (onMac) projectionWindow.setSimpleFullScreen(false)
+    else projectionWindow.setFullScreen(false)
+    projectionWindow.setBounds({ x: area.x, y: area.y, width: area.width, height: area.height })
+    if (onMac) projectionWindow.setSimpleFullScreen(true)
+    else projectionWindow.setFullScreen(true)
+  } catch (e) {
+    log.error('repositionProjectionWindow failed', e)
+  }
+}
+
+let displayChangeTimer: ReturnType<typeof setTimeout> | null = null
+function onDisplayLayoutChanged(reason: string): void {
+  log.info(`display layout changed: ${reason}`)
+  if (displayChangeTimer) clearTimeout(displayChangeTimer)
+  displayChangeTimer = setTimeout(() => {
+    displayChangeTimer = null
+    repositionProjectionWindow()
+    broadcastDisplayInfo()
+  }, 250)
+}
+
+// ── Projection control helpers ────────────────────────────────────────────────
+
+function setProjectionBlank(blank: boolean): void {
+  projectionState.blank = blank
+  sendToProjection('projection:set-blank', blank)
+  // Keep the operator console's blank state in sync (e.g. when the command came
+  // from the projection window's Esc key or the phone web remote).
+  sendToMain('operator:blank-changed', blank)
 }
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
 
 ipcMain.handle('projection:open', () => {
   log.info('ipc projection:open')
-  if (!projectionWindow || projectionWindow.isDestroyed()) {
-    return new Promise<void>((resolve) => {
-      createProjectionWindow()
-      projectionWindow!.webContents.once('did-finish-load', () => resolve())
-    })
-  } else {
+  if (projectionWindow && !projectionWindow.isDestroyed()) {
     projectionWindow.focus()
+    return
   }
+  return new Promise<void>((resolve) => {
+    let settled = false
+    const done = (): void => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    createProjectionWindow()
+    // Resolve as soon as the renderer signals it is listening, or after a
+    // safety timeout so the operator UI is never stuck awaiting.
+    const readyHandler = (): void => done()
+    ipcMain.once('projection:ready', readyHandler)
+    setTimeout(() => {
+      ipcMain.removeListener('projection:ready', readyHandler)
+      done()
+    }, 4000)
+  })
+})
+
+ipcMain.on('projection:ready', () => {
+  log.info('ipc projection:ready — replaying state')
+  projectionReady = true
+  broadcastDisplayInfo()
+  if (projectionState.slide) sendToProjection('projection:show-slide', projectionState.slide)
+  sendToProjection('projection:set-font-size', projectionState.fontSize)
+  sendToProjection('projection:set-blank', projectionState.blank)
 })
 
 ipcMain.handle('projection:close', () => {
   log.info('ipc projection:close')
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.close()
-  }
+  if (projectionWindow && !projectionWindow.isDestroyed()) projectionWindow.close()
 })
 
-ipcMain.on('projection:send-quote', (_event, quote) => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('projection:display-quote', quote)
-  }
+ipcMain.on('projection:show-slide', (_event, slide: SlidePayload) => {
+  projectionState = { ...projectionState, slide, blank: false }
+  sendToProjection('projection:show-slide', slide)
 })
 
 ipcMain.on('projection:clear', () => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('projection:clear')
-  }
+  projectionState = { ...projectionState, slide: null, blank: false }
+  sendToProjection('projection:clear')
 })
 
 ipcMain.on('projection:alert', (_event, message: string) => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('projection:alert', message)
+  sendToProjection('projection:alert', message)
+})
+
+ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
+  setProjectionBlank(blank)
+})
+
+ipcMain.on('projection:set-font-size', (_event, size: number) => {
+  projectionState.fontSize = size
+  try {
+    updateSettings({ fontSize: size })
+  } catch (e) {
+    log.error('persist fontSize failed', e)
   }
+  sendToProjection('projection:set-font-size', size)
+})
+
+// ── Display IPC ───────────────────────────────────────────────────────────────
+
+ipcMain.handle('displays:list', () => displayInfoPayload())
+
+ipcMain.handle('projection:set-display', (_event, displayId: number | null) => {
+  log.info(`ipc projection:set-display ${displayId}`)
+  try {
+    updateSettings({ projectionDisplayId: displayId })
+  } catch (e) {
+    log.error('persist projectionDisplayId failed', e)
+  }
+  repositionProjectionWindow()
+  broadcastDisplayInfo()
+  return displayInfoPayload()
 })
 
 // ── Search IPC ────────────────────────────────────────────────────────────────
@@ -202,7 +413,7 @@ ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchF
   try {
     const db = getDb()
 
-    const localCount = (db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()?.n ?? 0)
+    const localCount = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()?.n ?? 0
     log.debug(`search:query localCount=${localCount}`)
 
     if (localCount < 100) {
@@ -219,8 +430,7 @@ ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchF
 
     if (!filters.forceTokens) {
       try {
-        const phraseQuery = '"' + query.replace(/"/g, '""') + '"'
-        const rows = db.prepare(sql).all(phraseQuery, ...extraParams) as QuoteRow[]
+        const rows = db.prepare(sql).all(buildPhraseQuery(query), ...extraParams) as QuoteRow[]
         if (rows.length > 0) {
           log.debug(`search:query phrase match: ${rows.length} results`)
           return rows.map(rowToQuote)
@@ -231,12 +441,7 @@ ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchF
     }
 
     try {
-      const tokenQuery = query
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((w) => w.replace(/["*()[\]^]/g, ''))
-        .filter(Boolean)
-        .join(' ')
+      const tokenQuery = buildTokenQuery(query)
       if (!tokenQuery) return []
       const rows = db.prepare(sql).all(tokenQuery, ...extraParams) as QuoteRow[]
       log.debug(`search:query token match: ${rows.length} results`)
@@ -251,26 +456,10 @@ ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchF
   }
 })
 
-// ── Projection controls (main window → projection window) ────────────────────
-
-ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('projection:set-blank', blank)
-  }
-})
-
-ipcMain.on('projection:set-font-size', (_event, size: number) => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('projection:set-font-size', size)
-  }
-})
-
 // ── Queue navigation relay (projection window → main window) ──────────────────
 
 ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('queue:navigate', dir)
-  }
+  sendToMain('queue:navigate', dir)
 })
 
 // ── Queue persistence ─────────────────────────────────────────────────────────
@@ -297,26 +486,39 @@ ipcMain.on('queue:save', (_event, items: unknown) => {
 
 ipcMain.handle('stage:open', () => {
   log.info('ipc stage:open')
-  if (!stageWindow || stageWindow.isDestroyed()) {
-    return new Promise<void>((resolve) => {
-      createStageWindow()
-      stageWindow!.webContents.once('did-finish-load', () => resolve())
-    })
-  } else {
+  if (stageWindow && !stageWindow.isDestroyed()) {
     stageWindow.focus()
+    return
   }
+  return new Promise<void>((resolve) => {
+    let settled = false
+    const done = (): void => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    createStageWindow()
+    const readyHandler = (): void => done()
+    ipcMain.once('stage:ready', readyHandler)
+    setTimeout(() => {
+      ipcMain.removeListener('stage:ready', readyHandler)
+      done()
+    }, 4000)
+  })
+})
+
+ipcMain.on('stage:ready', () => {
+  stageReady = true
+  sendToStage('stage:update', stageState)
 })
 
 ipcMain.handle('stage:close', () => {
-  if (stageWindow && !stageWindow.isDestroyed()) {
-    stageWindow.close()
-  }
+  if (stageWindow && !stageWindow.isDestroyed()) stageWindow.close()
 })
 
-ipcMain.on('stage:update', (_event, data) => {
-  if (stageWindow && !stageWindow.isDestroyed()) {
-    stageWindow.webContents.send('stage:update', data)
-  }
+ipcMain.on('stage:update', (_event, data: StageState) => {
+  stageState = data ?? { current: null, next: null }
+  sendToStage('stage:update', stageState)
 })
 
 // ── Web Remote IPC ────────────────────────────────────────────────────────────
@@ -326,7 +528,7 @@ ipcMain.on('webremote:sync', (_event, state) => {
 })
 
 ipcMain.handle('webremote:ip', () => {
-  return `http://${getLocalIP()}:4316`
+  return isWebRemoteAvailable() ? `http://${getLocalIP()}:4316` : ''
 })
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
@@ -355,12 +557,23 @@ ipcMain.handle('service:open', async () => {
 // ── Autocomplete IPC ──────────────────────────────────────────────────────────
 
 ipcMain.handle('autocomplete:suggestions', async (_event, wordPart: string) => {
-  try { return await fetchAutocompleteSuggestions(wordPart) } catch { return [] }
+  try {
+    return await fetchAutocompleteSuggestions(wordPart)
+  } catch {
+    return []
+  }
 })
 
-ipcMain.handle('autocomplete:count', async (_event, text: string, searchType: 'AllWords' | 'ExactPhrase') => {
-  try { return await fetchHitsCountPreview(text, searchType) } catch { return 0 }
-})
+ipcMain.handle(
+  'autocomplete:count',
+  async (_event, text: string, searchType: 'AllWords' | 'ExactPhrase') => {
+    try {
+      return await fetchHitsCountPreview(text, searchType)
+    } catch {
+      return 0
+    }
+  }
+)
 
 // ── Server search (fallback) ──────────────────────────────────────────────────
 
@@ -370,10 +583,7 @@ ipcMain.handle('search:server', (_event, text: string, searchType: 'AllWords' | 
 
 // ── Browse IPC ────────────────────────────────────────────────────────────────
 
-ipcMain.handle('browse:series', () => {
-  log.debug('ipc browse:series')
-  return fetchAllSeries()
-})
+ipcMain.handle('browse:series', () => fetchAllSeries())
 ipcMain.handle('browse:states', () => fetchAllStates())
 ipcMain.handle('browse:cities', () => fetchAllCities())
 ipcMain.handle('browse:date-groups', () => fetchAllDateGroups())
@@ -386,7 +596,9 @@ ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
     if (!ids || ids.length === 0) return []
     const placeholders = ids.map(() => '?').join(',')
     return db
-      .prepare(`SELECT id, date_code, title, para_count, duration_min, is_book FROM sermon_index WHERE id IN (${placeholders}) ORDER BY date_code`)
+      .prepare(
+        `SELECT id, date_code, title, para_count, duration_min, is_book FROM sermon_index WHERE id IN (${placeholders}) ORDER BY date_code`
+      )
       .all(...ids)
   } catch (e) {
     log.error('browse:sermons-by-ids error', e)
@@ -402,20 +614,25 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
 
     if (lang === 'en') {
       const rows = db
-        .prepare<[number], { paragraph_ref: string; paragraph_index: number; text: string; date_code: string; title: string }>(
+        .prepare<
+          [number],
+          { paragraph_ref: string; paragraph_index: number; text: string; date_code: string; title: string }
+        >(
           `SELECT p.paragraph_ref, p.paragraph_index, p.text, s.date_code, s.title
            FROM paragraphs p JOIN sermons s ON s.id = p.sermon_id
            WHERE p.sermon_id = ? ORDER BY p.paragraph_index`
         )
         .all(sermonId)
-      if (rows.length > 0) return rows.map((r) => ({
-        text: r.text,
-        sermonTitle: r.title,
-        dateCode: r.date_code,
-        sermonId,
-        paragraphIndex: r.paragraph_index,
-        paragraphRef: r.paragraph_ref
-      }))
+      if (rows.length > 0)
+        return rows.map((r) => ({
+          text: r.text,
+          sermonTitle: r.title,
+          dateCode: r.date_code,
+          sermonId,
+          paragraphIndex: r.paragraph_index,
+          paragraphRef: r.paragraph_ref,
+          language: 'en'
+        }))
     } else {
       const cached = db
         .prepare<[number, string], { paragraph_ref: string; paragraph_index: number; text: string }>(
@@ -425,7 +642,9 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
         .all(sermonId, lang)
       if (cached.length > 0) {
         const meta = db
-          .prepare<[number], { date_code: string; title: string }>('SELECT date_code, title FROM sermons WHERE id = ?')
+          .prepare<[number], { date_code: string; title: string }>(
+            'SELECT date_code, title FROM sermons WHERE id = ?'
+          )
           .get(sermonId)
         return cached.map((r) => ({
           text: r.text,
@@ -433,7 +652,8 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
           dateCode: meta?.date_code ?? '',
           sermonId,
           paragraphIndex: r.paragraph_index,
-          paragraphRef: r.paragraph_ref
+          paragraphRef: r.paragraph_ref,
+          language: lang
         }))
       }
     }
@@ -462,7 +682,8 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
       dateCode: content.dateCode,
       sermonId,
       paragraphIndex: s.index,
-      paragraphRef: s.ref
+      paragraphRef: s.ref,
+      language: lang
     }))
   } catch (e) {
     log.error('browse:sermon-paragraphs error', e)
@@ -474,6 +695,46 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
 
 ipcMain.handle('sermon:subtitles', (_event, sermonId: number, language: string) => {
   return fetchSubtitles(sermonId, language || 'en')
+})
+
+// ── Bible IPC ─────────────────────────────────────────────────────────────────
+
+ipcMain.handle('bible:translations', () => {
+  try {
+    return getBibleTranslations()
+  } catch (e) {
+    log.error('bible:translations error', e)
+    return []
+  }
+})
+
+ipcMain.handle('bible:lookup', (_event, reference: string, translation: string) =>
+  lookupPassage(reference, translation)
+)
+
+ipcMain.handle('bible:search', (_event, query: string, translation: string) =>
+  searchBible(query, translation)
+)
+
+// ── Songs IPC ─────────────────────────────────────────────────────────────────
+
+ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
+ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
+ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
+
+ipcMain.handle('songs:import', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import songs',
+    properties: ['openFile', 'multiSelections', 'openDirectory'],
+    filters: [
+      {
+        name: 'Song files',
+        extensions: ['pro', 'pro7', 'xml', 'cho', 'crd', 'chordpro', 'chopro', 'txt']
+      }
+    ]
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  return importSongs(result.filePaths)
 })
 
 // ── Languages IPC ─────────────────────────────────────────────────────────────
@@ -545,6 +806,7 @@ ipcMain.handle('indexer:stop', () => {
 app.whenReady().then(() => {
   log.boot()
   app.setName('Branham or Nothing')
+  projectionState.fontSize = getSettingsSafe().fontSize
   createMainWindow()
 
   // Auto-start indexer so sermons are available immediately on first launch
@@ -555,18 +817,19 @@ app.whenReady().then(() => {
     }
   })
 
+  // React to monitors being plugged / unplugged / rearranged mid-session.
+  screen.on('display-added', () => onDisplayLayoutChanged('display-added'))
+  screen.on('display-removed', () => onDisplayLayoutChanged('display-removed'))
+  screen.on('display-metrics-changed', () => onDisplayLayoutChanged('display-metrics-changed'))
+
   startWebRemote((cmd) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (cmd.action === 'prev' || cmd.action === 'next') {
       mainWindow.webContents.send('queue:navigate', cmd.action)
     } else if (cmd.action === 'blank') {
-      if (projectionWindow && !projectionWindow.isDestroyed()) {
-        projectionWindow.webContents.send('projection:set-blank', true)
-      }
+      setProjectionBlank(true)
     } else if (cmd.action === 'unblank') {
-      if (projectionWindow && !projectionWindow.isDestroyed()) {
-        projectionWindow.webContents.send('projection:set-blank', false)
-      }
+      setProjectionBlank(false)
     } else if (cmd.action === 'project' && cmd.index !== undefined) {
       mainWindow.webContents.send('webremote:project', cmd.index)
     }
@@ -582,6 +845,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   log.info('all windows closed — shutting down')
   closeDb()
+  closeLibraryDb()
   if (process.platform !== 'darwin') {
     app.quit()
   }

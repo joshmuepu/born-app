@@ -10,7 +10,8 @@ import {
   fetchAllCities,
   fetchAllDateGroups,
   fetchAllDurationGroups,
-  fetchSubtitles
+  fetchSubtitles,
+  clearBrowseCache
 } from '../../main/tableApi'
 
 // Helper: build a minimal Response-like object
@@ -26,6 +27,7 @@ const globalFetch = global.fetch
 
 beforeEach(() => {
   global.fetch = vi.fn()
+  clearBrowseCache()
 })
 
 afterEach(() => {
@@ -185,6 +187,36 @@ describe('serverSearch', () => {
     const result = await serverSearch('test', 'AllWords')
     expect(result).toEqual([])
   })
+
+  it('maps the current Results[].Properties shape and strips highlight markup', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({
+        Status: 'Successful',
+        Result: {
+          Results: [
+            {
+              Properties: {
+                DateCode: '47-0412',
+                Title: 'Faith Is The Substance',
+                Paragraph: '23-27',
+                Fragment:
+                  'may the <span class="hit-snippet-highlight">Holy</span> <span class="hit-snippet-highlight">Spirit</span> tip His wings'
+              },
+              RecordId: '47010109'
+            }
+          ]
+        }
+      }) as unknown as Response
+    )
+    const result = await serverSearch('holy spirit', 'ExactPhrase')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      dateCode: '47-0412',
+      sermonTitle: 'Faith Is The Substance',
+      paragraphRef: '23-27'
+    })
+    expect(result[0].text).toBe('may the Holy Spirit tip His wings')
+  })
 })
 
 // ── fetchAutocompleteSuggestions ──────────────────────────────────────────────
@@ -212,16 +244,36 @@ describe('fetchAutocompleteSuggestions', () => {
     expect(result).toEqual(['grace', 'graceful'])
   })
 
+  it('maps the current { w, h } object shape to plain words', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({
+        Status: 'Successful',
+        Result: {
+          Suggestions: [
+            { w: 'faith', h: 13154 },
+            { w: 'faithful', h: 484 }
+          ]
+        }
+      }) as unknown as Response
+    )
+    expect(await fetchAutocompleteSuggestions('fait')).toEqual(['faith', 'faithful'])
+  })
+
+  it('does not call the API for fragments shorter than 2 characters', async () => {
+    expect(await fetchAutocompleteSuggestions('x')).toEqual([])
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('returns [] on non-Successful status', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
       mockResponse({ Status: 'Error', Result: null }) as unknown as Response
     )
-    expect(await fetchAutocompleteSuggestions('x')).toEqual([])
+    expect(await fetchAutocompleteSuggestions('xx')).toEqual([])
   })
 
   it('returns [] on network failure', async () => {
     vi.mocked(global.fetch).mockRejectedValueOnce(new Error('fail'))
-    expect(await fetchAutocompleteSuggestions('x')).toEqual([])
+    expect(await fetchAutocompleteSuggestions('xx')).toEqual([])
   })
 })
 
@@ -249,6 +301,16 @@ describe('fetchHitsCountPreview', () => {
     expect(await fetchHitsCountPreview('love', 'ExactPhrase')).toBe(55)
   })
 
+  it('reads the current { t, st, h } shape', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({
+        Status: 'Successful',
+        Result: { t: 'holy spirit', st: 'ExactPhrase', h: 11764 }
+      }) as unknown as Response
+    )
+    expect(await fetchHitsCountPreview('holy spirit', 'ExactPhrase')).toBe(11764)
+  })
+
   it('returns 0 on failure', async () => {
     vi.mocked(global.fetch).mockRejectedValueOnce(new Error('err'))
     expect(await fetchHitsCountPreview('x', 'AllWords')).toBe(0)
@@ -270,6 +332,27 @@ describe('fetchAllSeries', () => {
   it('returns [] on error', async () => {
     vi.mocked(global.fetch).mockRejectedValueOnce(new Error('fail'))
     expect(await fetchAllSeries()).toEqual([])
+  })
+
+  it('caches a successful result — second call does not hit the network', async () => {
+    const series = [{ i: 1, n: 'Church Age Book', s: [10] }]
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({ Status: 'Successful', Result: { Series: series } }) as unknown as Response
+    )
+    await fetchAllSeries()
+    await fetchAllSeries()
+    await fetchAllSeries()
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cache an empty/failed result', async () => {
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error('fail'))
+    await fetchAllSeries()
+    const series = [{ i: 2, n: 'Later', s: [1] }]
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({ Status: 'Successful', Result: { Series: series } }) as unknown as Response
+    )
+    expect(await fetchAllSeries()).toEqual(series)
   })
 })
 

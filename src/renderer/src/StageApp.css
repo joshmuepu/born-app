@@ -38,10 +38,24 @@ body {
   margin-bottom: 20px;
 }
 
+.stage-marker {
+  font-size: 0.5em;
+  font-weight: 700;
+  color: #666;
+  vertical-align: 0.7em;
+  margin-right: 0.3em;
+}
+
+.stage-current-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #3a6186;
+  margin-bottom: 12px;
+}
+
 .stage-current-ref {
-  display: flex;
-  gap: 10px;
-  align-items: center;
   font-size: 0.85rem;
   color: #666;
 }

@@ -41,28 +41,28 @@ beforeEach(() => {
 
 describe('BrowsePanel', () => {
   it('renders the three tab buttons', () => {
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'Series' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Location' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Date' })).toBeDefined()
   })
 
   it('loads and displays series list on mount', async () => {
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('Church Age Book')).toBeDefined())
     expect(screen.getByText('Seals Series')).toBeDefined()
     expect(window.electronAPI.getBrowseSeries).toHaveBeenCalledOnce()
   })
 
   it('shows series sermon count', async () => {
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     expect(screen.getByText('3 sermons')).toBeDefined()
   })
 
   it('switches to Location tab and loads states', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Location' }))
     await waitFor(() => expect(screen.getByText('Indiana')).toBeDefined())
     expect(window.electronAPI.getBrowseStates).toHaveBeenCalledOnce()
@@ -70,7 +70,7 @@ describe('BrowsePanel', () => {
 
   it('switches to Date tab and loads date groups', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Date' }))
     await waitFor(() => expect(screen.getByText('1960s')).toBeDefined())
     expect(window.electronAPI.getBrowseDateGroups).toHaveBeenCalledOnce()
@@ -78,7 +78,7 @@ describe('BrowsePanel', () => {
 
   it('does not reload series when switching back to Series tab', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
 
     await user.click(screen.getByRole('button', { name: 'Location' }))
@@ -90,7 +90,7 @@ describe('BrowsePanel', () => {
 
   it('drills into a series to show sermon list', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
 
     await user.click(screen.getByText('Church Age Book'))
@@ -101,7 +101,7 @@ describe('BrowsePanel', () => {
 
   it('drills into a sermon to show paragraphs', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
@@ -113,7 +113,7 @@ describe('BrowsePanel', () => {
 
   it('shows + Queue and Project buttons on paragraphs', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
@@ -127,7 +127,7 @@ describe('BrowsePanel', () => {
   it('calls onAddToQueue when + Queue clicked', async () => {
     const onAddToQueue = vi.fn()
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={onAddToQueue} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={onAddToQueue} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
@@ -144,7 +144,7 @@ describe('BrowsePanel', () => {
   it('calls onSendToProjection when Project clicked', async () => {
     const onSendToProjection = vi.fn()
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={onSendToProjection} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={onSendToProjection} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
@@ -157,7 +157,7 @@ describe('BrowsePanel', () => {
 
   it('shows Back button in sermon list and returns to group list', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await waitFor(() => screen.getByText('Church Age Book'))
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
@@ -168,7 +168,7 @@ describe('BrowsePanel', () => {
 
   it('renders empty list when getBrowseSeries returns empty array', async () => {
     window.electronAPI.getBrowseSeries = vi.fn(() => Promise.resolve([]))
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     // No series items — component stays empty without crashing
     await waitFor(() => expect(window.electronAPI.getBrowseSeries).toHaveBeenCalledOnce())
     expect(screen.queryByText('Church Age Book')).toBeNull()
@@ -176,7 +176,7 @@ describe('BrowsePanel', () => {
 
   it('drills into Date group to show sermons', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Date' }))
     await waitFor(() => screen.getByText('1960s'))
     await user.click(screen.getByText('1960s'))
@@ -186,7 +186,7 @@ describe('BrowsePanel', () => {
 
   it('drills into Location state to show cities', async () => {
     const user = userEvent.setup()
-    render(<BrowsePanel onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Location' }))
     await waitFor(() => screen.getByText('Indiana'))
     await user.click(screen.getByText('Indiana'))

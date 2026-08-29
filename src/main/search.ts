@@ -46,6 +46,26 @@ export function buildSearchSQL(filters: SearchFilters): { sql: string; extraPara
   return { sql, extraParams }
 }
 
+/** FTS5 phrase query: the whole input as one quoted phrase (internal quotes doubled). */
+export function buildPhraseQuery(query: string): string {
+  return '"' + query.trim().replace(/"/g, '""') + '"'
+}
+
+/**
+ * FTS5 token query: each word AND-ed together, with FTS operator characters
+ * stripped so user punctuation can't blow up the MATCH expression.
+ * Returns '' when nothing usable remains.
+ */
+export function buildTokenQuery(query: string): string {
+  return query
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/["*()[\]^:]/g, ''))
+    .filter(Boolean)
+    .join(' ')
+}
+
 export interface QuoteRow {
   sermonId: number
   paragraphRef: string

@@ -1,10 +1,69 @@
-export interface Quote {
+export type {
+  Quote,
+  Slide,
+  QueueItem,
+  QuoteItem,
+  BibleItem,
+  SongItem
+} from '../../shared/queueItem'
+
+/** One slide as pushed to the projection / stage windows. */
+export interface SlidePayload {
+  kind: 'quote' | 'bible' | 'song'
   text: string
-  sermonTitle: string
-  dateCode: string
-  sermonId: number
-  paragraphIndex: number
-  paragraphRef: string
+  label?: string
+  reference?: string
+  marker?: string
+}
+
+export interface BibleTranslation {
+  code: string
+  name: string
+}
+
+export interface ResolvedPassage {
+  reference: string
+  translation: string
+  bookNum: number
+  chapter: number
+  verseStart: number
+  verseEnd: number
+  verses: Array<{ verse: number; text: string }>
+  slides: SlidePayload[]
+  slideStarts: number[]
+}
+
+export interface BibleSearchHit {
+  reference: string
+  translation: string
+  bookNum: number
+  chapter: number
+  verse: number
+  text: string
+}
+
+export interface SongSummary {
+  id: number
+  title: string
+  author: string | null
+  songKey: string | null
+  slideCount: number
+  source: string
+}
+
+export interface SongDetail {
+  id: number
+  title: string
+  author: string | null
+  songKey: string | null
+  source: string
+  slides: Array<{ label: string | null; text: string }>
+}
+
+export interface SongImportResult {
+  added: Array<{ id: number; title: string }>
+  failed: Array<{ file: string; error: string }>
+  skipped: number
 }
 
 export interface IndexerProgress {

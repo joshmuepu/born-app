@@ -93,6 +93,23 @@ export interface ServerSearchResult {
   text: string
 }
 
+interface UserQueryHit {
+  Properties?: {
+    DateCode?: string
+    Title?: string
+    Paragraph?: string
+    ParagraphRef?: string
+    Fragment?: string
+    Content?: string
+  }
+  // Legacy flat shapes, kept as fallbacks.
+  SermonProductIdentityId?: number
+  DateCode?: string
+  Title?: string
+  ParagraphRef?: string
+  Content?: string
+}
+
 export async function serverSearch(
   text: string,
   searchType: 'AllWords' | 'ExactPhrase',
@@ -101,23 +118,7 @@ export async function serverSearch(
   try {
     const data = await post<{
       Status: string
-      Result: {
-        // API may use "Items" or "Quotes" — handle both
-        Items?: Array<{
-          SermonProductIdentityId: number
-          DateCode: string
-          Title: string
-          ParagraphRef: string
-          Content: string
-        }>
-        Quotes?: Array<{
-          SermonProductIdentityId: number
-          DateCode: string
-          Title: string
-          ParagraphRef: string
-          Content: string
-        }>
-      }
+      Result: { Results?: UserQueryHit[]; Items?: UserQueryHit[]; Quotes?: UserQueryHit[] }
     }>('/userQuery', {
       Language: 'en',
       SearchType: searchType,
@@ -125,14 +126,19 @@ export async function serverSearch(
       PageSize: pageSize
     })
     if (data.Status !== 'Successful' || !data.Result) return []
-    const items = data.Result.Items ?? data.Result.Quotes ?? []
-    return items.map((item) => ({
-      sermonId: item.SermonProductIdentityId,
-      dateCode: item.DateCode,
-      sermonTitle: item.Title,
-      paragraphRef: item.ParagraphRef,
-      text: stripHtml(item.Content)
-    }))
+    const hits = data.Result.Results ?? data.Result.Items ?? data.Result.Quotes ?? []
+    return hits
+      .map((hit) => {
+        const p = hit.Properties ?? {}
+        return {
+          sermonId: hit.SermonProductIdentityId ?? 0,
+          dateCode: p.DateCode ?? hit.DateCode ?? '',
+          sermonTitle: p.Title ?? hit.Title ?? '',
+          paragraphRef: p.Paragraph ?? p.ParagraphRef ?? hit.ParagraphRef ?? '',
+          text: stripHtml(p.Fragment ?? p.Content ?? hit.Content ?? '')
+        }
+      })
+      .filter((r) => r.text.length > 0)
   } catch {
     return []
   }
@@ -144,17 +150,24 @@ export async function fetchAutocompleteSuggestions(
   wordPart: string,
   pageSize = 8
 ): Promise<string[]> {
+  // The upstream endpoint 500s on very short fragments — never send them.
+  const w = (wordPart ?? '').trim()
+  if (w.length < 2) return []
   try {
     const data = await post<{
       Status: string
-      Result: { Suggestions?: string[]; Words?: string[] }
+      // The API returns objects: { w: "faith", h: 13154 } (word + hit count).
+      Result: { Suggestions?: Array<{ w?: string } | string>; Words?: string[] }
     }>('/autoComplete/suggestionsForWordPart', {
       Language: 'en',
-      WordPart: wordPart,
+      WordPart: w,
       PageSize: pageSize
     })
     if (data.Status !== 'Successful' || !data.Result) return []
-    return data.Result.Suggestions ?? data.Result.Words ?? []
+    const raw = data.Result.Suggestions ?? data.Result.Words ?? []
+    return raw
+      .map((s) => (typeof s === 'string' ? s : (s?.w ?? '')))
+      .filter((s): s is string => typeof s === 'string' && s.length > 0)
   } catch {
     return []
   }
@@ -167,17 +180,43 @@ export async function fetchHitsCountPreview(
   try {
     const data = await post<{
       Status: string
-      Result: { Count?: number; TotalCount?: number; HitCount?: number }
+      // Current API shape: { t, st, h }. Older keys kept as fallbacks.
+      Result: { h?: number; Count?: number; TotalCount?: number; HitCount?: number }
     }>('/autoComplete/hitsCountPreview', {
       Language: 'en',
       Text: text,
       SearchType: searchType
     })
     if (data.Status !== 'Successful' || !data.Result) return 0
-    return data.Result.Count ?? data.Result.TotalCount ?? data.Result.HitCount ?? 0
+    return (
+      data.Result.h ??
+      data.Result.Count ??
+      data.Result.TotalCount ??
+      data.Result.HitCount ??
+      0
+    )
   } catch {
     return 0
   }
+}
+
+// ── Browse list caching ───────────────────────────────────────────────────────
+// The allSeries / allStates / allCities / allDateGroups / allDurationGroups
+// endpoints return data that is static for a session. Cache the first successful
+// (non-empty) response so repeated Browse-tab visits never re-hit the network.
+
+const browseCache = new Map<string, unknown>()
+
+async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  if (browseCache.has(key)) return browseCache.get(key) as T
+  const value = await fn()
+  if (!Array.isArray(value) || value.length > 0) browseCache.set(key, value)
+  return value
+}
+
+/** Drop cached browse lists (used by tests and a future manual refresh). */
+export function clearBrowseCache(): void {
+  browseCache.clear()
 }
 
 // ── Browse: Series ────────────────────────────────────────────────────────────
@@ -188,16 +227,18 @@ export interface SeriesEntry {
   s: number[]  // sermon IDs (SermonProductIdentityId)
 }
 
-export async function fetchAllSeries(): Promise<SeriesEntry[]> {
-  try {
-    const data = await post<{ Status: string; Result: { Series: SeriesEntry[] } }>(
-      '/index/allSeries',
-      { Language: 'en' }
-    )
-    return data.Status === 'Successful' ? (data.Result?.Series ?? []) : []
-  } catch {
-    return []
-  }
+export function fetchAllSeries(): Promise<SeriesEntry[]> {
+  return cached('series', async () => {
+    try {
+      const data = await post<{ Status: string; Result: { Series: SeriesEntry[] } }>(
+        '/index/allSeries',
+        { Language: 'en' }
+      )
+      return data.Status === 'Successful' ? (data.Result?.Series ?? []) : []
+    } catch {
+      return []
+    }
+  })
 }
 
 // ── Browse: Location ──────────────────────────────────────────────────────────
@@ -213,28 +254,32 @@ export interface CityEntry {
   n: string    // city name
 }
 
-export async function fetchAllStates(): Promise<StateEntry[]> {
-  try {
-    const data = await post<{ Status: string; Result: { States: StateEntry[] } }>(
-      '/index/allStates',
-      { Language: 'en' }
-    )
-    return data.Status === 'Successful' ? (data.Result?.States ?? []) : []
-  } catch {
-    return []
-  }
+export function fetchAllStates(): Promise<StateEntry[]> {
+  return cached('states', async () => {
+    try {
+      const data = await post<{ Status: string; Result: { States: StateEntry[] } }>(
+        '/index/allStates',
+        { Language: 'en' }
+      )
+      return data.Status === 'Successful' ? (data.Result?.States ?? []) : []
+    } catch {
+      return []
+    }
+  })
 }
 
-export async function fetchAllCities(): Promise<CityEntry[]> {
-  try {
-    const data = await post<{ Status: string; Result: { Cities: CityEntry[] } }>(
-      '/index/allCities',
-      { Language: 'en' }
-    )
-    return data.Status === 'Successful' ? (data.Result?.Cities ?? []) : []
-  } catch {
-    return []
-  }
+export function fetchAllCities(): Promise<CityEntry[]> {
+  return cached('cities', async () => {
+    try {
+      const data = await post<{ Status: string; Result: { Cities: CityEntry[] } }>(
+        '/index/allCities',
+        { Language: 'en' }
+      )
+      return data.Status === 'Successful' ? (data.Result?.Cities ?? []) : []
+    } catch {
+      return []
+    }
+  })
 }
 
 // ── Browse: Date & Duration Groups ───────────────────────────────────────────
@@ -244,28 +289,29 @@ export interface DateGroup {
   sermonIds: number[]
 }
 
-export async function fetchAllDateGroups(): Promise<DateGroup[]> {
-  try {
-    const data = await post<{ Status: string; Result: unknown }>(
-      '/index/allDateGroups',
-      { Language: 'en' }
-    )
-    if (data.Status !== 'Successful' || !data.Result) return []
-    const result = data.Result as Record<string, unknown>
-    // Probe shape — common patterns: Groups, DateGroups, Years, Decades
-    const raw =
-      (result.Groups as unknown[]) ??
-      (result.DateGroups as unknown[]) ??
-      (result.Years as unknown[]) ??
-      (result.Decades as unknown[]) ??
-      []
-    return (raw as Array<Record<string, unknown>>).map((g) => ({
-      label: String(g.n ?? g.Name ?? g.Label ?? g.Year ?? ''),
-      sermonIds: (g.s ?? g.Sermons ?? g.SermonIds ?? []) as number[]
-    }))
-  } catch {
-    return []
-  }
+export function fetchAllDateGroups(): Promise<DateGroup[]> {
+  return cached('dateGroups', async () => {
+    try {
+      const data = await post<{ Status: string; Result: unknown }>('/index/allDateGroups', {
+        Language: 'en'
+      })
+      if (data.Status !== 'Successful' || !data.Result) return []
+      const result = data.Result as Record<string, unknown>
+      // Probe shape — common patterns: Groups, DateGroups, Years, Decades
+      const raw =
+        (result.Groups as unknown[]) ??
+        (result.DateGroups as unknown[]) ??
+        (result.Years as unknown[]) ??
+        (result.Decades as unknown[]) ??
+        []
+      return (raw as Array<Record<string, unknown>>).map((g) => ({
+        label: String(g.n ?? g.Name ?? g.Label ?? g.Year ?? ''),
+        sermonIds: (g.s ?? g.Sermons ?? g.SermonIds ?? []) as number[]
+      }))
+    } catch {
+      return []
+    }
+  })
 }
 
 export interface DurationGroup {
@@ -273,25 +319,23 @@ export interface DurationGroup {
   sermonIds: number[]
 }
 
-export async function fetchAllDurationGroups(): Promise<DurationGroup[]> {
-  try {
-    const data = await post<{ Status: string; Result: unknown }>(
-      '/index/allDurationGroups',
-      { Language: 'en' }
-    )
-    if (data.Status !== 'Successful' || !data.Result) return []
-    const result = data.Result as Record<string, unknown>
-    const raw =
-      (result.Groups as unknown[]) ??
-      (result.DurationGroups as unknown[]) ??
-      []
-    return (raw as Array<Record<string, unknown>>).map((g) => ({
-      label: String(g.n ?? g.Name ?? g.Label ?? ''),
-      sermonIds: (g.s ?? g.Sermons ?? g.SermonIds ?? []) as number[]
-    }))
-  } catch {
-    return []
-  }
+export function fetchAllDurationGroups(): Promise<DurationGroup[]> {
+  return cached('durationGroups', async () => {
+    try {
+      const data = await post<{ Status: string; Result: unknown }>('/index/allDurationGroups', {
+        Language: 'en'
+      })
+      if (data.Status !== 'Successful' || !data.Result) return []
+      const result = data.Result as Record<string, unknown>
+      const raw = (result.Groups as unknown[]) ?? (result.DurationGroups as unknown[]) ?? []
+      return (raw as Array<Record<string, unknown>>).map((g) => ({
+        label: String(g.n ?? g.Name ?? g.Label ?? ''),
+        sermonIds: (g.s ?? g.Sermons ?? g.SermonIds ?? []) as number[]
+      }))
+    } catch {
+      return []
+    }
+  })
 }
 
 // ── Subtitles ─────────────────────────────────────────────────────────────────

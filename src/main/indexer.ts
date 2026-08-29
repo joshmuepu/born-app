@@ -70,6 +70,24 @@ export async function startIndexer(win: BrowserWindow): Promise<void> {
   }
   log.info(`indexer: ${ids.length} total sermons in index`)
 
+  // Fast path: everything is already indexed (e.g. shipped DB). Don't re-scan.
+  const haveCount =
+    db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()?.n ?? 0
+  if (haveCount >= ids.length) {
+    log.info(`indexer: already complete (${haveCount}/${ids.length}) — nothing to do`)
+    running = false
+    if (!win.isDestroyed()) {
+      win.webContents.send('indexer:progress', {
+        status: 'done',
+        scanned: haveCount,
+        total: ids.length,
+        indexed: haveCount,
+        errors: 0
+      } satisfies IndexerProgress)
+    }
+    return
+  }
+
   const total = ids.length
   let indexed = 0
   let errors = 0
@@ -143,14 +161,13 @@ export function getIndexerStatus(): IndexerProgress {
   const db = getDb()
   // Total = sermon_index size if available, else 1218 (the known true count)
   const totalRow = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermon_index').get()
-  const total = totalRow?.n > 0 ? totalRow.n : 1218
-  const indexedRow = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()!
-  const indexed = indexedRow.n
-  return {
-    status: running ? 'running' : 'idle',
-    scanned: indexed,
-    total,
-    indexed,
-    errors: 0
-  }
+  const total = totalRow && totalRow.n > 0 ? totalRow.n : 1218
+  const indexedRow = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()
+  const indexed = indexedRow?.n ?? 0
+  const status: IndexerProgress['status'] = running
+    ? 'running'
+    : indexed >= total
+      ? 'done'
+      : 'idle'
+  return { status, scanned: indexed, total, indexed, errors: 0 }
 }

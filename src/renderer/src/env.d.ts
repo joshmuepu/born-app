@@ -9,19 +9,41 @@ import type {
   CityEntry,
   DateGroup,
   DurationGroup,
-  SubtitleEntry
+  SubtitleEntry,
+  SlidePayload,
+  BibleTranslation,
+  ResolvedPassage,
+  BibleSearchHit,
+  SongSummary,
+  SongDetail,
+  SongImportResult
 } from './types'
 
 declare global {
+  interface DisplayInfo {
+    displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
+    targetId: number
+    isFallback: boolean
+    isOverride: boolean
+    hasExternal: boolean
+  }
+
   interface Window {
     electronAPI: {
       // Projection
       openProjection: () => Promise<void>
       closeProjection: () => Promise<void>
-      sendQuote: (quote: Quote) => void
+      showSlide: (slide: SlidePayload) => void
       clearProjection: () => void
-      onDisplayQuote: (callback: (quote: Quote) => void) => () => void
+      onShowSlide: (callback: (slide: SlidePayload) => void) => () => void
       onClearQuote: (callback: () => void) => () => void
+      notifyProjectionReady: () => void
+      onProjectionClosed: (callback: () => void) => () => void
+      // Displays
+      listDisplays: () => Promise<DisplayInfo>
+      setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>
+      onDisplaysInfo: (callback: (info: DisplayInfo) => void) => () => void
+      onProjectionDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Alert / Ticker
       sendAlert: (message: string) => void
       onAlert: (callback: (message: string) => void) => () => void
@@ -43,23 +65,33 @@ declare global {
       setFontSize: (size: number) => void
       onSetBlankScreen: (callback: (blank: boolean) => void) => () => void
       onSetFontSize: (callback: (size: number) => void) => () => void
+      onOperatorBlankChanged: (callback: (blank: boolean) => void) => () => void
       // Queue navigation
       navigateQueue: (dir: 'prev' | 'next') => void
       onQueueNavigate: (callback: (dir: 'prev' | 'next') => void) => () => void
-      // Queue persistence
-      saveQueue: (items: Quote[]) => void
-      loadQueue: () => Promise<Quote[]>
+      // Queue persistence  (persisted as unknown[]; migrated on load)
+      saveQueue: (items: unknown[]) => void
+      loadQueue: () => Promise<unknown[]>
       // Service files
-      saveService: (items: Quote[]) => Promise<boolean>
-      openService: () => Promise<Quote[] | null>
+      saveService: (items: unknown[]) => Promise<boolean>
+      openService: () => Promise<unknown[] | null>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>
-      updateStage: (current: Quote | null, next: Quote | null) => void
-      onStageUpdate: (callback: (data: { current: Quote | null; next: Quote | null }) => void) => () => void
+      updateStage: (current: SlidePayload | null, next: SlidePayload | null) => void
+      onStageUpdate: (
+        callback: (data: { current: SlidePayload | null; next: SlidePayload | null }) => void
+      ) => () => void
+      notifyStageReady: () => void
+      onStageClosed: (callback: () => void) => () => void
       // Web remote
       getWebRemoteURL: () => Promise<string>
-      syncWebRemote: (state: { queue: Quote[]; activeIndex: number | null; blanked: boolean }) => void
+      syncWebRemote: (state: {
+        queue: Array<{ title: string; kind: string; subtitle: string; slideCount: number }>
+        activeIndex: number | null
+        activeSlide: number
+        blanked: boolean
+      }) => void
       onWebRemoteProject: (callback: (index: number) => void) => () => void
       // Browse
       getBrowseSeries: () => Promise<SeriesEntry[]>
@@ -71,6 +103,25 @@ declare global {
       getSermonParagraphs: (sermonId: number, language: string) => Promise<Quote[]>
       // Subtitles
       getSubtitles: (sermonId: number, language: string) => Promise<SubtitleEntry[]>
+      // Bible
+      getBibleTranslations: () => Promise<BibleTranslation[]>
+      lookupPassage: (
+        reference: string,
+        translation: string
+      ) => Promise<ResolvedPassage | { error: string }>
+      searchBible: (query: string, translation: string) => Promise<BibleSearchHit[]>
+      // Songs
+      searchSongs: (query: string) => Promise<SongSummary[]>
+      getSong: (id: number) => Promise<SongDetail | null>
+      importSongs: () => Promise<SongImportResult | null>
+      deleteSong: (id: number) => Promise<boolean>
+      // Languages / translation
+      getLanguages: () => Promise<Record<string, string>>
+      translateQuote: (
+        sermonId: number,
+        paragraphRef: string,
+        language: string
+      ) => Promise<string | null>
     }
   }
 }
