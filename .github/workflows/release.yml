@@ -112,16 +112,18 @@ jobs:
       - name: Build and package
         run: npm run ${{ matrix.script }} -- --publish never
 
-      # ── Smoke test: launch the freshly built artifact on this real target OS
-      #    and fail if the window doesn't load. The macOS leg builds both arches;
-      #    the arm64 DMG is tested here, the x64 DMG on a native Intel runner
-      #    (smoke-macos-x64 job). ──
-      - name: Smoke test (macOS, arm64)
+      # ── Smoke test: launch each freshly built artifact on this real target OS
+      #    and fail if the window doesn't load. The macOS leg builds both arches
+      #    and tests both here — arm64 natively, x64 under Rosetta 2 (GitHub's
+      #    hosted Intel runners are effectively unavailable, so this is the
+      #    runtime check for the x64 build). ──
+      - name: Smoke test (macOS)
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          DMG=$(ls dist-installers/*arm64*.dmg)
-          bash .github/scripts/smoke-macos.sh "$DMG"
+          softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
+          bash .github/scripts/smoke-macos.sh "$(ls dist-installers/*arm64*.dmg)" 90
+          bash .github/scripts/smoke-macos.sh "$(ls dist-installers/*.dmg | grep -v arm64)" 300
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -179,28 +181,8 @@ jobs:
           path: ${{ matrix.pattern }}
           retention-days: 1
 
-  # The Intel DMG is cross-packaged on the Apple-Silicon runner (real x64 Electron
-  # + prebuilt x64 better-sqlite3); this job launches it on a native Intel Mac to
-  # prove it actually runs. Separate job = no rebuild, just download + launch, so
-  # a slow Intel-runner queue doesn't hold up the platform builds.
-  smoke-macos-x64:
-    needs: build
-    runs-on: macos-13
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: installers-macOS
-          path: dist-installers
-      - name: Smoke test (macOS, x64 — native Intel)
-        run: |
-          set -euo pipefail
-          DMG=$(ls dist-installers/*.dmg | grep -v arm64)
-          bash .github/scripts/smoke-macos.sh "$DMG"
-
   release:
-    needs: [build, smoke-macos-x64]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
