@@ -79,6 +79,8 @@ export default function App() {
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
+  /** Song the Songs panel should have open (for the follow-along view). */
+  const [focusSongId, setFocusSongId] = useState<number | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
@@ -367,16 +369,53 @@ export default function App() {
     [addToQueue]
   )
   const handleProjectSong = useCallback(
-    (s: SongDetail, slide = 0) => doProject(songToItem(s), slide, null),
+    (s: SongDetail, slide = 0) => {
+      doProject(songToItem(s), slide, null)
+      setFocusSongId(s.id)
+    },
     [doProject]
   )
+
+  /** Open the source panel's follow-along view for whatever item just went on
+   *  screen — so projecting from the queue behaves exactly like projecting from
+   *  the search / Bible / Songs panels. */
+  const followForItem = useCallback((item: QueueItem) => {
+    if (item.kind === 'quote') {
+      setTopTab('sermons')
+      setSermonsTab('search')
+      setFollowSermon({ sermonId: item.quote.sermonId, anchorRef: item.quote.paragraphRef })
+    } else if (item.kind === 'bible') {
+      setTopTab('bible')
+    } else if (item.kind === 'song') {
+      setTopTab('songs')
+      setFocusSongId(item.songId)
+    }
+  }, [])
 
   const handleProjectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) doProject(item, 0, index)
+      if (!item) return
+      doProject(item, 0, index)
+      followForItem(item)
     },
-    [doProject]
+    [doProject, followForItem]
+  )
+
+  /** Jump to the next / previous item in the service queue (never automatic —
+   *  Next/Prev only walk the current item's own content). */
+  const projectQueueDelta = useCallback(
+    (step: 1 | -1) => {
+      const q = queueRef.current
+      if (q.length === 0) return
+      const cur = projectedRef.current?.queueIndex
+      const from = cur == null ? (step === 1 ? -1 : q.length) : cur
+      const next = from + step
+      if (next < 0 || next >= q.length) return
+      doProject(q[next], 0, next)
+      followForItem(q[next])
+    },
+    [doProject, followForItem]
   )
 
   /** After the queue changes, keep `projected.queueIndex` pointing at the same item. */
@@ -514,6 +553,13 @@ export default function App() {
         return
       }
 
+      // ⌘/Ctrl + ←/→ : jump to the previous / next item in the service queue.
+      if (mod && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault()
+        projectQueueDelta(e.key === 'ArrowRight' ? 1 : -1)
+        return
+      }
+
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
@@ -546,6 +592,7 @@ export default function App() {
     handleReorder,
     handlePrev,
     handleNext,
+    projectQueueDelta,
     handleToggleBlank
   ])
 
@@ -857,6 +904,7 @@ export default function App() {
             <SongsPanel
               visible={topTab === 'songs'}
               onScreen={onScreenLoc?.kind === 'song' ? onScreenLoc : null}
+              focusSongId={projected?.item.kind === 'song' ? projected.item.songId : focusSongId}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
             />
@@ -936,9 +984,10 @@ export default function App() {
           <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
-              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next slide — keeps going to the next verse / paragraph</dd></div>
-              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous slide / verse / paragraph</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the screen</dd></div>
+              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
+              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>

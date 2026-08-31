@@ -6,11 +6,13 @@ interface Props {
   visible: boolean
   /** The song slide currently on the projector, so its card can be marked. */
   onScreen?: { songId: number; slideIndex: number } | null
+  /** A song to open automatically (e.g. after projecting it from the queue). */
+  focusSongId?: number | null
   onAddSong: (song: SongDetail) => void
   onProjectSong: (song: SongDetail, slide?: number) => void
 }
 
-export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong }: Props) {
+export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, onProjectSong }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SongSummary[]>([])
   const [selected, setSelected] = useState<SongDetail | null>(null)
@@ -40,6 +42,11 @@ export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong
   const openSong = useCallback((id: number) => {
     window.electronAPI.getSong(id).then(setSelected)
   }, [])
+
+  // Follow the song that's on screen (projected from the queue or the web remote).
+  useEffect(() => {
+    if (focusSongId != null && focusSongId !== selected?.id) openSong(focusSongId)
+  }, [focusSongId, selected?.id, openSong])
 
   /** Queue / project a song straight from the results list, no need to open it. */
   const queueSong = useCallback(

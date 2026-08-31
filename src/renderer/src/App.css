@@ -955,6 +955,36 @@ mark.hl {
   gap: 8px;
 }
 
+/* Jump to the previous / next item in the service — explicit, never automatic. */
+.queue-item-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.queue-item-nav .btn-quiet {
+  flex-shrink: 0;
+}
+.queue-next-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-start;
+}
+.queue-next-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-item-nav-end {
+  flex: 1;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
 .btn-nav {
   flex: 1;
   padding: 12px 10px;
@@ -1026,6 +1056,21 @@ mark.hl {
 .queue-item--active {
   border-left-color: var(--accent) !important;
   background-color: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+}
+.queue-item--next {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.queue-item-upnext {
+  margin-left: auto;
+  align-self: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 .queue-item--drag-over {

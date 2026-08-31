@@ -86,6 +86,13 @@ export default function ServiceQueue({
         ? 'Nothing on screen yet'
         : null
 
+  // The next thing in the service after what's on screen. Next/Prev never jump
+  // here automatically — it's an explicit choice.
+  const nextItemIndex =
+    activeIndex == null ? (queue.length > 0 ? 0 : -1) : activeIndex + 1
+  const nextItem = nextItemIndex >= 0 && nextItemIndex < queue.length ? queue[nextItemIndex] : null
+  const prevItemIndex = activeIndex == null ? -1 : activeIndex - 1
+
   return (
     <div className="service-queue">
       <div className="queue-header">
@@ -110,6 +117,7 @@ export default function ServiceQueue({
                   'queue-item',
                   `queue-item--${item.kind}`,
                   active ? 'queue-item--active' : '',
+                  !active && projectionOpen && index === nextItemIndex ? 'queue-item--next' : '',
                   index === dragOverIndex && dragIndex !== index ? 'queue-item--drag-over' : ''
                 ].filter(Boolean).join(' ')}
                 draggable
@@ -132,6 +140,9 @@ export default function ServiceQueue({
                     </span>
                   )}
                   {active && <span className="queue-item-live">On screen</span>}
+                  {!active && projectionOpen && index === nextItemIndex && (
+                    <span className="queue-item-upnext">Up next</span>
+                  )}
                 </div>
                 <p className="queue-item-text">{itemPreview(item)}</p>
                 <div className="result-actions">
@@ -221,13 +232,38 @@ export default function ServiceQueue({
             )}
           </div>
           <div className="queue-live-nav">
-            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back (← or Shift+Space)">
+            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back — previous slide / verse / paragraph (← or Shift+Space)">
               ‹ Back
             </button>
-            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next (→ or Space)">
+            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next — next slide / verse / paragraph (→ or Space)">
               Next ›
             </button>
           </div>
+
+          {(nextItem || prevItemIndex >= 0) && (
+            <div className="queue-item-nav">
+              <button
+                className="btn-quiet btn-sm"
+                disabled={prevItemIndex < 0}
+                onClick={() => onProject(prevItemIndex)}
+                title="Previous item in the service (⌘/Ctrl + ←)"
+              >
+                ⟨ Prev item
+              </button>
+              {nextItem ? (
+                <button
+                  className="btn-secondary btn-sm queue-next-item"
+                  onClick={() => onProject(nextItemIndex)}
+                  title="Next item in the service (⌘/Ctrl + →)"
+                >
+                  {activeIndex == null ? 'Start' : 'Next item'} ·{' '}
+                  <span className="queue-next-item-title">{itemTitle(nextItem)}</span> ⟩
+                </button>
+              ) : (
+                <span className="queue-item-nav-end">End of service</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
