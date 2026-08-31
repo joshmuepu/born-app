@@ -218,6 +218,11 @@ function createProjectionWindow(): void {
     projectionWindow = null
     projectionReady = false
     projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
+    // Nothing is being projected any more — the stage monitor falls back to the
+    // clock rather than freezing on the last slide.
+    stageState = { current: null, next: null }
+    sendToStage('stage:update', stageState)
+    sendToStage('stage:set-blank', false)
     sendToMain('projection:closed')
   })
 }
@@ -494,11 +499,17 @@ ipcMain.handle('projection:close', () => {
 ipcMain.on('projection:show-slide', (_event, slide: SlidePayload) => {
   projectionState = { ...projectionState, slide, blank: false }
   sendToProjection('projection:show-slide', slide)
+  // A fresh slide always un-blanks — keep the stage screen in step so it doesn't
+  // stay stuck on the clock after an Esc blackout.
+  sendToStage('stage:set-blank', false)
 })
 
 ipcMain.on('projection:clear', () => {
   projectionState = { ...projectionState, slide: null, blank: false }
   sendToProjection('projection:clear')
+  stageState = { current: null, next: null }
+  sendToStage('stage:update', stageState)
+  sendToStage('stage:set-blank', false)
 })
 
 ipcMain.on(

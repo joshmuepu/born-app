@@ -31,6 +31,8 @@ export default function StageApp() {
     const offUpdate = window.electronAPI.onStageUpdate((data) => {
       setCurrent(data.current)
       setNext(data.next)
+      // A new slide arriving means we're live again — clear any stale blackout.
+      if (data.current) setBlanked(false)
     })
     const offBlank = window.electronAPI.onStageSetBlank(setBlanked)
     let alertTimer: ReturnType<typeof setTimeout> | null = null

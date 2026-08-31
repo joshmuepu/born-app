@@ -65,7 +65,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(4.5)
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
-  const [alertTarget, setAlertTarget] = useState<'congregation' | 'stage' | 'both'>('congregation')
+  const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
   const [webRemoteURL, setWebRemoteURL] = useState('')
   const [appVersion, setAppVersion] = useState('')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
@@ -194,6 +194,10 @@ export default function App() {
     const unProj = window.electronAPI.onProjectionClosed(() => {
       setProjectionOpen(false)
       setIsScreenBlanked(false)
+      // Closing the projection ends the current "on screen" — clear it so the
+      // confidence monitor and source highlights don't point at a stale slide.
+      projectedRef.current = null
+      setProjected(null)
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
     const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
@@ -664,7 +668,11 @@ export default function App() {
               >
                 {isScreenBlanked ? 'Show screen' : 'Hide screen'}
               </button>
-              <button className="btn-secondary" onClick={() => setShowAlertDialog(true)} title="Show a short message across the bottom of a screen">
+              <button
+                className="btn-secondary"
+                onClick={() => { setAlertTarget('stage'); setShowAlertDialog(true) }}
+                title="Show a short message across the bottom of a screen (defaults to the stage monitor)"
+              >
                 Message
               </button>
             </>
@@ -905,13 +913,13 @@ export default function App() {
             />
             <div className="alert-target">
               <span className="alert-target-label">Show on</span>
-              {(['congregation', 'stage', 'both'] as const).map((t) => (
+              {(['stage', 'congregation', 'both'] as const).map((t) => (
                 <button
                   key={t}
                   className={`filter-mode-btn${alertTarget === t ? ' active' : ''}`}
                   onClick={() => setAlertTarget(t)}
                 >
-                  {t === 'congregation' ? 'Main screen' : t === 'stage' ? 'Stage monitor' : 'Both'}
+                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Main screen' : 'Both'}
                 </button>
               ))}
             </div>
