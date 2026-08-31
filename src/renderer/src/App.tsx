@@ -3,6 +3,7 @@ import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
 import ServiceQueue from './components/ServiceQueue'
+import ScreensMenu from './components/ScreensMenu'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
@@ -12,7 +13,8 @@ import type {
   QueueItem,
   SlidePayload,
   ResolvedPassage,
-  SongDetail
+  SongDetail,
+  RecentService
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { parseReference, isRefError } from '../../shared/bibleRef'
@@ -45,13 +47,6 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
   return { kind: item.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker }
 }
 
-/** "PA278QV (2) (2560×1440)" → "PA278QV (2)" — drop the resolution/notes so the
- *  screen picker stays short in the header. */
-function shortDisplayName(label: string): string {
-  const m = /^(.*?)\s*\(\d{3,}[×x]\d{3,}/.exec(label)
-  return (m ? m[1] : label).trim()
-}
-
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
   /** When set, the search panel shows the whole sermon (scrolled to `anchorRef`)
@@ -70,6 +65,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(4.5)
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
+  const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
   const [webRemoteURL, setWebRemoteURL] = useState('')
   const [appVersion, setAppVersion] = useState('')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
@@ -83,8 +79,18 @@ export default function App() {
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
+  /** Song the Songs panel should have open (for the follow-along view). */
+  const [focusSongId, setFocusSongId] = useState<number | null>(null)
+  /** Chapter the Bible panel should show when the operator is previewing a queue
+   *  item without projecting it. Cleared the moment anything is projected. */
+  const [biblePreview, setBiblePreview] = useState<{
+    bookNum: number
+    chapter: number
+    verse: number
+  } | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [recents, setRecents] = useState<RecentService[]>([])
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
@@ -110,6 +116,13 @@ export default function App() {
   useEffect(() => {
     if (queueLoaded.current) window.electronAPI.saveQueue(serviceQueue)
   }, [serviceQueue])
+
+  // Show the real saved projection text size in the Text control.
+  useEffect(() => {
+    window.electronAPI.getFontSize().then((s) => {
+      if (typeof s === 'number' && s > 0) setFontSize(s)
+    })
+  }, [])
 
   // App version + "is there a newer build?" check.
   useEffect(() => {
@@ -197,6 +210,10 @@ export default function App() {
     const unProj = window.electronAPI.onProjectionClosed(() => {
       setProjectionOpen(false)
       setIsScreenBlanked(false)
+      // Closing the projection ends the current "on screen" — clear it so the
+      // confidence monitor and source highlights don't point at a stale slide.
+      projectedRef.current = null
+      setProjected(null)
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
     const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
@@ -239,6 +256,8 @@ export default function App() {
       projectedRef.current = next
       setProjected(next)
       setIsScreenBlanked(false)
+      setBiblePreview(null) // projecting anything ends a queue-item preview
+      if (item.kind === 'song') setFocusSongId(item.songId)
       window.electronAPI.showSlide(payload)
 
       // Stage view: current slide + the next one, when it's already loaded.
@@ -366,16 +385,65 @@ export default function App() {
     [addToQueue]
   )
   const handleProjectSong = useCallback(
-    (s: SongDetail, slide = 0) => doProject(songToItem(s), slide, null),
+    (s: SongDetail, slide = 0) => {
+      doProject(songToItem(s), slide, null)
+      setFocusSongId(s.id)
+    },
     [doProject]
   )
+
+  /** Take the source panel to a queue item — its whole sermon / chapter / song,
+   *  scrolled to the right spot. `preview` = navigate only (a click); otherwise
+   *  it's paired with projecting. Same experience as the search / Bible / Songs
+   *  panels. */
+  const followForItem = useCallback((item: QueueItem, preview = false) => {
+    if (item.kind === 'quote') {
+      setTopTab('sermons')
+      setSermonsTab('search')
+      setFollowSermon({ sermonId: item.quote.sermonId, anchorRef: item.quote.paragraphRef })
+    } else if (item.kind === 'bible') {
+      setTopTab('bible')
+      if (preview) setBiblePreview({ bookNum: item.bookNum, chapter: item.chapter, verse: item.verseStart })
+    } else if (item.kind === 'song') {
+      setTopTab('songs')
+      setFocusSongId(item.songId)
+    }
+  }, [])
 
   const handleProjectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) doProject(item, 0, index)
+      if (!item) return
+      doProject(item, 0, index)
+      followForItem(item)
     },
-    [doProject]
+    [doProject, followForItem]
+  )
+
+  /** Click a queue row (not its Project button): go to that item in the source
+   *  panel to read / prepare it, without touching the screens. */
+  const handleSelectFromQueue = useCallback(
+    (index: number) => {
+      const item = queueRef.current[index]
+      if (item) followForItem(item, true)
+    },
+    [followForItem]
+  )
+
+  /** Jump to the next / previous item in the service queue (never automatic —
+   *  Next/Prev only walk the current item's own content). */
+  const projectQueueDelta = useCallback(
+    (step: 1 | -1) => {
+      const q = queueRef.current
+      if (q.length === 0) return
+      const cur = projectedRef.current?.queueIndex
+      const from = cur == null ? (step === 1 ? -1 : q.length) : cur
+      const next = from + step
+      if (next < 0 || next >= q.length) return
+      doProject(q[next], 0, next)
+      followForItem(q[next])
+    },
+    [doProject, followForItem]
   )
 
   /** After the queue changes, keep `projected.queueIndex` pointing at the same item. */
@@ -402,7 +470,6 @@ export default function App() {
     (index: number) => mutateQueue((q) => q.filter((_, i) => i !== index)),
     [mutateQueue]
   )
-  const handleClearQueue = useCallback(() => mutateQueue(() => []), [mutateQueue])
   const handleReorder = useCallback(
     (from: number, to: number) => mutateQueue((q) => reorder(q, from, to)),
     [mutateQueue]
@@ -514,6 +581,13 @@ export default function App() {
         return
       }
 
+      // ⌘/Ctrl + ←/→ : jump to the previous / next item in the service queue.
+      if (mod && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault()
+        projectQueueDelta(e.key === 'ArrowRight' ? 1 : -1)
+        return
+      }
+
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
@@ -546,6 +620,7 @@ export default function App() {
     handleReorder,
     handlePrev,
     handleNext,
+    projectQueueDelta,
     handleToggleBlank
   ])
 
@@ -560,36 +635,62 @@ export default function App() {
 
   const handleSendAlert = useCallback(() => {
     if (!alertMessage.trim()) return
-    window.electronAPI.sendAlert(alertMessage.trim())
+    window.electronAPI.sendAlert(alertMessage.trim(), alertTarget)
     setAlertMessage('')
     setShowAlertDialog(false)
-  }, [alertMessage])
+  }, [alertMessage, alertTarget])
+
+  const refreshRecents = useCallback(() => {
+    window.electronAPI.getRecentServices().then(setRecents)
+  }, [])
+  useEffect(() => refreshRecents(), [refreshRecents])
 
   const handleNewService = useCallback(() => {
-    if (serviceQueue.length === 0) return
+    if (serviceQueue.length === 0) {
+      setFollowSermon(null)
+      return
+    }
     if (window.confirm('Clear the current queue and start a new service?')) {
       setServiceQueue([])
       projectedRef.current = null
       setProjected(null)
+      setFollowSermon(null)
     }
   }, [serviceQueue.length])
 
   const handleSaveService = useCallback(async () => {
-    await window.electronAPI.saveService(serviceQueue)
-  }, [serviceQueue])
+    const ok = await window.electronAPI.saveService(serviceQueue)
+    if (ok) refreshRecents()
+  }, [serviceQueue, refreshRecents])
+
+  const loadServiceItems = useCallback((loaded: unknown[]) => {
+    setServiceQueue(migrateQueue(loaded))
+    projectedRef.current = null
+    setProjected(null)
+    setFollowSermon(null)
+  }, [])
 
   const handleOpenService = useCallback(async () => {
     const loaded = await window.electronAPI.openService()
     if (loaded) {
-      setServiceQueue(migrateQueue(loaded))
-      projectedRef.current = null
-      setProjected(null)
+      loadServiceItems(loaded)
+      refreshRecents()
     }
-  }, [])
+  }, [loadServiceItems, refreshRecents])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      const loaded = await window.electronAPI.openServicePath(path)
+      if (loaded) {
+        loadServiceItems(loaded)
+        refreshRecents()
+      }
+    },
+    [loadServiceItems, refreshRecents]
+  )
 
   const isRunning = indexer?.status === 'running'
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
-  const targetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.targetId)
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
 
   // What's on the projector right now, so the source panels can highlight it.
@@ -620,76 +721,56 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">
-          <span className="app-logo-born">BORN</span>
-          <div className="file-actions">
-            <button className="btn-quiet btn-sm" onClick={handleNewService} title="Start a new, empty service">New</button>
-            <button className="btn-quiet btn-sm" onClick={handleOpenService} title="Open a saved service file">Open</button>
-            <button className="btn-quiet btn-sm" onClick={handleSaveService} title="Save this service to a file">Save</button>
-          </div>
-        </div>
+        <button
+          className="app-logo-born"
+          onClick={handleNewService}
+          title="BORN — back to the start screen"
+        >
+          BORN
+        </button>
 
         <div className="header-actions">
+          <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
+            Shortcuts
+          </button>
+
           {projectionOpen && (
-            <div className="screen-controls">
+            <>
               <button
                 className={`btn-secondary${isScreenBlanked ? ' btn-toggle-on' : ''}`}
                 onClick={handleToggleBlank}
-                title="Black out the projector screen (nothing is shown to the congregation)"
+                title="Black out the congregation screen (Esc)"
               >
                 {isScreenBlanked ? 'Show screen' : 'Hide screen'}
               </button>
-              <button className="btn-secondary" onClick={() => setShowAlertDialog(true)} title="Show a short message across the bottom of the screen">
+              <button
+                className="btn-secondary"
+                onClick={() => { setAlertTarget('stage'); setShowAlertDialog(true) }}
+                title="Show a short message across the bottom of a screen (defaults to the stage monitor)"
+              >
                 Message
               </button>
-              <div className="text-size-control" title="Change the size of the projected text">
-                <span className="text-size-label">Text</span>
-                <button className="btn-secondary btn-sm" onClick={() => handleFontSizeChange(-0.25)} disabled={fontSize <= 1.5} aria-label="Smaller text">−</button>
-                <button className="btn-secondary btn-sm" onClick={() => handleFontSizeChange(0.25)} disabled={fontSize >= 8} aria-label="Larger text">+</button>
-              </div>
-            </div>
+            </>
           )}
 
-          <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">Shortcuts</button>
-          <button className="btn-quiet btn-sm" onClick={handleToggleStage} title="Open a second window showing the current and next slide (for musicians)">
-            {stageOpen ? 'Close monitor' : 'Stage monitor'}
-          </button>
+          <ScreensMenu
+            displayInfo={displayInfo}
+            projectionOpen={projectionOpen}
+            stageOpen={stageOpen}
+            fontSize={fontSize}
+            onToggleProjection={handleToggleProjection}
+            onToggleStage={handleToggleStage}
+            onSetProjectionDisplay={(id) => window.electronAPI.setProjectionDisplay(id).then(setDisplayInfo)}
+            onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
+            onFontSize={handleFontSizeChange}
+          />
 
-          <div className="projection-controls">
-            {displayInfo && (
-              displayInfo.displays.length > 1 ? (
-                <label className="display-picker" title="Which screen the congregation sees">
-                  <span className="display-picker-label">Screen</span>
-                  <select
-                    className="language-select"
-                    value={displayInfo.isOverride ? displayInfo.targetId : ''}
-                    onChange={(e) =>
-                      window.electronAPI
-                        .setProjectionDisplay(e.target.value ? Number(e.target.value) : null)
-                        .then(setDisplayInfo)
-                    }
-                  >
-                    <option value="">
-                      {targetDisplay ? `Auto: ${shortDisplayName(targetDisplay.label)}` : 'Automatic'}
-                    </option>
-                    {displayInfo.displays.map((d) => (
-                      <option key={d.id} value={d.id}>{shortDisplayName(d.label)}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <span className="display-status" title="Connect a second screen or projector, then it appears here">
-                  No second screen — will use this one
-                </span>
-              )
-            )}
-            <button
-              className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
-              onClick={handleToggleProjection}
-            >
-              {projectionOpen ? 'Close projection' : 'Open projection'}
-            </button>
-          </div>
+          <button
+            className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
+            onClick={handleToggleProjection}
+          >
+            {projectionOpen ? 'Close projection' : 'Open projection'}
+          </button>
         </div>
       </header>
 
@@ -842,6 +923,7 @@ export default function App() {
             <BiblePanel
               visible={topTab === 'bible'}
               onScreen={onScreenLoc?.kind === 'bible' ? onScreenLoc : null}
+              preview={biblePreview}
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
             />
@@ -851,6 +933,7 @@ export default function App() {
             <SongsPanel
               visible={topTab === 'songs'}
               onScreen={onScreenLoc?.kind === 'song' ? onScreenLoc : null}
+              focusSongId={focusSongId}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
             />
@@ -878,11 +961,16 @@ export default function App() {
             stageOpen={stageOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
+            onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
-            onClear={handleClearQueue}
             onPrev={handlePrev}
             onNext={handleNext}
             onReorder={handleReorder}
+            onNewService={handleNewService}
+            onOpenService={handleOpenService}
+            onSaveService={handleSaveService}
+            recents={recents}
+            onOpenRecent={handleOpenRecent}
           />
         </div>
       </main>
@@ -891,7 +979,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Show a message on screen</h3>
-            <p className="modal-hint">It appears across the bottom of the projection for about 10 seconds.</p>
+            <p className="modal-hint">It appears across the bottom of the screen for about 10 seconds.</p>
             <input
               type="text"
               className="modal-input"
@@ -901,6 +989,18 @@ export default function App() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSendAlert() }}
               autoFocus
             />
+            <div className="alert-target">
+              <span className="alert-target-label">Show on</span>
+              {(['stage', 'congregation', 'both'] as const).map((t) => (
+                <button
+                  key={t}
+                  className={`filter-mode-btn${alertTarget === t ? ' active' : ''}`}
+                  onClick={() => setAlertTarget(t)}
+                >
+                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Main screen' : 'Both'}
+                </button>
+              ))}
+            </div>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowAlertDialog(false)}>Cancel</button>
               <button className="btn-primary" onClick={handleSendAlert} disabled={!alertMessage.trim()}>Show message</button>
@@ -914,9 +1014,10 @@ export default function App() {
           <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
-              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next slide — keeps going to the next verse / paragraph</dd></div>
-              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous slide / verse / paragraph</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the screen</dd></div>
+              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
+              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>

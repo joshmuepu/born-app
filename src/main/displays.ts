@@ -46,6 +46,36 @@ export function pickProjectionDisplay(
   return { display: primary, isFallback: true, isOverride: false }
 }
 
+export interface StageTarget {
+  /** null → no screen free for the stage monitor; use a normal window. */
+  display: DisplayLike | null
+  /** true when we fell back to a windowed stage monitor (no spare screen). */
+  isFallback: boolean
+  /** true when the chosen display came from an explicit operator override. */
+  isOverride: boolean
+}
+
+/**
+ * Choose the stage-monitor display.
+ *   1. An explicit, still-connected override wins.
+ *   2. Otherwise a screen that is neither the operator's nor the projector's.
+ *   3. Otherwise none — the stage monitor stays a normal window.
+ */
+export function pickStageDisplay(
+  displays: DisplayLike[],
+  primaryId: number,
+  projectionId: number,
+  overrideId?: number | null
+): StageTarget {
+  if (overrideId != null) {
+    const forced = displays.find((d) => d.id === overrideId)
+    if (forced) return { display: forced, isFallback: false, isOverride: true }
+  }
+  const spare = displays.find((d) => d.id !== primaryId && d.id !== projectionId)
+  if (spare) return { display: spare, isFallback: false, isOverride: false }
+  return { display: null, isFallback: true, isOverride: false }
+}
+
 /** A short human label for a display, for the operator's picker + logs. */
 export function describeDisplay(d: DisplayLike, primaryId: number): string {
   const size = `${d.bounds.width}×${d.bounds.height}`

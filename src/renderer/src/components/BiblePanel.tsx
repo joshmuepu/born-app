@@ -8,13 +8,16 @@ interface Props {
   visible: boolean
   /** The verse currently on the projector, so its row can be marked. */
   onScreen?: { bookNum: number; chapter: number; verse: number } | null
+  /** A chapter to show because the operator clicked a queue item to read it
+   *  (not projecting). Takes precedence over `onScreen` while set. */
+  preview?: { bookNum: number; chapter: number; verse: number } | null
   onAddPassage: (p: ResolvedPassage) => void
   onProjectPassage: (p: ResolvedPassage, slide?: number) => void
 }
 
 type Mode = 'reference' | 'keyword'
 
-export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectPassage }: Props) {
+export default function BiblePanel({ visible, onScreen, preview, onAddPassage, onProjectPassage }: Props) {
   const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
@@ -46,9 +49,9 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
   const [showSearch, setShowSearch] = useState(false)
   const focusVerseRef = useRef<HTMLDivElement>(null)
 
-  // What the chapter view is centred on: the projected verse if we're live,
-  // else the verse the operator clicked.
-  const focusVerse = onScreen ?? browseAnchor
+  // What the chapter view is centred on: a queue-item the operator is previewing
+  // wins; then the projected verse; then a keyword-hit they opened.
+  const focusVerse = preview ?? onScreen ?? browseAnchor
 
   useEffect(() => {
     if (!focusVerse) {
@@ -70,14 +73,14 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
     }
   }, [focusVerse?.bookNum, focusVerse?.chapter, translation])
 
-  // A new verse on the projector means "follow it" — drop a manual browse anchor
-  // and any "← Search" detour.
+  // A new verse on the projector — or a queue item opened for reading — means
+  // "show me that": drop a manual browse anchor and any "← Search" detour.
   useEffect(() => {
-    if (onScreen) {
+    if (onScreen || preview) {
       setBrowseAnchor(null)
       setShowSearch(false)
     }
-  }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse])
+  }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse, preview?.bookNum, preview?.chapter, preview?.verse])
 
   useEffect(() => {
     focusVerseRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -162,7 +165,11 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
 
   if (focusVerse && chapterView && !showSearch) {
     const book = bookByNum(focusVerse.bookNum)
-    const projecting = !!onScreen
+    // "live" only when the chapter on screen is the one being shown.
+    const projecting =
+      !!onScreen &&
+      onScreen.bookNum === focusVerse.bookNum &&
+      onScreen.chapter === focusVerse.chapter
     return (
       <div className="bible-panel">
         <div className="follow-head">
@@ -331,13 +338,19 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
       ) : (
         <>
           <div className="bible-ref-row">
-            <input
-              className="search-input"
-              placeholder="Search the Bible for a word or phrase…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              autoFocus
-            />
+            <div className="search-input-wrap">
+              <input
+                className="search-input"
+                placeholder="Search the Bible for a word or phrase…"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape' && keyword) { e.preventDefault(); setKeyword('') } }}
+                autoFocus
+              />
+              {keyword && (
+                <button className="search-clear" onClick={() => setKeyword('')} title="Clear (Esc)" aria-label="Clear search">×</button>
+              )}
+            </div>
           </div>
           <div className="bible-verses">
             {hits.length === 0 && keyword.trim().length >= 2 && (

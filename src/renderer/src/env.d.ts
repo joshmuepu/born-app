@@ -17,17 +17,12 @@ import type {
   BibleSearchHit,
   SongSummary,
   SongDetail,
-  SongImportResult
+  SongImportResult,
+  DisplayInfo as DisplayInfoType
 } from './types'
 
 declare global {
-  interface DisplayInfo {
-    displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
-    targetId: number
-    isFallback: boolean
-    isOverride: boolean
-    hasExternal: boolean
-  }
+  type DisplayInfo = DisplayInfoType
 
   interface UpdateInfo {
     current: string
@@ -67,11 +62,15 @@ declare global {
       // Displays
       listDisplays: () => Promise<DisplayInfo>
       setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>
+      setStageDisplay: (displayId: number | null) => Promise<DisplayInfo>
       onDisplaysInfo: (callback: (info: DisplayInfo) => void) => () => void
       onProjectionDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Alert / Ticker
-      sendAlert: (message: string) => void
+      sendAlert: (message: string, target?: 'congregation' | 'stage' | 'both') => void
       onAlert: (callback: (message: string) => void) => () => void
+      onStageAlert: (callback: (message: string) => void) => () => void
+      onStageSetBlank: (callback: (blank: boolean) => void) => () => void
+      onStageDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Search (local, with server fallback)
       searchSermons: (
         query: string,
@@ -88,6 +87,7 @@ declare global {
       // Projection controls
       setBlankScreen: (blank: boolean) => void
       setFontSize: (size: number) => void
+      getFontSize: () => Promise<number>
       onSetBlankScreen: (callback: (blank: boolean) => void) => () => void
       onSetFontSize: (callback: (size: number) => void) => () => void
       onOperatorBlankChanged: (callback: (blank: boolean) => void) => () => void
@@ -100,6 +100,8 @@ declare global {
       // Service files
       saveService: (items: unknown[]) => Promise<boolean>
       openService: () => Promise<unknown[] | null>
+      getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
+      openServicePath: (path: string) => Promise<unknown[] | null>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>

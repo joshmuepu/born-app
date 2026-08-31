@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { QueueItem } from '../types'
+import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
+import StartScreen from './StartScreen'
 
 interface OnScreen {
   /** The exact text on the projector right now. */
@@ -22,11 +23,18 @@ interface Props {
   stageOpen: boolean
   blanked: boolean
   onProject: (index: number) => void
+  /** Click a row to go to that item in the source panel (does NOT project it). */
+  onSelect: (index: number) => void
   onRemove: (index: number) => void
-  onClear: () => void
   onPrev: () => void
   onNext: () => void
   onReorder: (from: number, to: number) => void
+  /** Service files — a service file is this queue, so they live here. */
+  onNewService: () => void
+  onOpenService: () => void
+  onSaveService: () => void
+  recents: RecentService[]
+  onOpenRecent: (path: string) => void
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -50,11 +58,16 @@ export default function ServiceQueue({
   stageOpen,
   blanked,
   onProject,
+  onSelect,
   onRemove,
-  onClear,
   onPrev,
   onNext,
-  onReorder
+  onReorder,
+  onNewService,
+  onOpenService,
+  onSaveService,
+  recents,
+  onOpenRecent
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -76,22 +89,25 @@ export default function ServiceQueue({
         ? 'Nothing on screen yet'
         : null
 
+  // The next thing in the service after what's on screen. Next/Prev never jump
+  // here automatically — it's an explicit choice.
+  const nextItemIndex =
+    activeIndex == null ? (queue.length > 0 ? 0 : -1) : activeIndex + 1
+  const nextItem = nextItemIndex >= 0 && nextItemIndex < queue.length ? queue[nextItemIndex] : null
+
   return (
     <div className="service-queue">
       <div className="queue-header">
         <h2>Service Queue</h2>
-        {queue.length > 0 && (
-          <button className="btn-quiet btn-sm" onClick={onClear}>Clear all</button>
-        )}
+        <div className="queue-file-actions">
+          <button className="btn-quiet btn-sm" onClick={onNewService} title="Start a new, empty service (clears the queue)">New</button>
+          <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
+          <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
+        </div>
       </div>
 
       {queue.length === 0 ? (
-        <div className="queue-empty">
-          <p>Nothing queued yet</p>
-          <p className="results-empty-hint">
-            Add quotes, Bible passages, or songs and they’ll line up here in order.
-          </p>
-        </div>
+        <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
       ) : (
         <div className="queue-list">
           {queue.map((item, index) => {
@@ -103,8 +119,19 @@ export default function ServiceQueue({
                   'queue-item',
                   `queue-item--${item.kind}`,
                   active ? 'queue-item--active' : '',
+                  !active && projectionOpen && index === nextItemIndex ? 'queue-item--next' : '',
                   index === dragOverIndex && dragIndex !== index ? 'queue-item--drag-over' : ''
                 ].filter(Boolean).join(' ')}
+                role="button"
+                tabIndex={0}
+                title="Go to this item to read it — use Project to put it on screen"
+                onClick={() => onSelect(index)}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                    e.preventDefault()
+                    onSelect(index)
+                  }
+                }}
                 draggable
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index) }}
@@ -125,13 +152,24 @@ export default function ServiceQueue({
                     </span>
                   )}
                   {active && <span className="queue-item-live">On screen</span>}
+                  {!active && projectionOpen && index === nextItemIndex && (
+                    <span className="queue-item-upnext">Up next</span>
+                  )}
                 </div>
                 <p className="queue-item-text">{itemPreview(item)}</p>
                 <div className="result-actions">
-                  <button className="btn-primary btn-sm" onClick={() => onProject(index)}>
+                  <button
+                    className="btn-primary btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onProject(index) }}
+                  >
                     {active ? 'Restart' : 'Project'}
                   </button>
-                  <button className="btn-quiet btn-sm" onClick={() => onRemove(index)}>Remove</button>
+                  <button
+                    className="btn-quiet btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onRemove(index) }}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             )
@@ -214,13 +252,19 @@ export default function ServiceQueue({
             )}
           </div>
           <div className="queue-live-nav">
-            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back (← or Shift+Space)">
+            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back — previous slide / verse / paragraph (← or Shift+Space)">
               ‹ Back
             </button>
-            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next (→ or Space)">
+            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next — next slide / verse / paragraph (→ or Space)">
               Next ›
             </button>
           </div>
+          {nextItem && !status && (
+            <div className="queue-upnext-hint">
+              Up next: <strong>{itemTitle(nextItem)}</strong>
+              <span className="queue-upnext-key"> — ⌘/Ctrl + →</span>
+            </div>
+          )}
         </div>
       )}
     </div>

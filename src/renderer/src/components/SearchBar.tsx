@@ -120,6 +120,13 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
     }
   }, [query, yearFrom, yearTo, titleFilter, forceTokens, onResults, onSearchingChange, closeSuggestions])
 
+  const clearSearch = useCallback(() => {
+    setQuery('')
+    closeSuggestions()
+    onResults([], '')
+    inputRef.current?.focus()
+  }, [closeSuggestions, onResults])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (showSuggestions && suggestions.length > 0) {
@@ -145,8 +152,12 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
         }
       }
       if (e.key === 'Enter') handleSearch()
+      else if (e.key === 'Escape' && query) {
+        e.preventDefault()
+        clearSearch()
+      }
     },
-    [showSuggestions, suggestions, activeSuggestion, applySuggestion, closeSuggestions, handleSearch]
+    [showSuggestions, suggestions, activeSuggestion, applySuggestion, closeSuggestions, handleSearch, query, clearSearch]
   )
 
   const filterCount = [yearFrom || yearTo, titleFilter].filter(Boolean).length
@@ -170,6 +181,17 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
             autoComplete="off"
             autoFocus
           />
+          {query && (
+            <button
+              type="button"
+              className="search-clear"
+              onClick={clearSearch}
+              title="Clear search (Esc)"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
           {showSuggestions && suggestions.length > 0 && (
             <div className="autocomplete-dropdown" ref={dropdownRef}>
               {suggestions.map((s, i) => (

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { pickProjectionDisplay, describeDisplay, type DisplayLike } from '../../main/displays'
+import {
+  pickProjectionDisplay,
+  pickStageDisplay,
+  describeDisplay,
+  type DisplayLike
+} from '../../main/displays'
 
 const mk = (id: number, over: Partial<DisplayLike> = {}): DisplayLike => ({
   id,
@@ -55,6 +60,42 @@ describe('pickProjectionDisplay', () => {
     const t = pickProjectionDisplay([projector, internal], 2)
     // primary is the projector (id 2); the only non-primary is the internal panel
     expect(t.display.id).toBe(1)
+  })
+})
+
+describe('pickStageDisplay', () => {
+  const internal = mk(1, { internal: true })
+  const projector = mk(2, { internal: false })
+  const stageTv = mk(3, { internal: false })
+
+  it('stays a normal window when only the operator + projector screens exist', () => {
+    const t = pickStageDisplay([internal, projector], 1, 2)
+    expect(t.display).toBeNull()
+    expect(t.isFallback).toBe(true)
+  })
+
+  it('uses the spare screen when there is a third display', () => {
+    const t = pickStageDisplay([internal, projector, stageTv], 1, 2)
+    expect(t.display?.id).toBe(3)
+    expect(t.isFallback).toBe(false)
+    expect(t.isOverride).toBe(false)
+  })
+
+  it('honours a valid operator override', () => {
+    const t = pickStageDisplay([internal, projector, stageTv], 1, 2, 2)
+    expect(t.display?.id).toBe(2)
+    expect(t.isOverride).toBe(true)
+  })
+
+  it('ignores a stale override and falls back to the spare screen', () => {
+    const t = pickStageDisplay([internal, projector, stageTv], 1, 2, 99)
+    expect(t.display?.id).toBe(3)
+    expect(t.isOverride).toBe(false)
+  })
+
+  it('never picks the operator or projection screen automatically', () => {
+    const t = pickStageDisplay([internal, projector], 1, 2)
+    expect(t.display).toBeNull()
   })
 })
 

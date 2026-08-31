@@ -14,28 +14,156 @@ body {
 }
 
 .stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 40px 48px 32px;
-  gap: 0;
+  padding: clamp(28px, 4vh, 64px) clamp(32px, 4vw, 80px);
+  gap: clamp(16px, 3vh, 40px);
 }
 
 .stage-current {
-  flex: 1;
+  flex: 1 1 68%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-bottom: 1px solid #1e1e1e;
-  padding-bottom: 28px;
+  overflow: hidden;
 }
 
 .stage-current-text {
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: clamp(1.4rem, 3vw, 2.2rem);
-  line-height: 1.6;
-  color: #f0f0f0;
+  font-size: clamp(2rem, 4.2vw, 5rem);
+  line-height: 1.5;
+  color: #fafafa;
   margin-bottom: 20px;
+}
+.stage-current-text.is-song,
+.stage-cg-text.is-song,
+.stage-next-text.is-song {
+  white-space: pre-wrap;
+}
+
+/* ── Top bar: clock + view picker, always visible ────────── */
+.stage-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* A clock the platform can read from across the room, always on screen —
+   prominent, but the corner keeps it from competing with the slide. */
+.stage-clock {
+  font-size: clamp(2.1rem, 4vw, 4.75rem);
+  font-weight: 600;
+  color: #aab4c4;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.stage-viewpick {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+.stage-viewpick:hover {
+  opacity: 1;
+}
+.stage-viewpick button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa;
+  font: inherit;
+  font-size: clamp(0.7rem, 1vw, 0.95rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+.stage-viewpick button.is-active {
+  background: #3a6186;
+  color: #fff;
+}
+
+/* Idle: the clock fills the screen so the time is unmissable. */
+.stage-bigclock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vh, 24px);
+}
+.stage-bigclock-time {
+  font-size: clamp(5rem, 17vw, 17rem);
+  font-weight: 600;
+  color: #6b7688;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stage-bigclock-note {
+  font-size: clamp(1rem, 2vw, 2rem);
+  color: #4a4a4a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Congregation view (mirror of the projector) ─────────── */
+.stage--congregation {
+  background: #000;
+}
+.stage-congregation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 0 clamp(20px, 6vw, 140px);
+}
+.stage-cg-label {
+  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b0b0b0;
+  margin-bottom: clamp(16px, 4vh, 48px);
+}
+.stage-cg-text {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: clamp(2rem, 6vw, 7rem);
+  line-height: 1.45;
+  color: #fff;
+}
+.stage-cg-ref {
+  margin-top: clamp(16px, 4vh, 48px);
+  font-size: clamp(0.95rem, 1.6vw, 1.5rem);
+  color: #c8c8c8;
+  letter-spacing: 0.02em;
+}
+
+/* ── Message banner ──────────────────────────────────────── */
+.stage-alert {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 18px 40px;
+  background: rgba(10, 8, 0, 0.92);
+  border-top: 2px solid #fbbf24;
+  color: #fbbf24;
+  font-size: clamp(1rem, 2vw, 1.6rem);
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.04em;
+  z-index: 100;
 }
 
 .stage-marker {
@@ -56,51 +184,58 @@ body {
 }
 
 .stage-current-ref {
-  font-size: 0.85rem;
-  color: #666;
+  font-size: clamp(0.9rem, 1.5vw, 1.5rem);
+  color: #7a7a7a;
 }
 
 .stage-idle {
-  font-size: 1rem;
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
   color: #555;
   text-align: center;
 }
 
-.stage-sep {
-  color: #444;
-}
-
+/* "Next" is a clearly separate band along the bottom — the platform can see at a
+   glance what's current vs what's coming. */
 .stage-next {
-  flex-shrink: 0;
-  padding-top: 24px;
+  flex: 0 0 auto;
+  max-height: 30vh;
+  overflow: hidden;
+  padding: clamp(16px, 2.5vh, 32px) clamp(18px, 2vw, 32px);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .stage-next-label {
-  font-size: 0.65rem;
+  font-size: clamp(0.7rem, 1vw, 1rem);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #3a6186;
-  margin-bottom: 10px;
+  letter-spacing: 0.14em;
+  color: #5b83a8;
+  margin-bottom: clamp(6px, 1vh, 14px);
 }
 
 .stage-next-text {
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: clamp(0.85rem, 1.6vw, 1.2rem);
-  line-height: 1.5;
-  color: #777;
-  margin-bottom: 8px;
+  font-size: clamp(1.1rem, 2.4vw, 2.6rem);
+  line-height: 1.45;
+  color: #9a9a9a;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.stage-next-text--empty {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: clamp(0.9rem, 1.4vw, 1.4rem);
+  font-style: italic;
+  color: #666;
+}
 
 .stage-next-ref {
-  display: flex;
-  gap: 8px;
-  font-size: 0.75rem;
-  color: #555;
+  margin-top: 8px;
+  font-size: clamp(0.75rem, 1.1vw, 1.1rem);
+  color: #5a5a5a;
 }
 
 ::-webkit-scrollbar { width: 0; }
