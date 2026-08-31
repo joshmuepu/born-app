@@ -19,6 +19,7 @@ interface Props {
   /** What's actually on the projector right now (follows Next/Prev flow-through). */
   onScreen?: OnScreen | null
   projectionOpen: boolean
+  stageOpen: boolean
   blanked: boolean
   onProject: (index: number) => void
   onRemove: (index: number) => void
@@ -46,6 +47,7 @@ export default function ServiceQueue({
   activeSlide,
   onScreen,
   projectionOpen,
+  stageOpen,
   blanked,
   onProject,
   onRemove,
@@ -56,6 +58,9 @@ export default function ServiceQueue({
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  // Which monitor the operator is following: the congregation's screen (current
+  // slide only) or the stage monitor (current slide + what Next will show).
+  const [monitor, setMonitor] = useState<'screen' | 'stage'>('screen')
 
   // Next/Prev drive flow-through, so they're live whenever something is (or can
   // be) on screen; the handlers clamp at the real edges (a song's last slide).
@@ -136,9 +141,56 @@ export default function ServiceQueue({
 
       {(projectionOpen || queue.length > 0) && (
         <div className="queue-live-bar">
-          <div className="live-now" title="Exactly what the congregation is seeing right now">
+          <div
+            className="live-now"
+            title={
+              monitor === 'screen'
+                ? 'Exactly what the congregation is seeing right now'
+                : 'What the stage monitor shows — the current slide and what Next will bring up'
+            }
+          >
             <div className="live-now-head">
-              <span className="queue-live-label">On screen</span>
+              <div
+                className="monitor-switch"
+                role="tablist"
+                aria-label="Preview the main screen or the stage monitor"
+              >
+                <button
+                  role="tab"
+                  aria-selected={monitor === 'screen'}
+                  className={`monitor-switch-tab${monitor === 'screen' ? ' is-active' : ''}`}
+                  onClick={() => setMonitor('screen')}
+                  title="What the congregation sees on the main screen"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true" className="monitor-switch-icon">
+                    <rect x="1.5" y="2.5" width="13" height="9" rx="1.2" />
+                    <path d="M6 14h4M8 11.5V14" />
+                  </svg>
+                  Main screen
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={monitor === 'stage'}
+                  className={`monitor-switch-tab${monitor === 'stage' ? ' is-active' : ''}`}
+                  onClick={() => setMonitor('stage')}
+                  title={
+                    stageOpen
+                      ? 'What the platform sees on the stage monitor — current slide plus what Next brings up'
+                      : 'Preview of the stage monitor (that window is currently closed)'
+                  }
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true" className="monitor-switch-icon">
+                    <rect x="1.5" y="2.5" width="13" height="9" rx="1.2" />
+                    <path d="M6.5 5.5l3 2-3 2z" className="monitor-switch-icon-fill" />
+                    <path d="M6 14h4M8 11.5V14" />
+                  </svg>
+                  Stage
+                  <span
+                    className={`monitor-switch-dot${stageOpen ? ' is-live' : ''}`}
+                    title={stageOpen ? 'Stage monitor is open' : 'Stage monitor is closed'}
+                  />
+                </button>
+              </div>
               {onScreen?.reference && !status && (
                 <span className="live-now-ref">
                   {onScreen.label ? `${onScreen.label} · ` : ''}
@@ -154,9 +206,10 @@ export default function ServiceQueue({
                 {onScreen?.text}
               </div>
             )}
-            {!status && onScreen?.nextText && (
+            {!status && monitor === 'stage' && (
               <div className="live-next">
-                <span className="live-next-label">Next</span> {onScreen.nextText}
+                <span className="live-next-label">Next</span>{' '}
+                {onScreen?.nextText || 'End of this item — pick the next one from the queue'}
               </div>
             )}
           </div>

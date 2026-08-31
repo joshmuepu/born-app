@@ -3,31 +3,38 @@ import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
 
 interface Props {
-  /** The sermon currently being projected. */
+  /** The sermon being shown. */
   sermonId: number
-  /** The paragraph ref on screen right now (follows Next / Prev). */
-  currentRef: string | null
+  /** The paragraph the operator clicked / projected — kept in view and marked. */
+  anchorRef: string
+  /** The paragraph on the projector right now (null unless this sermon is live). */
+  liveRef: string | null
   onBack: () => void
   onProject: (quote: Quote) => void
   onAddToQueue: (quote: Quote) => void
 }
 
 /**
- * After you project a sermon quote from the search results, the results are
- * replaced by this — the whole sermon, with the paragraph on screen highlighted
- * and kept in view — so the operator can read ahead and follow along. Same idea
- * as the Bible panel after a lookup.
+ * Clicking a search result opens this — the whole sermon, scrolled to the
+ * paragraph you picked. Click any paragraph to put it on the screen; once
+ * something is projected the highlight follows Next / Prev. Same idea as the
+ * Bible chapter view.
  */
 export default function SermonFollowView({
   sermonId,
-  currentRef,
+  anchorRef,
+  liveRef,
   onBack,
   onProject,
   onAddToQueue
 }: Props) {
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
-  const liveRef = useRef<HTMLDivElement>(null)
+  const focusEl = useRef<HTMLDivElement>(null)
+
+  // What to keep in view: the projected paragraph if we're live, else the
+  // paragraph the operator opened the sermon on.
+  const focusRef = liveRef ?? anchorRef
 
   useEffect(() => {
     let alive = true
@@ -43,10 +50,9 @@ export default function SermonFollowView({
     }
   }, [sermonId])
 
-  // Keep the on-screen paragraph scrolled into view as Next / Prev moves it.
   useEffect(() => {
-    liveRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [currentRef, paras])
+    focusEl.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [focusRef, paras])
 
   const title = paras[0]?.sermonTitle ?? ''
   const dateCode = paras[0]?.dateCode ?? ''
@@ -64,12 +70,27 @@ export default function SermonFollowView({
       ) : (
         <div className="follow-list">
           {paras.map((q) => {
-            const live = currentRef !== null && refsOverlap(currentRef, q.paragraphRef)
+            const live = liveRef !== null && refsOverlap(liveRef, q.paragraphRef)
+            const focused = !live && refsOverlap(focusRef, q.paragraphRef)
             return (
               <div
                 key={q.paragraphRef}
-                ref={live ? liveRef : undefined}
-                className={`follow-para${live ? ' follow-para--on-screen' : ''}`}
+                ref={live || focused ? focusEl : undefined}
+                className={[
+                  'follow-para',
+                  live ? 'follow-para--on-screen' : '',
+                  focused ? 'follow-para--focus' : ''
+                ].filter(Boolean).join(' ')}
+                role="button"
+                tabIndex={0}
+                title="Put this paragraph on the screen"
+                onClick={() => onProject(q)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onProject(q)
+                  }
+                }}
               >
                 <div className="follow-para-head">
                   <span className="follow-para-ref">¶{q.paragraphRef}</span>
@@ -77,8 +98,16 @@ export default function SermonFollowView({
                 </div>
                 <p className="follow-para-text">{q.text}</p>
                 <div className="result-actions">
-                  <button className="btn-quiet btn-sm" onClick={() => onAddToQueue(q)}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={() => onProject(q)}>
+                  <button
+                    className="btn-quiet btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onAddToQueue(q) }}
+                  >
+                    + Queue
+                  </button>
+                  <button
+                    className="btn-primary btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onProject(q) }}
+                  >
                     {live ? 'Restart here' : 'Project'}
                   </button>
                 </div>

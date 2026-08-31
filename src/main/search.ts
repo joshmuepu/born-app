@@ -5,6 +5,7 @@
 
 export const SEARCH_BASE = `
   SELECT p.sermon_id       AS sermonId,
+         p.id              AS paragraphId,
          p.paragraph_ref   AS paragraphRef,
          p.paragraph_index AS paragraphIndex,
          p.text,
@@ -68,11 +69,19 @@ export function buildTokenQuery(query: string): string {
 
 export interface QuoteRow {
   sermonId: number
+  paragraphId: number
   paragraphRef: string
   paragraphIndex: number
   text: string
   dateCode: string
   sermonTitle: string
+}
+
+/** Books have blank paragraph refs — fall back to a stable per-row token so the
+ *  reference is always unique (needed for Next/Prev and row highlighting). */
+export function stableParagraphRef(ref: string | null | undefined, rowId: number): string {
+  const r = (ref ?? '').trim()
+  return r || `§${rowId}`
 }
 
 export function rowToQuote(r: QuoteRow) {
@@ -82,6 +91,6 @@ export function rowToQuote(r: QuoteRow) {
     dateCode: r.dateCode,
     sermonId: r.sermonId,
     paragraphIndex: r.paragraphIndex,
-    paragraphRef: r.paragraphRef
+    paragraphRef: stableParagraphRef(r.paragraphRef, r.paragraphId)
   }
 }

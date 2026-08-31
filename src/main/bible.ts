@@ -5,6 +5,7 @@ import { getLibraryDb } from './libraryDb'
 import { log } from './logger'
 import { parseReference, isRefError, formatReference, formatVerse } from '../shared/bibleRef'
 import { buildBibleSlides } from '../shared/bibleSlides'
+import { stripMarginalNotes } from '../shared/bibleText'
 import type { Slide } from '../shared/queueItem'
 
 export interface BibleTranslation {
@@ -83,6 +84,7 @@ export function lookupPassage(
       return { error: `${formatReference(parsed)} not found in ${trans}.` }
     }
 
+    rows = rows.map((r) => ({ verse: r.verse, text: stripMarginalNotes(r.text) }))
     const built = buildBibleSlides(parsed.bookNum, parsed.chapter, trans, rows)
     return {
       reference: formatReference(parsed),
@@ -151,7 +153,7 @@ export function getAdjacentVerse(
       bookNum: row.book,
       chapter: row.chapter,
       verse: row.verse,
-      text: row.text
+      text: stripMarginalNotes(row.text)
     }
   } catch (e) {
     log.error('getAdjacentVerse error', e)
@@ -187,7 +189,7 @@ export function searchBible(query: string, translation: string, limit = 50): Bib
       bookNum: r.book,
       chapter: r.chapter,
       verse: r.verse,
-      text: r.text
+      text: stripMarginalNotes(r.text)
     }))
   } catch (e) {
     log.error('searchBible error', e)

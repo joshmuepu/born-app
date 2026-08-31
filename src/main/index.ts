@@ -18,6 +18,7 @@ import {
   buildPhraseQuery,
   buildTokenQuery,
   rowToQuote,
+  stableParagraphRef,
   type SearchFilters,
   type QuoteRow
 } from './search'
@@ -671,21 +672,21 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
       const rows = db
         .prepare<
           [number],
-          { paragraph_ref: string; paragraph_index: number; text: string; date_code: string; title: string }
+          { id: number; paragraph_ref: string; text: string; date_code: string; title: string }
         >(
-          `SELECT p.paragraph_ref, p.paragraph_index, p.text, s.date_code, s.title
+          `SELECT p.id, p.paragraph_ref, p.text, s.date_code, s.title
            FROM paragraphs p
            JOIN sermons s ON s.id = p.sermon_id
-           WHERE p.sermon_id = ? ORDER BY p.paragraph_index`
+           WHERE p.sermon_id = ? ORDER BY p.paragraph_index, p.id`
         )
         .all(Number(sermonId))
-      return rows.map((r) => ({
+      return rows.map((r, i) => ({
         text: r.text,
         sermonTitle: r.title,
         dateCode: r.date_code,
         sermonId: Number(sermonId),
-        paragraphIndex: r.paragraph_index,
-        paragraphRef: r.paragraph_ref,
+        paragraphIndex: i,
+        paragraphRef: stableParagraphRef(r.paragraph_ref, r.id),
         language: 'en'
       }))
     } catch (e) {

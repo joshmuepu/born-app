@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { BibleTranslation, ResolvedPassage, BibleSearchHit } from '../types'
 import { parseReference, isRefError, formatVerse } from '../../../shared/bibleRef'
+import { bookByNum } from '../../../shared/bibleBooks'
 import './BiblePanel.css'
 
 interface Props {
@@ -29,6 +30,58 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
   const [keyword, setKeyword] = useState('')
   const [hits, setHits] = useState<BibleSearchHit[]>([])
   const keywordTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The chapter view: click a search result (or project a passage) and the panel
+  // shows the whole chapter, scrolled to that verse. While something is on the
+  // projector the highlight follows Next / Prev; otherwise it sits on the verse
+  // the operator opened. Same idea as the sermon follow-along view.
+  const [browseAnchor, setBrowseAnchor] = useState<{
+    bookNum: number
+    chapter: number
+    verse: number
+  } | null>(null)
+  const [chapterView, setChapterView] = useState<ResolvedPassage | null>(null)
+  // Set by "← Search" so the operator can look something else up even mid-service;
+  // cleared again the moment a new verse hits the projector.
+  const [showSearch, setShowSearch] = useState(false)
+  const focusVerseRef = useRef<HTMLDivElement>(null)
+
+  // What the chapter view is centred on: the projected verse if we're live,
+  // else the verse the operator clicked.
+  const focusVerse = onScreen ?? browseAnchor
+
+  useEffect(() => {
+    if (!focusVerse) {
+      setChapterView(null)
+      return
+    }
+    const book = bookByNum(focusVerse.bookNum)
+    if (!book) return
+    let cancelled = false
+    window.electronAPI
+      .lookupPassage(`${book.name} ${focusVerse.chapter}`, translation)
+      .then((res) => {
+        if (!cancelled && res && !(res as { error?: string }).error) {
+          setChapterView(res as ResolvedPassage)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [focusVerse?.bookNum, focusVerse?.chapter, translation])
+
+  // A new verse on the projector means "follow it" — drop a manual browse anchor
+  // and any "← Search" detour.
+  useEffect(() => {
+    if (onScreen) {
+      setBrowseAnchor(null)
+      setShowSearch(false)
+    }
+  }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse])
+
+  useEffect(() => {
+    focusVerseRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [focusVerse?.verse, chapterView])
 
   const loaded = useRef(false)
   useEffect(() => {
@@ -76,6 +129,12 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
     [resolveThen, onProjectPassage]
   )
 
+  /** Click a result: open the whole chapter, sitting on that verse (no projection). */
+  const openChapterAt = useCallback((bookNum: number, chapter: number, verse: number) => {
+    setShowSearch(false)
+    setBrowseAnchor({ bookNum, chapter, verse })
+  }, [])
+
   const changeTranslation = (code: string): void => {
     setTranslation(code)
     try {
@@ -100,6 +159,78 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
       if (keywordTimer.current) clearTimeout(keywordTimer.current)
     }
   }, [keyword, translation, mode])
+
+  if (focusVerse && chapterView && !showSearch) {
+    const book = bookByNum(focusVerse.bookNum)
+    const projecting = !!onScreen
+    return (
+      <div className="bible-panel">
+        <div className="follow-head">
+          <button className="btn-quiet btn-sm" onClick={() => setShowSearch(true)}>← Search</button>
+          <span className="follow-title">
+            {book?.name} {focusVerse.chapter} · {chapterView.translation}
+          </span>
+          <span className="follow-meta">
+            {projecting ? 'On screen — following along' : 'Tap a verse to put it on screen'}
+          </span>
+        </div>
+        <div className="follow-list">
+          {chapterView.verses.map((v, i) => {
+            const live = projecting && v.verse === onScreen!.verse
+            const focused = !live && v.verse === focusVerse.verse
+            const project = (): void => {
+              setBrowseAnchor({ bookNum: focusVerse.bookNum, chapter: focusVerse.chapter, verse: v.verse })
+              onProjectPassage(chapterView, chapterView.slideStarts[i] ?? 0)
+            }
+            return (
+              <div
+                key={v.verse}
+                ref={live || focused ? focusVerseRef : undefined}
+                className={[
+                  'bible-verse',
+                  live ? 'bible-verse--on-screen' : '',
+                  focused ? 'bible-verse--focus' : ''
+                ].filter(Boolean).join(' ')}
+                role="button"
+                tabIndex={0}
+                title={`Put verse ${v.verse} on the screen`}
+                onClick={project}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    project()
+                  }
+                }}
+              >
+                <span className="bible-verse-num">{v.verse}</span>
+                <span className="bible-verse-text">{v.text}</span>
+                <div className="bible-verse-actions">
+                  {live && <span className="on-screen-tag">On screen</span>}
+                  <button
+                    className="btn-quiet btn-sm"
+                    title={`Add verse ${v.verse} to the queue`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      queueRef(formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse))
+                    }}
+                  >
+                    + Queue
+                  </button>
+                  <button
+                    className="btn-secondary btn-sm"
+                    title={`Put verse ${v.verse} on the screen`}
+                    onClick={(e) => { e.stopPropagation(); project() }}
+                  >
+                    {live ? 'Restart here' : 'Project'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bible-panel">
@@ -153,6 +284,16 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
                   <div
                     key={v.verse}
                     className={`bible-verse${isLive(passage.bookNum, passage.chapter, v.verse) ? ' bible-verse--on-screen' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    title={`Open ${bookByNum(passage.bookNum)?.name ?? ''} ${passage.chapter} at verse ${v.verse}`}
+                    onClick={() => openChapterAt(passage.bookNum, passage.chapter, v.verse)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openChapterAt(passage.bookNum, passage.chapter, v.verse)
+                      }
+                    }}
                   >
                     <span className="bible-verse-num">{v.verse}</span>
                     <span className="bible-verse-text">{v.text}</span>
@@ -163,14 +304,20 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
                       <button
                         className="btn-quiet btn-sm"
                         title={`Add verse ${v.verse} to the queue`}
-                        onClick={() => queueRef(formatVerse(passage.bookNum, passage.chapter, v.verse))}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          queueRef(formatVerse(passage.bookNum, passage.chapter, v.verse))
+                        }}
                       >
                         + Queue
                       </button>
                       <button
                         className="btn-secondary btn-sm"
                         title={`Put verse ${v.verse} on the screen`}
-                        onClick={() => onProjectPassage(passage, passage.slideStarts[i] ?? 0)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onProjectPassage(passage, passage.slideStarts[i] ?? 0)
+                        }}
                       >
                         Project
                       </button>
@@ -205,12 +352,12 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
                   className="bible-hit-body"
                   role="button"
                   tabIndex={0}
-                  title="Open this passage"
-                  onClick={() => { setMode('reference'); setRefInput(h.reference); doLookup(h.reference, translation) }}
+                  title="Open the whole chapter at this verse"
+                  onClick={() => openChapterAt(h.bookNum, h.chapter, h.verse)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      setMode('reference'); setRefInput(h.reference); doLookup(h.reference, translation)
+                      openChapterAt(h.bookNum, h.chapter, h.verse)
                     }
                   }}
                 >

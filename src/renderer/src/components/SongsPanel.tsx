@@ -126,7 +126,20 @@ export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong
             {selected.slides.map((s, i) => {
               const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
               return (
-                <div key={i} className={`song-slide${live ? ' song-slide--on-screen' : ''}`}>
+                <div
+                  key={i}
+                  className={`song-slide${live ? ' song-slide--on-screen' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  title="Put this slide on the screen"
+                  onClick={() => onProjectSong(selected, i)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onProjectSong(selected, i)
+                    }
+                  }}
+                >
                   {(s.label || live) && (
                     <div className="song-slide-head">
                       {s.label && <div className="song-slide-label">{s.label}</div>}
@@ -137,9 +150,9 @@ export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong
                   {selected.songKey && <div className="song-slide-key">{selected.songKey}</div>}
                   <button
                     className="btn-secondary btn-sm song-slide-project"
-                    onClick={() => onProjectSong(selected, i)}
+                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i) }}
                   >
-                    Project
+                    {live ? 'Restart here' : 'Project'}
                   </button>
                 </div>
               )

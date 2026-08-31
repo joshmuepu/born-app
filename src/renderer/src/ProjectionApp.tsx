@@ -4,11 +4,22 @@ import type { SlidePayload } from './types'
 export default function ProjectionApp() {
   const [slide, setSlide] = useState<SlidePayload | null>(null)
   const [blanked, setBlanked] = useState(false)
+  // `fontSize` is the operator's Text +/- setting (4.5 = default); the slide is
+  // actually drawn at a size that scales with the screen (see `baseRem`), with
+  // the operator setting acting as a multiplier around it.
   const [fontSize, setFontSize] = useState(4.5)
+  const [viewportH, setViewportH] = useState(() =>
+    typeof window === 'undefined' ? 900 : window.innerHeight
+  )
   const [fitFontSize, setFitFontSize] = useState(4.5)
   const [alertText, setAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
+
+  // A slide should fill a 65" church screen the same way it fills a laptop —
+  // tie the base text size to the screen height (in CSS pixels, which already
+  // tracks the projector's resolution), clamped so it never gets silly.
+  const baseRem = (Math.min(Math.max(viewportH * 0.062, 30), 132) / 16) * (fontSize / 4.5)
 
   // IPC: receive slides + clear
   useEffect(() => {
@@ -54,19 +65,26 @@ export default function ProjectionApp() {
     window.focus()
   }, [])
 
-  // Auto-fit: shrink text to fit the available band (operator size is the max)
-  // so a long verse / quote is never clipped or overlapping the reference line.
+  // Auto-fit: start from the screen-scaled base size, then shrink only if a
+  // long verse / quote would be clipped or overlap the reference line.
   // Re-runs on window resize too (projector resolution can change mid-service).
   useLayoutEffect(() => {
     const el = textRef.current
     if (!el || !slide) return
     let raf = 0
     const fit = (): void => {
-      let size = fontSize
+      // Measure the text block's own height, not the flex container's
+      // scrollHeight — a vertically-centred child that overflows the band
+      // spills equally past the top and bottom, and `scrollHeight` under-reports
+      // that, so the text ends up clipped on the real projector.
+      const inner = el.firstElementChild as HTMLElement | null
+      if (!inner) return
+      let size = baseRem
+      const floor = Math.max(0.9, baseRem * 0.4)
       el.style.fontSize = `${size}rem`
       let guard = 0
-      while (el.scrollHeight > el.clientHeight + 1 && size > 1 && guard < 60) {
-        size = Math.max(1, size - 0.15)
+      while (inner.scrollHeight > el.clientHeight + 1 && size > floor && guard < 120) {
+        size = Math.max(floor, size - baseRem * 0.04)
         el.style.fontSize = `${size}rem`
         guard++
       }
@@ -74,6 +92,7 @@ export default function ProjectionApp() {
     }
     raf = requestAnimationFrame(fit)
     const onResize = (): void => {
+      setViewportH(window.innerHeight)
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(fit)
     }
@@ -82,7 +101,7 @@ export default function ProjectionApp() {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
     }
-  }, [slide, fontSize])
+  }, [slide, baseRem])
 
   useEffect(() => {
     // Esc (blackout toggle) is owned by the main process so both windows agree;

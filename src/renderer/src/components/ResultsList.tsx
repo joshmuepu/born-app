@@ -11,6 +11,8 @@ interface Props {
   onScreen?: { sermonId: number; paragraphRef: string } | null
   onAddToQueue: (quote: Quote) => void
   onSendToProjection: (quote: Quote) => void
+  /** Open the whole sermon, scrolled to this paragraph (without projecting). */
+  onOpenSermon: (quote: Quote) => void
 }
 
 /** Strip a leading "146 " / "146-147 " paragraph number the API prepends. */
@@ -25,7 +27,8 @@ export default function ResultsList({
   searched,
   onScreen,
   onAddToQueue,
-  onSendToProjection
+  onSendToProjection,
+  onOpenSermon
 }: Props) {
   if (loading) {
     return (
@@ -62,14 +65,28 @@ export default function ResultsList({
             refsOverlap(onScreen.paragraphRef, quote.paragraphRef)
           return (
           <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
-            <div className="result-head">
-              <span className="result-title">{quote.sermonTitle}</span>
-              <span className="result-meta">
-                {live && <span className="on-screen-tag">On screen</span>}
-                {yearFromDateCode(quote.dateCode)} · ¶{quote.paragraphRef}
-              </span>
+            <div
+              className="result-body"
+              role="button"
+              tabIndex={0}
+              title="Open the whole sermon at this paragraph"
+              onClick={() => onOpenSermon(quote)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onOpenSermon(quote)
+                }
+              }}
+            >
+              <div className="result-head">
+                <span className="result-title">{quote.sermonTitle}</span>
+                <span className="result-meta">
+                  {live && <span className="on-screen-tag">On screen</span>}
+                  {yearFromDateCode(quote.dateCode)} · ¶{quote.paragraphRef}
+                </span>
+              </div>
+              <p className="result-text">{highlight(bodyOf(quote.text), query)}</p>
             </div>
-            <p className="result-text">{highlight(bodyOf(quote.text), query)}</p>
             <div className="result-actions">
               <button
                 className="btn-secondary btn-sm"

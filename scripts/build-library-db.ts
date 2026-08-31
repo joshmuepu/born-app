@@ -24,10 +24,13 @@ import { insertSong } from '../src/main/songInsert'
 import { parseSong } from '../src/main/songParsers'
 import { BIBLE_BOOKS } from '../src/shared/bibleBooks'
 
-/** Clean bolls.life verse markup: drop <S>1234</S> Strong's tags, keep <i> content, flatten the rest. */
+/** Clean bolls.life verse markup: drop <S>1234</S> Strong's tags and
+ *  <sup>…</sup> translators' marginal notes ("cool: Heb. wind"), keep <i>
+ *  content, flatten the rest. Only the scripture text is ever projected. */
 function cleanVerse(raw: string): string {
   return raw
     .replace(/<S>.*?<\/S>/g, '')
+    .replace(/<sup>[\s\S]*?<\/sup>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')

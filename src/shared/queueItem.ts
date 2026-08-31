@@ -94,13 +94,21 @@ function pageParagraphRefs(pages: string[], paragraphRef: string): string[] {
  * to read from the back of a room on one slide, so it's split into
  * projector-sized pages (like Bible verses); Next steps through the pages.
  */
+/** Real paragraph numbers ("26", "41-47") are shown; synthetic ("§123") and
+ *  structural ("header") refs are hidden from the marker + citation. */
+function displayRef(ref: string): string {
+  const r = (ref ?? '').trim()
+  if (!r || r.startsWith('§') || !/\d/.test(r)) return ''
+  return r
+}
+
 export function quoteToItem(quote: Quote): QuoteItem {
   // Sermon text starts with the paragraph number, e.g. "146 But the …".
   const m = quote.text.match(/^\s*(\d+(?:[-–]\d+)?)\s+(.*)$/s)
-  const marker = m ? m[1] : quote.paragraphRef || undefined
+  const marker = m ? m[1] : displayRef(quote.paragraphRef) || undefined
   const body = m ? m[2] : quote.text
   const cite = (ref: string): string =>
-    [quote.sermonTitle, quote.dateCode, ref].filter(Boolean).join(' · ')
+    [quote.sermonTitle, quote.dateCode, displayRef(ref)].filter(Boolean).join(' · ')
 
   const pages = paginateText(body)
   if (pages.length === 0) {

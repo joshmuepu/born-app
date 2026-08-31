@@ -54,7 +54,11 @@ function shortDisplayName(label: string): string {
 
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
-  const [followSermonId, setFollowSermonId] = useState<number | null>(null)
+  /** When set, the search panel shows the whole sermon (scrolled to `anchorRef`)
+   *  instead of the results list — opened by clicking a result or projecting one. */
+  const [followSermon, setFollowSermon] = useState<{ sermonId: number; anchorRef: string } | null>(
+    null
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -302,9 +306,15 @@ export default function App() {
   const handleProjectQuote = useCallback(
     (quote: Quote) => {
       doProject(quoteToItem(quote), 0, null)
-      setFollowSermonId(quote.sermonId) // switch the results list to "follow along"
+      // switch the results list to the whole-sermon follow view
+      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
     },
     [doProject]
+  )
+  /** Click a search result: open the whole sermon at that paragraph, no projection. */
+  const handleOpenSermon = useCallback(
+    (quote: Quote) => setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef }),
+    []
   )
 
   const passageToItem = (p: ResolvedPassage): QueueItem => ({
@@ -545,7 +555,7 @@ export default function App() {
     setSearchResults(results)
     setSearchQuery(query)
     setSearched(true)
-    setFollowSermonId(null) // a new search means show the results again
+    setFollowSermon(null) // a new search means show the results again
   }, [])
 
   const handleSendAlert = useCallback(() => {
@@ -791,11 +801,17 @@ export default function App() {
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
               <SearchBar onResults={handleSearch} onSearchingChange={setSearching} />
-              {followSermonId !== null && projected?.item.kind === 'quote' ? (
+              {followSermon ? (
                 <SermonFollowView
-                  sermonId={followSermonId}
-                  currentRef={onScreenLoc?.kind === 'quote' ? onScreenLoc.paragraphRef : null}
-                  onBack={() => setFollowSermonId(null)}
+                  sermonId={followSermon.sermonId}
+                  anchorRef={followSermon.anchorRef}
+                  liveRef={
+                    onScreenLoc?.kind === 'quote' &&
+                    onScreenLoc.sermonId === followSermon.sermonId
+                      ? onScreenLoc.paragraphRef
+                      : null
+                  }
+                  onBack={() => setFollowSermon(null)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
                 />
@@ -808,6 +824,7 @@ export default function App() {
                   onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                   onAddToQueue={handleAddQuote}
                   onSendToProjection={handleProjectQuote}
+                  onOpenSermon={handleOpenSermon}
                 />
               )}
             </div>
@@ -858,6 +875,7 @@ export default function App() {
                 : null
             }
             projectionOpen={projectionOpen}
+            stageOpen={stageOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
             onRemove={handleRemoveFromQueue}
