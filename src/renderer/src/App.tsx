@@ -3,6 +3,7 @@ import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
 import ServiceQueue from './components/ServiceQueue'
+import ScreensMenu from './components/ScreensMenu'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
@@ -12,7 +13,8 @@ import type {
   QueueItem,
   SlidePayload,
   ResolvedPassage,
-  SongDetail
+  SongDetail,
+  RecentService
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { parseReference, isRefError } from '../../shared/bibleRef'
@@ -43,13 +45,6 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
   const s = item.slides[slide]
   if (!s) return null
   return { kind: item.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker }
-}
-
-/** "PA278QV (2) (2560×1440)" → "PA278QV (2)" — drop the resolution/notes so the
- *  screen picker stays short in the header. */
-function shortDisplayName(label: string): string {
-  const m = /^(.*?)\s*\(\d{3,}[×x]\d{3,}/.exec(label)
-  return (m ? m[1] : label).trim()
 }
 
 export default function App() {
@@ -86,6 +81,7 @@ export default function App() {
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [recents, setRecents] = useState<RecentService[]>([])
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
@@ -403,7 +399,6 @@ export default function App() {
     (index: number) => mutateQueue((q) => q.filter((_, i) => i !== index)),
     [mutateQueue]
   )
-  const handleClearQueue = useCallback(() => mutateQueue(() => []), [mutateQueue])
   const handleReorder = useCallback(
     (from: number, to: number) => mutateQueue((q) => reorder(q, from, to)),
     [mutateQueue]
@@ -566,32 +561,57 @@ export default function App() {
     setShowAlertDialog(false)
   }, [alertMessage, alertTarget])
 
+  const refreshRecents = useCallback(() => {
+    window.electronAPI.getRecentServices().then(setRecents)
+  }, [])
+  useEffect(() => refreshRecents(), [refreshRecents])
+
   const handleNewService = useCallback(() => {
-    if (serviceQueue.length === 0) return
+    if (serviceQueue.length === 0) {
+      setFollowSermon(null)
+      return
+    }
     if (window.confirm('Clear the current queue and start a new service?')) {
       setServiceQueue([])
       projectedRef.current = null
       setProjected(null)
+      setFollowSermon(null)
     }
   }, [serviceQueue.length])
 
   const handleSaveService = useCallback(async () => {
-    await window.electronAPI.saveService(serviceQueue)
-  }, [serviceQueue])
+    const ok = await window.electronAPI.saveService(serviceQueue)
+    if (ok) refreshRecents()
+  }, [serviceQueue, refreshRecents])
+
+  const loadServiceItems = useCallback((loaded: unknown[]) => {
+    setServiceQueue(migrateQueue(loaded))
+    projectedRef.current = null
+    setProjected(null)
+    setFollowSermon(null)
+  }, [])
 
   const handleOpenService = useCallback(async () => {
     const loaded = await window.electronAPI.openService()
     if (loaded) {
-      setServiceQueue(migrateQueue(loaded))
-      projectedRef.current = null
-      setProjected(null)
+      loadServiceItems(loaded)
+      refreshRecents()
     }
-  }, [])
+  }, [loadServiceItems, refreshRecents])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      const loaded = await window.electronAPI.openServicePath(path)
+      if (loaded) {
+        loadServiceItems(loaded)
+        refreshRecents()
+      }
+    },
+    [loadServiceItems, refreshRecents]
+  )
 
   const isRunning = indexer?.status === 'running'
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
-  const targetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.targetId)
-  const stageTargetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.stageTargetId)
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
 
   // What's on the projector right now, so the source panels can highlight it.
@@ -622,111 +642,52 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">
-          <span className="app-logo-born">BORN</span>
-          <div className="file-actions">
-            <button className="btn-quiet btn-sm" onClick={handleNewService} title="Start a new, empty service">New</button>
-            <button className="btn-quiet btn-sm" onClick={handleOpenService} title="Open a saved service file">Open</button>
-            <button className="btn-quiet btn-sm" onClick={handleSaveService} title="Save this service to a file">Save</button>
-          </div>
-        </div>
+        <button
+          className="app-logo-born"
+          onClick={handleNewService}
+          title="BORN — back to the start screen"
+        >
+          BORN
+        </button>
 
         <div className="header-actions">
+          <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
+            Shortcuts
+          </button>
+
           {projectionOpen && (
-            <div className="screen-controls">
+            <>
               <button
                 className={`btn-secondary${isScreenBlanked ? ' btn-toggle-on' : ''}`}
                 onClick={handleToggleBlank}
-                title="Black out the projector screen (nothing is shown to the congregation)"
+                title="Black out the congregation screen (Esc)"
               >
                 {isScreenBlanked ? 'Show screen' : 'Hide screen'}
               </button>
-              <button className="btn-secondary" onClick={() => setShowAlertDialog(true)} title="Show a short message across the bottom of the screen">
+              <button className="btn-secondary" onClick={() => setShowAlertDialog(true)} title="Show a short message across the bottom of a screen">
                 Message
               </button>
-              <div className="text-size-control" title="Change the size of the projected text">
-                <span className="text-size-label">Text</span>
-                <button className="btn-secondary btn-sm" onClick={() => handleFontSizeChange(-0.25)} disabled={fontSize <= 1.5} aria-label="Smaller text">−</button>
-                <button className="btn-secondary btn-sm" onClick={() => handleFontSizeChange(0.25)} disabled={fontSize >= 8} aria-label="Larger text">+</button>
-              </div>
-            </div>
+            </>
           )}
 
-          <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">Shortcuts</button>
+          <ScreensMenu
+            displayInfo={displayInfo}
+            projectionOpen={projectionOpen}
+            stageOpen={stageOpen}
+            fontSize={fontSize}
+            onToggleProjection={handleToggleProjection}
+            onToggleStage={handleToggleStage}
+            onSetProjectionDisplay={(id) => window.electronAPI.setProjectionDisplay(id).then(setDisplayInfo)}
+            onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
+            onFontSize={handleFontSizeChange}
+          />
 
-          <div className="stage-controls">
-            <button className="btn-quiet btn-sm" onClick={handleToggleStage} title="Open a screen for the platform showing the current and next slide">
-              {stageOpen ? 'Close monitor' : 'Stage monitor'}
-            </button>
-            {stageOpen && displayInfo && displayInfo.displays.length > 1 && (
-              <label className="display-picker" title="Which screen the stage monitor uses">
-                <span className="display-picker-label">Stage</span>
-                <select
-                  className="language-select"
-                  value={
-                    displayInfo.stageIsOverride && displayInfo.stageTargetId
-                      ? displayInfo.stageTargetId
-                      : ''
-                  }
-                  onChange={(e) =>
-                    window.electronAPI
-                      .setStageDisplay(e.target.value ? Number(e.target.value) : null)
-                      .then(setDisplayInfo)
-                  }
-                >
-                  <option value="">
-                    {displayInfo.stageIsWindowed
-                      ? 'Auto: floating window'
-                      : `Auto: ${shortDisplayName(stageTargetDisplay?.label ?? '')}`}
-                  </option>
-                  {displayInfo.displays.map((d) => (
-                    <option key={d.id} value={d.id}>{shortDisplayName(d.label)}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {stageOpen && displayInfo?.stageClashesProjection && (
-              <span className="display-status display-status--warn" title="The stage monitor and the congregation projection are on the same screen — pick a different one, or they'll overlap">
-                ⚠ Stage shares the projection screen
-              </span>
-            )}
-          </div>
-
-          <div className="projection-controls">
-            {displayInfo && (
-              displayInfo.displays.length > 1 ? (
-                <label className="display-picker" title="Which screen the congregation sees">
-                  <span className="display-picker-label">Screen</span>
-                  <select
-                    className="language-select"
-                    value={displayInfo.isOverride ? displayInfo.targetId : ''}
-                    onChange={(e) =>
-                      window.electronAPI
-                        .setProjectionDisplay(e.target.value ? Number(e.target.value) : null)
-                        .then(setDisplayInfo)
-                    }
-                  >
-                    <option value="">
-                      {targetDisplay ? `Auto: ${shortDisplayName(targetDisplay.label)}` : 'Automatic'}
-                    </option>
-                    {displayInfo.displays.map((d) => (
-                      <option key={d.id} value={d.id}>{shortDisplayName(d.label)}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <span className="display-status" title="Connect a second screen or projector, then it appears here">
-                  No second screen — will use this one
-                </span>
-              )
-            )}
-            <button
-              className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
-              onClick={handleToggleProjection}
-            >
-              {projectionOpen ? 'Close projection' : 'Open projection'}
-            </button>
-          </div>
+          <button
+            className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
+            onClick={handleToggleProjection}
+          >
+            {projectionOpen ? 'Close projection' : 'Open projection'}
+          </button>
         </div>
       </header>
 
@@ -916,10 +877,14 @@ export default function App() {
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
             onRemove={handleRemoveFromQueue}
-            onClear={handleClearQueue}
             onPrev={handlePrev}
             onNext={handleNext}
             onReorder={handleReorder}
+            onNewService={handleNewService}
+            onOpenService={handleOpenService}
+            onSaveService={handleSaveService}
+            recents={recents}
+            onOpenRecent={handleOpenRecent}
           />
         </div>
       </main>

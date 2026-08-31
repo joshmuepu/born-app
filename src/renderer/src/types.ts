@@ -7,6 +7,24 @@ export type {
   SongItem
 } from '../../shared/queueItem'
 
+export interface DisplayInfo {
+  displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
+  targetId: number
+  isFallback: boolean
+  isOverride: boolean
+  hasExternal: boolean
+  stageTargetId: number | null
+  stageIsWindowed: boolean
+  stageIsOverride: boolean
+  stageClashesProjection: boolean
+}
+
+export interface RecentService {
+  path: string
+  name: string
+  mtimeMs: number
+}
+
 /** One slide as pushed to the projection / stage windows. */
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song'

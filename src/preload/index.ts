@@ -217,6 +217,10 @@ const api = {
   // Service files
   saveService: (items: Quote[]): Promise<boolean> => ipcRenderer.invoke('service:save', items),
   openService: (): Promise<Quote[] | null> => ipcRenderer.invoke('service:open'),
+  getRecentServices: (): Promise<Array<{ path: string; name: string; mtimeMs: number }>> =>
+    ipcRenderer.invoke('service:recents'),
+  openServicePath: (path: string): Promise<Quote[] | null> =>
+    ipcRenderer.invoke('service:open-path', path),
 
   // Stage view
   openStage: (): Promise<void> => ipcRenderer.invoke('stage:open'),

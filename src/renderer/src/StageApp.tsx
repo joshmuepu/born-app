@@ -59,70 +59,78 @@ export default function StageApp() {
 
   const nothingUp = !current || blanked
   const alertBanner = alert && <div className="stage-alert">{alert}</div>
+  // Songs are laid out line-by-line — the platform reads the exact break-up, so
+  // the stage screen must preserve it the way the main screen does.
+  const preClass = (s: SlidePayload | null): string => (s?.kind === 'song' ? ' is-song' : '')
 
   return (
     <div className={`stage stage--${view}`}>
-      <div className="stage-viewpick" role="tablist" aria-label="What this screen shows">
-        <button
-          role="tab"
-          aria-selected={view === 'stage'}
-          className={view === 'stage' ? 'is-active' : ''}
-          onClick={() => choose('stage')}
-        >
-          Stage
-        </button>
-        <button
-          role="tab"
-          aria-selected={view === 'congregation'}
-          className={view === 'congregation' ? 'is-active' : ''}
-          onClick={() => choose('congregation')}
-        >
-          Congregation
-        </button>
+      {/* Always-present bar: a large clock the platform can read at a glance, and
+          the view switch. */}
+      <div className="stage-topbar">
+        <div className="stage-clock">{nothingUp ? '' : clock}</div>
+        <div className="stage-viewpick" role="tablist" aria-label="What this screen shows">
+          <button
+            role="tab"
+            aria-selected={view === 'stage'}
+            className={view === 'stage' ? 'is-active' : ''}
+            onClick={() => choose('stage')}
+          >
+            Stage
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === 'congregation'}
+            className={view === 'congregation' ? 'is-active' : ''}
+            onClick={() => choose('congregation')}
+          >
+            Congregation
+          </button>
+        </div>
       </div>
 
-      {/* Clock: large and centred when nothing's up, tucked in a corner otherwise. */}
-      <div className={`stage-clock${nothingUp ? ' stage-clock--big' : ''}`}>{clock}</div>
-
-      {view === 'congregation' ? (
-        <div className="stage-congregation">
-          {nothingUp ? null : (
-            <>
-              {current!.label && <div className="stage-cg-label">{current!.label}</div>}
-              <div className="stage-cg-text">
-                {current!.marker && <span className="stage-marker">{current!.marker}</span>}
-                {current!.text}
-              </div>
-              {current!.reference && <div className="stage-cg-ref">{current!.reference}</div>}
-            </>
-          )}
+      {nothingUp && (
+        <div className="stage-bigclock">
+          <div className="stage-bigclock-time">{clock}</div>
+          <div className="stage-bigclock-note">{blanked ? 'Screen hidden' : 'Nothing projected'}</div>
         </div>
-      ) : (
+      )}
+
+      {!nothingUp && view === 'congregation' && (
+        <div className="stage-congregation">
+          {current!.label && <div className="stage-cg-label">{current!.label}</div>}
+          <div className={`stage-cg-text${preClass(current)}`}>
+            {current!.marker && <span className="stage-marker">{current!.marker}</span>}
+            {current!.text}
+          </div>
+          {current!.reference && <div className="stage-cg-ref">{current!.reference}</div>}
+        </div>
+      )}
+
+      {!nothingUp && view === 'stage' && (
         <>
           <div className="stage-current">
-            {blanked ? (
-              <div className="stage-idle">Screen hidden</div>
-            ) : current ? (
-              <>
-                {current.label && <div className="stage-current-label">{current.label}</div>}
-                <div className="stage-current-text">
-                  {current.marker && <span className="stage-marker">{current.marker}</span>}
-                  {current.text}
-                </div>
-                {current.reference && <div className="stage-current-ref">{current.reference}</div>}
-              </>
-            ) : (
-              <div className="stage-idle">Nothing projected</div>
-            )}
+            {current!.label && <div className="stage-current-label">{current!.label}</div>}
+            <div className={`stage-current-text${preClass(current)}`}>
+              {current!.marker && <span className="stage-marker">{current!.marker}</span>}
+              {current!.text}
+            </div>
+            {current!.reference && <div className="stage-current-ref">{current!.reference}</div>}
           </div>
 
-          {next && !blanked && (
-            <div className="stage-next">
-              <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
-              <div className="stage-next-text">{next.text}</div>
-              {next.reference && <div className="stage-next-ref">{next.reference}</div>}
-            </div>
-          )}
+          <div className="stage-next">
+            <div className="stage-next-label">Next{next?.label ? ` · ${next.label}` : ''}</div>
+            {next ? (
+              <>
+                <div className={`stage-next-text${preClass(next)}`}>{next.text}</div>
+                {next.reference && <div className="stage-next-ref">{next.reference}</div>}
+              </>
+            ) : (
+              <div className="stage-next-text stage-next-text--empty">
+                End of this item — the operator picks what’s next
+              </div>
+            )}
+          </div>
         </>
       )}
 

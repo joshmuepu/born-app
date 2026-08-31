@@ -15,12 +15,15 @@ export interface AppSettings {
   stageDisplayId: number | null
   /** Projection text size in rem. */
   fontSize: number
+  /** Absolute paths of recently saved / opened service files, newest first. */
+  recentServices: string[]
 }
 
 const DEFAULTS: AppSettings = {
   projectionDisplayId: null,
   stageDisplayId: null,
-  fontSize: 3.0
+  fontSize: 3.0,
+  recentServices: []
 }
 
 let cache: AppSettings | null = null

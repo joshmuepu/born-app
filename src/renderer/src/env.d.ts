@@ -17,21 +17,12 @@ import type {
   BibleSearchHit,
   SongSummary,
   SongDetail,
-  SongImportResult
+  SongImportResult,
+  DisplayInfo as DisplayInfoType
 } from './types'
 
 declare global {
-  interface DisplayInfo {
-    displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
-    targetId: number
-    isFallback: boolean
-    isOverride: boolean
-    hasExternal: boolean
-    stageTargetId: number | null
-    stageIsWindowed: boolean
-    stageIsOverride: boolean
-    stageClashesProjection: boolean
-  }
+  type DisplayInfo = DisplayInfoType
 
   interface UpdateInfo {
     current: string
@@ -108,6 +99,8 @@ declare global {
       // Service files
       saveService: (items: unknown[]) => Promise<boolean>
       openService: () => Promise<unknown[] | null>
+      getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
+      openServicePath: (path: string) => Promise<unknown[] | null>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>

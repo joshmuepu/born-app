@@ -84,13 +84,19 @@ export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong
   return (
     <div className="songs-panel">
       <div className="songs-toolbar">
-        <input
-          className="search-input"
-          placeholder="Search songs by title or lyrics…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          autoFocus
-        />
+        <div className="search-input-wrap">
+          <input
+            className="search-input"
+            placeholder="Search songs by title or lyrics…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery('') } }}
+            autoFocus
+          />
+          {query && (
+            <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search">×</button>
+          )}
+        </div>
         <button className="btn-secondary" onClick={handleImport}>
           Import…
         </button>

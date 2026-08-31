@@ -331,13 +331,19 @@ export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectP
       ) : (
         <>
           <div className="bible-ref-row">
-            <input
-              className="search-input"
-              placeholder="Search the Bible for a word or phrase…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              autoFocus
-            />
+            <div className="search-input-wrap">
+              <input
+                className="search-input"
+                placeholder="Search the Bible for a word or phrase…"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape' && keyword) { e.preventDefault(); setKeyword('') } }}
+                autoFocus
+              />
+              {keyword && (
+                <button className="search-clear" onClick={() => setKeyword('')} title="Clear (Esc)" aria-label="Clear search">×</button>
+              )}
+            </div>
           </div>
           <div className="bible-verses">
             {hits.length === 0 && keyword.trim().length >= 2 && (

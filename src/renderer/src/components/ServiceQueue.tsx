@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { QueueItem } from '../types'
+import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
+import StartScreen from './StartScreen'
 
 interface OnScreen {
   /** The exact text on the projector right now. */
@@ -23,10 +24,15 @@ interface Props {
   blanked: boolean
   onProject: (index: number) => void
   onRemove: (index: number) => void
-  onClear: () => void
   onPrev: () => void
   onNext: () => void
   onReorder: (from: number, to: number) => void
+  /** Service files — a service file is this queue, so they live here. */
+  onNewService: () => void
+  onOpenService: () => void
+  onSaveService: () => void
+  recents: RecentService[]
+  onOpenRecent: (path: string) => void
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -51,10 +57,14 @@ export default function ServiceQueue({
   blanked,
   onProject,
   onRemove,
-  onClear,
   onPrev,
   onNext,
-  onReorder
+  onReorder,
+  onNewService,
+  onOpenService,
+  onSaveService,
+  recents,
+  onOpenRecent
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -80,18 +90,20 @@ export default function ServiceQueue({
     <div className="service-queue">
       <div className="queue-header">
         <h2>Service Queue</h2>
-        {queue.length > 0 && (
-          <button className="btn-quiet btn-sm" onClick={onClear}>Clear all</button>
-        )}
+        <div className="queue-file-actions">
+          <button className="btn-quiet btn-sm" onClick={onNewService} title="Start a new, empty service (clears the queue)">New</button>
+          <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
+          <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
+        </div>
       </div>
 
       {queue.length === 0 ? (
-        <div className="queue-empty">
-          <p>Nothing queued yet</p>
-          <p className="results-empty-hint">
-            Add quotes, Bible passages, or songs and they’ll line up here in order.
-          </p>
-        </div>
+        <StartScreen
+          recents={recents}
+          onNew={onNewService}
+          onOpen={onOpenService}
+          onOpenRecent={onOpenRecent}
+        />
       ) : (
         <div className="queue-list">
           {queue.map((item, index) => {

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, dialog } from 'electron'
-import { join } from 'path'
-import { readFileSync, writeFileSync } from 'fs'
+import { basename, join } from 'path'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
 import { closeLibraryDb } from './libraryDb'
@@ -92,11 +92,12 @@ function getSettingsSafe(): {
   fontSize: number
   projectionDisplayId: number | null
   stageDisplayId: number | null
+  recentServices: string[]
 } {
   try {
     return getSettings()
   } catch {
-    return { fontSize: 3.0, projectionDisplayId: null, stageDisplayId: null }
+    return { fontSize: 3.0, projectionDisplayId: null, stageDisplayId: null, recentServices: [] }
   }
 }
 
@@ -256,13 +257,16 @@ function createStageWindow(): void {
     if (onMac) stageWindow.setSimpleFullScreen(true)
     stageWindow.once('ready-to-show', () => stageWindow?.show())
   } else {
+    // No spare screen: a floating monitor that stays above the operator window
+    // so it can't get lost behind it during a service.
     stageWindow = new BrowserWindow({
       width: 900,
       height: 600,
-      minWidth: 600,
-      minHeight: 400,
+      minWidth: 520,
+      minHeight: 360,
       title: 'BORN — Stage View',
       backgroundColor: '#0a0a0a',
+      alwaysOnTop: true,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
@@ -390,6 +394,7 @@ function repositionStageWindow(force = false): void {
     )
     repositioning = true
     try {
+      stageWindow.setAlwaysOnTop(false)
       if (onMac) stageWindow.setSimpleFullScreen(false)
       else stageWindow.setFullScreen(false)
       stageWindow.setBounds({ x: area.x, y: area.y, width: area.width, height: area.height })
@@ -410,6 +415,7 @@ function repositionStageWindow(force = false): void {
       else stageWindow.setFullScreen(false)
       stageWindow.setBounds({ width: 900, height: 600 })
       stageWindow.center()
+      stageWindow.setAlwaysOnTop(true)
     } catch (e) {
       log.error('repositionStageWindow (windowed) failed', e)
     }
@@ -694,6 +700,17 @@ ipcMain.handle('webremote:ip', () => {
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 
+/** Record a service file at the top of the recents list (deduped, capped). */
+function rememberService(path: string): void {
+  try {
+    const prev = getSettingsSafe().recentServices ?? []
+    const next = [path, ...prev.filter((p) => p !== path)].slice(0, 8)
+    updateSettings({ recentServices: next })
+  } catch (e) {
+    log.error('rememberService failed', e)
+  }
+}
+
 ipcMain.handle('service:save', async (_event, items: unknown) => {
   log.info('ipc service:save')
   const result = await dialog.showSaveDialog({
@@ -702,6 +719,7 @@ ipcMain.handle('service:save', async (_event, items: unknown) => {
   })
   if (result.canceled || !result.filePath) return false
   writeFileSync(result.filePath, JSON.stringify(items, null, 2))
+  rememberService(result.filePath)
   return true
 })
 
@@ -712,7 +730,30 @@ ipcMain.handle('service:open', async () => {
     properties: ['openFile']
   })
   if (result.canceled || !result.filePaths[0]) return null
-  return JSON.parse(readFileSync(result.filePaths[0], 'utf-8'))
+  const path = result.filePaths[0]
+  const data = JSON.parse(readFileSync(path, 'utf-8'))
+  rememberService(path)
+  return data
+})
+
+ipcMain.handle('service:recents', () => {
+  const paths = getSettingsSafe().recentServices ?? []
+  return paths
+    .filter((p) => existsSync(p))
+    .map((p) => ({ path: p, name: basename(p).replace(/\.bpservice$/, ''), mtimeMs: statSync(p).mtimeMs }))
+})
+
+ipcMain.handle('service:open-path', (_event, path: string) => {
+  log.info(`ipc service:open-path ${path}`)
+  try {
+    if (!existsSync(path)) return null
+    const data = JSON.parse(readFileSync(path, 'utf-8'))
+    rememberService(path)
+    return data
+  } catch (e) {
+    log.error('service:open-path failed', e)
+    return null
+  }
 })
 
 // ── Autocomplete IPC ──────────────────────────────────────────────────────────
