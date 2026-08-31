@@ -3,7 +3,7 @@ import { cursorsFor } from '../../renderer/src/liveNav'
 import type { QueueItem } from '../../shared/queueItem'
 
 describe('cursorsFor', () => {
-  it('seeds a quote cursor from its paragraph ref', () => {
+  it('seeds a quote cursor from its paragraph ref, tail at the last page', () => {
     const item: QueueItem = {
       kind: 'quote',
       id: 'q1',
@@ -16,11 +16,11 @@ describe('cursorsFor', () => {
         paragraphRef: '26',
         language: 'en'
       },
-      slides: [{ text: '...' }]
+      slides: [{ text: 'page one' }, { text: 'page two' }, { text: 'page three' }]
     }
     expect(cursorsFor(item)).toEqual({
-      head: { kind: 'quote', sermonId: 986, language: 'en', paragraphRef: '26' },
-      tail: { kind: 'quote', sermonId: 986, language: 'en', paragraphRef: '26' }
+      head: { kind: 'quote', sermonId: 986, language: 'en', paragraphRef: '26', page: 0 },
+      tail: { kind: 'quote', sermonId: 986, language: 'en', paragraphRef: '26', page: 2 }
     })
   })
 
@@ -66,6 +66,6 @@ describe('cursorsFor', () => {
       },
       slides: [{ text: 't' }]
     }
-    expect(cursorsFor(item).head).toMatchObject({ language: 'en' })
+    expect(cursorsFor(item).head).toMatchObject({ language: 'en', page: 0 })
   })
 })

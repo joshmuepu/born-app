@@ -6,6 +6,8 @@ interface Props {
   query?: string
   loading?: boolean
   searched?: boolean
+  /** The quote paragraph currently on the projector, so its card can be marked. */
+  onScreen?: { sermonId: number; paragraphRef: string } | null
   onAddToQueue: (quote: Quote) => void
   onSendToProjection: (quote: Quote) => void
 }
@@ -20,6 +22,7 @@ export default function ResultsList({
   query,
   loading,
   searched,
+  onScreen,
   onAddToQueue,
   onSendToProjection
 }: Props) {
@@ -51,11 +54,17 @@ export default function ResultsList({
     <div className="results-panel">
       <div className="results-count">{results.length} result{results.length === 1 ? '' : 's'}</div>
       <div className="results-list">
-        {results.map((quote, index) => (
-          <div key={index} className="result-item">
+        {results.map((quote, index) => {
+          const live =
+            !!onScreen &&
+            onScreen.sermonId === quote.sermonId &&
+            onScreen.paragraphRef === quote.paragraphRef
+          return (
+          <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
             <div className="result-head">
               <span className="result-title">{quote.sermonTitle}</span>
               <span className="result-meta">
+                {live && <span className="on-screen-tag">On screen</span>}
                 {yearFromDateCode(quote.dateCode)} · ¶{quote.paragraphRef}
               </span>
             </div>
@@ -75,7 +84,8 @@ export default function ResultsList({
               </button>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

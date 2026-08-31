@@ -3,6 +3,7 @@
  * processes. A queue item is one of several content types; every item exposes a
  * flat list of `slides` that the projection window steps through.
  */
+import { paginateText } from './paginate'
 
 export interface Quote {
   text: string
@@ -62,23 +63,23 @@ export function makeId(prefix = 'item'): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter}`
 }
 
-/** Wrap a bare sermon quote as a one-slide queue item. */
+/**
+ * Wrap a bare sermon quote as a queue item. A Branham paragraph is far too long
+ * to read from the back of a room on one slide, so it's split into
+ * projector-sized pages (like Bible verses); Next steps through the pages.
+ */
 export function quoteToItem(quote: Quote): QuoteItem {
-  // Branham sermon text starts with the paragraph number, e.g. "146 But the …".
-  // Pull it out so the projection can style it as a marker.
+  // Sermon text starts with the paragraph number, e.g. "146 But the …".
   const m = quote.text.match(/^\s*(\d+(?:[-–]\d+)?)\s+(.*)$/s)
-  return {
-    kind: 'quote',
-    id: makeId('q'),
-    quote,
-    slides: [
-      {
-        text: m ? m[2] : quote.text,
-        marker: m ? m[1] : quote.paragraphRef || undefined,
-        reference: [quote.sermonTitle, quote.dateCode, quote.paragraphRef].filter(Boolean).join(' · ')
-      }
-    ]
-  }
+  const marker = m ? m[1] : quote.paragraphRef || undefined
+  const body = m ? m[2] : quote.text
+  const reference = [quote.sermonTitle, quote.dateCode, quote.paragraphRef].filter(Boolean).join(' · ')
+  const pages = paginateText(body)
+  const slides: Slide[] =
+    pages.length > 0
+      ? pages.map((text, i) => ({ text, reference, marker: i === 0 ? marker : undefined }))
+      : [{ text: body, reference, marker }]
+  return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
 /**

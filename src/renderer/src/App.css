@@ -485,6 +485,30 @@ body {
   background-color: var(--bg-panel);
 }
 
+/* The paragraph / verse currently on the projector. */
+.result-item--on-screen,
+.bible-verse--on-screen {
+  border-color: var(--accent) !important;
+  background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary)) !important;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.result-item--on-screen .result-text {
+  -webkit-line-clamp: 12;
+}
+
+.on-screen-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
 .result-head {
   display: flex;
   align-items: baseline;

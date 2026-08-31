@@ -12,7 +12,7 @@ import { quoteToItem } from '../../shared/queueItem'
 import type { Quote } from './types'
 
 export type FlowCursor =
-  | { kind: 'quote'; sermonId: number; language: string; paragraphRef: string }
+  | { kind: 'quote'; sermonId: number; language: string; paragraphRef: string; page: number }
   | { kind: 'bible'; translation: string; bookNum: number; chapter: number; verse: number }
 
 /** The source position of the first and last currently-loaded slide. */
@@ -24,13 +24,16 @@ export interface FlowCursors {
 /** Initial cursors for a freshly-projected item. Songs get none (no flow-through). */
 export function cursorsFor(item: QueueItem): FlowCursors {
   if (item.kind === 'quote') {
-    const c: FlowCursor = {
-      kind: 'quote',
+    const base = {
+      kind: 'quote' as const,
       sermonId: item.quote.sermonId,
       language: item.quote.language || 'en',
       paragraphRef: item.quote.paragraphRef
     }
-    return { head: c, tail: c }
+    return {
+      head: { ...base, page: 0 },
+      tail: { ...base, page: Math.max(0, item.slides.length - 1) }
+    }
   }
   if (item.kind === 'bible') {
     return {
@@ -53,6 +56,7 @@ export async function fetchAdjacentSlide(
   sermonCache: SermonCache
 ): Promise<{ slide: Slide; cursor: FlowCursor } | null> {
   if (!cursor) return null
+  const step = dir === 'next' ? 1 : -1
 
   if (cursor.kind === 'quote') {
     // paragraphIndex isn't reliably populated; the array order from
@@ -64,11 +68,28 @@ export async function fetchAdjacentSlide(
     }
     const pos = paras.findIndex((p) => p.paragraphRef === cursor.paragraphRef)
     if (pos === -1) return null
-    const q = paras[pos + (dir === 'next' ? 1 : -1)]
+
+    // Step through the pages of the current paragraph first…
+    const curPages = quoteToItem(paras[pos]).slides
+    const nextPage = cursor.page + step
+    if (nextPage >= 0 && nextPage < curPages.length) {
+      return { slide: curPages[nextPage], cursor: { ...cursor, page: nextPage } }
+    }
+
+    // …then over to the adjacent paragraph.
+    const q = paras[pos + step]
     if (!q) return null
+    const pages = quoteToItem(q).slides
+    const page = dir === 'next' ? 0 : pages.length - 1
     return {
-      slide: quoteToItem(q).slides[0],
-      cursor: { ...cursor, paragraphRef: q.paragraphRef }
+      slide: pages[page],
+      cursor: {
+        kind: 'quote',
+        sermonId: cursor.sermonId,
+        language: cursor.language,
+        paragraphRef: q.paragraphRef,
+        page
+      }
     }
   }
 

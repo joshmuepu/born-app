@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import ServiceQueue from './components/ServiceQueue'
@@ -14,8 +14,15 @@ import type {
   SongDetail
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
+import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
+
+/** Where the projected slide sits in its source — for the "On screen" highlight. */
+export type OnScreenLoc =
+  | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string }
+  | null
 
 type TopTab = 'sermons' | 'bible' | 'songs'
 type SermonsSubTab = 'search' | 'browse'
@@ -53,7 +60,7 @@ export default function App() {
   const [indexer, setIndexer] = useState<IndexerProgress | null>(null)
   const [projected, setProjected] = useState<Projected | null>(null)
   const [isScreenBlanked, setIsScreenBlanked] = useState(false)
-  const [fontSize, setFontSize] = useState(3.6)
+  const [fontSize, setFontSize] = useState(4.5)
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [webRemoteURL, setWebRemoteURL] = useState('')
@@ -519,6 +526,28 @@ export default function App() {
   const targetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.targetId)
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
 
+  // What's on the projector right now, so the source panels can highlight it.
+  const onScreenLoc = useMemo<OnScreenLoc>(() => {
+    if (!projected || !projectionOpen || isScreenBlanked) return null
+    const slide = projected.item.slides[projected.slide]
+    const tail = (slide?.reference || '').split(' · ')
+    if (projected.item.kind === 'bible') {
+      const ref = tail[0]?.replace(/([0-9]+)[a-z]$/, '$1') // drop the "16a" page suffix
+      const p = ref ? parseReference(ref) : null
+      if (p && !isRefError(p)) {
+        return { kind: 'bible', bookNum: p.bookNum, chapter: p.chapter, verse: p.verseStart ?? 0 }
+      }
+    }
+    if (projected.item.kind === 'quote') {
+      return {
+        kind: 'quote',
+        sermonId: projected.item.quote.sermonId,
+        paragraphRef: tail[tail.length - 1] || projected.item.quote.paragraphRef
+      }
+    }
+    return null
+  }, [projected, projectionOpen, isScreenBlanked])
+
   return (
     <div className="app">
       <header className="app-header">
@@ -640,6 +669,7 @@ export default function App() {
                 query={searchQuery}
                 loading={searching}
                 searched={searched}
+                onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                 onAddToQueue={handleAddQuote}
                 onSendToProjection={handleProjectQuote}
               />
@@ -656,6 +686,7 @@ export default function App() {
           <div className="panel-view" hidden={topTab !== 'bible'}>
             <BiblePanel
               visible={topTab === 'bible'}
+              onScreen={onScreenLoc?.kind === 'bible' ? onScreenLoc : null}
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
             />

@@ -42,12 +42,17 @@ body {
 }
 
 .projection-text {
-  /* font-size is controlled via inline style from the main window */
+  /* font-size is controlled via inline style from the main window.
+     Sits in a fixed band between the label and the reference so a big block of
+     text can never grow over either of them. */
   position: absolute;
-  inset: 0;
-  padding: 13vh 100px;
+  top: 12vh;
+  bottom: 13vh;
+  left: 0;
+  right: 0;
+  padding: 0 100px;
   overflow: hidden;
-  line-height: 1.55;
+  line-height: 1.5;
   color: #ffffff;
   display: flex;
   align-items: center;

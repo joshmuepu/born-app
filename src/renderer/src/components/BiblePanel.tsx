@@ -5,13 +5,17 @@ import './BiblePanel.css'
 
 interface Props {
   visible: boolean
+  /** The verse currently on the projector, so its row can be marked. */
+  onScreen?: { bookNum: number; chapter: number; verse: number } | null
   onAddPassage: (p: ResolvedPassage) => void
   onProjectPassage: (p: ResolvedPassage, slide?: number) => void
 }
 
 type Mode = 'reference' | 'keyword'
 
-export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: Props) {
+export default function BiblePanel({ visible, onScreen, onAddPassage, onProjectPassage }: Props) {
+  const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
+    !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
   const [translation, setTranslation] = useState(
     () => localStorage.getItem('born.bibleTranslation') || 'KJV'
@@ -146,10 +150,16 @@ export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: 
               </div>
               <div className="bible-verses">
                 {passage.verses.map((v, i) => (
-                  <div key={v.verse} className="bible-verse">
+                  <div
+                    key={v.verse}
+                    className={`bible-verse${isLive(passage.bookNum, passage.chapter, v.verse) ? ' bible-verse--on-screen' : ''}`}
+                  >
                     <span className="bible-verse-num">{v.verse}</span>
                     <span className="bible-verse-text">{v.text}</span>
                     <div className="bible-verse-actions">
+                      {isLive(passage.bookNum, passage.chapter, v.verse) && (
+                        <span className="on-screen-tag">On screen</span>
+                      )}
                       <button
                         className="btn-quiet btn-sm"
                         title={`Add verse ${v.verse} to the queue`}
@@ -187,7 +197,10 @@ export default function BiblePanel({ visible, onAddPassage, onProjectPassage }: 
               <div className="bible-hint">No verses found.</div>
             )}
             {hits.map((h) => (
-              <div key={`${h.bookNum}-${h.chapter}-${h.verse}`} className="bible-verse bible-verse--hit">
+              <div
+                key={`${h.bookNum}-${h.chapter}-${h.verse}`}
+                className={`bible-verse bible-verse--hit${isLive(h.bookNum, h.chapter, h.verse) ? ' bible-verse--on-screen' : ''}`}
+              >
                 <div
                   className="bible-hit-body"
                   role="button"

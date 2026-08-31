@@ -49,6 +49,18 @@ describe('quoteToItem', () => {
     expect(item.slides[0].marker).toBe('p1')
     expect(item.slides[0].text).toBe('By faith Abraham')
   })
+
+  it('splits a long paragraph into projector-sized pages, marker on the first', () => {
+    const long = '26 ' + 'This is a sentence that keeps going on and on. '.repeat(12)
+    const item = quoteToItem({ ...quote, text: long, paragraphRef: '26' })
+    expect(item.slides.length).toBeGreaterThan(1)
+    expect(item.slides[0].marker).toBe('26')
+    expect(item.slides[1].marker).toBeUndefined()
+    for (const s of item.slides) {
+      expect(s.text.length).toBeLessThanOrEqual(260)
+      expect(s.reference).toBe('Come Follow Me · 63-0901M · 26')
+    }
+  })
 })
 
 describe('buildBibleSlides', () => {

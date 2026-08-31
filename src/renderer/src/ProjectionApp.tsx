@@ -4,8 +4,8 @@ import type { SlidePayload } from './types'
 export default function ProjectionApp() {
   const [slide, setSlide] = useState<SlidePayload | null>(null)
   const [blanked, setBlanked] = useState(false)
-  const [fontSize, setFontSize] = useState(3.6)
-  const [fitFontSize, setFitFontSize] = useState(3.6)
+  const [fontSize, setFontSize] = useState(4.5)
+  const [fitFontSize, setFitFontSize] = useState(4.5)
   const [alertText, setAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -54,24 +54,34 @@ export default function ProjectionApp() {
     window.focus()
   }, [])
 
-  // Auto-fit: shrink text to fit the available height (operator size is the max)
-  // so a long verse / quote is never clipped on screen.
+  // Auto-fit: shrink text to fit the available band (operator size is the max)
+  // so a long verse / quote is never clipped or overlapping the reference line.
+  // Re-runs on window resize too (projector resolution can change mid-service).
   useLayoutEffect(() => {
     const el = textRef.current
     if (!el || !slide) return
-    let size = fontSize
-    setFitFontSize(size)
+    let raf = 0
     const fit = (): void => {
+      let size = fontSize
+      el.style.fontSize = `${size}rem`
       let guard = 0
-      while (el.scrollHeight > el.clientHeight + 1 && size > 1 && guard < 40) {
+      while (el.scrollHeight > el.clientHeight + 1 && size > 1 && guard < 60) {
         size = Math.max(1, size - 0.15)
         el.style.fontSize = `${size}rem`
         guard++
       }
       setFitFontSize(size)
     }
-    const id = requestAnimationFrame(fit)
-    return () => cancelAnimationFrame(id)
+    raf = requestAnimationFrame(fit)
+    const onResize = (): void => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(fit)
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', onResize)
+    }
   }, [slide, fontSize])
 
   useEffect(() => {

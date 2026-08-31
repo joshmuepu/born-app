@@ -23,6 +23,7 @@ import {
 } from './search'
 import { pickProjectionDisplay, describeDisplay, type DisplayLike } from './displays'
 import { checkForUpdate, getCachedUpdate, openReleasePage } from './updateCheck'
+import { getLocalDateGroups, getLocalDurationGroups } from './browseLocal'
 import { getSettings, updateSettings } from './settings'
 import {
   serverSearch,
@@ -603,8 +604,24 @@ ipcMain.handle('search:server', (_event, text: string, searchType: 'AllWords' | 
 ipcMain.handle('browse:series', () => fetchAllSeries())
 ipcMain.handle('browse:states', () => fetchAllStates())
 ipcMain.handle('browse:cities', () => fetchAllCities())
-ipcMain.handle('browse:date-groups', () => fetchAllDateGroups())
-ipcMain.handle('browse:duration-groups', () => fetchAllDurationGroups())
+ipcMain.handle('browse:date-groups', () => {
+  try {
+    const groups = getLocalDateGroups(getDb())
+    if (groups.length > 0) return groups
+  } catch (e) {
+    log.warn('local date groups failed, falling back to online', e)
+  }
+  return fetchAllDateGroups()
+})
+ipcMain.handle('browse:duration-groups', () => {
+  try {
+    const groups = getLocalDurationGroups(getDb())
+    if (groups.length > 0) return groups
+  } catch (e) {
+    log.warn('local duration groups failed, falling back to online', e)
+  }
+  return fetchAllDurationGroups()
+})
 
 ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
   log.debug(`ipc browse:sermons-by-ids count=${ids?.length ?? 0}`)
