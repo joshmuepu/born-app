@@ -23,6 +23,8 @@ interface Props {
   stageOpen: boolean
   blanked: boolean
   onProject: (index: number) => void
+  /** Click a row to go to that item in the source panel (does NOT project it). */
+  onSelect: (index: number) => void
   onRemove: (index: number) => void
   onPrev: () => void
   onNext: () => void
@@ -56,6 +58,7 @@ export default function ServiceQueue({
   stageOpen,
   blanked,
   onProject,
+  onSelect,
   onRemove,
   onPrev,
   onNext,
@@ -91,7 +94,6 @@ export default function ServiceQueue({
   const nextItemIndex =
     activeIndex == null ? (queue.length > 0 ? 0 : -1) : activeIndex + 1
   const nextItem = nextItemIndex >= 0 && nextItemIndex < queue.length ? queue[nextItemIndex] : null
-  const prevItemIndex = activeIndex == null ? -1 : activeIndex - 1
 
   return (
     <div className="service-queue">
@@ -120,6 +122,16 @@ export default function ServiceQueue({
                   !active && projectionOpen && index === nextItemIndex ? 'queue-item--next' : '',
                   index === dragOverIndex && dragIndex !== index ? 'queue-item--drag-over' : ''
                 ].filter(Boolean).join(' ')}
+                role="button"
+                tabIndex={0}
+                title="Go to this item to read it — use Project to put it on screen"
+                onClick={() => onSelect(index)}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                    e.preventDefault()
+                    onSelect(index)
+                  }
+                }}
                 draggable
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index) }}
@@ -146,10 +158,18 @@ export default function ServiceQueue({
                 </div>
                 <p className="queue-item-text">{itemPreview(item)}</p>
                 <div className="result-actions">
-                  <button className="btn-primary btn-sm" onClick={() => onProject(index)}>
+                  <button
+                    className="btn-primary btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onProject(index) }}
+                  >
                     {active ? 'Restart' : 'Project'}
                   </button>
-                  <button className="btn-quiet btn-sm" onClick={() => onRemove(index)}>Remove</button>
+                  <button
+                    className="btn-quiet btn-sm"
+                    onClick={(e) => { e.stopPropagation(); onRemove(index) }}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             )
@@ -239,29 +259,10 @@ export default function ServiceQueue({
               Next ›
             </button>
           </div>
-
-          {(nextItem || prevItemIndex >= 0) && (
-            <div className="queue-item-nav">
-              <button
-                className="btn-quiet btn-sm"
-                disabled={prevItemIndex < 0}
-                onClick={() => onProject(prevItemIndex)}
-                title="Previous item in the service (⌘/Ctrl + ←)"
-              >
-                ⟨ Prev item
-              </button>
-              {nextItem ? (
-                <button
-                  className="btn-secondary btn-sm queue-next-item"
-                  onClick={() => onProject(nextItemIndex)}
-                  title="Next item in the service (⌘/Ctrl + →)"
-                >
-                  {activeIndex == null ? 'Start' : 'Next item'} ·{' '}
-                  <span className="queue-next-item-title">{itemTitle(nextItem)}</span> ⟩
-                </button>
-              ) : (
-                <span className="queue-item-nav-end">End of service</span>
-              )}
+          {nextItem && !status && (
+            <div className="queue-upnext-hint">
+              Up next: <strong>{itemTitle(nextItem)}</strong>
+              <span className="queue-upnext-key"> — ⌘/Ctrl + →</span>
             </div>
           )}
         </div>

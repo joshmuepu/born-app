@@ -81,6 +81,13 @@ export default function App() {
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
   /** Song the Songs panel should have open (for the follow-along view). */
   const [focusSongId, setFocusSongId] = useState<number | null>(null)
+  /** Chapter the Bible panel should show when the operator is previewing a queue
+   *  item without projecting it. Cleared the moment anything is projected. */
+  const [biblePreview, setBiblePreview] = useState<{
+    bookNum: number
+    chapter: number
+    verse: number
+  } | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
@@ -242,6 +249,8 @@ export default function App() {
       projectedRef.current = next
       setProjected(next)
       setIsScreenBlanked(false)
+      setBiblePreview(null) // projecting anything ends a queue-item preview
+      if (item.kind === 'song') setFocusSongId(item.songId)
       window.electronAPI.showSlide(payload)
 
       // Stage view: current slide + the next one, when it's already loaded.
@@ -376,16 +385,18 @@ export default function App() {
     [doProject]
   )
 
-  /** Open the source panel's follow-along view for whatever item just went on
-   *  screen — so projecting from the queue behaves exactly like projecting from
-   *  the search / Bible / Songs panels. */
-  const followForItem = useCallback((item: QueueItem) => {
+  /** Take the source panel to a queue item — its whole sermon / chapter / song,
+   *  scrolled to the right spot. `preview` = navigate only (a click); otherwise
+   *  it's paired with projecting. Same experience as the search / Bible / Songs
+   *  panels. */
+  const followForItem = useCallback((item: QueueItem, preview = false) => {
     if (item.kind === 'quote') {
       setTopTab('sermons')
       setSermonsTab('search')
       setFollowSermon({ sermonId: item.quote.sermonId, anchorRef: item.quote.paragraphRef })
     } else if (item.kind === 'bible') {
       setTopTab('bible')
+      if (preview) setBiblePreview({ bookNum: item.bookNum, chapter: item.chapter, verse: item.verseStart })
     } else if (item.kind === 'song') {
       setTopTab('songs')
       setFocusSongId(item.songId)
@@ -400,6 +411,16 @@ export default function App() {
       followForItem(item)
     },
     [doProject, followForItem]
+  )
+
+  /** Click a queue row (not its Project button): go to that item in the source
+   *  panel to read / prepare it, without touching the screens. */
+  const handleSelectFromQueue = useCallback(
+    (index: number) => {
+      const item = queueRef.current[index]
+      if (item) followForItem(item, true)
+    },
+    [followForItem]
   )
 
   /** Jump to the next / previous item in the service queue (never automatic —
@@ -895,6 +916,7 @@ export default function App() {
             <BiblePanel
               visible={topTab === 'bible'}
               onScreen={onScreenLoc?.kind === 'bible' ? onScreenLoc : null}
+              preview={biblePreview}
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
             />
@@ -904,7 +926,7 @@ export default function App() {
             <SongsPanel
               visible={topTab === 'songs'}
               onScreen={onScreenLoc?.kind === 'song' ? onScreenLoc : null}
-              focusSongId={projected?.item.kind === 'song' ? projected.item.songId : focusSongId}
+              focusSongId={focusSongId}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
             />
@@ -932,6 +954,7 @@ export default function App() {
             stageOpen={stageOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
+            onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}
             onNext={handleNext}
