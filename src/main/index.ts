@@ -22,7 +22,13 @@ import {
   type QuoteRow
 } from './search'
 import { pickProjectionDisplay, describeDisplay, type DisplayLike } from './displays'
-import { checkForUpdate, getCachedUpdate, openReleasePage } from './updateCheck'
+import {
+  checkForUpdate,
+  getCachedUpdate,
+  openReleasePage,
+  downloadUpdate,
+  runInstaller
+} from './updateCheck'
 import { getLocalDateGroups, getLocalDurationGroups } from './browseLocal'
 import { getSettings, updateSettings } from './settings'
 import {
@@ -404,6 +410,11 @@ ipcMain.handle('app:version', () => app.getVersion())
 ipcMain.handle('app:check-update', () => checkForUpdate())
 ipcMain.handle('app:update-info', () => getCachedUpdate())
 ipcMain.handle('app:open-release-page', () => openReleasePage())
+ipcMain.handle('app:download-update', (e) =>
+  downloadUpdate(BrowserWindow.fromWebContents(e.sender))
+)
+ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
+ipcMain.handle('app:quit', () => app.quit())
 
 // ── Display IPC ───────────────────────────────────────────────────────────────
 

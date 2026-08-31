@@ -69,6 +69,10 @@ export default function App() {
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateMsg, setUpdateMsg] = useState('')
   const [updateDismissed, setUpdateDismissed] = useState(false)
+  const [updateStage, setUpdateStage] = useState<
+    'idle' | 'downloading' | 'ready' | 'installing' | 'error'
+  >('idle')
+  const [updatePct, setUpdatePct] = useState(0)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
@@ -104,7 +108,14 @@ export default function App() {
   useEffect(() => {
     window.electronAPI.getAppVersion().then(setAppVersion)
     window.electronAPI.checkForUpdate().then(setUpdate)
-    return window.electronAPI.onUpdateAvailable(setUpdate)
+    const offUpd = window.electronAPI.onUpdateAvailable(setUpdate)
+    const offPrg = window.electronAPI.onDownloadProgress(({ received, total }) => {
+      setUpdatePct(total > 0 ? Math.round((received / total) * 100) : 0)
+    })
+    return () => {
+      offUpd()
+      offPrg()
+    }
   }, [])
 
   const handleCheckForUpdate = useCallback(() => {
@@ -115,6 +126,25 @@ export default function App() {
       setUpdateMsg(u.hasUpdate ? '' : `You're on the latest version (${u.current}).`)
       if (!u.hasUpdate) setTimeout(() => setUpdateMsg(''), 4000)
     })
+  }, [])
+
+  const handleDownloadUpdate = useCallback(async () => {
+    setUpdateStage('downloading')
+    setUpdatePct(0)
+    const r = await window.electronAPI.downloadUpdate()
+    if (!r.ok || !r.path) {
+      setUpdateStage('error')
+      setUpdateMsg(r.error || 'Download failed.')
+      return
+    }
+    setUpdateStage('installing')
+    const inst = await window.electronAPI.runInstaller(r.path)
+    if (!inst.ok) {
+      setUpdateStage('error')
+      setUpdateMsg(inst.error || 'Could not open the installer.')
+      return
+    }
+    setUpdateStage('ready')
   }, [])
 
   // Web remote URL (retry once — the HTTP server may still be binding).
@@ -639,17 +669,69 @@ export default function App() {
 
       {update?.hasUpdate && !updateDismissed && (
         <div className="update-banner">
-          <span>
-            <strong>BORN {update.latest}</strong> is available — you have {update.current}.
-          </span>
-          <span className="update-banner-actions">
-            <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
-              Download
-            </button>
-            <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
-              Later
-            </button>
-          </span>
+          {updateStage === 'idle' && (
+            <>
+              <span>
+                <strong>BORN {update.latest}</strong> is available — you have {update.current}.
+              </span>
+              <span className="update-banner-actions">
+                {update.asset ? (
+                  <button className="btn-primary btn-sm" onClick={handleDownloadUpdate}>
+                    Download &amp; install
+                  </button>
+                ) : (
+                  <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
+                    Get it from the website
+                  </button>
+                )}
+                <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
+                  Later
+                </button>
+              </span>
+            </>
+          )}
+
+          {updateStage === 'downloading' && (
+            <>
+              <span>Downloading BORN {update.latest}… {updatePct}%</span>
+              <span className="update-progress">
+                <span className="update-progress-fill" style={{ width: `${updatePct}%` }} />
+              </span>
+            </>
+          )}
+
+          {updateStage === 'installing' && <span>Opening the installer…</span>}
+
+          {updateStage === 'ready' && (
+            <>
+              <span>
+                {navigator.platform.startsWith('Mac')
+                  ? 'The installer is open — drag Branham or Nothing onto Applications, replacing the old one, then reopen BORN.'
+                  : navigator.platform.startsWith('Win')
+                    ? 'The installer is running — click through it, then reopen BORN.'
+                    : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
+              </span>
+              <span className="update-banner-actions">
+                <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
+                  Quit BORN
+                </button>
+              </span>
+            </>
+          )}
+
+          {updateStage === 'error' && (
+            <>
+              <span>Update didn’t go through: {updateMsg}</span>
+              <span className="update-banner-actions">
+                <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
+                  Open download page
+                </button>
+                <button className="btn-quiet btn-sm" onClick={() => { setUpdateStage('idle'); setUpdateMsg('') }}>
+                  Back
+                </button>
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -782,8 +864,8 @@ export default function App() {
           {update?.hasUpdate ? (
             <button
               className="status-update-link"
-              onClick={() => window.electronAPI.openReleasePage()}
-              title={`Version ${update.latest} is available`}
+              onClick={() => { setUpdateDismissed(false); setUpdateStage('idle') }}
+              title={`Version ${update.latest} is available — click to update`}
             >
               · update to {update.latest} →
             </button>

@@ -40,6 +40,7 @@ export interface UpdateInfo {
   hasUpdate: boolean
   url: string
   notes?: string
+  asset?: string
 }
 
 const api = {
@@ -48,10 +49,22 @@ const api = {
   checkForUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('app:check-update'),
   getUpdateInfo: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('app:update-info'),
   openReleasePage: (): Promise<void> => ipcRenderer.invoke('app:open-release-page'),
+  downloadUpdate: (): Promise<{ ok: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('app:download-update'),
+  runInstaller: (filePath: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('app:run-installer', filePath),
+  quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
   onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
     const handler = (_e: IpcRendererEvent, info: UpdateInfo): void => callback(info)
     ipcRenderer.on('app:update-available', handler)
     return () => ipcRenderer.removeListener('app:update-available', handler)
+  },
+  onDownloadProgress: (
+    callback: (p: { received: number; total: number }) => void
+  ): (() => void) => {
+    const handler = (_e: IpcRendererEvent, p: { received: number; total: number }): void => callback(p)
+    ipcRenderer.on('app:download-progress', handler)
+    return () => ipcRenderer.removeListener('app:download-progress', handler)
   },
 
   // Projection

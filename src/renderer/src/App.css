@@ -1155,6 +1155,21 @@ mark.hl {
   flex-shrink: 0;
 }
 
+.update-progress {
+  flex: 1;
+  max-width: 320px;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  overflow: hidden;
+}
+.update-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
 .status-version {
   font-size: 0.72rem;
   color: var(--text-secondary);

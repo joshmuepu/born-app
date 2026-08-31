@@ -34,6 +34,7 @@ declare global {
     hasUpdate: boolean
     url: string
     notes?: string
+    asset?: string
   }
 
   interface Window {
@@ -43,7 +44,13 @@ declare global {
       checkForUpdate: () => Promise<UpdateInfo>
       getUpdateInfo: () => Promise<UpdateInfo | null>
       openReleasePage: () => Promise<void>
+      downloadUpdate: () => Promise<{ ok: boolean; path?: string; error?: string }>
+      runInstaller: (filePath: string) => Promise<{ ok: boolean; error?: string }>
+      quitApp: () => Promise<void>
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
+      onDownloadProgress: (
+        callback: (p: { received: number; total: number }) => void
+      ) => () => void
       // Projection
       openProjection: () => Promise<void>
       closeProjection: () => Promise<void>
