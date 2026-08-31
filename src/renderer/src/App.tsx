@@ -70,9 +70,10 @@ export default function App() {
   const [updateMsg, setUpdateMsg] = useState('')
   const [updateDismissed, setUpdateDismissed] = useState(false)
   const [updateStage, setUpdateStage] = useState<
-    'idle' | 'downloading' | 'installing' | 'armed' | 'ready' | 'error'
+    'idle' | 'downloading' | 'ready' | 'installing' | 'manual' | 'error'
   >('idle')
   const [updatePct, setUpdatePct] = useState(0)
+  const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
@@ -137,13 +138,18 @@ export default function App() {
       setUpdateMsg(r.error || 'Download failed.')
       return
     }
+    // Downloaded — wait for the operator to choose when to restart.
+    setUpdateFile(r.path)
+    setUpdateStage('ready')
+  }, [])
+
+  const handleRestartToUpdate = useCallback(async () => {
+    if (!updateFile) return
     setUpdateStage('installing')
-    // Try the fully-automatic install first; fall back to the manual hand-off.
-    const applied = await window.electronAPI.applyUpdate(r.path)
+    // Fully-automatic install; fall back to the manual hand-off if it can't.
+    const applied = await window.electronAPI.applyUpdate(updateFile)
     if (applied.ok) {
-      setUpdateStage('armed')
-      // Give the operator a moment to see it, then restart into the new version.
-      window.setTimeout(() => window.electronAPI.quitApp(), 4000)
+      window.electronAPI.quitApp() // the helper swaps + relaunches on the new version
       return
     }
     if (applied.error) {
@@ -151,14 +157,14 @@ export default function App() {
       setUpdateMsg(applied.error)
       return
     }
-    const inst = await window.electronAPI.runInstaller(r.path)
+    const inst = await window.electronAPI.runInstaller(updateFile)
     if (!inst.ok) {
       setUpdateStage('error')
       setUpdateMsg(inst.error || 'Could not open the installer.')
       return
     }
-    setUpdateStage('ready')
-  }, [])
+    setUpdateStage('manual')
+  }, [updateFile])
 
   // Web remote URL (retry once — the HTTP server may still be binding).
   useEffect(() => {
@@ -690,7 +696,7 @@ export default function App() {
               <span className="update-banner-actions">
                 {update.asset ? (
                   <button className="btn-primary btn-sm" onClick={handleDownloadUpdate}>
-                    Download &amp; install
+                    Upgrade
                   </button>
                 ) : (
                   <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
@@ -713,26 +719,29 @@ export default function App() {
             </>
           )}
 
-          {updateStage === 'installing' && <span>Preparing to install…</span>}
-
-          {updateStage === 'armed' && (
+          {updateStage === 'ready' && (
             <>
               <span>
-                Ready to install BORN {update.latest}. BORN will close and reopen on the new version.
+                <strong>BORN {update.latest}</strong> is ready. It installs when you restart — BORN closes and reopens on the new version.
               </span>
               <span className="update-banner-actions">
-                <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
-                  Restart now
+                <button className="btn-primary btn-sm" onClick={handleRestartToUpdate}>
+                  Restart &amp; update
+                </button>
+                <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
+                  Later
                 </button>
               </span>
             </>
           )}
 
-          {updateStage === 'ready' && (
+          {updateStage === 'installing' && <span>Installing — BORN will restart…</span>}
+
+          {updateStage === 'manual' && (
             <>
               <span>
                 {navigator.platform.startsWith('Mac')
-                  ? 'The installer is open — drag Branham or Nothing onto Applications, replacing the old one, then reopen BORN.'
+                  ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen BORN.'
                   : navigator.platform.startsWith('Win')
                     ? 'The installer is running — click through it, then reopen BORN.'
                     : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
@@ -890,10 +899,10 @@ export default function App() {
           {update?.hasUpdate ? (
             <button
               className="status-update-link"
-              onClick={() => { setUpdateDismissed(false); setUpdateStage('idle') }}
+              onClick={() => setUpdateDismissed(false)}
               title={`Version ${update.latest} is available — click to update`}
             >
-              · update to {update.latest} →
+              {updateStage === 'ready' ? `· restart to update to ${update.latest} →` : `· update to ${update.latest} →`}
             </button>
           ) : (
             <button
