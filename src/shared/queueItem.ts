@@ -64,6 +64,31 @@ export function makeId(prefix = 'item'): string {
 }
 
 /**
+ * A Branham "paragraph" is often a numbered *range* ("41-47") with the
+ * sub-paragraph numbers written inline in the text. Once that range is split
+ * into pages, work out which number(s) each page actually shows, so the
+ * on-screen citation reads "· 6" rather than "· 5-6" when you're only on 6.
+ */
+function pageParagraphRefs(pages: string[], paragraphRef: string): string[] {
+  const range = /^\s*(\d+)\s*[-–]\s*(\d+)\s*$/.exec(paragraphRef || '')
+  if (!range) return pages.map(() => paragraphRef)
+  const hi = parseInt(range[2], 10)
+  let current = parseInt(range[1], 10)
+  return pages.map((page) => {
+    const start = current
+    // Inline numbers sit after a sentence-ish boundary, before a capital or
+    // quote. Only ever accept the next sequential number.
+    const re = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘A-Z])/g
+    let match: RegExpExecArray | null
+    while ((match = re.exec(page)) !== null) {
+      const n = parseInt(match[1], 10)
+      if (n === current + 1 && n <= hi) current = n
+    }
+    return start === current ? String(start) : `${start}-${current}`
+  })
+}
+
+/**
  * Wrap a bare sermon quote as a queue item. A Branham paragraph is far too long
  * to read from the back of a room on one slide, so it's split into
  * projector-sized pages (like Bible verses); Next steps through the pages.
@@ -73,12 +98,25 @@ export function quoteToItem(quote: Quote): QuoteItem {
   const m = quote.text.match(/^\s*(\d+(?:[-–]\d+)?)\s+(.*)$/s)
   const marker = m ? m[1] : quote.paragraphRef || undefined
   const body = m ? m[2] : quote.text
-  const reference = [quote.sermonTitle, quote.dateCode, quote.paragraphRef].filter(Boolean).join(' · ')
+  const cite = (ref: string): string =>
+    [quote.sermonTitle, quote.dateCode, ref].filter(Boolean).join(' · ')
+
   const pages = paginateText(body)
-  const slides: Slide[] =
-    pages.length > 0
-      ? pages.map((text, i) => ({ text, reference, marker: i === 0 ? marker : undefined }))
-      : [{ text: body, reference, marker }]
+  if (pages.length === 0) {
+    return {
+      kind: 'quote',
+      id: makeId('q'),
+      quote,
+      slides: [{ text: body, reference: cite(quote.paragraphRef), marker }]
+    }
+  }
+  const pageRefs = pageParagraphRefs(pages, quote.paragraphRef)
+  const slides: Slide[] = pages.map((text, i) => ({
+    text,
+    reference: cite(pageRefs[i]),
+    // Superscript number: the paragraph this page starts on (numeric refs only).
+    marker: i === 0 ? marker : /^\d/.test(pageRefs[i]) ? pageRefs[i].split(/[-–]/)[0] : undefined
+  }))
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
