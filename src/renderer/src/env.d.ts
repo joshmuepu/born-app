@@ -46,6 +46,9 @@ declare global {
       openReleasePage: () => Promise<void>
       downloadUpdate: () => Promise<{ ok: boolean; path?: string; error?: string }>
       runInstaller: (filePath: string) => Promise<{ ok: boolean; error?: string }>
+      applyUpdate: (
+        filePath: string
+      ) => Promise<{ ok: boolean; needsManual?: boolean; error?: string }>
       quitApp: () => Promise<void>
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
       onDownloadProgress: (

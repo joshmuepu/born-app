@@ -70,7 +70,7 @@ export default function App() {
   const [updateMsg, setUpdateMsg] = useState('')
   const [updateDismissed, setUpdateDismissed] = useState(false)
   const [updateStage, setUpdateStage] = useState<
-    'idle' | 'downloading' | 'ready' | 'installing' | 'error'
+    'idle' | 'downloading' | 'installing' | 'armed' | 'ready' | 'error'
   >('idle')
   const [updatePct, setUpdatePct] = useState(0)
   const [stageOpen, setStageOpen] = useState(false)
@@ -138,6 +138,19 @@ export default function App() {
       return
     }
     setUpdateStage('installing')
+    // Try the fully-automatic install first; fall back to the manual hand-off.
+    const applied = await window.electronAPI.applyUpdate(r.path)
+    if (applied.ok) {
+      setUpdateStage('armed')
+      // Give the operator a moment to see it, then restart into the new version.
+      window.setTimeout(() => window.electronAPI.quitApp(), 4000)
+      return
+    }
+    if (applied.error) {
+      setUpdateStage('error')
+      setUpdateMsg(applied.error)
+      return
+    }
     const inst = await window.electronAPI.runInstaller(r.path)
     if (!inst.ok) {
       setUpdateStage('error')
@@ -700,7 +713,20 @@ export default function App() {
             </>
           )}
 
-          {updateStage === 'installing' && <span>Opening the installer…</span>}
+          {updateStage === 'installing' && <span>Preparing to install…</span>}
+
+          {updateStage === 'armed' && (
+            <>
+              <span>
+                Ready to install BORN {update.latest}. BORN will close and reopen on the new version.
+              </span>
+              <span className="update-banner-actions">
+                <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
+                  Restart now
+                </button>
+              </span>
+            </>
+          )}
 
           {updateStage === 'ready' && (
             <>

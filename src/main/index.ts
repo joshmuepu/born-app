@@ -27,7 +27,8 @@ import {
   getCachedUpdate,
   openReleasePage,
   downloadUpdate,
-  runInstaller
+  runInstaller,
+  applyUpdate
 } from './updateCheck'
 import { getLocalDateGroups, getLocalDurationGroups } from './browseLocal'
 import { getSettings, updateSettings } from './settings'
@@ -414,6 +415,7 @@ ipcMain.handle('app:download-update', (e) =>
   downloadUpdate(BrowserWindow.fromWebContents(e.sender))
 )
 ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
+ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
 ipcMain.handle('app:quit', () => app.quit())
 
 // ── Display IPC ───────────────────────────────────────────────────────────────

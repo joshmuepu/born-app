@@ -1,17 +1,21 @@
 /**
- * updateCheck.ts — check for a newer BORN, download it, and hand off to install.
+ * updateCheck.ts — check for a newer BORN, download it, and install it.
  *
- * The app isn't code-signed, so a fully silent Squirrel-style update isn't
- * possible. Instead the app does the slow part itself — checking, and
- * downloading the right installer with a progress bar — then opens it:
- *   • macOS  — mounts the .dmg (Finder shows it: drag onto Applications)
- *   • Windows — runs the installer, which updates in place
- *   • Linux  — reveals the new AppImage
+ * The app isn't code-signed, so there's no notarized Squirrel channel. Instead
+ * the app downloads the right installer itself (progress bar) and applies it:
+ *   • macOS  — a detached helper waits for BORN to quit, swaps the .app bundle
+ *              in place, and relaunches. Falls back to mounting the .dmg if the
+ *              install folder isn't writable.
+ *   • Windows — runs the NSIS installer silently (/S); it closes BORN, replaces
+ *               it, and relaunches.
+ *   • Linux  — a helper replaces the AppImage in place and relaunches, else the
+ *              new file is revealed in the file manager.
  */
 import { app, net, shell, type BrowserWindow } from 'electron'
-import { createWriteStream } from 'fs'
+import { spawn } from 'child_process'
+import { createWriteStream, writeFileSync, accessSync, constants } from 'fs'
 import { unlink } from 'fs/promises'
-import { join } from 'path'
+import { join, dirname, resolve } from 'path'
 import { log } from './logger'
 
 const REPO = 'joshmuepu/born-app'
@@ -140,8 +144,8 @@ export async function downloadUpdate(win: BrowserWindow | null): Promise<Downloa
 }
 
 /**
- * Hand the downloaded installer to the OS. The caller then quits BORN so the
- * install can complete.
+ * Fallback: just hand the downloaded installer to the OS (mount the dmg / run
+ * the installer with its UI / reveal the file). The user finishes it by hand.
  */
 export async function runInstaller(path: string): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -155,5 +159,117 @@ export async function runInstaller(path: string): Promise<{ ok: boolean; error?:
   } catch (e) {
     log.error('runInstaller failed', e)
     return { ok: false, error: e instanceof Error ? e.message : 'Could not open the installer.' }
+  }
+}
+
+export interface ApplyResult {
+  /** true = the update is armed; the caller must now quit so it can finish. */
+  ok: boolean
+  /** true = automatic install isn't possible here; fall back to runInstaller(). */
+  needsManual?: boolean
+  error?: string
+}
+
+function canWrite(dir: string): boolean {
+  try {
+    accessSync(dir, constants.W_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Bash helper (macOS + Linux): wait for BORN to exit, put the new build in
+ * place, relaunch. `set -e` so a failure aborts before the old copy is removed.
+ */
+function writeSwapScript(body: string): string {
+  const script = join(app.getPath('temp'), `born-update-${Date.now()}.sh`)
+  const swaplog = join(app.getPath('temp'), 'born-update.log')
+  writeFileSync(
+    script,
+    `#!/bin/bash
+set -e
+exec >>"${swaplog}" 2>&1
+echo "--- born update $(date) ---"
+BORN_PID="$1"
+# Wait (up to ~5 min) for BORN to quit. If it never does, do nothing.
+for _ in $(seq 1 600); do
+  kill -0 "$BORN_PID" 2>/dev/null || { QUIT=1; break; }
+  sleep 0.5
+done
+[ "$QUIT" = 1 ] || { echo "BORN never quit — aborting"; rm -f "$0"; exit 0; }
+sleep 1
+${body}
+echo "update complete"
+rm -f "$0"
+`,
+    { mode: 0o755 }
+  )
+  return script
+}
+
+function spawnDetached(cmd: string, args: string[]): void {
+  spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref()
+}
+
+/**
+ * Apply a downloaded installer with no further clicks. Returns { ok:true } when
+ * the update is armed (caller then quits BORN), or { needsManual:true } when it
+ * has to fall back to the drag / click-through flow.
+ */
+export async function applyUpdate(installerPath: string): Promise<ApplyResult> {
+  if (!app.isPackaged) return { ok: false, needsManual: true } // never swap a dev build
+  try {
+    if (process.platform === 'win32') {
+      // NSIS silent install: closes BORN, replaces it, relaunches.
+      spawnDetached(installerPath, ['/S', '--update'])
+      return { ok: true }
+    }
+
+    if (process.platform === 'darwin') {
+      const bundle = resolve(app.getPath('exe'), '../../..') // …/Branham or Nothing.app
+      if (!bundle.endsWith('.app') || !canWrite(dirname(bundle))) {
+        return { ok: false, needsManual: true }
+      }
+      const script = writeSwapScript(`
+DMG=${JSON.stringify(installerPath)}
+BUNDLE=${JSON.stringify(bundle)}
+DIR=$(dirname "$BUNDLE")
+MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's#.*\\(/Volumes/.*\\)#\\1#')
+SRC=$(ls -d "$MP"/*.app | head -1)
+STAGE="$DIR/.born-update.app"
+# Verify the new build before removing the old one.
+[ -d "$SRC" ] && [ -x "$SRC/Contents/MacOS/"* ] || { echo "no valid app in dmg"; hdiutil detach "$MP" -quiet || true; exit 1; }
+rm -rf "$STAGE"
+cp -R "$SRC" "$STAGE"
+xattr -dr com.apple.quarantine "$STAGE" 2>/dev/null || true
+[ -x "$STAGE/Contents/MacOS/"* ] || { echo "staged copy invalid"; rm -rf "$STAGE"; hdiutil detach "$MP" -quiet || true; exit 1; }
+rm -rf "$BUNDLE"
+mv "$STAGE" "$BUNDLE"
+hdiutil detach "$MP" -quiet || true
+rm -f "$DMG"
+open "$BUNDLE"
+`)
+      spawnDetached('/bin/bash', [script, String(process.pid)])
+      return { ok: true }
+    }
+
+    // Linux — replace the running AppImage in place.
+    const appImage = process.env.APPIMAGE
+    if (!appImage || !canWrite(dirname(appImage))) return { ok: false, needsManual: true }
+    const script = writeSwapScript(`
+NEW=${JSON.stringify(installerPath)}
+CUR=${JSON.stringify(appImage)}
+cp -f "$NEW" "$CUR"
+chmod +x "$CUR"
+rm -f "$NEW"
+"$CUR" &
+`)
+    spawnDetached('/bin/bash', [script, String(process.pid)])
+    return { ok: true }
+  } catch (e) {
+    log.error('applyUpdate failed', e)
+    return { ok: false, error: e instanceof Error ? e.message : 'Install failed.' }
   }
 }

@@ -53,6 +53,10 @@ const api = {
     ipcRenderer.invoke('app:download-update'),
   runInstaller: (filePath: string): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('app:run-installer', filePath),
+  applyUpdate: (
+    filePath: string
+  ): Promise<{ ok: boolean; needsManual?: boolean; error?: string }> =>
+    ipcRenderer.invoke('app:apply-update', filePath),
   quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
   onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
     const handler = (_e: IpcRendererEvent, info: UpdateInfo): void => callback(info)
