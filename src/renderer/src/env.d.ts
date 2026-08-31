@@ -87,6 +87,7 @@ declare global {
       // Projection controls
       setBlankScreen: (blank: boolean) => void
       setFontSize: (size: number) => void
+      getFontSize: () => Promise<number>
       onSetBlankScreen: (callback: (blank: boolean) => void) => () => void
       onSetFontSize: (callback: (size: number) => void) => () => void
       onOperatorBlankChanged: (callback: (blank: boolean) => void) => () => void

@@ -117,6 +117,13 @@ export default function App() {
     if (queueLoaded.current) window.electronAPI.saveQueue(serviceQueue)
   }, [serviceQueue])
 
+  // Show the real saved projection text size in the Text control.
+  useEffect(() => {
+    window.electronAPI.getFontSize().then((s) => {
+      if (typeof s === 'number' && s > 0) setFontSize(s)
+    })
+  }, [])
+
   // App version + "is there a newer build?" check.
   useEffect(() => {
     window.electronAPI.getAppVersion().then(setAppVersion)

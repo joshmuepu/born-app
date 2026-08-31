@@ -22,7 +22,9 @@ export interface AppSettings {
 const DEFAULTS: AppSettings = {
   projectionDisplayId: null,
   stageDisplayId: null,
-  fontSize: 3.0,
+  // Matches "100%" in the operator's Text control; the projection window scales
+  // this by screen size (see ProjectionApp `baseRem`).
+  fontSize: 4.5,
   recentServices: []
 }
 
@@ -36,6 +38,9 @@ export function getSettings(): AppSettings {
   if (cache) return cache
   try {
     const raw = JSON.parse(readFileSync(settingsPath(), 'utf-8')) as Partial<AppSettings>
+    // The legacy default was 3.0 but the Text control still read "100%" — realign
+    // an untouched value to the new, honest 100% (4.5).
+    if (raw.fontSize === 3) raw.fontSize = 4.5
     cache = { ...DEFAULTS, ...raw }
   } catch {
     cache = { ...DEFAULTS }

@@ -180,6 +180,7 @@ const api = {
   // Projection controls (sent from main window, received by projection window)
   setBlankScreen: (blank: boolean): void => ipcRenderer.send('projection:set-blank', blank),
   setFontSize: (size: number): void => ipcRenderer.send('projection:set-font-size', size),
+  getFontSize: (): Promise<number> => ipcRenderer.invoke('projection:get-font-size'),
 
   onSetBlankScreen: (callback: (blank: boolean) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, blank: boolean): void => callback(blank)

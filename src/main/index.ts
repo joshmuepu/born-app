@@ -97,7 +97,7 @@ function getSettingsSafe(): {
   try {
     return getSettings()
   } catch {
-    return { fontSize: 3.0, projectionDisplayId: null, stageDisplayId: null, recentServices: [] }
+    return { fontSize: 4.5, projectionDisplayId: null, stageDisplayId: null, recentServices: [] }
   }
 }
 
@@ -536,6 +536,10 @@ ipcMain.on('projection:set-font-size', (_event, size: number) => {
   }
   sendToProjection('projection:set-font-size', size)
 })
+
+/** The persisted projection text size, so the operator console's Text control
+ *  shows the real value (not a hard-coded 100%). */
+ipcMain.handle('projection:get-font-size', () => projectionState.fontSize)
 
 // ── App / update IPC ──────────────────────────────────────────────────────────
 
