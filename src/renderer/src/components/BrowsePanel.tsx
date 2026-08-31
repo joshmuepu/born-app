@@ -4,13 +4,15 @@ import './BrowsePanel.css'
 
 interface Props {
   visible: boolean
+  /** The sermon paragraph currently on the projector, so its row can be marked. */
+  onScreen?: { sermonId: number; paragraphRef: string } | null
   onAddToQueue: (quote: Quote) => void
   onSendToProjection: (quote: Quote) => void
 }
 
 type BrowseTab = 'series' | 'location' | 'date'
 
-export default function BrowsePanel({ visible, onAddToQueue, onSendToProjection }: Props) {
+export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToProjection }: Props) {
   const [tab, setTab] = useState<BrowseTab>('series')
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
@@ -163,9 +165,20 @@ export default function BrowsePanel({ visible, onAddToQueue, onSendToProjection 
         <div className="browse-loading">Loading paragraphs…</div>
       ) : (
         <div className="browse-list">
-          {paragraphs.map((q) => (
-            <div key={q.paragraphRef} className="browse-para-item">
-              <div className="browse-para-ref">{q.paragraphRef}</div>
+          {paragraphs.map((q) => {
+            const live =
+              !!onScreen &&
+              onScreen.sermonId === q.sermonId &&
+              onScreen.paragraphRef === q.paragraphRef
+            return (
+            <div
+              key={q.paragraphRef}
+              className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
+            >
+              <div className="browse-para-ref">
+                {q.paragraphRef}
+                {live && <span className="on-screen-tag">On screen</span>}
+              </div>
               <div className="browse-para-text">{q.text}</div>
               <div className="browse-para-actions">
                 <button
@@ -182,7 +195,8 @@ export default function BrowsePanel({ visible, onAddToQueue, onSendToProjection 
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
           {paragraphs.length === 0 && !loadingParagraphs && (
             <div className="browse-empty">No paragraphs found</div>
           )}

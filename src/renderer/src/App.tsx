@@ -22,6 +22,7 @@ import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 export type OnScreenLoc =
   | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
+  | { kind: 'song'; songId: number; slideIndex: number }
   | null
 
 type TopTab = 'sermons' | 'bible' | 'songs'
@@ -545,6 +546,9 @@ export default function App() {
         paragraphRef: tail[tail.length - 1] || projected.item.quote.paragraphRef
       }
     }
+    if (projected.item.kind === 'song') {
+      return { kind: 'song', songId: projected.item.songId, slideIndex: projected.slide }
+    }
     return null
   }, [projected, projectionOpen, isScreenBlanked])
 
@@ -677,6 +681,7 @@ export default function App() {
             <div className="panel-view" hidden={sermonsTab !== 'browse'}>
               <BrowsePanel
                 visible={topTab === 'sermons' && sermonsTab === 'browse'}
+                onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                 onAddToQueue={handleAddQuote}
                 onSendToProjection={handleProjectQuote}
               />
@@ -695,6 +700,7 @@ export default function App() {
           <div className="panel-view" hidden={topTab !== 'songs'}>
             <SongsPanel
               visible={topTab === 'songs'}
+              onScreen={onScreenLoc?.kind === 'song' ? onScreenLoc : null}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
             />

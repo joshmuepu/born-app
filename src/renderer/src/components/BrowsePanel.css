@@ -161,7 +161,15 @@
   border-bottom: 1px solid #161b22;
 }
 
+.browse-para-item--on-screen {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .browse-para-ref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.68rem;
   font-family: 'SF Mono', 'Fira Code', monospace;
   color: #58a6ff;

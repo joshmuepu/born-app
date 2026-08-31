@@ -138,13 +138,26 @@
   padding: 10px 12px;
   position: relative;
 }
+.song-slide--on-screen {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.song-slide--on-screen .song-slide-project {
+  opacity: 1;
+}
+.song-slide-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
 .song-slide-label {
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--warn);
-  margin-bottom: 6px;
 }
 .song-slide-text {
   font-size: 0.9rem;

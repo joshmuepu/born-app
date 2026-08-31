@@ -4,11 +4,13 @@ import './SongsPanel.css'
 
 interface Props {
   visible: boolean
+  /** The song slide currently on the projector, so its card can be marked. */
+  onScreen?: { songId: number; slideIndex: number } | null
   onAddSong: (song: SongDetail) => void
   onProjectSong: (song: SongDetail, slide?: number) => void
 }
 
-export default function SongsPanel({ visible, onAddSong, onProjectSong }: Props) {
+export default function SongsPanel({ visible, onScreen, onAddSong, onProjectSong }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SongSummary[]>([])
   const [selected, setSelected] = useState<SongDetail | null>(null)
@@ -121,19 +123,27 @@ export default function SongsPanel({ visible, onAddSong, onProjectSong }: Props)
             </div>
           </div>
           <div className="song-slides">
-            {selected.slides.map((s, i) => (
-              <div key={i} className="song-slide">
-                {s.label && <div className="song-slide-label">{s.label}</div>}
-                <div className="song-slide-text">{s.text}</div>
-                {selected.songKey && <div className="song-slide-key">{selected.songKey}</div>}
-                <button
-                  className="btn-secondary btn-sm song-slide-project"
-                  onClick={() => onProjectSong(selected, i)}
-                >
-                  Project
-                </button>
-              </div>
-            ))}
+            {selected.slides.map((s, i) => {
+              const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
+              return (
+                <div key={i} className={`song-slide${live ? ' song-slide--on-screen' : ''}`}>
+                  {(s.label || live) && (
+                    <div className="song-slide-head">
+                      {s.label && <div className="song-slide-label">{s.label}</div>}
+                      {live && <span className="on-screen-tag">On screen</span>}
+                    </div>
+                  )}
+                  <div className="song-slide-text">{s.text}</div>
+                  {selected.songKey && <div className="song-slide-key">{selected.songKey}</div>}
+                  <button
+                    className="btn-secondary btn-sm song-slide-project"
+                    onClick={() => onProjectSong(selected, i)}
+                  >
+                    Project
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       ) : (
