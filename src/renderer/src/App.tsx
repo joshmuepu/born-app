@@ -70,6 +70,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(4.5)
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
+  const [alertTarget, setAlertTarget] = useState<'congregation' | 'stage' | 'both'>('congregation')
   const [webRemoteURL, setWebRemoteURL] = useState('')
   const [appVersion, setAppVersion] = useState('')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
@@ -560,10 +561,10 @@ export default function App() {
 
   const handleSendAlert = useCallback(() => {
     if (!alertMessage.trim()) return
-    window.electronAPI.sendAlert(alertMessage.trim())
+    window.electronAPI.sendAlert(alertMessage.trim(), alertTarget)
     setAlertMessage('')
     setShowAlertDialog(false)
-  }, [alertMessage])
+  }, [alertMessage, alertTarget])
 
   const handleNewService = useCallback(() => {
     if (serviceQueue.length === 0) return
@@ -590,6 +591,7 @@ export default function App() {
   const isRunning = indexer?.status === 'running'
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
   const targetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.targetId)
+  const stageTargetDisplay = displayInfo?.displays.find((d) => d.id === displayInfo.stageTargetId)
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
 
   // What's on the projector right now, so the source panels can highlight it.
@@ -651,9 +653,44 @@ export default function App() {
           )}
 
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">Shortcuts</button>
-          <button className="btn-quiet btn-sm" onClick={handleToggleStage} title="Open a second window showing the current and next slide (for musicians)">
-            {stageOpen ? 'Close monitor' : 'Stage monitor'}
-          </button>
+
+          <div className="stage-controls">
+            <button className="btn-quiet btn-sm" onClick={handleToggleStage} title="Open a screen for the platform showing the current and next slide">
+              {stageOpen ? 'Close monitor' : 'Stage monitor'}
+            </button>
+            {stageOpen && displayInfo && displayInfo.displays.length > 1 && (
+              <label className="display-picker" title="Which screen the stage monitor uses">
+                <span className="display-picker-label">Stage</span>
+                <select
+                  className="language-select"
+                  value={
+                    displayInfo.stageIsOverride && displayInfo.stageTargetId
+                      ? displayInfo.stageTargetId
+                      : ''
+                  }
+                  onChange={(e) =>
+                    window.electronAPI
+                      .setStageDisplay(e.target.value ? Number(e.target.value) : null)
+                      .then(setDisplayInfo)
+                  }
+                >
+                  <option value="">
+                    {displayInfo.stageIsWindowed
+                      ? 'Auto: floating window'
+                      : `Auto: ${shortDisplayName(stageTargetDisplay?.label ?? '')}`}
+                  </option>
+                  {displayInfo.displays.map((d) => (
+                    <option key={d.id} value={d.id}>{shortDisplayName(d.label)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {stageOpen && displayInfo?.stageClashesProjection && (
+              <span className="display-status display-status--warn" title="The stage monitor and the congregation projection are on the same screen — pick a different one, or they'll overlap">
+                ⚠ Stage shares the projection screen
+              </span>
+            )}
+          </div>
 
           <div className="projection-controls">
             {displayInfo && (
@@ -891,7 +928,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Show a message on screen</h3>
-            <p className="modal-hint">It appears across the bottom of the projection for about 10 seconds.</p>
+            <p className="modal-hint">It appears across the bottom of the screen for about 10 seconds.</p>
             <input
               type="text"
               className="modal-input"
@@ -901,6 +938,18 @@ export default function App() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSendAlert() }}
               autoFocus
             />
+            <div className="alert-target">
+              <span className="alert-target-label">Show on</span>
+              {(['congregation', 'stage', 'both'] as const).map((t) => (
+                <button
+                  key={t}
+                  className={`filter-mode-btn${alertTarget === t ? ' active' : ''}`}
+                  onClick={() => setAlertTarget(t)}
+                >
+                  {t === 'congregation' ? 'Main screen' : t === 'stage' ? 'Stage monitor' : 'Both'}
+                </button>
+              ))}
+            </div>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowAlertDialog(false)}>Cancel</button>
               <button className="btn-primary" onClick={handleSendAlert} disabled={!alertMessage.trim()}>Show message</button>

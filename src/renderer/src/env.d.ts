@@ -27,6 +27,10 @@ declare global {
     isFallback: boolean
     isOverride: boolean
     hasExternal: boolean
+    stageTargetId: number | null
+    stageIsWindowed: boolean
+    stageIsOverride: boolean
+    stageClashesProjection: boolean
   }
 
   interface UpdateInfo {
@@ -67,11 +71,15 @@ declare global {
       // Displays
       listDisplays: () => Promise<DisplayInfo>
       setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>
+      setStageDisplay: (displayId: number | null) => Promise<DisplayInfo>
       onDisplaysInfo: (callback: (info: DisplayInfo) => void) => () => void
       onProjectionDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Alert / Ticker
-      sendAlert: (message: string) => void
+      sendAlert: (message: string, target?: 'congregation' | 'stage' | 'both') => void
       onAlert: (callback: (message: string) => void) => () => void
+      onStageAlert: (callback: (message: string) => void) => () => void
+      onStageSetBlank: (callback: (blank: boolean) => void) => () => void
+      onStageDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Search (local, with server fallback)
       searchSermons: (
         query: string,

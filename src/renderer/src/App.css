@@ -1355,6 +1355,31 @@ mark.hl {
   white-space: nowrap;
 }
 
+.display-status--warn {
+  color: #e3b341;
+}
+
+/* Stage monitor: open/close + its own screen picker travel together. */
+.stage-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Message dialog — where the message shows. */
+.alert-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.alert-target-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-right: 2px;
+}
+
 .fallback-banner {
   flex-shrink: 0;
   padding: 6px 20px;

@@ -22,7 +22,12 @@ import {
   type SearchFilters,
   type QuoteRow
 } from './search'
-import { pickProjectionDisplay, describeDisplay, type DisplayLike } from './displays'
+import {
+  pickProjectionDisplay,
+  pickStageDisplay,
+  describeDisplay,
+  type DisplayLike
+} from './displays'
 import {
   checkForUpdate,
   getCachedUpdate,
@@ -83,11 +88,15 @@ interface StageState {
 let stageState: StageState = { current: null, next: null }
 let stageReady = false
 
-function getSettingsSafe(): { fontSize: number; projectionDisplayId: number | null } {
+function getSettingsSafe(): {
+  fontSize: number
+  projectionDisplayId: number | null
+  stageDisplayId: number | null
+} {
   try {
     return getSettings()
   } catch {
-    return { fontSize: 3.0, projectionDisplayId: null }
+    return { fontSize: 3.0, projectionDisplayId: null, stageDisplayId: null }
   }
 }
 
@@ -215,19 +224,52 @@ function createProjectionWindow(): void {
 function createStageWindow(): void {
   log.info('createStageWindow')
   stageReady = false
-  stageWindow = new BrowserWindow({
-    width: 900,
-    height: 600,
-    minWidth: 600,
-    minHeight: 400,
-    title: 'BORN — Stage View',
-    backgroundColor: '#0a0a0a',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      sandbox: false
-    }
-  })
+
+  const target = resolveStageTarget()
+  const onMac = process.platform === 'darwin'
+  log.info(
+    `stage target: ${
+      target.display
+        ? describeDisplay(target.display, screen.getPrimaryDisplay().id)
+        : 'windowed (no spare screen)'
+    } fallback=${target.isFallback} override=${target.isOverride}`
+  )
+
+  if (target.display) {
+    const area = target.display.workArea ?? target.display.bounds
+    stageWindow = new BrowserWindow({
+      x: area.x,
+      y: area.y,
+      width: area.width,
+      height: area.height,
+      title: 'BORN — Stage View',
+      backgroundColor: '#0a0a0a',
+      show: false,
+      fullscreen: !onMac,
+      simpleFullscreen: onMac,
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        contextIsolation: true,
+        sandbox: false
+      }
+    })
+    if (onMac) stageWindow.setSimpleFullScreen(true)
+    stageWindow.once('ready-to-show', () => stageWindow?.show())
+  } else {
+    stageWindow = new BrowserWindow({
+      width: 900,
+      height: 600,
+      minWidth: 600,
+      minHeight: 400,
+      title: 'BORN — Stage View',
+      backgroundColor: '#0a0a0a',
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        contextIsolation: true,
+        sandbox: false
+      }
+    })
+  }
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     stageWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/stage.html`)
@@ -256,10 +298,19 @@ function resolveProjectionTarget() {
   return pickProjectionDisplay(displays, primary.id, overrideId)
 }
 
+function resolveStageTarget() {
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const primary = screen.getPrimaryDisplay()
+  const projectionId = resolveProjectionTarget().display.id
+  const overrideId = getSettingsSafe().stageDisplayId
+  return pickStageDisplay(displays, primary.id, projectionId, overrideId)
+}
+
 function displayInfoPayload() {
   const primary = screen.getPrimaryDisplay()
   const displays = screen.getAllDisplays()
   const target = resolveProjectionTarget()
+  const stage = resolveStageTarget()
   return {
     displays: displays.map((d) => ({
       id: d.id,
@@ -270,7 +321,13 @@ function displayInfoPayload() {
     targetId: target.display.id,
     isFallback: target.isFallback,
     isOverride: target.isOverride,
-    hasExternal: displays.length > 1
+    hasExternal: displays.length > 1,
+    // Stage monitor
+    stageTargetId: stage.display?.id ?? null,
+    stageIsWindowed: stage.display === null,
+    stageIsOverride: stage.isOverride,
+    /** true when the stage would share a screen with the main projection. */
+    stageClashesProjection: stage.display != null && stage.display.id === target.display.id
   }
 }
 
@@ -315,6 +372,53 @@ function repositionProjectionWindow(force = false): void {
   }, 700)
 }
 
+/** Re-place the stage window on its chosen display (or back to a normal window
+ *  when there's no spare screen). Shares the `repositioning` guard so the
+ *  fullscreen toggle doesn't feed the display-metrics loop. */
+function repositionStageWindow(force = false): void {
+  if (!stageWindow || stageWindow.isDestroyed()) return
+  const onMac = process.platform === 'darwin'
+  const target = resolveStageTarget()
+  const isFs = onMac ? stageWindow.isSimpleFullScreen() : stageWindow.isFullScreen()
+
+  if (target.display) {
+    const area = target.display.workArea ?? target.display.bounds
+    const winDisplay = screen.getDisplayMatching(stageWindow.getBounds())
+    if (!force && isFs && winDisplay.id === target.display.id) return
+    log.info(
+      `repositioning stage → ${describeDisplay(target.display, screen.getPrimaryDisplay().id)}`
+    )
+    repositioning = true
+    try {
+      if (onMac) stageWindow.setSimpleFullScreen(false)
+      else stageWindow.setFullScreen(false)
+      stageWindow.setBounds({ x: area.x, y: area.y, width: area.width, height: area.height })
+      if (onMac) stageWindow.setSimpleFullScreen(true)
+      else stageWindow.setFullScreen(true)
+    } catch (e) {
+      log.error('repositionStageWindow failed', e)
+    }
+    setTimeout(() => {
+      repositioning = false
+    }, 700)
+  } else if (isFs || force) {
+    // No spare screen any more — drop back to a normal window.
+    log.info('stage → windowed (no spare screen)')
+    repositioning = true
+    try {
+      if (onMac) stageWindow.setSimpleFullScreen(false)
+      else stageWindow.setFullScreen(false)
+      stageWindow.setBounds({ width: 900, height: 600 })
+      stageWindow.center()
+    } catch (e) {
+      log.error('repositionStageWindow (windowed) failed', e)
+    }
+    setTimeout(() => {
+      repositioning = false
+    }, 700)
+  }
+}
+
 let displayChangeTimer: ReturnType<typeof setTimeout> | null = null
 function onDisplayLayoutChanged(reason: string): void {
   if (repositioning) return // don't react to the metrics-changed events our own move fires
@@ -323,6 +427,7 @@ function onDisplayLayoutChanged(reason: string): void {
   displayChangeTimer = setTimeout(() => {
     displayChangeTimer = null
     repositionProjectionWindow()
+    repositionStageWindow()
     broadcastDisplayInfo()
   }, 400)
 }
@@ -332,6 +437,8 @@ function onDisplayLayoutChanged(reason: string): void {
 function setProjectionBlank(blank: boolean): void {
   projectionState.blank = blank
   sendToProjection('projection:set-blank', blank)
+  // The stage monitor's "Congregation" view mirrors the projector, blackout included.
+  sendToStage('stage:set-blank', blank)
   // Keep the operator console's blank state in sync (e.g. when the command came
   // from the projection window's Esc key or the phone web remote).
   sendToMain('operator:blank-changed', blank)
@@ -388,9 +495,16 @@ ipcMain.on('projection:clear', () => {
   sendToProjection('projection:clear')
 })
 
-ipcMain.on('projection:alert', (_event, message: string) => {
-  sendToProjection('projection:alert', message)
-})
+ipcMain.on(
+  'projection:alert',
+  (_event, payload: string | { message: string; target?: 'congregation' | 'stage' | 'both' }) => {
+    const message = typeof payload === 'string' ? payload : payload.message
+    const target = typeof payload === 'string' ? 'congregation' : payload.target ?? 'congregation'
+    if (!message?.trim()) return
+    if (target === 'congregation' || target === 'both') sendToProjection('projection:alert', message)
+    if (target === 'stage' || target === 'both') sendToStage('stage:alert', message)
+  }
+)
 
 ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
   setProjectionBlank(blank)
@@ -431,6 +545,19 @@ ipcMain.handle('projection:set-display', (_event, displayId: number | null) => {
     log.error('persist projectionDisplayId failed', e)
   }
   repositionProjectionWindow(true)
+  repositionStageWindow() // the stage auto-pick depends on where the projection is
+  broadcastDisplayInfo()
+  return displayInfoPayload()
+})
+
+ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
+  log.info(`ipc stage:set-display ${displayId}`)
+  try {
+    updateSettings({ stageDisplayId: displayId })
+  } catch (e) {
+    log.error('persist stageDisplayId failed', e)
+  }
+  repositionStageWindow(true)
   broadcastDisplayInfo()
   return displayInfoPayload()
 })
@@ -542,6 +669,8 @@ ipcMain.handle('stage:open', () => {
 ipcMain.on('stage:ready', () => {
   stageReady = true
   sendToStage('stage:update', stageState)
+  sendToStage('stage:set-blank', projectionState.blank)
+  sendToStage('stage:display-info', displayInfoPayload())
 })
 
 ipcMain.handle('stage:close', () => {

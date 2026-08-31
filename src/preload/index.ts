@@ -16,6 +16,11 @@ export interface DisplayInfo {
   isFallback: boolean
   isOverride: boolean
   hasExternal: boolean
+  /** Stage monitor: the display it's on, or null when it stays a normal window. */
+  stageTargetId: number | null
+  stageIsWindowed: boolean
+  stageIsOverride: boolean
+  stageClashesProjection: boolean
 }
 
 export interface IndexerProgress {
@@ -90,6 +95,8 @@ const api = {
   listDisplays: (): Promise<DisplayInfo> => ipcRenderer.invoke('displays:list'),
   setProjectionDisplay: (displayId: number | null): Promise<DisplayInfo> =>
     ipcRenderer.invoke('projection:set-display', displayId),
+  setStageDisplay: (displayId: number | null): Promise<DisplayInfo> =>
+    ipcRenderer.invoke('stage:set-display', displayId),
 
   onDisplaysInfo: (callback: (info: DisplayInfo) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, info: DisplayInfo): void => callback(info)
@@ -116,12 +123,33 @@ const api = {
   },
 
   // Alert / Ticker
-  sendAlert: (message: string): void => ipcRenderer.send('projection:alert', message),
+  sendAlert: (
+    message: string,
+    target: 'congregation' | 'stage' | 'both' = 'congregation'
+  ): void => ipcRenderer.send('projection:alert', { message, target }),
 
   onAlert: (callback: (message: string) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, message: string): void => callback(message)
     ipcRenderer.on('projection:alert', handler)
     return () => ipcRenderer.removeListener('projection:alert', handler)
+  },
+
+  onStageAlert: (callback: (message: string) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, message: string): void => callback(message)
+    ipcRenderer.on('stage:alert', handler)
+    return () => ipcRenderer.removeListener('stage:alert', handler)
+  },
+
+  onStageSetBlank: (callback: (blank: boolean) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, blank: boolean): void => callback(blank)
+    ipcRenderer.on('stage:set-blank', handler)
+    return () => ipcRenderer.removeListener('stage:set-blank', handler)
+  },
+
+  onStageDisplayInfo: (callback: (info: DisplayInfo) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, info: DisplayInfo): void => callback(info)
+    ipcRenderer.on('stage:display-info', handler)
+    return () => ipcRenderer.removeListener('stage:display-info', handler)
   },
 
   // Search (local index, with automatic server fallback in main process)

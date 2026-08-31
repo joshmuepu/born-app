@@ -11,12 +11,15 @@ import { log } from './logger'
 export interface AppSettings {
   /** Electron display id the operator forced the projection onto, if any. */
   projectionDisplayId: number | null
+  /** Electron display id the operator forced the stage monitor onto, if any. */
+  stageDisplayId: number | null
   /** Projection text size in rem. */
   fontSize: number
 }
 
 const DEFAULTS: AppSettings = {
   projectionDisplayId: null,
+  stageDisplayId: null,
   fontSize: 3.0
 }
 
