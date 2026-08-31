@@ -4,6 +4,7 @@
  * flat list of `slides` that the projection window steps through.
  */
 import { paginateText } from './paginate'
+import { parseParagraphRef } from './paragraphRef'
 
 export interface Quote {
   text: string
@@ -111,12 +112,23 @@ export function quoteToItem(quote: Quote): QuoteItem {
     }
   }
   const pageRefs = pageParagraphRefs(pages, quote.paragraphRef)
-  const slides: Slide[] = pages.map((text, i) => ({
-    text,
-    reference: cite(pageRefs[i]),
-    // Superscript number: the paragraph this page starts on (numeric refs only).
-    marker: i === 0 ? marker : /^\d/.test(pageRefs[i]) ? pageRefs[i].split(/[-–]/)[0] : undefined
-  }))
+  const range = parseParagraphRef(quote.paragraphRef)
+  const slides: Slide[] = pages.map((text, i) => {
+    // A page can open on an inline sub-paragraph number ("147 And now…"); lift
+    // it out so it shows as the marker, not doubled up in the body.
+    let body = text
+    let mk = i === 0 ? marker : undefined
+    const lead = /^(\d{1,3})\s+([\s\S]*)$/.exec(text)
+    if (lead && range) {
+      const n = parseInt(lead[1], 10)
+      if (n >= range[0] && n <= range[1]) {
+        mk = lead[1]
+        body = lead[2]
+      }
+    }
+    if (!mk && i > 0 && /^\d/.test(pageRefs[i])) mk = pageRefs[i].split(/[-–]/)[0]
+    return { text: body, reference: cite(pageRefs[i]), marker: mk }
+  })
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 

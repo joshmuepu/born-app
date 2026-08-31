@@ -2,12 +2,22 @@ import { useState } from 'react'
 import type { QueueItem } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
 
+interface OnScreen {
+  /** The exact text on the projector right now. */
+  text: string
+  marker?: string
+  reference?: string
+  label?: string
+  /** The exact text Next will show, when it's already loaded. */
+  nextText?: string
+}
+
 interface Props {
   queue: QueueItem[]
   activeIndex: number | null
   activeSlide: number
   /** What's actually on the projector right now (follows Next/Prev flow-through). */
-  onScreenText?: string
+  onScreen?: OnScreen | null
   projectionOpen: boolean
   blanked: boolean
   onProject: (index: number) => void
@@ -34,7 +44,7 @@ export default function ServiceQueue({
   queue,
   activeIndex,
   activeSlide,
-  onScreenText,
+  onScreen,
   projectionOpen,
   blanked,
   onProject,
@@ -47,19 +57,19 @@ export default function ServiceQueue({
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-  const canPrev = projectionOpen && activeIndex !== null && (activeIndex > 0 || activeSlide > 0)
-  const canNext =
-    projectionOpen &&
-    queue.length > 0 &&
-    (activeIndex === null ||
-      activeIndex < queue.length - 1 ||
-      activeSlide < (queue[activeIndex]?.slides.length ?? 1) - 1)
+  // Next/Prev drive flow-through, so they're live whenever something is (or can
+  // be) on screen; the handlers clamp at the real edges (a song's last slide).
+  const projecting = projectionOpen && !blanked && !!onScreen
+  const canPrev = projecting
+  const canNext = projecting || (projectionOpen && !blanked && queue.length > 0)
 
-  const nowLine = !projectionOpen
+  const status = !projectionOpen
     ? 'Projection window is closed'
     : blanked
       ? 'Screen is hidden'
-      : onScreenText || 'Nothing on screen yet'
+      : !onScreen
+        ? 'Nothing on screen yet'
+        : null
 
   return (
     <div className="service-queue">
@@ -124,17 +134,37 @@ export default function ServiceQueue({
         </div>
       )}
 
-      {queue.length > 0 && (
+      {(projectionOpen || queue.length > 0) && (
         <div className="queue-live-bar">
-          <div className="queue-live-now" title="What the congregation is seeing right now">
-            <span className="queue-live-label">On screen</span>
-            <span className="queue-live-text">{nowLine}</span>
+          <div className="live-now" title="Exactly what the congregation is seeing right now">
+            <div className="live-now-head">
+              <span className="queue-live-label">On screen</span>
+              {onScreen?.reference && !status && (
+                <span className="live-now-ref">
+                  {onScreen.label ? `${onScreen.label} · ` : ''}
+                  {onScreen.reference}
+                </span>
+              )}
+            </div>
+            {status ? (
+              <div className="live-now-status">{status}</div>
+            ) : (
+              <div className="live-now-text">
+                {onScreen?.marker && <span className="live-now-marker">{onScreen.marker}</span>}
+                {onScreen?.text}
+              </div>
+            )}
+            {!status && onScreen?.nextText && (
+              <div className="live-next">
+                <span className="live-next-label">Next</span> {onScreen.nextText}
+              </div>
+            )}
           </div>
           <div className="queue-live-nav">
-            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back one slide (← or Space+Shift)">
+            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back (← or Shift+Space)">
               ‹ Back
             </button>
-            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next slide (→ or Space)">
+            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next (→ or Space)">
               Next ›
             </button>
           </div>

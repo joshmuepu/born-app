@@ -78,6 +78,7 @@ if (typeof window !== 'undefined') {
       getBrowseSeries: vi.fn(() => Promise.resolve([])),
       getBrowseStates: vi.fn(() => Promise.resolve([])),
       getBrowseCities: vi.fn(() => Promise.resolve([])),
+      getBrowseLocation: vi.fn(() => Promise.resolve([])),
       getBrowseDateGroups: vi.fn(() => Promise.resolve([])),
       getBrowseDurationGroups: vi.fn(() => Promise.resolve([])),
       getSermonsByIds: vi.fn(() => Promise.resolve([])),

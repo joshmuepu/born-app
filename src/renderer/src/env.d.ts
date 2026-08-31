@@ -9,6 +9,7 @@ import type {
   CityEntry,
   DateGroup,
   DurationGroup,
+  LocationState,
   SubtitleEntry,
   SlidePayload,
   BibleTranslation,
@@ -123,6 +124,7 @@ declare global {
       getBrowseCities: () => Promise<CityEntry[]>
       getBrowseDateGroups: () => Promise<DateGroup[]>
       getBrowseDurationGroups: () => Promise<DurationGroup[]>
+      getBrowseLocation: () => Promise<LocationState[]>
       getSermonsByIds: (ids: number[]) => Promise<SermonIndexItem[]>
       getSermonParagraphs: (sermonId: number, language: string) => Promise<Quote[]>
       // Subtitles

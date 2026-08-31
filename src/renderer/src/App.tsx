@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
+import SermonFollowView from './components/SermonFollowView'
 import ServiceQueue from './components/ServiceQueue'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
@@ -53,6 +54,7 @@ function shortDisplayName(label: string): string {
 
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
+  const [followSermonId, setFollowSermonId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -298,7 +300,10 @@ export default function App() {
     [addToQueue]
   )
   const handleProjectQuote = useCallback(
-    (quote: Quote) => doProject(quoteToItem(quote), 0, null),
+    (quote: Quote) => {
+      doProject(quoteToItem(quote), 0, null)
+      setFollowSermonId(quote.sermonId) // switch the results list to "follow along"
+    },
     [doProject]
   )
 
@@ -540,6 +545,7 @@ export default function App() {
     setSearchResults(results)
     setSearchQuery(query)
     setSearched(true)
+    setFollowSermonId(null) // a new search means show the results again
   }, [])
 
   const handleSendAlert = useCallback(() => {
@@ -785,15 +791,25 @@ export default function App() {
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
               <SearchBar onResults={handleSearch} onSearchingChange={setSearching} />
-              <ResultsList
-                results={searchResults}
-                query={searchQuery}
-                loading={searching}
-                searched={searched}
-                onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
-                onAddToQueue={handleAddQuote}
-                onSendToProjection={handleProjectQuote}
-              />
+              {followSermonId !== null && projected?.item.kind === 'quote' ? (
+                <SermonFollowView
+                  sermonId={followSermonId}
+                  currentRef={onScreenLoc?.kind === 'quote' ? onScreenLoc.paragraphRef : null}
+                  onBack={() => setFollowSermonId(null)}
+                  onProject={handleProjectQuote}
+                  onAddToQueue={handleAddQuote}
+                />
+              ) : (
+                <ResultsList
+                  results={searchResults}
+                  query={searchQuery}
+                  loading={searching}
+                  searched={searched}
+                  onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
+                  onAddToQueue={handleAddQuote}
+                  onSendToProjection={handleProjectQuote}
+                />
+              )}
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'browse'}>
               <BrowsePanel
@@ -829,15 +845,17 @@ export default function App() {
             queue={serviceQueue}
             activeIndex={activeQueueIndex}
             activeSlide={projected?.slide ?? 0}
-            onScreenText={
+            onScreen={
               projected
-                ? projected.item.slides[projected.slide]?.reference ??
-                  `${itemTitle(projected.item)}${
-                    projected.item.slides.length > 1
-                      ? `  ·  ${projected.slide + 1} of ${projected.item.slides.length}`
-                      : ''
-                  }`
-                : undefined
+                ? {
+                    text: projected.item.slides[projected.slide]?.text ?? '',
+                    marker: projected.item.slides[projected.slide]?.marker,
+                    reference:
+                      projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
+                    label: projected.item.slides[projected.slide]?.label,
+                    nextText: projected.item.slides[projected.slide + 1]?.text
+                  }
+                : null
             }
             projectionOpen={projectionOpen}
             blanked={isScreenBlanked}

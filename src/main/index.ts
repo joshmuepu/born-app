@@ -30,7 +30,7 @@ import {
   runInstaller,
   applyUpdate
 } from './updateCheck'
-import { getLocalDateGroups, getLocalDurationGroups } from './browseLocal'
+import { getLocalDateGroups, getLocalDurationGroups, getLocalLocationTree } from './browseLocal'
 import { getSettings, updateSettings } from './settings'
 import {
   serverSearch,
@@ -635,6 +635,14 @@ ipcMain.handle('browse:duration-groups', () => {
   }
   return fetchAllDurationGroups()
 })
+ipcMain.handle('browse:location', () => {
+  try {
+    return getLocalLocationTree(getDb())
+  } catch (e) {
+    log.error('browse:location error', e)
+    return []
+  }
+})
 
 ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
   log.debug(`ipc browse:sermons-by-ids count=${ids?.length ?? 0}`)
@@ -655,31 +663,44 @@ ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
 
 ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, language: string) => {
   log.debug(`ipc browse:sermon-paragraphs sermonId=${sermonId} lang=${language}`)
-  try {
-    const db = getDb()
-    const lang = language || 'en'
 
-    if (lang === 'en') {
+  /** The bundled English paragraphs for this sermon — always available offline. */
+  const englishLocal = (): Array<Record<string, unknown>> => {
+    try {
+      const db = getDb()
       const rows = db
         .prepare<
           [number],
           { paragraph_ref: string; paragraph_index: number; text: string; date_code: string; title: string }
         >(
           `SELECT p.paragraph_ref, p.paragraph_index, p.text, s.date_code, s.title
-           FROM paragraphs p JOIN sermons s ON s.id = p.sermon_id
+           FROM paragraphs p
+           JOIN sermons s ON s.id = p.sermon_id
            WHERE p.sermon_id = ? ORDER BY p.paragraph_index`
         )
-        .all(sermonId)
-      if (rows.length > 0)
-        return rows.map((r) => ({
-          text: r.text,
-          sermonTitle: r.title,
-          dateCode: r.date_code,
-          sermonId,
-          paragraphIndex: r.paragraph_index,
-          paragraphRef: r.paragraph_ref,
-          language: 'en'
-        }))
+        .all(Number(sermonId))
+      return rows.map((r) => ({
+        text: r.text,
+        sermonTitle: r.title,
+        dateCode: r.date_code,
+        sermonId: Number(sermonId),
+        paragraphIndex: r.paragraph_index,
+        paragraphRef: r.paragraph_ref,
+        language: 'en'
+      }))
+    } catch (e) {
+      log.error('englishLocal paragraphs error', e)
+      return []
+    }
+  }
+
+  try {
+    const db = getDb()
+    const lang = language || 'en'
+
+    if (lang === 'en') {
+      const rows = englishLocal()
+      if (rows.length > 0) return rows
     } else {
       const cached = db
         .prepare<[number, string], { paragraph_ref: string; paragraph_index: number; text: string }>(
@@ -706,7 +727,7 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
     }
 
     const content = await fetchSermonContent(sermonId, lang)
-    if (!content) return []
+    if (!content) return englishLocal() // never leave the operator with an empty sermon
 
     if (lang !== 'en') {
       const insertSermon = db.prepare(
@@ -734,7 +755,7 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
     }))
   } catch (e) {
     log.error('browse:sermon-paragraphs error', e)
-    return []
+    return englishLocal()
   }
 })
 

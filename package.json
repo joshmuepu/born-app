@@ -40,7 +40,8 @@
         "to": "",
         "filter": [
           "sermons.db.gz",
-          "library.db.gz"
+          "library.db.gz",
+          "locations.json"
         ]
       }
     ],

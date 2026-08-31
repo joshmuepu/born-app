@@ -14,13 +14,14 @@ beforeEach(() => {
       { i: 2, n: 'Seals Series', s: [20, 21] }
     ])
   )
-  window.electronAPI.getBrowseStates = vi.fn(() =>
+  window.electronAPI.getBrowseLocation = vi.fn(() =>
     Promise.resolve([
-      { i: 1, n: 'Indiana', c: [5] }
+      {
+        id: 1,
+        name: 'Indiana',
+        cities: [{ id: 5, name: 'Jeffersonville', sermonIds: [40, 41] }]
+      }
     ])
-  )
-  window.electronAPI.getBrowseCities = vi.fn(() =>
-    Promise.resolve([{ i: 5, n: 'Jeffersonville' }])
   )
   window.electronAPI.getBrowseDateGroups = vi.fn(() =>
     Promise.resolve([
@@ -60,12 +61,12 @@ describe('BrowsePanel', () => {
     expect(screen.getByText('3 sermons')).toBeDefined()
   })
 
-  it('switches to Location tab and loads states', async () => {
+  it('switches to Location tab and loads the state list', async () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Location' }))
     await waitFor(() => expect(screen.getByText('Indiana')).toBeDefined())
-    expect(window.electronAPI.getBrowseStates).toHaveBeenCalledOnce()
+    expect(window.electronAPI.getBrowseLocation).toHaveBeenCalledOnce()
   })
 
   it('switches to Date tab and loads date groups', async () => {
@@ -184,12 +185,16 @@ describe('BrowsePanel', () => {
     expect(window.electronAPI.getSermonsByIds).toHaveBeenCalledWith([30, 31])
   })
 
-  it('drills into Location state to show cities', async () => {
+  it('drills Location: state → city → sermons', async () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Location' }))
     await waitFor(() => screen.getByText('Indiana'))
     await user.click(screen.getByText('Indiana'))
     await waitFor(() => expect(screen.getByText('Jeffersonville')).toBeDefined())
+    await user.click(screen.getByText('Jeffersonville'))
+    await waitFor(() =>
+      expect(window.electronAPI.getSermonsByIds).toHaveBeenCalledWith([40, 41])
+    )
   })
 })

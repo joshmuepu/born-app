@@ -509,6 +509,82 @@ body {
   white-space: nowrap;
 }
 
+/* ── Sermon follow-along view (replaces the results list while projecting) ── */
+
+.follow-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.follow-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.follow-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.follow-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.follow-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.follow-para {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.follow-para--on-screen {
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.follow-para-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.follow-para-ref {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.follow-para-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.follow-para--on-screen .follow-para-text {
+  -webkit-line-clamp: 40;
+}
+
 .result-head {
   display: flex;
   align-items: baseline;
@@ -603,11 +679,18 @@ mark.hl {
   gap: 8px;
 }
 
-.queue-live-now {
+.live-now {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+}
+
+.live-now-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .queue-live-label {
@@ -615,15 +698,59 @@ mark.hl {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.live-now-ref {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-now-status {
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
-.queue-live-text {
+/* The exact text on the projector — the operator's confidence monitor. */
+.live-now-text {
   font-size: 0.9rem;
+  line-height: 1.45;
   color: var(--text-primary);
-  white-space: nowrap;
+  max-height: 7.2em;
+  overflow-y: auto;
+  padding: 6px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.live-now-marker {
+  font-size: 0.7em;
+  font-weight: 700;
+  color: var(--accent);
+  vertical-align: super;
+  margin-right: 0.35em;
+}
+
+.live-next {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+.live-next-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-right: 4px;
 }
 
 .queue-live-nav {

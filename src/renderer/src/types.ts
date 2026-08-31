@@ -108,6 +108,12 @@ export interface DateGroup {
   sermonIds: number[]
 }
 
+export interface LocationState {
+  id: number
+  name: string
+  cities: Array<{ id: number; name: string; sermonIds: number[] }>
+}
+
 export interface DurationGroup {
   label: string
   sermonIds: number[]

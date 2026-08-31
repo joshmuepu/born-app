@@ -237,6 +237,7 @@ const api = {
   getBrowseCities: (): Promise<unknown[]> => ipcRenderer.invoke('browse:cities'),
   getBrowseDateGroups: (): Promise<unknown[]> => ipcRenderer.invoke('browse:date-groups'),
   getBrowseDurationGroups: (): Promise<unknown[]> => ipcRenderer.invoke('browse:duration-groups'),
+  getBrowseLocation: (): Promise<unknown[]> => ipcRenderer.invoke('browse:location'),
   getSermonsByIds: (ids: number[]): Promise<unknown[]> =>
     ipcRenderer.invoke('browse:sermons-by-ids', ids),
   getSermonParagraphs: (sermonId: number, language: string): Promise<Quote[]> =>

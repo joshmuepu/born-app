@@ -1,5 +1,6 @@
 import type { Quote } from '../types'
 import { highlight, yearFromDateCode } from '../highlight'
+import { refsOverlap } from '../../../shared/paragraphRef'
 
 interface Props {
   results: Quote[]
@@ -58,7 +59,7 @@ export default function ResultsList({
           const live =
             !!onScreen &&
             onScreen.sermonId === quote.sermonId &&
-            onScreen.paragraphRef === quote.paragraphRef
+            refsOverlap(onScreen.paragraphRef, quote.paragraphRef)
           return (
           <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
             <div className="result-head">

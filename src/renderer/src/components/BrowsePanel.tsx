@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { Quote, SermonIndexItem, SeriesEntry, StateEntry, CityEntry, DateGroup } from '../types'
+import type { Quote, SermonIndexItem, SeriesEntry, DateGroup, LocationState } from '../types'
+import { refsOverlap } from '../../../shared/paragraphRef'
 import './BrowsePanel.css'
 
 interface Props {
@@ -26,10 +27,9 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
   const [seriesLoaded, setSeriesLoaded] = useState(false)
 
   // Location tab
-  const [statesList, setStatesList] = useState<StateEntry[]>([])
-  const [citiesMap, setCitiesMap] = useState<Map<number, string>>(new Map())
+  const [locationTree, setLocationTree] = useState<LocationState[]>([])
   const [locationLoaded, setLocationLoaded] = useState(false)
-  const [selectedState, setSelectedState] = useState<StateEntry | null>(null)
+  const [selectedState, setSelectedState] = useState<LocationState | null>(null)
 
   // Date tab
   const [dateGroups, setDateGroups] = useState<DateGroup[]>([])
@@ -53,14 +53,8 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
 
   const loadLocation = useCallback(async () => {
     if (locationLoaded) return
-    const [states, cities] = await Promise.all([
-      window.electronAPI.getBrowseStates() as Promise<StateEntry[]>,
-      window.electronAPI.getBrowseCities() as Promise<CityEntry[]>
-    ])
-    setStatesList(states)
-    const map = new Map<number, string>()
-    for (const c of cities) map.set(c.i, c.n)
-    setCitiesMap(map)
+    const tree = (await window.electronAPI.getBrowseLocation()) as LocationState[]
+    setLocationTree(tree)
     setLocationLoaded(true)
   }, [locationLoaded])
 
@@ -144,7 +138,8 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             <div className="browse-item-code">{s.date_code}</div>
             <div className="browse-item-title">{s.title}</div>
             <div className="browse-item-meta">
-              {s.para_count} paragraphs · {s.duration_min}m{s.is_book ? ' · Book' : ''}
+              {s.duration_min ? `${s.duration_min} min` : ''}
+              {s.is_book ? `${s.duration_min ? ' · ' : ''}Book` : ''}
             </div>
           </div>
         ))}
@@ -169,7 +164,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             const live =
               !!onScreen &&
               onScreen.sermonId === q.sermonId &&
-              onScreen.paragraphRef === q.paragraphRef
+              refsOverlap(onScreen.paragraphRef, q.paragraphRef)
             return (
             <div
               key={q.paragraphRef}
@@ -237,29 +232,39 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         <div className="browse-sermons">
           <div className="browse-back-row">
             <button className="browse-back" onClick={() => setSelectedState(null)}>← Back</button>
-            <span className="browse-group-label">{selectedState.n}</span>
-            <span className="browse-count">{selectedState.c.length} cities</span>
+            <span className="browse-group-label">{selectedState.name}</span>
+            <span className="browse-count">{selectedState.cities.length} cities</span>
           </div>
           <div className="browse-list">
-            {selectedState.c.map((cityId) => {
-              const cityName = citiesMap.get(cityId) ?? `City ${cityId}`
-              return (
-                <div key={cityId} className="browse-item">
-                  <div className="browse-item-title">{cityName}</div>
+            {selectedState.cities.map((c) => (
+              <div
+                key={c.id}
+                className="browse-item"
+                onClick={() => loadSermonsForIds(c.sermonIds, `${c.name}`)}
+              >
+                <div className="browse-item-title">{c.name}</div>
+                <div className="browse-item-meta">
+                  {c.sermonIds.length} sermon{c.sermonIds.length === 1 ? '' : 's'}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )
     }
     return (
       <div className="browse-list">
-        {statesList.length === 0 && <div className="browse-loading">Loading locations…</div>}
-        {statesList.map((s) => (
-          <div key={s.i} className="browse-item" onClick={() => setSelectedState(s)}>
-            <div className="browse-item-title">{s.n}</div>
-            <div className="browse-item-meta">{s.c.length} cities</div>
+        {!locationLoaded && <div className="browse-loading">Loading locations…</div>}
+        {locationLoaded && locationTree.length === 0 && (
+          <div className="browse-empty">Location list unavailable.</div>
+        )}
+        {locationTree.map((s) => (
+          <div key={s.id} className="browse-item" onClick={() => setSelectedState(s)}>
+            <div className="browse-item-title">{s.name}</div>
+            <div className="browse-item-meta">
+              {s.cities.length} cit{s.cities.length === 1 ? 'y' : 'ies'} ·{' '}
+              {s.cities.reduce((n, c) => n + c.sermonIds.length, 0)} sermons
+            </div>
           </div>
         ))}
       </div>
