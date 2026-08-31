@@ -19,8 +19,7 @@
     "build:library": "npm run prepare:songs && esbuild scripts/build-library-db.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.build-library-db.mjs && (npm run -s _run-build-script && node scripts/.build-library-db.mjs || ELECTRON_RUN_AS_NODE=1 electron scripts/.build-library-db.mjs)",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
-    "dist:linux": "electron-vite build && electron-builder --linux",
-    "dist": "electron-vite build && electron-builder --mac --win --linux"
+    "dist": "electron-vite build && electron-builder --mac --win"
   },
   "build": {
     "appId": "com.joshmuepu.born",
@@ -70,19 +69,6 @@
       ],
       "icon": "build/icons/icon.ico",
       "artifactName": "BORN-${version}-Windows-Setup.${ext}"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icons/",
-      "category": "Utility",
-      "artifactName": "BORN-${version}-Linux-x86_64.${ext}"
     },
     "nsis": {
       "oneClick": false,

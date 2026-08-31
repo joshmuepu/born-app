@@ -8,8 +8,6 @@
  *              install folder isn't writable.
  *   • Windows — runs the NSIS installer silently (/S); it closes BORN, replaces
  *               it, and relaunches.
- *   • Linux  — a helper replaces the AppImage in place and relaunches, else the
- *              new file is revealed in the file manager.
  */
 import { app, net, shell, type BrowserWindow } from 'electron'
 import { spawn } from 'child_process'
@@ -51,7 +49,6 @@ function assetName(version: string): string | undefined {
     return process.arch === 'arm64' ? `BORN-${v}-macOS-arm64.dmg` : `BORN-${v}-macOS-x64.dmg`
   }
   if (process.platform === 'win32') return `BORN-${v}-Windows-Setup.exe`
-  if (process.platform === 'linux') return `BORN-${v}-Linux-x86_64.AppImage`
   return undefined
 }
 
@@ -145,16 +142,12 @@ export async function downloadUpdate(win: BrowserWindow | null): Promise<Downloa
 
 /**
  * Fallback: just hand the downloaded installer to the OS (mount the dmg / run
- * the installer with its UI / reveal the file). The user finishes it by hand.
+ * the installer with its UI). The user finishes it by hand.
  */
 export async function runInstaller(path: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    if (process.platform === 'linux') {
-      shell.showItemInFolder(path)
-    } else {
-      const err = await shell.openPath(path) // '' on success
-      if (err) return { ok: false, error: err }
-    }
+    const err = await shell.openPath(path) // '' on success
+    if (err) return { ok: false, error: err }
     return { ok: true }
   } catch (e) {
     log.error('runInstaller failed', e)
@@ -180,7 +173,7 @@ function canWrite(dir: string): boolean {
 }
 
 /**
- * Bash helper (macOS + Linux): wait for BORN to exit, put the new build in
+ * Bash helper (macOS): wait for BORN to exit, put the new build in
  * place, relaunch. `set -e` so a failure aborts before the old copy is removed.
  */
 function writeSwapScript(body: string): string {
@@ -255,19 +248,7 @@ open "$BUNDLE"
       return { ok: true }
     }
 
-    // Linux — replace the running AppImage in place.
-    const appImage = process.env.APPIMAGE
-    if (!appImage || !canWrite(dirname(appImage))) return { ok: false, needsManual: true }
-    const script = writeSwapScript(`
-NEW=${JSON.stringify(installerPath)}
-CUR=${JSON.stringify(appImage)}
-cp -f "$NEW" "$CUR"
-chmod +x "$CUR"
-rm -f "$NEW"
-"$CUR" &
-`)
-    spawnDetached('/bin/bash', [script, String(process.pid)])
-    return { ok: true }
+    return { ok: false, needsManual: true }
   } catch (e) {
     log.error('applyUpdate failed', e)
     return { ok: false, error: e instanceof Error ? e.message : 'Install failed.' }

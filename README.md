@@ -6,7 +6,7 @@ A free, open-source desktop app for believers to search William Branham sermon
 quotes, look up Bible passages, pull up worship songs, build a service queue, and
 project any of it on a second screen during a service — fully offline.
 
-**[Download for Mac, Windows, or Linux →](https://joshmuepu.com/born#download)**
+**[Download for Mac or Windows →](https://joshmuepu.com/born#download)**
 
 The download page has a version picker and per-platform builds. Or grab assets
 straight from the [latest GitHub release](https://github.com/joshmuepu/born-app/releases/latest).
@@ -40,7 +40,6 @@ straight from the [latest GitHub release](https://github.com/joshmuepu/born-app/
 | macOS (Apple Silicon, M1+) | macOS 11 Big Sur or later |
 | macOS (Intel, x64) | macOS 11 Big Sur or later |
 | Windows | Windows 10 / 11, 64-bit |
-| Linux | AppImage, x64 |
 
 The builds are not code-signed (BORN is free and unfunded). The first time you
 open it, macOS or Windows will warn about an unidentified developer — the
@@ -53,7 +52,7 @@ npm install          # install deps (rebuilds better-sqlite3 for Electron)
 npm run dev           # run in dev mode
 npm test              # unit tests
 npm run build         # type-check + bundle
-npm run dist:mac      # package installers — also dist:win / dist:linux
+npm run dist:mac      # package installers — also dist:win
 ```
 
 `npm run build:db` and `npm run build:library` regenerate the bundled sermon and

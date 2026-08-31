@@ -81,10 +81,6 @@ jobs:
             os: windows-latest
             script: dist:win
             pattern: dist-installers/*.exe
-          - name: linux
-            os: ubuntu-latest
-            script: dist:linux
-            pattern: dist-installers/*.AppImage
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -153,27 +149,6 @@ jobs:
           if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "installer is not a PE (no MZ header)" }
           Write-Host "installer OK: $($setup.Name) ($([math]::Round($setup.Length/1MB)) MB)"
 
-      - name: Smoke test (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          set -euo pipefail
-          sudo apt-get update && sudo apt-get install -y xvfb libfuse2
-          APP=$(ls dist-installers/*.AppImage | head -1)
-          chmod +x "$APP"
-          xvfb-run -a "$APP" --no-sandbox --appimage-extract-and-run &
-          PID=$!
-          LOG="$HOME/.config/Branham or Nothing/born.log"
-          OK=
-          for i in $(seq 1 45); do
-            sleep 1
-            if [ -f "$LOG" ] && grep -q "mainWindow did-finish-load" "$LOG"; then OK=1; break; fi
-            kill -0 $PID 2>/dev/null || { echo "::error::app exited early"; cat "$LOG" 2>/dev/null; exit 1; }
-          done
-          [ "${OK:-}" = 1 ] || { echo "::error::window never loaded"; cat "$LOG" 2>/dev/null; kill $PID 2>/dev/null; exit 1; }
-          echo "window loaded — killing"
-          kill $PID 2>/dev/null || true
-          grep -E "BORN starting|did-finish-load|seed complete|already complete" "$LOG"
-
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
@@ -202,4 +177,3 @@ jobs:
           files: |
             dist/*.dmg
             dist/*.exe
-            dist/*.AppImage
