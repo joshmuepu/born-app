@@ -98,12 +98,7 @@ export default function ServiceQueue({
       </div>
 
       {queue.length === 0 ? (
-        <StartScreen
-          recents={recents}
-          onNew={onNewService}
-          onOpen={onOpenService}
-          onOpenRecent={onOpenRecent}
-        />
+        <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
       ) : (
         <div className="queue-list">
           {queue.map((item, index) => {

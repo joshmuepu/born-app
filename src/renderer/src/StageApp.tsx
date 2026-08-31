@@ -89,10 +89,11 @@ export default function StageApp() {
         </div>
       </div>
 
+      {/* When nothing is on the projector (including a blackout), the stage
+          screen just shows the time — nothing else. */}
       {nothingUp && (
         <div className="stage-bigclock">
           <div className="stage-bigclock-time">{clock}</div>
-          <div className="stage-bigclock-note">{blanked ? 'Screen hidden' : 'Nothing projected'}</div>
         </div>
       )}
 
@@ -118,19 +119,14 @@ export default function StageApp() {
             {current!.reference && <div className="stage-current-ref">{current!.reference}</div>}
           </div>
 
-          <div className="stage-next">
-            <div className="stage-next-label">Next{next?.label ? ` · ${next.label}` : ''}</div>
-            {next ? (
-              <>
-                <div className={`stage-next-text${preClass(next)}`}>{next.text}</div>
-                {next.reference && <div className="stage-next-ref">{next.reference}</div>}
-              </>
-            ) : (
-              <div className="stage-next-text stage-next-text--empty">
-                End of this item — the operator picks what’s next
-              </div>
-            )}
-          </div>
+          {/* No "Next" at all on the last slide — an empty band, like before. */}
+          {next && (
+            <div className="stage-next">
+              <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
+              <div className={`stage-next-text${preClass(next)}`}>{next.text}</div>
+              {next.reference && <div className="stage-next-ref">{next.reference}</div>}
+            </div>
+          )}
         </>
       )}
 

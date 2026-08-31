@@ -711,11 +711,13 @@ function rememberService(path: string): void {
   }
 }
 
+// BORN service files are plain JSON with a `.born` extension. Older files used
+// `.bpservice`; the open dialog still accepts them.
 ipcMain.handle('service:save', async (_event, items: unknown) => {
   log.info('ipc service:save')
   const result = await dialog.showSaveDialog({
-    filters: [{ name: 'BORN Service', extensions: ['bpservice'] }],
-    defaultPath: 'service.bpservice'
+    filters: [{ name: 'BORN Service', extensions: ['born'] }],
+    defaultPath: 'Sunday service.born'
   })
   if (result.canceled || !result.filePath) return false
   writeFileSync(result.filePath, JSON.stringify(items, null, 2))
@@ -726,7 +728,7 @@ ipcMain.handle('service:save', async (_event, items: unknown) => {
 ipcMain.handle('service:open', async () => {
   log.info('ipc service:open')
   const result = await dialog.showOpenDialog({
-    filters: [{ name: 'BORN Service', extensions: ['bpservice'] }],
+    filters: [{ name: 'BORN Service', extensions: ['born', 'bpservice'] }],
     properties: ['openFile']
   })
   if (result.canceled || !result.filePaths[0]) return null
@@ -740,7 +742,11 @@ ipcMain.handle('service:recents', () => {
   const paths = getSettingsSafe().recentServices ?? []
   return paths
     .filter((p) => existsSync(p))
-    .map((p) => ({ path: p, name: basename(p).replace(/\.bpservice$/, ''), mtimeMs: statSync(p).mtimeMs }))
+    .map((p) => ({
+      path: p,
+      name: basename(p).replace(/\.(born|bpservice)$/, ''),
+      mtimeMs: statSync(p).mtimeMs
+    }))
 })
 
 ipcMain.handle('service:open-path', (_event, path: string) => {

@@ -2,7 +2,6 @@ import type { RecentService } from '../types'
 
 interface Props {
   recents: RecentService[]
-  onNew: () => void
   onOpen: () => void
   onOpenRecent: (path: string) => void
 }
@@ -21,17 +20,17 @@ function whenLabel(mtimeMs: number): string {
  * column whenever the queue is empty and nothing is projected; the BORN
  * wordmark brings you back here.
  */
-export default function StartScreen({ recents, onNew, onOpen, onOpenRecent }: Props) {
+export default function StartScreen({ recents, onOpen, onOpenRecent }: Props) {
   return (
     <div className="start-screen">
       <div className="start-inner">
-        <h2 className="start-title">Start a service</h2>
-        <p className="start-sub">Build a queue of quotes, Bible passages and songs, then project them.</p>
+        <h2 className="start-title">New service</h2>
+        <p className="start-sub">
+          Add quotes, Bible passages and songs from the left — they line up here in order,
+          ready to project.
+        </p>
 
         <div className="start-actions">
-          <button className="btn-primary btn-lg start-primary" onClick={onNew}>
-            + New service
-          </button>
           <button className="btn-secondary btn-lg" onClick={onOpen}>
             Open a saved service…
           </button>
