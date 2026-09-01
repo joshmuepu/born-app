@@ -41,3 +41,9 @@ export const dialog = {
   showSaveDialog: vi.fn(),
   showOpenDialog: vi.fn()
 }
+
+export const nativeTheme = {
+  themeSource: 'system' as 'system' | 'light' | 'dark',
+  shouldUseDarkColors: true,
+  on: vi.fn()
+}

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { log } from './logger'
@@ -36,7 +36,12 @@ import {
   runInstaller,
   applyUpdate
 } from './updateCheck'
-import { getLocalDateGroups, getLocalDurationGroups, getLocalLocationTree } from './browseLocal'
+import {
+  getLocalDateGroups,
+  getLocalDateTree,
+  getLocalDurationGroups,
+  getLocalLocationTree
+} from './browseLocal'
 import { getSettings, updateSettings } from './settings'
 import {
   serverSearch,
@@ -93,12 +98,25 @@ function getSettingsSafe(): {
   projectionDisplayId: number | null
   stageDisplayId: number | null
   recentServices: string[]
+  theme: 'dark' | 'light'
 } {
   try {
     return getSettings()
   } catch {
-    return { fontSize: 4.5, projectionDisplayId: null, stageDisplayId: null, recentServices: [] }
+    return {
+      fontSize: 4.5,
+      projectionDisplayId: null,
+      stageDisplayId: null,
+      recentServices: [],
+      theme: 'dark'
+    }
   }
+}
+
+/** The control window's background, matched to the saved theme so a cold start
+ *  paints the right colour before the renderer's CSS loads. */
+function themeBackground(): string {
+  return getSettingsSafe().theme === 'light' ? '#ffffff' : '#0d1117'
 }
 
 function sendToMain(channel: string, ...args: unknown[]): void {
@@ -123,7 +141,7 @@ function createMainWindow(): void {
     minWidth: 1040,
     minHeight: 640,
     title: 'BORN — Branham or Nothing',
-    backgroundColor: '#0d1117',
+    backgroundColor: themeBackground(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -541,6 +559,25 @@ ipcMain.on('projection:set-font-size', (_event, size: number) => {
  *  shows the real value (not a hard-coded 100%). */
 ipcMain.handle('projection:get-font-size', () => projectionState.fontSize)
 
+// ── Theme (control window only) ───────────────────────────────────────────────
+
+ipcMain.handle('theme:get', () => getSettingsSafe().theme)
+
+ipcMain.handle('theme:set', (_event, theme: 'dark' | 'light') => {
+  const next = theme === 'light' ? 'light' : 'dark'
+  try {
+    updateSettings({ theme: next })
+  } catch (e) {
+    log.error('persist theme failed', e)
+  }
+  nativeTheme.themeSource = next
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setBackgroundColor(next === 'light' ? '#ffffff' : '#0d1117')
+  }
+  sendToMain('theme:changed', next)
+  return next
+})
+
 // ── App / update IPC ──────────────────────────────────────────────────────────
 
 ipcMain.handle('app:version', () => app.getVersion())
@@ -818,6 +855,14 @@ ipcMain.handle('browse:date-groups', () => {
   }
   return fetchAllDateGroups()
 })
+ipcMain.handle('browse:date-tree', () => {
+  try {
+    return getLocalDateTree(getDb())
+  } catch (e) {
+    log.error('browse:date-tree error', e)
+    return { years: [], undatedIds: [] }
+  }
+})
 ipcMain.handle('browse:duration-groups', () => {
   try {
     const groups = getLocalDurationGroups(getDb())
@@ -1073,6 +1118,7 @@ app.whenReady().then(() => {
   log.boot()
   app.setName('Branham or Nothing')
   projectionState.fontSize = getSettingsSafe().fontSize
+  nativeTheme.themeSource = getSettingsSafe().theme
   createMainWindow()
 
   // Auto-start indexer so sermons are available immediately on first launch

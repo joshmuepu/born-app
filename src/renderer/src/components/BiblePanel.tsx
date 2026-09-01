@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { BibleTranslation, ResolvedPassage, BibleSearchHit } from '../types'
-import { parseReference, isRefError, formatVerse } from '../../../shared/bibleRef'
+import { formatVerse } from '../../../shared/bibleRef'
 import { bookByNum } from '../../../shared/bibleBooks'
 import './BiblePanel.css'
 
@@ -95,10 +95,6 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
       if (t.length && !t.some((x) => x.code === translation)) setTranslation(t[0].code)
     })
   }, [visible, translation])
-
-  const parsePreview = refInput.trim() ? parseReference(refInput) : null
-  const parseHint =
-    parsePreview && isRefError(parsePreview) && refInput.trim().length > 2 ? parsePreview.error : null
 
   const doLookup = useCallback(
     async (ref: string, trans: string) => {
@@ -274,7 +270,6 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
               Look up
             </button>
           </div>
-          {parseHint && <div className="bible-hint">{parseHint}</div>}
           {lookupError && <div className="bible-hint bible-hint--error">{lookupError}</div>}
 
           {passage && (

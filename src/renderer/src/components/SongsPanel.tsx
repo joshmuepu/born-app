@@ -43,10 +43,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     window.electronAPI.getSong(id).then(setSelected)
   }, [])
 
-  // Follow the song that's on screen (projected from the queue or the web remote).
+  // Open the song when it's projected from elsewhere (the queue or the web
+  // remote). Fires only when focusSongId actually changes to a new song — not
+  // every time `selected` changes — so the "← Songs" back button isn't
+  // immediately undone by a still-set focusSongId.
+  const lastFocus = useRef<number | null>(null)
   useEffect(() => {
-    if (focusSongId != null && focusSongId !== selected?.id) openSong(focusSongId)
-  }, [focusSongId, selected?.id, openSong])
+    if (focusSongId != null && focusSongId !== lastFocus.current) openSong(focusSongId)
+    lastFocus.current = focusSongId ?? null
+  }, [focusSongId, openSong])
 
   /** Queue / project a song straight from the results list, no need to open it. */
   const queueSong = useCallback(

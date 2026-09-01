@@ -28,6 +28,29 @@ beforeEach(() => {
       { label: '1960s', sermonIds: [30, 31] }
     ])
   )
+  window.electronAPI.getBrowseDateTree = vi.fn(() =>
+    Promise.resolve({
+      years: [
+        {
+          year: 1960,
+          count: 2,
+          unknownMonthIds: [],
+          months: [
+            {
+              month: 1,
+              count: 2,
+              unknownDayIds: [],
+              days: [
+                { day: 1, ids: [30] },
+                { day: 5, ids: [31] }
+              ]
+            }
+          ]
+        }
+      ],
+      undatedIds: []
+    })
+  )
   window.electronAPI.getSermonsByIds = vi.fn(() =>
     Promise.resolve([
       { id: 10, date_code: '60-0101', title: 'Sermon One', para_count: 50, duration_min: 60, is_book: 0 }
@@ -69,12 +92,12 @@ describe('BrowsePanel', () => {
     expect(window.electronAPI.getBrowseLocation).toHaveBeenCalledOnce()
   })
 
-  it('switches to Date tab and loads date groups', async () => {
+  it('switches to Date tab and shows the year grid', async () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Date' }))
-    await waitFor(() => expect(screen.getByText('1960s')).toBeDefined())
-    expect(window.electronAPI.getBrowseDateGroups).toHaveBeenCalledOnce()
+    await waitFor(() => expect(screen.getByText('1960')).toBeDefined())
+    expect(window.electronAPI.getBrowseDateTree).toHaveBeenCalledOnce()
   })
 
   it('does not reload series when switching back to Series tab', async () => {
@@ -175,14 +198,23 @@ describe('BrowsePanel', () => {
     expect(screen.queryByText('Church Age Book')).toBeNull()
   })
 
-  it('drills into Date group to show sermons', async () => {
+  it('drills Date: year → month → day', async () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Date' }))
-    await waitFor(() => screen.getByText('1960s'))
-    await user.click(screen.getByText('1960s'))
-    await waitFor(() => expect(screen.getByText('Sermon One')).toBeDefined())
-    expect(window.electronAPI.getSermonsByIds).toHaveBeenCalledWith([30, 31])
+    await waitFor(() => screen.getByText('1960'))
+
+    await user.click(screen.getByText('1960'))
+    await waitFor(() =>
+      expect(window.electronAPI.getSermonsByIds).toHaveBeenCalledWith([30, 31])
+    )
+
+    // the calendar is now visible; click day 1 to narrow to that day
+    await waitFor(() => screen.getByText('January 1960'))
+    await user.click(screen.getByText('1', { selector: '.browse-cal-day' }))
+    await waitFor(() =>
+      expect(window.electronAPI.getSermonsByIds).toHaveBeenCalledWith([30])
+    )
   })
 
   it('drills Location: state → city → sermons', async () => {

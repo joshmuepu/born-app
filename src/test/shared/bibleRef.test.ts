@@ -38,11 +38,20 @@ describe('parseReference', () => {
     expect(ok('3 John 4')).toMatchObject({ bookNum: 64, chapter: 1, verseStart: 4 })
   })
 
+  it('a bare book name means that book, chapter 1', () => {
+    expect(ok('Malachi')).toMatchObject({ bookNum: 39, chapter: 1, verseStart: null, verseEnd: null })
+    expect(ok('MAL')).toMatchObject({ bookNum: 39, chapter: 1, verseStart: null })
+    expect(ok('  john  ')).toMatchObject({ bookNum: 43, chapter: 1, verseStart: null })
+    expect(ok('1 John')).toMatchObject({ bookNum: 62, chapter: 1, verseStart: null })
+    expect(ok('Song of Solomon')).toMatchObject({ bookNum: 22, chapter: 1, verseStart: null })
+    expect(ok('Jude')).toMatchObject({ bookNum: 65, chapter: 1, verseStart: null })
+  })
+
   it('rejects garbage', () => {
     expect(isRefError(parseReference(''))).toBe(true)
     expect(isRefError(parseReference('hello world'))).toBe(true)
     expect(isRefError(parseReference('Nonbook 3:16'))).toBe(true)
-    expect(isRefError(parseReference('John'))).toBe(true)
+    expect(isRefError(parseReference('Nonbook'))).toBe(true)
   })
 
   it('rejects a backwards range', () => {

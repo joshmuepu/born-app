@@ -8,6 +8,7 @@ import type {
   StateEntry,
   CityEntry,
   DateGroup,
+  DateTree,
   DurationGroup,
   LocationState,
   SubtitleEntry,
@@ -90,6 +91,10 @@ declare global {
       getFontSize: () => Promise<number>
       onSetBlankScreen: (callback: (blank: boolean) => void) => () => void
       onSetFontSize: (callback: (size: number) => void) => () => void
+      // Theme (control window only)
+      getTheme: () => Promise<'dark' | 'light'>
+      setTheme: (theme: 'dark' | 'light') => Promise<'dark' | 'light'>
+      onThemeChanged: (callback: (theme: 'dark' | 'light') => void) => () => void
       onOperatorBlankChanged: (callback: (blank: boolean) => void) => () => void
       // Queue navigation
       navigateQueue: (dir: 'prev' | 'next') => void
@@ -125,6 +130,7 @@ declare global {
       getBrowseStates: () => Promise<StateEntry[]>
       getBrowseCities: () => Promise<CityEntry[]>
       getBrowseDateGroups: () => Promise<DateGroup[]>
+      getBrowseDateTree: () => Promise<DateTree>
       getBrowseDurationGroups: () => Promise<DurationGroup[]>
       getBrowseLocation: () => Promise<LocationState[]>
       getSermonsByIds: (ids: number[]) => Promise<SermonIndexItem[]>

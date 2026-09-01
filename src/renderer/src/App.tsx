@@ -20,6 +20,7 @@ import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queue
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
+import { useTheme } from './useTheme'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
 export type OnScreenLoc =
@@ -91,6 +92,7 @@ export default function App() {
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
@@ -730,6 +732,23 @@ export default function App() {
         </button>
 
         <div className="header-actions">
+          <button
+            className="btn-icon"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+              </svg>
+            )}
+          </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
             Shortcuts
           </button>

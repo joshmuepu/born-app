@@ -26,6 +26,111 @@ function yearOf(dateCode: string): number | null {
   return yy >= 30 ? 1900 + yy : 2000 + yy
 }
 
+// ── Date tree (year → month → day) ────────────────────────────────────────────
+
+export interface DateTreeDay {
+  day: number
+  ids: number[]
+}
+export interface DateTreeMonth {
+  month: number // 1–12
+  count: number
+  days: DateTreeDay[] // only days that have sermons, ascending
+  unknownDayIds: number[] // date code was "YY-MM00" — month known, day not
+}
+export interface DateTreeYear {
+  year: number
+  count: number
+  months: DateTreeMonth[] // only months that have sermons, ascending
+  unknownMonthIds: number[] // date code was "YY-0000"
+}
+export interface DateTree {
+  years: DateTreeYear[]
+  undatedIds: number[] // Church Age Book chapters and anything without a date
+}
+
+const DATE_RE = /^(\d{2})-(\d{2})(\d{2})?/
+
+/**
+ * The whole sermon corpus bucketed by calendar date, built from
+ * `sermon_index.date_code`. ~1,200 rows → a ~40 KB tree, so the renderer does
+ * one IPC call and every drill-down (decade / year / month / day) is local.
+ */
+export function getLocalDateTree(db: Database): DateTree {
+  const rows = db
+    .prepare<[], { id: number; date_code: string }>(
+      'SELECT id, date_code FROM sermon_index ORDER BY date_code, id'
+    )
+    .all()
+
+  const years = new Map<
+    number,
+    {
+      count: number
+      unknownMonth: number[]
+      months: Map<number, { days: Map<number, number[]>; unknownDay: number[] }>
+    }
+  >()
+  const undatedIds: number[] = []
+
+  for (const r of rows) {
+    const m = DATE_RE.exec(r.date_code ?? '')
+    if (!m) {
+      undatedIds.push(r.id)
+      continue
+    }
+    const yy = parseInt(m[1], 10)
+    const year = yy >= 30 ? 1900 + yy : 2000 + yy
+    const month = parseInt(m[2], 10) // 0 when unknown
+    const day = m[3] ? parseInt(m[3], 10) : 0 // 0 / absent when unknown
+
+    let y = years.get(year)
+    if (!y) {
+      y = { count: 0, unknownMonth: [], months: new Map() }
+      years.set(year, y)
+    }
+    y.count++
+
+    if (month < 1 || month > 12) {
+      y.unknownMonth.push(r.id)
+      continue
+    }
+    let mo = y.months.get(month)
+    if (!mo) {
+      mo = { days: new Map(), unknownDay: [] }
+      y.months.set(month, mo)
+    }
+    if (day < 1 || day > 31) {
+      mo.unknownDay.push(r.id)
+      continue
+    }
+    const d = mo.days.get(day) ?? []
+    d.push(r.id)
+    mo.days.set(day, d)
+  }
+
+  return {
+    undatedIds,
+    years: [...years.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, y]) => ({
+        year,
+        count: y.count,
+        unknownMonthIds: y.unknownMonth,
+        months: [...y.months.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .map(([month, mo]) => {
+            const days = [...mo.days.entries()]
+              .sort((a, b) => a[0] - b[0])
+              .map(([day, ids]) => ({ day, ids }))
+            const count =
+              days.reduce((n, d) => n + d.ids.length, 0) + mo.unknownDay.length
+            return { month, count, days, unknownDayIds: mo.unknownDay }
+          })
+      }))
+  }
+}
+
 export function getLocalDateGroups(db: Database): BrowseGroup[] {
   const rows = db
     .prepare<[], { id: number; date_code: string }>(

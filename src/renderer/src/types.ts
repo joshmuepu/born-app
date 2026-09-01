@@ -126,6 +126,28 @@ export interface DateGroup {
   sermonIds: number[]
 }
 
+// Calendar drill-down for Browse → Date (built in main from sermon_index.date_code)
+export interface DateTreeDay {
+  day: number
+  ids: number[]
+}
+export interface DateTreeMonth {
+  month: number
+  count: number
+  days: DateTreeDay[]
+  unknownDayIds: number[]
+}
+export interface DateTreeYear {
+  year: number
+  count: number
+  months: DateTreeMonth[]
+  unknownMonthIds: number[]
+}
+export interface DateTree {
+  years: DateTreeYear[]
+  undatedIds: number[]
+}
+
 export interface LocationState {
   id: number
   name: string

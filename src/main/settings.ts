@@ -17,6 +17,8 @@ export interface AppSettings {
   fontSize: number
   /** Absolute paths of recently saved / opened service files, newest first. */
   recentServices: string[]
+  /** Control-window appearance. Projection + stage are always dark. */
+  theme: 'dark' | 'light'
 }
 
 const DEFAULTS: AppSettings = {
@@ -25,7 +27,8 @@ const DEFAULTS: AppSettings = {
   // Matches "100%" in the operator's Text control; the projection window scales
   // this by screen size (see ProjectionApp `baseRem`).
   fontSize: 4.5,
-  recentServices: []
+  recentServices: [],
+  theme: 'dark'
 }
 
 let cache: AppSettings | null = null

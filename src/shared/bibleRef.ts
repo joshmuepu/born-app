@@ -28,7 +28,21 @@ export function parseReference(input: string): ParsedRef | RefError {
   if (!raw) return { error: 'Enter a reference, e.g. John 3:16' }
 
   const m = raw.match(REF_RE)
-  if (!m) return { error: `Couldn't read "${input}". Try "John 3:16" or "Psalm 23".` }
+  if (!m) {
+    // A bare book name ("Malachi", "MAL", "1 John", "Song of Solomon") means
+    // the whole of that book's first chapter.
+    const bookOnly = findBook(raw)
+    if (bookOnly) {
+      return {
+        bookNum: bookOnly.num,
+        bookName: bookOnly.name,
+        chapter: 1,
+        verseStart: null,
+        verseEnd: null
+      }
+    }
+    return { error: `Couldn't read "${input}". Try "John 3:16" or "Psalm 23".` }
+  }
 
   const [, bookRaw, n1, n2, n3] = m
   const book = findBook(bookRaw)

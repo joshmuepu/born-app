@@ -194,6 +194,16 @@ const api = {
     return () => ipcRenderer.removeListener('projection:set-font-size', handler)
   },
 
+  // Theme (control window only — projection + stage stay dark)
+  getTheme: (): Promise<'dark' | 'light'> => ipcRenderer.invoke('theme:get'),
+  setTheme: (theme: 'dark' | 'light'): Promise<'dark' | 'light'> =>
+    ipcRenderer.invoke('theme:set', theme),
+  onThemeChanged: (callback: (theme: 'dark' | 'light') => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, theme: 'dark' | 'light'): void => callback(theme)
+    ipcRenderer.on('theme:changed', handler)
+    return () => ipcRenderer.removeListener('theme:changed', handler)
+  },
+
   // Operator blank-state sync (main → operator, when blank is toggled from the
   // projection window Esc key or the phone web remote)
   onOperatorBlankChanged: (callback: (blank: boolean) => void): (() => void) => {
@@ -269,6 +279,7 @@ const api = {
   getBrowseStates: (): Promise<unknown[]> => ipcRenderer.invoke('browse:states'),
   getBrowseCities: (): Promise<unknown[]> => ipcRenderer.invoke('browse:cities'),
   getBrowseDateGroups: (): Promise<unknown[]> => ipcRenderer.invoke('browse:date-groups'),
+  getBrowseDateTree: (): Promise<unknown> => ipcRenderer.invoke('browse:date-tree'),
   getBrowseDurationGroups: (): Promise<unknown[]> => ipcRenderer.invoke('browse:duration-groups'),
   getBrowseLocation: (): Promise<unknown[]> => ipcRenderer.invoke('browse:location'),
   getSermonsByIds: (ids: number[]): Promise<unknown[]> =>
