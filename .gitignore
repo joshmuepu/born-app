@@ -55,8 +55,9 @@ resources/songs-source/
 # Electron packager output
 release/
 
-# Internal review material — kept local, not part of the repo
+# Internal planning / review material — kept local, not part of the repo
 review-report.md
 ui-review/
 docs/review/
+BACKLOG.md
 
