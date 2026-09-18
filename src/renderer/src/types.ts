@@ -62,6 +62,13 @@ export interface BibleSearchHit {
 
 export type AdjacentVerse = BibleSearchHit
 
+export type BibleSearchMode = 'phrase' | 'all' | 'any'
+
+export interface BibleSearchRange {
+  bookFrom: number
+  bookTo: number
+}
+
 export interface SongSummary {
   id: number
   title: string

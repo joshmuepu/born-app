@@ -4,7 +4,14 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
 import { closeLibraryDb } from './libraryDb'
-import { getBibleTranslations, lookupPassage, searchBible, getAdjacentVerse } from './bible'
+import {
+  getBibleTranslations,
+  lookupPassage,
+  searchBible,
+  getAdjacentVerse,
+  type BibleSearchMode,
+  type BibleSearchRange
+} from './bible'
 import { searchSongs, getSong, importSongs, deleteSong } from './songs'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
@@ -1017,8 +1024,15 @@ ipcMain.handle('bible:lookup', (_event, reference: string, translation: string) 
   lookupPassage(reference, translation)
 )
 
-ipcMain.handle('bible:search', (_event, query: string, translation: string) =>
-  searchBible(query, translation)
+ipcMain.handle(
+  'bible:search',
+  (
+    _event,
+    query: string,
+    translation: string,
+    mode?: BibleSearchMode,
+    range?: BibleSearchRange
+  ) => searchBible(query, translation, 50, mode, range)
 )
 
 ipcMain.handle(

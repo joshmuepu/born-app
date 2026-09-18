@@ -296,8 +296,12 @@ const api = {
     ipcRenderer.invoke('bible:translations'),
   lookupPassage: (reference: string, translation: string): Promise<unknown> =>
     ipcRenderer.invoke('bible:lookup', reference, translation),
-  searchBible: (query: string, translation: string): Promise<unknown[]> =>
-    ipcRenderer.invoke('bible:search', query, translation),
+  searchBible: (
+    query: string,
+    translation: string,
+    mode?: 'phrase' | 'all' | 'any',
+    range?: { bookFrom: number; bookTo: number }
+  ): Promise<unknown[]> => ipcRenderer.invoke('bible:search', query, translation, mode, range),
   getAdjacentVerse: (
     translation: string,
     bookNum: number,

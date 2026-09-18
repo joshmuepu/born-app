@@ -18,6 +18,13 @@ describe('parseReference', () => {
     expect(ok('John 3:16 - 18')).toMatchObject({ verseStart: 16, verseEnd: 18 })
   })
 
+  it('tolerates spaces around the colon — an operator typing fast', () => {
+    expect(ok('John 3: 16')).toMatchObject({ bookNum: 43, chapter: 3, verseStart: 16 })
+    expect(ok('John 3 : 16')).toMatchObject({ bookNum: 43, chapter: 3, verseStart: 16 })
+    expect(ok('John 3 :16')).toMatchObject({ bookNum: 43, chapter: 3, verseStart: 16 })
+    expect(ok('John 3 : 16 - 18')).toMatchObject({ verseStart: 16, verseEnd: 18 })
+  })
+
   it('abbreviations', () => {
     expect(ok('Jn 3:16').bookNum).toBe(43)
     expect(ok('Ps 23').bookNum).toBe(19)

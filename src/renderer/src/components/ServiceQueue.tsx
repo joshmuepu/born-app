@@ -1,7 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
+import { useAutoFitFontSize } from '../useAutoFitFontSize'
+
+/** Ceiling for the confidence-monitor text — auto-fit shrinks below this for
+ *  longer passages, so a short verse reads large and a long one still fits
+ *  in full, with no scrollbar. ~3x the old fixed 0.9rem. */
+const LIVE_TEXT_BASE_REM = 2.7
 
 interface OnScreen {
   /** The exact text on the projector right now. */
@@ -74,6 +80,9 @@ export default function ServiceQueue({
   // Which monitor the operator is following: the congregation's screen (current
   // slide only) or the stage monitor (current slide + what Next will show).
   const [monitor, setMonitor] = useState<'screen' | 'stage'>('screen')
+
+  const liveTextRef = useRef<HTMLDivElement>(null)
+  const liveFitRem = useAutoFitFontSize(liveTextRef, onScreen?.text, LIVE_TEXT_BASE_REM, 0.9)
 
   // Next/Prev drive flow-through, so they're live whenever something is (or can
   // be) on screen; the handlers clamp at the real edges (a song's last slide).
@@ -239,9 +248,11 @@ export default function ServiceQueue({
             {status ? (
               <div className="live-now-status">{status}</div>
             ) : (
-              <div className="live-now-text">
-                {onScreen?.marker && <span className="live-now-marker">{onScreen.marker}</span>}
-                {onScreen?.text}
+              <div ref={liveTextRef} className="live-now-text" style={{ fontSize: `${liveFitRem}rem` }}>
+                <div className="live-now-text-inner">
+                  {onScreen?.marker && <span className="live-now-marker">{onScreen.marker}</span>}
+                  {onScreen?.text}
+                </div>
               </div>
             )}
             {!status && monitor === 'stage' && (

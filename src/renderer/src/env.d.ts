@@ -16,6 +16,8 @@ import type {
   BibleTranslation,
   ResolvedPassage,
   BibleSearchHit,
+  BibleSearchMode,
+  BibleSearchRange,
   SongSummary,
   SongDetail,
   SongImportResult,
@@ -143,7 +145,12 @@ declare global {
         reference: string,
         translation: string
       ) => Promise<ResolvedPassage | { error: string }>
-      searchBible: (query: string, translation: string) => Promise<BibleSearchHit[]>
+      searchBible: (
+        query: string,
+        translation: string,
+        mode?: BibleSearchMode,
+        range?: BibleSearchRange
+      ) => Promise<BibleSearchHit[]>
       getAdjacentVerse: (
         translation: string,
         bookNum: number,

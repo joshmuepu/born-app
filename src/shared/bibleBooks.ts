@@ -10,9 +10,18 @@ export interface BibleBook {
   abbrev: string
   /** All accepted spellings/abbreviations, lowercased, no trailing dot. */
   aliases: string[]
+  /** Chapter count — fixed across translations (KJV versification). */
+  chapters: number
 }
 
-export const BIBLE_BOOKS: BibleBook[] = [
+/** 1 (Genesis) … 66 (Revelation), KJV versification. */
+const CHAPTER_COUNTS = [
+  50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31, 12, 8, 66, 52, 5,
+  48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28, 16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6,
+  4, 3, 1, 13, 5, 5, 3, 5, 1, 1, 1, 22
+]
+
+const BOOKS_RAW: Array<Omit<BibleBook, 'chapters'>> = [
   { num: 1, name: 'Genesis', abbrev: 'Gen', aliases: ['gen', 'ge', 'gn'] },
   { num: 2, name: 'Exodus', abbrev: 'Exod', aliases: ['exod', 'exo', 'ex'] },
   { num: 3, name: 'Leviticus', abbrev: 'Lev', aliases: ['lev', 'le', 'lv'] },
@@ -80,6 +89,11 @@ export const BIBLE_BOOKS: BibleBook[] = [
   { num: 65, name: 'Jude', abbrev: 'Jude', aliases: ['jude', 'jud', 'jd'] },
   { num: 66, name: 'Revelation', abbrev: 'Rev', aliases: ['rev', 're', 'the revelation', 'apocalypse', 'apoc'] }
 ]
+
+export const BIBLE_BOOKS: BibleBook[] = BOOKS_RAW.map((b) => ({
+  ...b,
+  chapters: CHAPTER_COUNTS[b.num - 1]
+}))
 
 /** alias / lowercased-name → book. Built once. */
 const LOOKUP = new Map<string, BibleBook>()

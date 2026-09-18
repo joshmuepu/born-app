@@ -21,7 +21,7 @@ export interface RefError {
 /** Books with a single chapter — "Jude 3" means Jude 1:3, not chapter 3. */
 const SINGLE_CHAPTER = new Set([31, 57, 63, 64, 65]) // Obadiah, Philemon, 2 John, 3 John, Jude
 
-const REF_RE = /^(.+?)\s+(\d+)(?::(\d+)(?:\s*[-–—]\s*(\d+))?)?\s*$/
+const REF_RE = /^(.+?)\s+(\d+)(?:\s*:\s*(\d+)(?:\s*[-–—]\s*(\d+))?)?\s*$/
 
 export function parseReference(input: string): ParsedRef | RefError {
   const raw = (input ?? '').trim().replace(/\s+/g, ' ')

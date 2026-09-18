@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { SlidePayload } from './types'
+import { useAutoFitFontSize } from './useAutoFitFontSize'
 
 export default function ProjectionApp() {
   const [slide, setSlide] = useState<SlidePayload | null>(null)
@@ -11,7 +12,6 @@ export default function ProjectionApp() {
   const [viewportH, setViewportH] = useState(() =>
     typeof window === 'undefined' ? 900 : window.innerHeight
   )
-  const [fitFontSize, setFitFontSize] = useState(4.5)
   const [alertText, setAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -65,43 +65,16 @@ export default function ProjectionApp() {
     window.focus()
   }, [])
 
+  // The screen (and so the projector's resolution) can change mid-service.
+  useEffect(() => {
+    const onResize = (): void => setViewportH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   // Auto-fit: start from the screen-scaled base size, then shrink only if a
   // long verse / quote would be clipped or overlap the reference line.
-  // Re-runs on window resize too (projector resolution can change mid-service).
-  useLayoutEffect(() => {
-    const el = textRef.current
-    if (!el || !slide) return
-    let raf = 0
-    const fit = (): void => {
-      // Measure the text block's own height, not the flex container's
-      // scrollHeight — a vertically-centred child that overflows the band
-      // spills equally past the top and bottom, and `scrollHeight` under-reports
-      // that, so the text ends up clipped on the real projector.
-      const inner = el.firstElementChild as HTMLElement | null
-      if (!inner) return
-      let size = baseRem
-      const floor = Math.max(0.9, baseRem * 0.4)
-      el.style.fontSize = `${size}rem`
-      let guard = 0
-      while (inner.scrollHeight > el.clientHeight + 1 && size > floor && guard < 120) {
-        size = Math.max(floor, size - baseRem * 0.04)
-        el.style.fontSize = `${size}rem`
-        guard++
-      }
-      setFitFontSize(size)
-    }
-    raf = requestAnimationFrame(fit)
-    const onResize = (): void => {
-      setViewportH(window.innerHeight)
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(fit)
-    }
-    window.addEventListener('resize', onResize)
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [slide, baseRem])
+  const fitFontSize = useAutoFitFontSize(textRef, slide, baseRem, 0.9)
 
   useEffect(() => {
     // Esc (blackout toggle) is owned by the main process so both windows agree;

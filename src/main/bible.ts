@@ -161,28 +161,63 @@ export function getAdjacentVerse(
   }
 }
 
-export function searchBible(query: string, translation: string, limit = 50): BibleSearchHit[] {
+export type BibleSearchMode = 'phrase' | 'all' | 'any'
+
+export interface BibleSearchRange {
+  /** Inclusive book-number span to search within, e.g. 1–39 for the Old
+   *  Testament, 40–66 for the New, or a single book repeated for both. */
+  bookFrom: number
+  bookTo: number
+}
+
+/** Build an FTS5 MATCH expression for the given mode. Each term is quoted so
+ *  user input can never inject FTS5 operators (`AND`, `NEAR`, `*`, …) —
+ *  only the join between terms encodes All/Any/Phrase. */
+function buildMatchExpr(query: string, mode: BibleSearchMode): string | null {
+  const q = (query ?? '').trim()
+  if (!q) return null
+  if (mode === 'phrase') return '"' + q.replace(/"/g, '""') + '"'
+  const terms = q
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => '"' + t.replace(/"/g, '""') + '"')
+  if (terms.length === 0) return null
+  return terms.join(mode === 'any' ? ' OR ' : ' ')
+}
+
+export function searchBible(
+  query: string,
+  translation: string,
+  limit = 50,
+  mode: BibleSearchMode = 'phrase',
+  range?: BibleSearchRange
+): BibleSearchHit[] {
   const q = (query ?? '').trim()
   if (q.length < 2) return []
+  const matchExpr = buildMatchExpr(q, mode)
+  if (!matchExpr) return []
   try {
     const db = getLibraryDb()
     const trans =
       db
         .prepare<[string], { code: string }>('SELECT code FROM bible_translations WHERE code = ?')
         .get(translation)?.code ?? 'KJV'
-    const phrase = '"' + q.replace(/"/g, '""') + '"'
+    const rangeSql = range ? 'AND v.book BETWEEN ? AND ?' : ''
+    const params: Array<string | number> = range
+      ? [matchExpr, trans, range.bookFrom, range.bookTo, limit]
+      : [matchExpr, trans, limit]
     const rows = db
       .prepare<
-        [string, string, number],
+        Array<string | number>,
         { book: number; chapter: number; verse: number; text: string }
       >(
         `SELECT v.book, v.chapter, v.verse, v.text
          FROM bible_verses_fts f
          JOIN bible_verses v ON v.id = f.rowid
-         WHERE bible_verses_fts MATCH ? AND v.translation = ?
+         WHERE bible_verses_fts MATCH ? AND v.translation = ? ${rangeSql}
          ORDER BY rank LIMIT ?`
       )
-      .all(phrase, trans, limit)
+      .all(...params)
     return rows.map((r) => ({
       reference: formatVerse(r.book, r.chapter, r.verse),
       translation: trans,
