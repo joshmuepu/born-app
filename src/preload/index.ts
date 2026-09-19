@@ -260,12 +260,31 @@ const api = {
   },
 
   // Web remote
-  getWebRemoteURL: (): Promise<string> => ipcRenderer.invoke('webremote:ip'),
+  getWebRemoteURL: (): Promise<{
+    available: boolean
+    url: string
+    ipUrl: string
+    hostnameUrl: string | null
+  }> => ipcRenderer.invoke('webremote:ip'),
   syncWebRemote: (state: {
-    queue: Array<{ title: string; kind: string; subtitle: string; slideCount: number }>
+    queue: Array<{
+      title: string
+      kind: string
+      subtitle: string
+      slideCount: number
+      slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
+    }>
     activeIndex: number | null
     activeSlide: number
     blanked: boolean
+    onScreen: {
+      kind: string
+      text: string
+      reference?: string
+      label?: string
+      marker?: string
+      nextText?: string
+    } | null
   }): void => ipcRenderer.send('webremote:sync', state),
 
   onWebRemoteProject: (callback: (index: number) => void): (() => void) => {
@@ -273,6 +292,76 @@ const api = {
     ipcRenderer.on('webremote:project', handler)
     return () => ipcRenderer.removeListener('webremote:project', handler)
   },
+  onWebRemoteProjectAt: (
+    callback: (data: { index: number; slide: number }) => void
+  ): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { index: number; slide: number }): void =>
+      callback(data)
+    ipcRenderer.on('webremote:project-at', handler)
+    return () => ipcRenderer.removeListener('webremote:project-at', handler)
+  },
+
+  onWebRemoteQueueSermon: (callback: (quote: Quote) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, quote: Quote): void => callback(quote)
+    ipcRenderer.on('webremote:queue-sermon', handler)
+    return () => ipcRenderer.removeListener('webremote:queue-sermon', handler)
+  },
+  onWebRemoteProjectSermon: (
+    callback: (data: { quote: Quote; query: string }) => void
+  ): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { quote: Quote; query: string }): void =>
+      callback(data)
+    ipcRenderer.on('webremote:project-sermon', handler)
+    return () => ipcRenderer.removeListener('webremote:project-sermon', handler)
+  },
+  onWebRemoteQueueBible: (
+    callback: (data: { reference: string; translation: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { reference: string; translation: string }
+    ): void => callback(data)
+    ipcRenderer.on('webremote:queue-bible', handler)
+    return () => ipcRenderer.removeListener('webremote:queue-bible', handler)
+  },
+  onWebRemoteProjectBible: (
+    callback: (data: { reference: string; translation: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { reference: string; translation: string }
+    ): void => callback(data)
+    ipcRenderer.on('webremote:project-bible', handler)
+    return () => ipcRenderer.removeListener('webremote:project-bible', handler)
+  },
+  onWebRemoteQueueSong: (callback: (songId: number) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, songId: number): void => callback(songId)
+    ipcRenderer.on('webremote:queue-song', handler)
+    return () => ipcRenderer.removeListener('webremote:queue-song', handler)
+  },
+  onWebRemoteProjectSong: (callback: (songId: number) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, songId: number): void => callback(songId)
+    ipcRenderer.on('webremote:project-song', handler)
+    return () => ipcRenderer.removeListener('webremote:project-song', handler)
+  },
+  onWebRemoteNewService: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('webremote:new-service', handler)
+    return () => ipcRenderer.removeListener('webremote:new-service', handler)
+  },
+  onWebRemoteSaveQueue: (callback: (name: string) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, name: string): void => callback(name)
+    ipcRenderer.on('webremote:save-queue', handler)
+    return () => ipcRenderer.removeListener('webremote:save-queue', handler)
+  },
+  onWebRemoteOpenService: (callback: (items: unknown[]) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, items: unknown[]): void => callback(items)
+    ipcRenderer.on('webremote:open-service', handler)
+    return () => ipcRenderer.removeListener('webremote:open-service', handler)
+  },
+  saveServiceNamed: (name: string, items: unknown): Promise<boolean> =>
+    ipcRenderer.invoke('service:save-named', name, items),
+  noteSongUsed: (id: number): void => ipcRenderer.send('songs:note-used', id),
 
   // Browse
   getBrowseSeries: (): Promise<unknown[]> => ipcRenderer.invoke('browse:series'),

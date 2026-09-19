@@ -44,7 +44,7 @@
   color: var(--text-secondary);
 }
 .bible-hint--error {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .bible-passage {
@@ -70,8 +70,8 @@
 .bible-passage-ref {
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--accent);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--bible);
+  font-family: var(--font-mono);
 }
 
 .bible-verses {
@@ -104,15 +104,15 @@
   color: var(--text-secondary);
   text-align: right;
   padding-top: 3px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .bible-verse-ref {
   grid-column: 1 / -1;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--accent);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--bible);
+  font-family: var(--font-mono);
   margin-bottom: 2px;
 }
 
@@ -140,7 +140,7 @@
   align-items: center;
 }
 .bible-verse--hit:hover {
-  border-color: var(--accent);
+  border-color: var(--bible);
 }
 
 .bible-hit-body {
@@ -180,7 +180,7 @@
   background: rgba(0, 0, 0, 0.5);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--dur-slow) var(--ease-out);
   z-index: 10;
 }
 .bible-browse-scrim.is-open {
@@ -203,7 +203,7 @@
   border-left: 1px solid var(--border);
   box-shadow: -12px 0 28px rgba(0, 0, 0, 0.35);
   transform: translateX(100%);
-  transition: transform 0.25s ease;
+  transition: transform var(--dur-slow) var(--ease-out);
   z-index: 11;
 }
 .bible-browse-drawer.is-open {
@@ -264,10 +264,10 @@
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.12s, background-color 0.12s;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 .bible-browse-book:hover,
 .bible-browse-chapter:hover {
-  border-color: var(--accent);
+  border-color: var(--bible);
   background: var(--bg-panel);
 }

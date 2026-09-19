@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, TriangleAlert, RefreshCw } from 'lucide-react'
 import type { DisplayInfo } from '../types'
 
 interface Props {
@@ -11,6 +12,10 @@ interface Props {
   onSetProjectionDisplay: (id: number | null) => void
   onSetStageDisplay: (id: number | null) => void
   onFontSize: (delta: number) => void
+  /** Re-scan connected screens without restarting the app — a manual escape
+   *  hatch for the rare case a monitor was plugged in before this menu was
+   *  ever opened, or a hotplug event didn't fire on some hardware. */
+  onRefreshDisplays: () => void
 }
 
 /** "PA278QV (2) (2560×1440)" → "PA278QV (2)". */
@@ -33,7 +38,8 @@ export default function ScreensMenu({
   onToggleStage,
   onSetProjectionDisplay,
   onSetStageDisplay,
-  onFontSize
+  onFontSize,
+  onRefreshDisplays
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -70,11 +76,22 @@ export default function ScreensMenu({
       >
         <span className={`screens-dot${projectionOpen ? ' is-live' : ''}`} />
         Screens
-        <span className="screens-caret">▾</span>
+        <ChevronDown className="screens-caret" width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
       </button>
 
       {open && (
         <div className="screens-popover" role="dialog" aria-label="Screen setup">
+          <div className="screens-popover-head">
+            <span className="screens-popover-title">Screen setup</span>
+            <button
+              className="btn-icon screens-refresh"
+              onClick={onRefreshDisplays}
+              title="Re-scan connected screens — use this if one you just plugged in isn't showing up"
+              aria-label="Refresh connected screens"
+            >
+              <RefreshCw width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
           {/* Congregation / main projection */}
           <div className="screens-group">
             <div className="screens-group-head">
@@ -140,7 +157,8 @@ export default function ScreensMenu({
             )}
             {stageOpen && clash && (
               <p className="screens-note screens-note--warn">
-                ⚠ The stage monitor is on the same screen as the projection — pick a different one.
+                <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+                The stage monitor is on the same screen as the projection — pick a different one.
               </p>
             )}
             {!stageOpen && (

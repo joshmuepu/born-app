@@ -19,6 +19,9 @@ export interface AppSettings {
   recentServices: string[]
   /** Control-window appearance. Projection + stage are always dark. */
   theme: 'dark' | 'light'
+  /** Song ids queued or projected recently, newest first — surfaces a "Recent"
+   *  shortlist on the web remote's Songs tab (from any device, any session). */
+  recentSongIds: number[]
 }
 
 const DEFAULTS: AppSettings = {
@@ -28,7 +31,8 @@ const DEFAULTS: AppSettings = {
   // this by screen size (see ProjectionApp `baseRem`).
   fontSize: 4.5,
   recentServices: [],
-  theme: 'dark'
+  theme: 'dark',
+  recentSongIds: []
 }
 
 let cache: AppSettings | null = null

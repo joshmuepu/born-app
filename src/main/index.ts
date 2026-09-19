@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
 import { basename, join } from 'path'
-import { existsSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
 import { closeLibraryDb } from './libraryDb'
@@ -18,8 +18,12 @@ import {
   startWebRemote,
   updateWebRemoteState,
   getLocalIP,
-  isWebRemoteAvailable
+  isWebRemoteAvailable,
+  REMOTE_PORT
 } from './webRemote'
+import { startMdns, stopMdns, getMdnsHostname } from './mdns'
+import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
+import { highlightToHtml } from '../shared/searchHighlight'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -106,6 +110,7 @@ function getSettingsSafe(): {
   stageDisplayId: number | null
   recentServices: string[]
   theme: 'dark' | 'light'
+  recentSongIds: number[]
 } {
   try {
     return getSettings()
@@ -115,7 +120,8 @@ function getSettingsSafe(): {
       projectionDisplayId: null,
       stageDisplayId: null,
       recentServices: [],
-      theme: 'dark'
+      theme: 'dark',
+      recentSongIds: []
     }
   }
 }
@@ -367,6 +373,13 @@ function displayInfoPayload() {
 
 function broadcastDisplayInfo(): void {
   const payload = displayInfoPayload()
+  // Full raw dump — if a connected screen ever fails to show up in the
+  // picker, this is the first thing to check: does the OS/Electron even
+  // report it here? If not, it's not something this app's code controls.
+  log.info(
+    `displays: ${payload.displays.length} detected — ` +
+      payload.displays.map((d) => `#${d.id} ${d.label}`).join(' | ')
+  )
   sendToMain('displays:info', payload)
   sendToProjection('projection:display-info', payload)
 }
@@ -629,7 +642,9 @@ ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
 
 // ── Search IPC ────────────────────────────────────────────────────────────────
 
-ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchFilters = {}) => {
+/** The one place sermon search actually runs — used by the desktop app's IPC
+ *  handler and the web remote alike, so results never drift between them. */
+async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
   const query = (rawQuery ?? '').trim()
   if (!query) return []
   log.debug(`search:query "${query}"`, filters)
@@ -678,7 +693,54 @@ ipcMain.handle('search:query', async (_event, rawQuery: string, filters: SearchF
     log.error('search:query fatal error', e)
     return []
   }
-})
+}
+
+ipcMain.handle('search:query', (_event, rawQuery: string, filters: SearchFilters = {}) =>
+  searchSermons(rawQuery, filters)
+)
+
+/** The remote's sermon search: same searchSermons the desktop uses (plus the
+ *  optional date-code filter it doesn't expose), with the matched term
+ *  wrapped in <mark> server-side so the remote never re-implements — and
+ *  can't drift from — the app's own highlighting rules. */
+async function searchSermonsForRemote(query: string, dateCode?: string): Promise<unknown[]> {
+  const rows = (await searchSermons(query, dateCode ? { dateCode } : {})) as Array<{ text: string }>
+  return rows.map((r) => ({ ...r, highlightedText: highlightToHtml(r.text, query) }))
+}
+
+/** The web remote's one Bible search box, unlike the desktop app's separate
+ *  Reference/Keyword modes — tries it as a reference first (reusing the exact
+ *  same lookupPassage the app itself uses), then falls back to a phrase
+ *  search, then an "any word" search, same fallback order SearchBar already
+ *  uses for sermons. */
+async function searchBibleForRemote(query: string): Promise<unknown> {
+  const q = (query ?? '').trim()
+  if (!q) return { kind: 'hits', hits: [] }
+
+  const passage = lookupPassage(q, 'KJV')
+  if (!('error' in passage)) return { kind: 'passage', passage }
+
+  const phraseHits = searchBible(q, 'KJV', 20, 'phrase')
+  if (phraseHits.length > 0) return { kind: 'hits', hits: phraseHits }
+
+  const anyHits = searchBible(q, 'KJV', 20, 'any')
+  if (anyHits.length > 0) return { kind: 'hits', hits: anyHits }
+
+  return { kind: 'error', message: `No matches for "${q}".` }
+}
+
+/** Book grid for the remote's Bible tab — the same 66-book list the desktop
+ *  Books drawer uses, so abbreviations and chapter counts never disagree. */
+function bibleBooksForRemote(): unknown {
+  return BIBLE_BOOKS
+}
+
+/** One chapter's verses, for the remote's tap-a-book → tap-a-chapter drill. */
+async function bibleChapterForRemote(bookNum: number, chapter: number, translation: string): Promise<unknown> {
+  const book = bookByNum(bookNum)
+  if (!book) return { error: 'Unknown book.' }
+  return lookupPassage(`${book.name} ${chapter}`, translation || 'KJV')
+}
 
 // ── Queue navigation relay (projection window → main window) ──────────────────
 
@@ -754,7 +816,15 @@ ipcMain.on('webremote:sync', (_event, state) => {
 })
 
 ipcMain.handle('webremote:ip', () => {
-  return isWebRemoteAvailable() ? `http://${getLocalIP()}:4316` : ''
+  if (!isWebRemoteAvailable()) {
+    return { available: false, url: '', ipUrl: '', hostnameUrl: null }
+  }
+  const ipUrl = `http://${getLocalIP()}:${REMOTE_PORT}`
+  const host = getMdnsHostname()
+  const hostnameUrl = host ? `http://${host}:${REMOTE_PORT}` : null
+  // Prefer the name — it survives a DHCP lease change; the IP is the fallback
+  // shown only until (or unless) mDNS finishes probing.
+  return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
 })
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
@@ -808,16 +878,47 @@ ipcMain.handle('service:recents', () => {
     }))
 })
 
-ipcMain.handle('service:open-path', (_event, path: string) => {
-  log.info(`ipc service:open-path ${path}`)
+/** Shared by the `service:open-path` IPC handler and the web remote's
+ *  "Open a saved service" — reads a service file straight off disk, no
+ *  native dialog, so it works the same whether the desktop or a phone asked. */
+function openServiceFile(path: string): unknown | null {
   try {
     if (!existsSync(path)) return null
     const data = JSON.parse(readFileSync(path, 'utf-8'))
     rememberService(path)
     return data
   } catch (e) {
-    log.error('service:open-path failed', e)
+    log.error('openServiceFile failed', e)
     return null
+  }
+}
+
+ipcMain.handle('service:open-path', (_event, path: string) => openServiceFile(path))
+
+// Church WiFi's remote has no native file dialog to hand off to — a save
+// initiated there writes straight to a fixed folder under a name the
+// operator typed, and joins the exact same recents list the desktop's own
+// Save (with its OS picker) already uses, so there's one unified history.
+const REMOTE_SAVE_DIR = (): string => {
+  const dir = join(app.getPath('userData'), 'saved-services')
+  try {
+    mkdirSync(dir, { recursive: true })
+  } catch {
+    /* already exists */
+  }
+  return dir
+}
+
+ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
+  const safeName = (name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) || 'Untitled service'
+  const path = join(REMOTE_SAVE_DIR(), `${safeName}.born`)
+  try {
+    writeFileSync(path, JSON.stringify(items, null, 2))
+    rememberService(path)
+    return true
+  } catch (e) {
+    log.error('service:save-named failed', e)
+    return false
   }
 })
 
@@ -1047,6 +1148,34 @@ ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
 ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
 ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
 
+/** Called whenever a song is queued or projected, from the desktop app or
+ *  the web remote alike — feeds the remote's "Recent" shortlist. */
+ipcMain.on('songs:note-used', (_event, id: number) => {
+  try {
+    const prev = getSettingsSafe().recentSongIds ?? []
+    const next = [id, ...prev.filter((x) => x !== id)].slice(0, 8)
+    updateSettings({ recentSongIds: next })
+  } catch (e) {
+    log.error('songs:note-used failed', e)
+  }
+})
+
+function recentSongSummaries(): unknown[] {
+  const ids = getSettingsSafe().recentSongIds ?? []
+  return ids.map((id) => getSong(id)).filter((s): s is NonNullable<typeof s> => !!s).map((s) => ({
+    id: s.id,
+    title: s.title,
+    author: s.author,
+    songKey: s.songKey,
+    slideCount: s.slides.length,
+    source: s.source
+  }))
+}
+
+function clearRecentSongs(): void {
+  updateSettings({ recentSongIds: [] })
+}
+
 ipcMain.handle('songs:import', async () => {
   const result = await dialog.showOpenDialog({
     title: 'Import songs',
@@ -1131,6 +1260,12 @@ ipcMain.handle('indexer:stop', () => {
 app.whenReady().then(() => {
   log.boot()
   app.setName('Branham or Nothing')
+  // electron-builder applies build/icons/* only when packaging — set the
+  // Dock icon explicitly in dev so `npm run dev` previews the real icon too.
+  if (!app.isPackaged && process.platform === 'darwin') {
+    const devIconPath = join(app.getAppPath(), 'build/icons/icon.png')
+    if (existsSync(devIconPath)) app.dock?.setIcon(devIconPath)
+  }
   projectionState.fontSize = getSettingsSafe().fontSize
   nativeTheme.themeSource = getSettingsSafe().theme
   createMainWindow()
@@ -1156,18 +1291,69 @@ app.whenReady().then(() => {
   screen.on('display-removed', () => onDisplayLayoutChanged('display-removed'))
   screen.on('display-metrics-changed', () => onDisplayLayoutChanged('display-metrics-changed'))
 
-  startWebRemote((cmd) => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (cmd.action === 'prev' || cmd.action === 'next') {
-      mainWindow.webContents.send('queue:navigate', cmd.action)
-    } else if (cmd.action === 'blank') {
-      setProjectionBlank(true)
-    } else if (cmd.action === 'unblank') {
-      setProjectionBlank(false)
-    } else if (cmd.action === 'project' && cmd.index !== undefined) {
-      mainWindow.webContents.send('webremote:project', cmd.index)
+  startWebRemote(
+    (cmd) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      if (cmd.action === 'prev' || cmd.action === 'next') {
+        mainWindow.webContents.send('queue:navigate', cmd.action)
+      } else if (cmd.action === 'blank') {
+        setProjectionBlank(true)
+      } else if (cmd.action === 'unblank') {
+        setProjectionBlank(false)
+      } else if (cmd.action === 'project' && cmd.index !== undefined) {
+        mainWindow.webContents.send('webremote:project', cmd.index)
+      } else if (cmd.action === 'project-at' && cmd.index !== undefined) {
+        mainWindow.webContents.send('webremote:project-at', { index: cmd.index, slide: cmd.slide ?? 0 })
+      } else if (cmd.action === 'clear-recent-songs') {
+        clearRecentSongs()
+      } else if (cmd.action === 'queue-sermon' && cmd.quote) {
+        mainWindow.webContents.send('webremote:queue-sermon', cmd.quote)
+      } else if (cmd.action === 'project-sermon' && cmd.quote) {
+        mainWindow.webContents.send('webremote:project-sermon', {
+          quote: cmd.quote,
+          query: cmd.query ?? ''
+        })
+      } else if (cmd.action === 'queue-bible' && cmd.reference) {
+        mainWindow.webContents.send('webremote:queue-bible', {
+          reference: cmd.reference,
+          translation: cmd.translation ?? 'KJV'
+        })
+      } else if (cmd.action === 'project-bible' && cmd.reference) {
+        mainWindow.webContents.send('webremote:project-bible', {
+          reference: cmd.reference,
+          translation: cmd.translation ?? 'KJV'
+        })
+      } else if (cmd.action === 'queue-song' && cmd.songId !== undefined) {
+        mainWindow.webContents.send('webremote:queue-song', cmd.songId)
+      } else if (cmd.action === 'project-song' && cmd.songId !== undefined) {
+        mainWindow.webContents.send('webremote:project-song', cmd.songId)
+      } else if (cmd.action === 'new-service') {
+        mainWindow.webContents.send('webremote:new-service')
+      } else if (cmd.action === 'save-queue' && cmd.name) {
+        mainWindow.webContents.send('webremote:save-queue', cmd.name)
+      } else if (cmd.action === 'open-service' && cmd.path) {
+        const data = openServiceFile(cmd.path)
+        if (data) mainWindow.webContents.send('webremote:open-service', data)
+      }
+    },
+    {
+      sermons: (query, dateCode) => searchSermonsForRemote(query, dateCode),
+      bible: (query) => searchBibleForRemote(query),
+      songs: (query) => Promise.resolve(searchSongs(query)),
+      song: (id) => Promise.resolve(getSong(id)),
+      bibleBooks: () => Promise.resolve(bibleBooksForRemote()),
+      bibleChapter: (bookNum, chapter, translation) =>
+        bibleChapterForRemote(bookNum, chapter, translation),
+      recentSongs: () => Promise.resolve(recentSongSummaries()),
+      recentServices: () =>
+        Promise.resolve(
+          (getSettingsSafe().recentServices ?? [])
+            .filter((p) => existsSync(p))
+            .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
+        )
     }
-  })
+  )
+  startMdns(REMOTE_PORT)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -1175,6 +1361,8 @@ app.whenReady().then(() => {
     }
   })
 })
+
+app.on('before-quit', () => stopMdns())
 
 app.on('window-all-closed', () => {
   log.info('all windows closed — shutting down')

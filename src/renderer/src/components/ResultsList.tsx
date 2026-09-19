@@ -1,3 +1,4 @@
+import { SearchX, Search } from 'lucide-react'
 import type { Quote } from '../types'
 import { highlight, yearFromDateCode } from '../highlight'
 import { refsOverlap } from '../../../shared/paragraphRef'
@@ -42,13 +43,20 @@ export default function ResultsList({
   if (results.length === 0) {
     return (
       <div className="results-empty">
+        <div className="empty-state-icon">
+          {searched ? (
+            <SearchX width={20} height={20} strokeWidth={1.75} aria-hidden="true" />
+          ) : (
+            <Search width={20} height={20} strokeWidth={1.75} aria-hidden="true" />
+          )}
+        </div>
         {searched ? (
           <>
             <p>No quotes found for “{query}”.</p>
             <p className="results-empty-hint">Try fewer words, or switch to “Any of these words” in Filters.</p>
           </>
         ) : (
-          <p>Type a word or phrase above to search {results.length ? '' : 'sermon quotes'}.</p>
+          <p>Type a word or phrase above to search sermon quotes.</p>
         )}
       </div>
     )

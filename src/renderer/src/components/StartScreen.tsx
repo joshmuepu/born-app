@@ -1,3 +1,4 @@
+import { Flame } from 'lucide-react'
 import type { RecentService } from '../types'
 
 interface Props {
@@ -24,6 +25,9 @@ export default function StartScreen({ recents, onOpen, onOpenRecent }: Props) {
   return (
     <div className="start-screen">
       <div className="start-inner">
+        <div className="empty-state-icon start-icon">
+          <Flame width={20} height={20} strokeWidth={1.75} aria-hidden="true" />
+        </div>
         <h2 className="start-title">New service</h2>
         <p className="start-sub">
           Add quotes, Bible passages and songs from the left — they line up here in order,

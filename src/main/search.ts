@@ -22,6 +22,9 @@ export interface SearchFilters {
   yearTo?: string
   titleFilter?: string
   forceTokens?: boolean
+  /** A date-code prefix — "61-0317" for one service, "63-08" for all of
+   *  August 1963. Matched as a LIKE prefix so a partial code still narrows. */
+  dateCode?: string
 }
 
 export function buildSearchSQL(filters: SearchFilters): { sql: string; extraParams: unknown[] } {
@@ -41,6 +44,10 @@ export function buildSearchSQL(filters: SearchFilters): { sql: string; extraPara
   if (filters.titleFilter?.trim()) {
     sql += ` AND LOWER(s.title) LIKE ?`
     extraParams.push(`%${filters.titleFilter.trim().toLowerCase()}%`)
+  }
+  if (filters.dateCode?.trim()) {
+    sql += ` AND s.date_code LIKE ?`
+    extraParams.push(`${filters.dateCode.trim().toUpperCase()}%`)
   }
 
   sql += ` ORDER BY rank LIMIT 50`

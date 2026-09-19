@@ -1,23 +1,79 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { networkInterfaces } from 'os'
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
+import { app } from 'electron'
+import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAssets'
+
+export const REMOTE_PORT = 4316
+
+export interface WebRemoteSlide {
+  text: string
+  label?: string
+  marker?: string
+  reference?: string
+}
 
 export interface WebRemoteState {
-  queue: Array<{ title: string; kind: string; subtitle: string; slideCount: number }>
+  queue: Array<{
+    title: string
+    kind: string
+    subtitle: string
+    slideCount: number
+    /** Every slide's full content — lets the remote show "the whole song /
+     *  passage / quote, tap any part to project it" without a round trip. */
+    slides: WebRemoteSlide[]
+  }>
   activeIndex: number | null
   activeSlide: number
   blanked: boolean
+  onScreen: {
+    kind: string
+    text: string
+    reference?: string
+    label?: string
+    marker?: string
+    nextText?: string
+  } | null
 }
 
-type CommandCallback = (cmd: { action: string; index?: number }) => void
+type CommandCallback = (cmd: {
+  action: string
+  index?: number
+  slide?: number
+  quote?: unknown
+  reference?: string
+  translation?: string
+  query?: string
+  songId?: number
+  name?: string
+  path?: string
+}) => void
 
-const PORT = 4316
+/** Everything the remote's HTTP server needs from the rest of the app, all
+ *  injected from index.ts — this module never imports db/bible/songs modules
+ *  directly, so the exact same functions the desktop's own IPC handlers call
+ *  are what the remote calls too. Results never drift between the two. */
+export interface WebRemoteSearchHandlers {
+  sermons: (query: string, dateCode?: string) => Promise<unknown[]>
+  bible: (query: string) => Promise<unknown>
+  songs: (query: string) => Promise<unknown[]>
+  song: (id: number) => Promise<unknown>
+  bibleBooks: () => Promise<unknown>
+  bibleChapter: (bookNum: number, chapter: number, translation: string) => Promise<unknown>
+  recentSongs: () => Promise<unknown[]>
+  recentServices: () => Promise<unknown[]>
+}
+
 let currentState: WebRemoteState = {
   queue: [],
   activeIndex: null,
   activeSlide: 0,
-  blanked: false
+  blanked: false,
+  onScreen: null
 }
 let commandCallback: CommandCallback | null = null
+let searchHandlers: WebRemoteSearchHandlers | null = null
 
 function isPrivate(addr: string): boolean {
   return (
@@ -35,119 +91,193 @@ export function getLocalIP(): string {
       if (net.family === 'IPv4' && !net.internal) candidates.push(net.address)
     }
   }
-  // Prefer a real LAN address (192.168/10/172.16-31) over VPN / virtual adapters.
   return candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
 }
 
-// Inline mobile-friendly HTML (no template literals in the embedded JS to avoid escaping issues)
 function buildHTML(): string {
-  return `<!DOCTYPE html>
+  return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#0d1117"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BORN"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-180.png"/>
+<link rel="icon" href="/icon-192.png"/>
 <title>BORN Remote</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:16px;min-height:100vh}
-h1{font-size:1rem;font-weight:600;color:#58a6ff;margin-bottom:16px;text-align:center}
-.controls{display:flex;gap:8px;margin-bottom:16px}
-button{flex:1;padding:14px 8px;border:1px solid #30363d;border-radius:8px;background:#161b22;color:#c9d1d9;font-size:0.9rem;font-weight:600;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-button:active{background:#21262d}
-.btn-blank{background:#1a1200;border-color:#8b6914;color:#e3b341}
-.btn-blank.active{background:#e3b341;color:#0d1117}
-.section-label{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#8b949e;margin-bottom:8px}
-.queue{display:flex;flex-direction:column;gap:6px}
-.q-item{background:#161b22;border:1px solid #30363d;border-left:3px solid transparent;border-radius:6px;padding:10px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.q-item.active{border-left-color:#58a6ff;background:rgba(88,166,255,0.08)}
-.q-item:active{background:#21262d}
-.q-meta{font-size:0.72rem;color:#58a6ff;font-family:monospace;margin-bottom:4px}
-.q-text{font-size:0.9rem;font-weight:600;line-height:1.35;color:#c9d1d9}
-.q-sub{font-size:0.75rem;color:#8b949e;margin-top:3px;font-family:monospace}
-.status{text-align:center;font-size:0.72rem;color:#8b949e;margin-top:16px;padding:8px}
-.empty{text-align:center;color:#8b949e;padding:24px;font-size:0.85rem}
-</style>
+<link rel="stylesheet" href="/app.css"/>
 </head>
 <body>
-<h1>BORN — Branham or Nothing</h1>
-<div class="controls">
-  <button onclick="cmd('prev')">&#8592; Prev</button>
-  <button onclick="cmd('next')">Next &#8594;</button>
-  <button id="blankBtn" class="btn-blank" onclick="toggleBlank()">Blank</button>
-</div>
-<div class="section-label">Queue</div>
-<div class="queue" id="queue"></div>
-<div class="status" id="status">Connecting&#8230;</div>
-<script>
-var state = {queue:[],activeIndex:null,activeSlide:0,blanked:false};
-function cmd(action,index){
-  var body = JSON.stringify({action:action,index:index});
-  fetch('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:body});
-}
-function esc(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function toggleBlank(){ cmd(state.blanked ? 'unblank' : 'blank'); }
-function render(){
-  var blankBtn = document.getElementById('blankBtn');
-  blankBtn.textContent = state.blanked ? 'Restore' : 'Blank';
-  blankBtn.className = 'btn-blank' + (state.blanked ? ' active' : '');
-  var qEl = document.getElementById('queue');
-  if(!state.queue || state.queue.length === 0){
-    qEl.innerHTML = '<div class="empty">Nothing in the service queue</div>';
-    return;
-  }
-  var html = '';
-  for(var i=0;i<state.queue.length;i++){
-    var q = state.queue[i];
-    var active = (i === state.activeIndex);
-    var cls = 'q-item' + (active ? ' active' : '');
-    var progress = '';
-    if(q.slideCount > 1){
-      progress = active ? (' &middot; ' + (state.activeSlide+1) + '/' + q.slideCount)
-                        : (' &middot; ' + q.slideCount + ' slides');
-    }
-    html += '<div class="' + cls + '" onclick="cmd(\'project\',' + i + ')">';
-    html += '<div class="q-meta">' + esc(q.kind).toUpperCase() + progress + '</div>';
-    html += '<div class="q-text">' + esc(q.title) + '</div>';
-    if(q.subtitle) html += '<div class="q-sub">' + esc(q.subtitle) + '</div>';
-    html += '</div>';
-  }
-  qEl.innerHTML = html;
-}
-function poll(){
-  fetch('/state')
-    .then(function(r){ return r.json(); })
-    .then(function(s){ state=s; render(); document.getElementById('status').textContent='Connected'; })
-    .catch(function(){ document.getElementById('status').textContent='Reconnecting\u2026'; });
-}
-poll();
-setInterval(poll, 1000);
-</script>
+${buildAppBody()}
+<script src="/app.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}</script>
 </body>
 </html>`
 }
 
-function handleRequest(req: IncomingMessage, res: ServerResponse): void {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+// Icon files are shipped as an extraResource (see package.json) so they
+// survive packaging the same way the prebuilt DBs do — same 3-candidate
+// lookup pattern the rest of the app already uses for bundled assets.
+const iconCache = new Map<number, Buffer | null>()
+function loadIcon(size: number): Buffer | null {
+  if (iconCache.has(size)) return iconCache.get(size) ?? null
+  const name = `icon-${size}.png`
+  const candidates = [
+    join(process.resourcesPath ?? '', 'remote-icons', name),
+    join(app.getAppPath(), 'resources', 'remote-icons', name),
+    join(app.getAppPath(), '..', 'resources', 'remote-icons', name)
+  ]
+  const found = candidates.find((p) => p && existsSync(p))
+  const buf = found ? readFileSync(found) : null
+  iconCache.set(size, buf)
+  return buf
+}
 
-  if (req.url === '/state' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
-    res.end(JSON.stringify(currentState))
-    return
-  }
+function sendJSON(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+  res.end(JSON.stringify(body))
+}
 
-  if (req.url === '/command' && req.method === 'POST') {
+function sendText(res: ServerResponse, status: number, contentType: string, body: string): void {
+  // No caching: the client (CSS/JS/HTML) is a plain string rebuilt into the
+  // app on every release, and a phone/tablet that cached last month's copy
+  // would silently run stale UI against this app's current command set.
+  res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store' })
+  res.end(body)
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
     let body = ''
-    req.on('data', (chunk) => { body += chunk })
-    req.on('end', () => {
-      try { commandCallback?.(JSON.parse(body)) } catch {}
-      res.writeHead(204)
-      res.end()
+    req.on('data', (chunk) => {
+      body += chunk
     })
+    req.on('end', () => resolve(body))
+  })
+}
+
+async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  const url = new URL(req.url ?? '/', 'http://internal')
+  const path = url.pathname
+
+  if (path === '/app.css' && req.method === 'GET') {
+    sendText(res, 200, 'text/css; charset=utf-8', APP_CSS)
+    return
+  }
+  if (path === '/app.js' && req.method === 'GET') {
+    sendText(res, 200, 'application/javascript; charset=utf-8', APP_JS)
+    return
+  }
+  if (path === '/manifest.json' && req.method === 'GET') {
+    sendText(res, 200, 'application/manifest+json', MANIFEST_JSON)
+    return
+  }
+  if (path === '/sw.js' && req.method === 'GET') {
+    sendText(res, 200, 'application/javascript; charset=utf-8', SW_JS)
+    return
+  }
+  const iconMatch = /^\/icon-(180|192|512)\.png$/.exec(path)
+  if (iconMatch && req.method === 'GET') {
+    const buf = loadIcon(Number(iconMatch[1]))
+    if (buf) {
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' })
+      res.end(buf)
+    } else {
+      res.writeHead(404)
+      res.end()
+    }
     return
   }
 
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-  res.end(buildHTML())
+  if (path === '/state' && req.method === 'GET') {
+    sendJSON(res, 200, currentState)
+    return
+  }
+
+  if (path === '/api/search/sermons' && req.method === 'GET') {
+    const q = url.searchParams.get('q') ?? ''
+    const dateCode = url.searchParams.get('date') ?? undefined
+    try {
+      sendJSON(res, 200, await searchHandlers!.sermons(q, dateCode))
+    } catch {
+      sendJSON(res, 200, [])
+    }
+    return
+  }
+  if (path === '/api/search/bible' && req.method === 'GET') {
+    const q = url.searchParams.get('q') ?? ''
+    try {
+      sendJSON(res, 200, await searchHandlers!.bible(q))
+    } catch {
+      sendJSON(res, 200, { kind: 'error', message: 'Search failed.' })
+    }
+    return
+  }
+  if (path === '/api/search/songs' && req.method === 'GET') {
+    const q = url.searchParams.get('q') ?? ''
+    try {
+      sendJSON(res, 200, await searchHandlers!.songs(q))
+    } catch {
+      sendJSON(res, 200, [])
+    }
+    return
+  }
+  const songMatch = /^\/api\/song\/(\d+)$/.exec(path)
+  if (songMatch && req.method === 'GET') {
+    try {
+      sendJSON(res, 200, await searchHandlers!.song(Number(songMatch[1])))
+    } catch {
+      sendJSON(res, 200, null)
+    }
+    return
+  }
+  if (path === '/api/bible/books' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.bibleBooks())
+    return
+  }
+  if (path === '/api/bible/chapter' && req.method === 'GET') {
+    const book = Number(url.searchParams.get('book') ?? '0')
+    const chapter = Number(url.searchParams.get('chapter') ?? '0')
+    const translation = url.searchParams.get('translation') ?? 'KJV'
+    try {
+      sendJSON(res, 200, await searchHandlers!.bibleChapter(book, chapter, translation))
+    } catch {
+      sendJSON(res, 200, { error: 'Lookup failed.' })
+    }
+    return
+  }
+  if (path === '/api/songs/recent' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.recentSongs())
+    return
+  }
+  if (path === '/api/services/recent' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.recentServices())
+    return
+  }
+
+  if (path === '/command' && req.method === 'POST') {
+    const body = await readBody(req)
+    try {
+      commandCallback?.(JSON.parse(body))
+    } catch {
+      /* malformed body — ignore, the remote will just not see an effect */
+    }
+    res.writeHead(204)
+    res.end()
+    return
+  }
+
+  if (path === '/' && req.method === 'GET') {
+    sendText(res, 200, 'text/html; charset=utf-8', buildHTML())
+    return
+  }
+
+  res.writeHead(404)
+  res.end()
 }
 
 let remoteAvailable = false
@@ -156,20 +286,30 @@ export function isWebRemoteAvailable(): boolean {
   return remoteAvailable
 }
 
-export function startWebRemote(onCommand: CommandCallback): void {
+export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSearchHandlers): void {
   commandCallback = onCommand
-  const server = createServer(handleRequest)
+  searchHandlers = search
+  const server = createServer((req, res) => {
+    handleRequest(req, res).catch(() => {
+      try {
+        res.writeHead(500)
+        res.end()
+      } catch {
+        /* response already sent */
+      }
+    })
+  })
   server.on('error', (err: NodeJS.ErrnoException) => {
     remoteAvailable = false
     if (err.code === 'EADDRINUSE') {
-      console.error(`Web remote: port ${PORT} is already in use — remote disabled`)
+      console.error(`Web remote: port ${REMOTE_PORT} is already in use — remote disabled`)
     } else {
       console.error('Web remote server error', err)
     }
   })
-  server.listen(PORT, () => {
+  server.listen(REMOTE_PORT, () => {
     remoteAvailable = true
-    console.log(`Web remote available at http://${getLocalIP()}:${PORT}`)
+    console.log(`Web remote available at http://${getLocalIP()}:${REMOTE_PORT}`)
   })
 }
 

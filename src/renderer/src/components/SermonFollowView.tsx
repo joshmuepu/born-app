@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft } from 'lucide-react'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
 
@@ -31,6 +32,12 @@ export default function SermonFollowView({
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const focusEl = useRef<HTMLDivElement>(null)
+  // The first jump into a sermon (from a search result, possibly hundreds of
+  // paragraphs in) should land instantly — animating that whole distance
+  // reads as an amateurish "reveal." Once we're actually here, following
+  // along a paragraph at a time (Next/Prev) is short enough that a smooth
+  // scroll is the nicer, more deliberate touch.
+  const hasScrolledOnce = useRef(false)
 
   // What to keep in view: the projected paragraph if we're live, else the
   // paragraph the operator opened the sermon on.
@@ -51,7 +58,12 @@ export default function SermonFollowView({
   }, [sermonId])
 
   useEffect(() => {
-    focusEl.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    if (!focusEl.current) return
+    focusEl.current.scrollIntoView({
+      block: 'center',
+      behavior: hasScrolledOnce.current ? 'smooth' : 'auto'
+    })
+    hasScrolledOnce.current = true
   }, [focusRef, paras])
 
   const title = paras[0]?.sermonTitle ?? ''
@@ -60,7 +72,9 @@ export default function SermonFollowView({
   return (
     <div className="follow-view">
       <div className="follow-head">
-        <button className="btn-quiet btn-sm" onClick={onBack}>← Results</button>
+        <button className="btn-quiet btn-sm btn-icon-text" onClick={onBack}>
+          <ChevronLeft width={14} height={14} strokeWidth={2.2} aria-hidden="true" /> Results
+        </button>
         <span className="follow-title">{title}</span>
         <span className="follow-meta">{dateCode}</span>
       </div>

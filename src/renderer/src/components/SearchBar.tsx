@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { Search, X } from 'lucide-react'
 import type { Quote } from '../types'
 
 interface Props {
@@ -167,7 +168,7 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
     <div className="search-bar-container">
       <div className="search-bar">
         <div className="search-input-wrap">
-          <span className="search-icon" aria-hidden="true">⌕</span>
+          <Search className="search-icon" width={16} height={16} strokeWidth={2} aria-hidden="true" />
           <input
             ref={inputRef}
             id="born-search-input"
@@ -189,7 +190,7 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
               title="Clear search (Esc)"
               aria-label="Clear search"
             >
-              ×
+              <X width={13} height={13} strokeWidth={2.4} />
             </button>
           )}
           {showSuggestions && suggestions.length > 0 && (

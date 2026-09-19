@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { ChevronLeft, X } from 'lucide-react'
 import type {
   Quote,
   SermonIndexItem,
@@ -160,7 +161,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     <div className="browse-sermons">
       <div className="browse-back-row">
         <button className="browse-back" onClick={() => { setBrowsedSermons([]); setSelectedSermon(null); setParagraphs([]) }}>
-          ← Back
+          <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Back
         </button>
         <span className="browse-group-label">{groupLabel}</span>
         <span className="browse-count">{browsedSermons.length} sermons</span>
@@ -188,7 +189,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     <div className="browse-paragraphs">
       <div className="browse-back-row">
         <button className="browse-back" onClick={() => { setSelectedSermon(null); setParagraphs([]) }}>
-          ← Back
+          <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Back
         </button>
         <span className="browse-group-label">{selectedSermon?.title}</span>
         <span className="browse-count">{selectedSermon?.date_code}</span>
@@ -271,7 +272,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         onKeyDown={(e) => { if (e.key === 'Escape' && locFilter) { e.preventDefault(); setLocFilter('') } }}
       />
       {locFilter && (
-        <button className="search-clear" onClick={() => setLocFilter('')} title="Clear (Esc)" aria-label="Clear filter">×</button>
+        <button className="search-clear" onClick={() => setLocFilter('')} title="Clear (Esc)" aria-label="Clear filter"><X width={13} height={13} strokeWidth={2.4} /></button>
       )}
     </div>
   )
@@ -327,7 +328,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         <div className="browse-sermons">
           {renderLocationFilter()}
           <div className="browse-back-row">
-            <button className="browse-back" onClick={() => setSelectedState(null)}>← Back</button>
+            <button className="browse-back" onClick={() => setSelectedState(null)}><ChevronLeft width={14} height={14} strokeWidth={2.4} /> Back</button>
             <span className="browse-group-label">{selectedState.name}</span>
             <span className="browse-count">{selectedState.cities.length} cities</span>
           </div>

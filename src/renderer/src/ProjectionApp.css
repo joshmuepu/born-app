@@ -4,10 +4,25 @@
   padding: 0;
 }
 
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-Variable.woff2') format('woff2');
+}
+
+:root {
+  --p-label: #948d7c;
+  --p-quote: #C9C2B4;
+  --p-bible: #83C08E;
+  --p-songs: #D9A25C;
+}
+
 body {
   background-color: #000;
   color: #fff;
-  font-family: 'Georgia', 'Times New Roman', serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   height: 100vh;
   overflow: hidden;
   cursor: none;
@@ -33,12 +48,12 @@ body {
   left: 100px;
   right: 100px;
   text-align: center;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: clamp(1rem, 1.8vw, 1.6rem);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #b0b0b0;
+  color: var(--p-label);
 }
 
 .projection-text {
@@ -70,13 +85,18 @@ body {
   text-align: center;
   font-size: clamp(1rem, 1.5vw, 1.45rem);
   color: #c8c8c8;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.02em;
 }
+/* The reference line borrows the same content-identity color the operator
+   sees in the app — a quiet, deliberate signature instead of flat gray. */
+.projection-quote .projection-reference { color: var(--p-quote); }
+.projection-bible .projection-reference { color: var(--p-bible); }
+.projection-song .projection-reference { color: var(--p-songs); }
 
 /* Verse / paragraph number shown as a superscript before the text. */
 .projection-marker {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 0.45em;
   font-weight: 700;
   color: #b8b8b8;
@@ -102,10 +122,10 @@ body {
   right: 0;
   padding: 18px 40px;
   background: rgba(10, 8, 0, 0.92);
-  border-top: 2px solid #fbbf24;
-  color: #fbbf24;
+  border-top: 2px solid #E0A855;
+  color: #E0A855;
   font-size: clamp(1rem, 2vw, 1.5rem);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.04em;

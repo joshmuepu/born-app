@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { highlight, yearFromDateCode } from '../../renderer/src/highlight'
+import { highlight, yearFromDateCode, findMatchingSlideIndex } from '../../renderer/src/highlight'
 
 const html = (node: ReturnType<typeof highlight>): string =>
   renderToStaticMarkup(<>{node}</>)
@@ -30,6 +30,40 @@ describe('highlight', () => {
   it('returns the text unchanged when the query is empty', () => {
     expect(highlight('untouched', '')).toBe('untouched')
     expect(highlight('untouched', undefined)).toBe('untouched')
+  })
+})
+
+describe('findMatchingSlideIndex', () => {
+  const slides = [
+    'In the beginning God created the heavens and the earth.',
+    'And the earth was without form, and void; and darkness was upon the face of the deep.',
+    'And God said, Let there be faith among the people, and it was so.',
+    'And God saw that it was good.'
+  ]
+
+  it('finds the slide that actually contains the searched word, not the first one', () => {
+    expect(findMatchingSlideIndex(slides, 'faith')).toBe(2)
+  })
+
+  it('returns 0 when the query matches the first slide', () => {
+    expect(findMatchingSlideIndex(slides, 'beginning')).toBe(0)
+  })
+
+  it('matches a multi-word phrase against the slide that contains it', () => {
+    expect(findMatchingSlideIndex(slides, 'without form')).toBe(1)
+  })
+
+  it('falls back to 0 when nothing matches', () => {
+    expect(findMatchingSlideIndex(slides, 'xyzzy')).toBe(0)
+  })
+
+  it('falls back to 0 for an empty query', () => {
+    expect(findMatchingSlideIndex(slides, '')).toBe(0)
+    expect(findMatchingSlideIndex(slides, undefined)).toBe(0)
+  })
+
+  it('matches case-insensitively', () => {
+    expect(findMatchingSlideIndex(slides, 'FAITH')).toBe(2)
   })
 })
 

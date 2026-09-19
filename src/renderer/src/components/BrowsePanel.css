@@ -15,7 +15,7 @@
 .browse-language {
   margin: 0 6px;
   flex-shrink: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   padding: 3px 6px;
   max-width: 120px;
 }
@@ -27,12 +27,12 @@
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 .browse-tab:hover {
@@ -40,8 +40,8 @@
 }
 
 .browse-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--sermons);
+  border-bottom-color: var(--sermons);
 }
 
 .browse-content {
@@ -60,8 +60,8 @@
 .browse-item {
   padding: 10px 14px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.1s;
+  border-radius: var(--r-sm);
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
 .browse-item:hover {
@@ -69,26 +69,26 @@
 }
 
 .browse-item.selected {
-  background: var(--tint-accent-weak);
-  border-left: 2px solid var(--accent);
+  background: var(--sermons-wash);
+  border-left: 2px solid var(--sermons);
   padding-left: 12px;
 }
 
 .browse-item-code {
-  font-size: 0.7rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  color: var(--accent);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--sermons);
   margin-bottom: 2px;
 }
 
 .browse-item-title {
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   color: var(--text-primary);
   line-height: 1.35;
 }
 
 .browse-item-meta {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   margin-top: 3px;
 }
@@ -96,14 +96,14 @@
 .browse-loading {
   padding: 24px 14px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   text-align: center;
 }
 
 .browse-empty {
   padding: 24px 14px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   text-align: center;
 }
 
@@ -125,13 +125,19 @@
 }
 
 .browse-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: none;
   color: var(--accent);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+.browse-back svg {
   flex-shrink: 0;
 }
 
@@ -141,7 +147,7 @@
 
 .browse-group-label {
   flex: 1;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -150,7 +156,7 @@
 }
 
 .browse-count {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -162,22 +168,22 @@
 }
 
 .browse-para-item--on-screen {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--sermons) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--sermons);
 }
 
 .browse-para-ref {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.68rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  color: var(--accent);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--sermons);
   margin-bottom: 4px;
 }
 
 .browse-para-text {
-  font-size: 0.82rem;
+  font-size: var(--text-base);
   line-height: 1.45;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -224,18 +230,18 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .browse-year-cell:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: var(--sermons);
 }
 .browse-year-num {
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   font-weight: 600;
 }
 .browse-year-count {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 .browse-year-cell--undated {
@@ -264,15 +270,15 @@
 .browse-crumb {
   background: none;
   border: none;
-  color: var(--accent);
-  font-size: 0.8rem;
+  color: var(--sermons);
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
 }
 .browse-crumb:hover {
-  background: var(--tint-accent-weak);
+  background: var(--sermons-wash);
 }
 .browse-crumb.is-current {
   color: var(--text-primary);
@@ -283,7 +289,7 @@
 }
 .browse-crumb-sep {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .browse-month-pills {
@@ -299,10 +305,10 @@
   gap: 4px;
   padding: 5px 4px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -311,18 +317,18 @@
   cursor: default;
 }
 .browse-month-pill:not(:disabled):hover {
-  border-color: var(--accent);
+  border-color: var(--sermons);
 }
 .browse-month-pill.is-shown {
-  border-color: var(--accent);
+  border-color: var(--sermons);
 }
 .browse-month-pill.is-selected {
-  background: var(--accent);
+  background: var(--sermons);
   color: var(--on-accent);
-  border-color: var(--accent);
+  border-color: var(--sermons);
 }
 .browse-month-pill-count {
-  font-size: 0.62rem;
+  font-size: var(--text-2xs);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -332,7 +338,7 @@
 }
 
 .browse-cal-title {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 6px;
@@ -344,7 +350,7 @@
 }
 .browse-cal-dow {
   text-align: center;
-  font-size: 0.62rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -360,32 +366,32 @@
   justify-content: center;
   gap: 1px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   background: var(--bg-secondary);
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   cursor: default;
 }
 .browse-cal-cell.is-empty {
   background: none;
 }
 .browse-cal-cell.has-sermons {
-  background: var(--tint-accent-weak);
+  background: var(--sermons-wash);
   color: var(--text-primary);
   font-weight: 600;
   cursor: pointer;
 }
 .browse-cal-cell.has-sermons:hover {
-  border-color: var(--accent);
+  border-color: var(--sermons);
 }
 .browse-cal-cell.is-selected {
-  background: var(--accent);
+  background: var(--sermons);
   color: var(--on-accent);
 }
 .browse-cal-dot {
-  font-size: 0.55rem;
+  font-size: var(--text-2xs);
   line-height: 1;
-  color: var(--accent);
+  color: var(--sermons);
   font-weight: 700;
 }
 .browse-cal-cell.is-selected .browse-cal-dot {
@@ -397,15 +403,15 @@
   margin-top: 8px;
   padding: 6px 8px;
   border: 1px dashed var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   background: none;
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   text-align: left;
   cursor: pointer;
 }
 .browse-cal-unknown:hover {
-  border-color: var(--accent);
+  border-color: var(--sermons);
   color: var(--text-primary);
 }
 

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Monitor, MonitorPlay, MonitorOff, EyeOff } from 'lucide-react'
 import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
@@ -6,7 +7,7 @@ import { useAutoFitFontSize } from '../useAutoFitFontSize'
 
 /** Ceiling for the confidence-monitor text — auto-fit shrinks below this for
  *  longer passages, so a short verse reads large and a long one still fits
- *  in full, with no scrollbar. ~3x the old fixed 0.9rem. */
+ *  in full, with no scrollbar. */
 const LIVE_TEXT_BASE_REM = 2.7
 
 interface OnScreen {
@@ -90,13 +91,19 @@ export default function ServiceQueue({
   const canPrev = projecting
   const canNext = projecting || (projectionOpen && !blanked && queue.length > 0)
 
+  // The confidence monitor's job is to show the operator what will come back
+  // the moment they un-blank — so a blank only replaces the box with a status
+  // placeholder when there's nothing loaded to show. If something is loaded,
+  // it stays visible (with a "Hidden from screen" badge) even while blanked.
   const status = !projectionOpen
     ? 'Projection window is closed'
-    : blanked
-      ? 'Screen is hidden'
-      : !onScreen
-        ? 'Nothing on screen yet'
-        : null
+    : !onScreen
+      ? blanked
+        ? 'Screen is hidden'
+        : 'Nothing on screen yet'
+      : null
+
+  const StatusIcon = !projectionOpen ? MonitorOff : blanked ? EyeOff : Monitor
 
   // The next thing in the service after what's on screen. Next/Prev never jump
   // here automatically — it's an explicit choice.
@@ -191,9 +198,11 @@ export default function ServiceQueue({
           <div
             className="live-now"
             title={
-              monitor === 'screen'
-                ? 'Exactly what the congregation is seeing right now'
-                : 'What the stage monitor shows — the current slide and what Next will bring up'
+              blanked && onScreen
+                ? 'Hidden from the congregation — this is what Show screen will bring back'
+                : monitor === 'screen'
+                  ? 'Exactly what the congregation is seeing right now'
+                  : 'What the stage monitor shows — the current slide and what Next will bring up'
             }
           >
             <div className="live-now-head">
@@ -209,10 +218,7 @@ export default function ServiceQueue({
                   onClick={() => setMonitor('screen')}
                   title="What the congregation sees on the main screen"
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true" className="monitor-switch-icon">
-                    <rect x="1.5" y="2.5" width="13" height="9" rx="1.2" />
-                    <path d="M6 14h4M8 11.5V14" />
-                  </svg>
+                  <Monitor className="monitor-switch-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
                   Main screen
                 </button>
                 <button
@@ -226,11 +232,7 @@ export default function ServiceQueue({
                       : 'Preview of the stage monitor (that window is currently closed)'
                   }
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true" className="monitor-switch-icon">
-                    <rect x="1.5" y="2.5" width="13" height="9" rx="1.2" />
-                    <path d="M6.5 5.5l3 2-3 2z" className="monitor-switch-icon-fill" />
-                    <path d="M6 14h4M8 11.5V14" />
-                  </svg>
+                  <MonitorPlay className="monitor-switch-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
                   Stage
                   <span
                     className={`monitor-switch-dot${stageOpen ? ' is-live' : ''}`}
@@ -238,6 +240,12 @@ export default function ServiceQueue({
                   />
                 </button>
               </div>
+              {blanked && onScreen && !status && (
+                <span className="live-now-hidden-badge" title="The congregation sees black — this is what's loaded, ready to bring back">
+                  <EyeOff width={12} height={12} strokeWidth={2} aria-hidden="true" />
+                  Hidden from screen
+                </span>
+              )}
               {onScreen?.reference && !status && (
                 <span className="live-now-ref">
                   {onScreen.label ? `${onScreen.label} · ` : ''}
@@ -246,7 +254,10 @@ export default function ServiceQueue({
               )}
             </div>
             {status ? (
-              <div className="live-now-status">{status}</div>
+              <div className="live-now-status">
+                <StatusIcon width={18} height={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>{status}</span>
+              </div>
             ) : (
               <div ref={liveTextRef} className="live-now-text" style={{ fontSize: `${liveFitRem}rem` }}>
                 <div className="live-now-text-inner">

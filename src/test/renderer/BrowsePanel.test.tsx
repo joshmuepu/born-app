@@ -186,7 +186,7 @@ describe('BrowsePanel', () => {
     await user.click(screen.getByText('Church Age Book'))
     await waitFor(() => screen.getByText('Sermon One'))
 
-    await user.click(screen.getByRole('button', { name: /← Back/i }))
+    await user.click(screen.getByRole('button', { name: /Back/i }))
     await waitFor(() => expect(screen.getByText('Church Age Book')).toBeDefined())
   })
 

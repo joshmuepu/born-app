@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Sun, Moon, Flame } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
 import ServiceQueue from './components/ServiceQueue'
 import ScreensMenu from './components/ScreensMenu'
+import RemotePanel from './components/RemotePanel'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
@@ -17,6 +19,7 @@ import type {
   RecentService
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
+import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
@@ -67,7 +70,6 @@ export default function App() {
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
-  const [webRemoteURL, setWebRemoteURL] = useState('')
   const [appVersion, setAppVersion] = useState('')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateMsg, setUpdateMsg] = useState('')
@@ -187,21 +189,6 @@ export default function App() {
     setUpdateStage('manual')
   }, [updateFile])
 
-  // Web remote URL (retry once — the HTTP server may still be binding).
-  useEffect(() => {
-    let cancelled = false
-    const fetchURL = (): void => {
-      window.electronAPI.getWebRemoteURL().then((url) => {
-        if (cancelled) return
-        setWebRemoteURL(url)
-        if (!url) setTimeout(fetchURL, 1500)
-      })
-    }
-    fetchURL()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     window.electronAPI.listDisplays().then(setDisplayInfo)
@@ -332,6 +319,21 @@ export default function App() {
     },
     [doProject]
   )
+  /** Same as handleProjectQuote, but for a search result specifically: a long
+   *  paragraph splits into several slides, and the word the operator searched
+   *  for can land on any of them — open on the one that actually has it
+   *  instead of always page 1, so it's on screen without extra Next clicks.
+   *  `query` defaults to the desktop search box's own text, but the web
+   *  remote passes its own query explicitly since it isn't the same search. */
+  const handleProjectSearchResult = useCallback(
+    (quote: Quote, query: string = searchQuery) => {
+      const item = quoteToItem(quote)
+      const slide = findMatchingSlideIndex(item.slides.map((s) => s.text), query)
+      doProject(item, slide, null)
+      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
+    },
+    [doProject, searchQuery]
+  )
   /** Click a search result: open the whole sermon at that paragraph, no projection. */
   const handleOpenSermon = useCallback(
     (quote: Quote) => setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef }),
@@ -383,13 +385,17 @@ export default function App() {
   }
 
   const handleAddSong = useCallback(
-    (s: SongDetail) => addToQueue([songToItem(s)]),
+    (s: SongDetail) => {
+      addToQueue([songToItem(s)])
+      window.electronAPI.noteSongUsed(s.id)
+    },
     [addToQueue]
   )
   const handleProjectSong = useCallback(
     (s: SongDetail, slide = 0) => {
       doProject(songToItem(s), slide, null)
       setFocusSongId(s.id)
+      window.electronAPI.noteSongUsed(s.id)
     },
     [doProject]
   )
@@ -413,10 +419,10 @@ export default function App() {
   }, [])
 
   const handleProjectFromQueue = useCallback(
-    (index: number) => {
+    (index: number, slide = 0) => {
       const item = queueRef.current[index]
       if (!item) return
-      doProject(item, 0, index)
+      doProject(item, slide, index)
       followForItem(item)
     },
     [doProject, followForItem]
@@ -522,17 +528,89 @@ export default function App() {
         title: itemTitle(it),
         kind: it.kind,
         subtitle: it.slides[0]?.reference ?? '',
-        slideCount: it.slides.length
+        slideCount: it.slides.length,
+        slides: it.slides.map((s) => ({
+          text: s.text,
+          label: s.label,
+          marker: s.marker,
+          reference: s.reference
+        }))
       })),
       activeIndex: activeQueueIndex,
       activeSlide: projected?.slide ?? 0,
-      blanked: isScreenBlanked
+      blanked: isScreenBlanked,
+      onScreen:
+        projected && projectionOpen
+          ? {
+              kind: projected.item.kind,
+              text: projected.item.slides[projected.slide]?.text ?? '',
+              marker: projected.item.slides[projected.slide]?.marker,
+              reference:
+                projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
+              label: projected.item.slides[projected.slide]?.label,
+              nextText: projected.item.slides[projected.slide + 1]?.text
+            }
+          : null
     })
-  }, [serviceQueue, activeQueueIndex, projected, isScreenBlanked])
+  }, [serviceQueue, activeQueueIndex, projected, isScreenBlanked, projectionOpen])
 
   useEffect(
     () => window.electronAPI.onWebRemoteProject((index) => handleProjectFromQueue(index)),
     [handleProjectFromQueue]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteProjectAt(({ index, slide }) =>
+        handleProjectFromQueue(index, slide)
+      ),
+    [handleProjectFromQueue]
+  )
+
+  // The mobile remote's search results reuse the exact same add/project
+  // handlers the desktop UI uses — same queue-building, same slide-jump
+  // behavior for search matches, same everything.
+  useEffect(
+    () => window.electronAPI.onWebRemoteQueueSermon((quote) => handleAddQuote(quote)),
+    [handleAddQuote]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteProjectSermon(({ quote, query }) =>
+        handleProjectSearchResult(quote, query)
+      ),
+    [handleProjectSearchResult]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteQueueBible(async ({ reference, translation }) => {
+        const p = await window.electronAPI.lookupPassage(reference, translation)
+        if (p && !('error' in (p as object))) handleAddPassage(p as ResolvedPassage)
+      }),
+    [handleAddPassage]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteProjectBible(async ({ reference, translation }) => {
+        const p = await window.electronAPI.lookupPassage(reference, translation)
+        if (p && !('error' in (p as object))) handleProjectPassage(p as ResolvedPassage)
+      }),
+    [handleProjectPassage]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteQueueSong(async (songId) => {
+        const s = await window.electronAPI.getSong(songId)
+        if (s) handleAddSong(s as SongDetail)
+      }),
+    [handleAddSong]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteProjectSong(async (songId) => {
+        const s = await window.electronAPI.getSong(songId)
+        if (s) handleProjectSong(s as SongDetail)
+      }),
+    [handleProjectSong]
   )
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
@@ -559,7 +637,7 @@ export default function App() {
 
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'Enter') {
-        if (searchResults[0]) { e.preventDefault(); handleProjectQuote(searchResults[0]) }
+        if (searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
         return
       }
       if ((e.key === '/' || (mod && e.key.toLowerCase() === 'f')) && !isTyping(e.target)) {
@@ -618,7 +696,7 @@ export default function App() {
     projectionOpen,
     searchResults,
     activeQueueIndex,
-    handleProjectQuote,
+    handleProjectSearchResult,
     handleReorder,
     handlePrev,
     handleNext,
@@ -691,6 +769,36 @@ export default function App() {
     [loadServiceItems, refreshRecents]
   )
 
+  // The remote's New/Open/Save already confirm on the phone itself before
+  // sending the command — doing it again here (a JS confirm() on an
+  // unattended desktop) would just block on nobody being there to click it.
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteNewService(() => {
+        setServiceQueue([])
+        projectedRef.current = null
+        setProjected(null)
+        setFollowSermon(null)
+      }),
+    []
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteOpenService((items) => {
+        loadServiceItems(items)
+        refreshRecents()
+      }),
+    [loadServiceItems, refreshRecents]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteSaveQueue(async (name) => {
+        await window.electronAPI.saveServiceNamed(name, serviceQueue)
+        refreshRecents()
+      }),
+    [serviceQueue, refreshRecents]
+  )
+
   const isRunning = indexer?.status === 'running'
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
@@ -728,7 +836,9 @@ export default function App() {
           onClick={handleNewService}
           title="BORN — back to the start screen"
         >
-          BORN
+          B
+          <Flame className="app-logo-flame" width={17} height={17} strokeWidth={0} fill="currentColor" aria-hidden="true" />
+          RN
         </button>
 
         <div className="header-actions">
@@ -739,14 +849,9 @@ export default function App() {
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-              </svg>
+              <Sun width={16} height={16} strokeWidth={2} aria-hidden="true" />
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-              </svg>
+              <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             )}
           </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
@@ -782,7 +887,10 @@ export default function App() {
             onSetProjectionDisplay={(id) => window.electronAPI.setProjectionDisplay(id).then(setDisplayInfo)}
             onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
             onFontSize={handleFontSizeChange}
+            onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
           />
+
+          <RemotePanel />
 
           <button
             className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
@@ -889,9 +997,9 @@ export default function App() {
       <main className="app-main">
         <div className="search-panel">
           <div className="panel-tab-bar">
-            <button className={`panel-tab${topTab === 'sermons' ? ' active' : ''}`} onClick={() => setTopTab('sermons')}>Sermons</button>
-            <button className={`panel-tab${topTab === 'bible' ? ' active' : ''}`} onClick={() => setTopTab('bible')}>Bible</button>
-            <button className={`panel-tab${topTab === 'songs' ? ' active' : ''}`} onClick={() => setTopTab('songs')}>Songs</button>
+            <button className={`panel-tab panel-tab--sermons${topTab === 'sermons' ? ' active' : ''}`} onClick={() => setTopTab('sermons')}>Sermons</button>
+            <button className={`panel-tab panel-tab--bible${topTab === 'bible' ? ' active' : ''}`} onClick={() => setTopTab('bible')}>Bible</button>
+            <button className={`panel-tab panel-tab--songs${topTab === 'songs' ? ' active' : ''}`} onClick={() => setTopTab('songs')}>Songs</button>
           </div>
 
           <div className="panel-view" hidden={topTab !== 'sermons'}>
@@ -923,7 +1031,7 @@ export default function App() {
                   searched={searched}
                   onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                   onAddToQueue={handleAddQuote}
-                  onSendToProjection={handleProjectQuote}
+                  onSendToProjection={handleProjectSearchResult}
                   onOpenSermon={handleOpenSermon}
                 />
               )}
@@ -1072,12 +1180,6 @@ export default function App() {
         </span>
         {updateMsg && <span className="status-text">{updateMsg}</span>}
 
-        {webRemoteURL && (
-          <span className="status-remote" title="Open this address on a phone to control the service">
-            📱 {webRemoteURL}
-            <button className="status-copy" title="Copy remote URL" onClick={() => navigator.clipboard?.writeText(webRemoteURL)}>Copy</button>
-          </span>
-        )}
         {indexer === null ? (
           <span className="status-text">Starting…</span>
         ) : isRunning ? (

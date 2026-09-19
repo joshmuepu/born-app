@@ -119,14 +119,49 @@ declare global {
       notifyStageReady: () => void
       onStageClosed: (callback: () => void) => () => void
       // Web remote
-      getWebRemoteURL: () => Promise<string>
+      getWebRemoteURL: () => Promise<{
+        available: boolean
+        url: string
+        ipUrl: string
+        hostnameUrl: string | null
+      }>
       syncWebRemote: (state: {
-        queue: Array<{ title: string; kind: string; subtitle: string; slideCount: number }>
+        queue: Array<{
+          title: string
+          kind: string
+          subtitle: string
+          slideCount: number
+          slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
+        }>
         activeIndex: number | null
         activeSlide: number
         blanked: boolean
+        onScreen: {
+          kind: string
+          text: string
+          reference?: string
+          label?: string
+          marker?: string
+          nextText?: string
+        } | null
       }) => void
       onWebRemoteProject: (callback: (index: number) => void) => () => void
+      onWebRemoteProjectAt: (callback: (data: { index: number; slide: number }) => void) => () => void
+      onWebRemoteQueueSermon: (callback: (quote: Quote) => void) => () => void
+      onWebRemoteProjectSermon: (callback: (data: { quote: Quote; query: string }) => void) => () => void
+      onWebRemoteQueueBible: (
+        callback: (data: { reference: string; translation: string }) => void
+      ) => () => void
+      onWebRemoteProjectBible: (
+        callback: (data: { reference: string; translation: string }) => void
+      ) => () => void
+      onWebRemoteQueueSong: (callback: (songId: number) => void) => () => void
+      onWebRemoteProjectSong: (callback: (songId: number) => void) => () => void
+      onWebRemoteNewService: (callback: () => void) => () => void
+      onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void
+      onWebRemoteOpenService: (callback: (items: unknown[]) => void) => () => void
+      saveServiceNamed: (name: string, items: unknown) => Promise<boolean>
+      noteSongUsed: (id: number) => void
       // Browse
       getBrowseSeries: () => Promise<SeriesEntry[]>
       getBrowseStates: () => Promise<StateEntry[]>

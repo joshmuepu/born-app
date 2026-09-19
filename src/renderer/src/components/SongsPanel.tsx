@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { ChevronLeft, X } from 'lucide-react'
 import type { SongSummary, SongDetail } from '../types'
 import './SongsPanel.css'
 
@@ -106,7 +107,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             autoFocus
           />
           {query && (
-            <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search">×</button>
+            <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
           )}
         </div>
         <button className="btn-secondary" onClick={handleImport}>
@@ -119,7 +120,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
         <div className="song-detail">
           <div className="song-detail-head">
             <button className="browse-back" onClick={() => setSelected(null)}>
-              ← Songs
+              <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Songs
             </button>
             <div className="song-detail-title">
               {selected.title}

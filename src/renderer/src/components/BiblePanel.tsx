@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { ChevronLeft, X, BookOpen } from 'lucide-react'
 import type {
   BibleTranslation,
   ResolvedPassage,
@@ -110,8 +111,18 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     }
   }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse, preview?.bookNum, preview?.chapter, preview?.verse])
 
+  // Only animate a scroll within the chapter that's already showing (e.g.
+  // Next/Prev moving a verse at a time) — jumping to a freshly-loaded chapter
+  // should land on the target verse instantly, not visibly scroll there.
+  const lastChapterView = useRef<ResolvedPassage | null>(null)
   useEffect(() => {
-    focusVerseRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    if (!focusVerseRef.current) return
+    const isNewChapter = lastChapterView.current !== chapterView
+    lastChapterView.current = chapterView
+    focusVerseRef.current.scrollIntoView({
+      block: 'center',
+      behavior: isNewChapter ? 'auto' : 'smooth'
+    })
   }, [focusVerse?.verse, chapterView])
 
   const loaded = useRef(false)
@@ -200,9 +211,11 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     return (
       <>
         <div className="follow-head">
-          <button className="btn-quiet btn-sm" onClick={() => setShowSearch(true)}>← Search</button>
-          <button className="btn-secondary btn-sm" onClick={() => setBrowseOpen(true)} title="Jump to a different book or chapter">
-            Books
+          <button className="btn-quiet btn-sm btn-icon-text" onClick={() => setShowSearch(true)}>
+            <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Search
+          </button>
+          <button className="btn-secondary btn-sm btn-icon-text" onClick={() => setBrowseOpen(true)} title="Jump to a different book or chapter">
+            <BookOpen width={14} height={14} strokeWidth={2} /> Books
           </button>
           <span className="follow-title">
             {book?.name} {focusVerse.chapter} · {chapterView.translation}
@@ -306,7 +319,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
                 autoFocus
               />
               {refInput && (
-                <button className="search-clear" onClick={() => setRefInput('')} title="Clear (Esc)" aria-label="Clear reference">×</button>
+                <button className="search-clear" onClick={() => setRefInput('')} title="Clear (Esc)" aria-label="Clear reference"><X width={13} height={13} strokeWidth={2.4} /></button>
               )}
             </div>
             <button className="btn-primary" onClick={() => doLookup(refInput, translation)} disabled={!refInput.trim()}>
@@ -386,7 +399,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
                 autoFocus
               />
               {keyword && (
-                <button className="search-clear" onClick={() => setKeyword('')} title="Clear (Esc)" aria-label="Clear search">×</button>
+                <button className="search-clear" onClick={() => setKeyword('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
               )}
             </div>
           </div>
@@ -522,7 +535,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
           ) : (
             <div className="bible-browse-section">
               <div className="bible-browse-head">
-                <button className="btn-quiet btn-sm" onClick={() => setBrowseBook(null)}>← Books</button>
+                <button className="btn-quiet btn-sm btn-icon-text" onClick={() => setBrowseBook(null)}><ChevronLeft width={14} height={14} strokeWidth={2.4} /> Books</button>
               </div>
               <div className="bible-browse-grid bible-browse-grid--chapters">
                 {Array.from({ length: bookByNum(browseBook)?.chapters ?? 0 }, (_, i) => i + 1).map((c) => (
