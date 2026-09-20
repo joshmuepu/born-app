@@ -22,6 +22,21 @@ export interface AppSettings {
   /** Song ids queued or projected recently, newest first — surfaces a "Recent"
    *  shortlist on the web remote's Songs tab (from any device, any session). */
   recentSongIds: number[]
+  /** Sermon quotes queued or projected recently, newest first — the full
+   *  paragraph (not just the sermon id) so "Recently Played" can show and
+   *  re-project it instantly, on the desktop's Browse hub and the remote. */
+  recentQuotes: Array<{
+    sermonId: number
+    sermonTitle: string
+    dateCode: string
+    paragraphIndex: number
+    paragraphRef: string
+    text: string
+  }>
+  /** Bible references looked up or projected recently, newest first — closes
+   *  the one gap Sermon/Songs already covered: no memory of what you last
+   *  opened. Surfaces on the desktop's Search empty state. */
+  recentBibleRefs: Array<{ reference: string; translation: string }>
 }
 
 const DEFAULTS: AppSettings = {
@@ -32,7 +47,9 @@ const DEFAULTS: AppSettings = {
   fontSize: 4.5,
   recentServices: [],
   theme: 'dark',
-  recentSongIds: []
+  recentSongIds: [],
+  recentQuotes: [],
+  recentBibleRefs: []
 }
 
 let cache: AppSettings | null = null

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { ChevronLeft, X } from 'lucide-react'
+import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
 import type {
   Quote,
   SermonIndexItem,
@@ -9,6 +9,7 @@ import type {
   DateTreeYear
 } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
+import { highlight } from '../highlight'
 import './BrowsePanel.css'
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
   onSendToProjection: (quote: Quote) => void
 }
 
-type BrowseTab = 'series' | 'location' | 'date'
+type BrowseTab = 'series' | 'location' | 'date' | 'recent'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -41,7 +42,8 @@ function monthGrid(year: number, month: number): Array<Array<number | null>> {
 }
 
 export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToProjection }: Props) {
-  const [tab, setTab] = useState<BrowseTab>('series')
+  // "Pull up last Sunday" is the most common live-service need, so Date leads.
+  const [tab, setTab] = useState<BrowseTab>('date')
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
   const [language, setLanguage] = useState<string>(
@@ -78,6 +80,10 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
   const [loadingParagraphs, setLoadingParagraphs] = useState(false)
   const [groupLabel, setGroupLabel] = useState('')
 
+  // Recently Played tab
+  const [recentQuotes, setRecentQuotes] = useState<Quote[]>([])
+  const [recentLoaded, setRecentLoaded] = useState(false)
+
   // ── Tab loaders ──────────────────────────────────────────────────────────────
 
   const loadSeries = useCallback(async () => {
@@ -101,6 +107,17 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     setDateLoaded(true)
   }, [dateLoaded])
 
+  const loadRecent = useCallback(async () => {
+    const data = await window.electronAPI.getRecentSermons()
+    setRecentQuotes(data)
+    setRecentLoaded(true)
+  }, [])
+
+  const clearRecent = useCallback(async () => {
+    await window.electronAPI.clearRecentSermons()
+    setRecentQuotes([])
+  }, [])
+
   const switchTab = useCallback((t: BrowseTab) => {
     setTab(t)
     setBrowsedSermons([])
@@ -113,7 +130,8 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     if (t === 'series') loadSeries()
     if (t === 'location') loadLocation()
     if (t === 'date') loadDate()
-  }, [loadSeries, loadLocation, loadDate])
+    if (t === 'recent') loadRecent()
+  }, [loadSeries, loadLocation, loadDate, loadRecent])
 
   // ── Sermon list loading ───────────────────────────────────────────────────────
 
@@ -166,7 +184,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         <span className="browse-group-label">{groupLabel}</span>
         <span className="browse-count">{browsedSermons.length} sermons</span>
       </div>
-      <div className="browse-list">
+      <div className="browse-list browse-list--grid">
         {browsedSermons.map((s) => (
           <div
             key={s.id}
@@ -244,7 +262,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     if (selectedSermon) return renderParagraphs()
     if (browsedSermons.length > 0) return renderSermonList()
     return (
-      <div className="browse-list">
+      <div className="browse-list browse-list--grid">
         {seriesList.length === 0 && <div className="browse-loading">Loading series…</div>}
         {seriesList.map((s) => (
           <div
@@ -302,7 +320,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
       return (
         <div className="browse-sermons">
           {renderLocationFilter()}
-          <div className="browse-list">
+          <div className="browse-list browse-list--grid">
             {matches.length === 0 && (
               <div className="browse-empty">No places match “{locFilter.trim()}”.</div>
             )}
@@ -332,7 +350,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             <span className="browse-group-label">{selectedState.name}</span>
             <span className="browse-count">{selectedState.cities.length} cities</span>
           </div>
-          <div className="browse-list">
+          <div className="browse-list browse-list--grid">
             {selectedState.cities.map((c) => (
               <div
                 key={c.id}
@@ -352,7 +370,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     return (
       <div className="browse-sermons">
         {renderLocationFilter()}
-        <div className="browse-list">
+        <div className="browse-list browse-list--grid">
           {!locationLoaded && <div className="browse-loading">Loading locations…</div>}
           {locationLoaded && locationTree.length === 0 && (
             <div className="browse-empty">Location list unavailable.</div>
@@ -545,7 +563,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             <span className="browse-group-label">{groupLabel}</span>
             <span className="browse-count">{browsedSermons.length} sermon{browsedSermons.length === 1 ? '' : 's'}</span>
           </div>
-          <div className="browse-list">
+          <div className="browse-list browse-list--grid">
             {browsedSermons.map((s) => (
               <div key={s.id} className="browse-item" onClick={() => loadParagraphs(s)}>
                 <div className="browse-item-code">{s.date_code}</div>
@@ -565,41 +583,88 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     )
   }
 
+  // ── Recently Played tab ───────────────────────────────────────────────────────
+
+  const renderRecent = (): JSX.Element => (
+    <div className="browse-sermons">
+      <div className="browse-back-row">
+        <span className="browse-group-label">Recently played</span>
+        {recentQuotes.length > 0 && (
+          <button className="browse-back" onClick={clearRecent}>Clear</button>
+        )}
+      </div>
+      {!recentLoaded ? (
+        <div className="browse-loading">Loading…</div>
+      ) : recentQuotes.length === 0 ? (
+        <div className="browse-empty">
+          Sermon quotes you queue or project show up here, newest first.
+        </div>
+      ) : (
+        <div className="browse-list">
+          {recentQuotes.map((q, i) => {
+            const live =
+              !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, q.paragraphRef)
+            return (
+              <div key={i} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
+                <div className="browse-para-ref">
+                  {q.sermonTitle} · {q.dateCode} · ¶{q.paragraphRef}
+                  {live && <span className="on-screen-tag">On screen</span>}
+                </div>
+                <div className="browse-para-text">{highlight(q.text, undefined)}</div>
+                <div className="browse-para-actions">
+                  <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>+ Queue</button>
+                  <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q)}>
+                    {live ? 'Restart here' : 'Project'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
   // Load the first tab + language list the first time the panel becomes visible
   // (not before — keeps startup light and avoids a network call if Browse is
   // never opened).
   const langsRequested = useRef(false)
   useEffect(() => {
     if (!visible) return
-    loadSeries()
+    loadDate()
     if (!langsRequested.current) {
       langsRequested.current = true
       window.electronAPI.getLanguages().then((l) => setLanguages(l ?? {}))
     }
-  }, [visible, loadSeries])
+  }, [visible, loadDate])
 
   return (
     <div className="browse-panel">
-      <div className="browse-tabs">
-        <button
-          className={`browse-tab${tab === 'series' ? ' active' : ''}`}
-          onClick={() => switchTab('series')}
-        >
-          Series
+      <div className="browse-hub">
+        <button className={`browse-hub-card${tab === 'date' ? ' active' : ''}`} onClick={() => switchTab('date')}>
+          <CalendarDays width={18} height={18} strokeWidth={2} aria-hidden="true" />
+          <span className="browse-hub-title">Date</span>
+          <span className="browse-hub-sub">Jump to any Sunday</span>
         </button>
-        <button
-          className={`browse-tab${tab === 'location' ? ' active' : ''}`}
-          onClick={() => switchTab('location')}
-        >
-          Location
+        <button className={`browse-hub-card${tab === 'series' ? ' active' : ''}`} onClick={() => switchTab('series')}>
+          <BookOpen width={18} height={18} strokeWidth={2} aria-hidden="true" />
+          <span className="browse-hub-title">Series</span>
+          <span className="browse-hub-sub">{seriesLoaded ? `${seriesList.length} series` : 'Browse by series'}</span>
         </button>
-        <button
-          className={`browse-tab${tab === 'date' ? ' active' : ''}`}
-          onClick={() => switchTab('date')}
-        >
-          Date
+        <button className={`browse-hub-card${tab === 'location' ? ' active' : ''}`} onClick={() => switchTab('location')}>
+          <MapPin width={18} height={18} strokeWidth={2} aria-hidden="true" />
+          <span className="browse-hub-title">Location</span>
+          <span className="browse-hub-sub">By city or state</span>
         </button>
-        {Object.keys(languages).length > 0 && (
+        <button className={`browse-hub-card${tab === 'recent' ? ' active' : ''}`} onClick={() => switchTab('recent')}>
+          <Clock width={18} height={18} strokeWidth={2} aria-hidden="true" />
+          <span className="browse-hub-title">Recently Played</span>
+          <span className="browse-hub-sub">What you used last</span>
+        </button>
+      </div>
+
+      {Object.keys(languages).length > 0 && (
+        <div className="browse-language-row">
           <select
             className="language-select browse-language"
             value={language}
@@ -616,13 +681,14 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
                 </option>
               ))}
           </select>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="browse-content">
         {tab === 'series' && renderSeries()}
         {tab === 'location' && renderLocation()}
         {tab === 'date' && renderDate()}
+        {tab === 'recent' && renderRecent()}
       </div>
     </div>
   )

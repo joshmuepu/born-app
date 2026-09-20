@@ -61,12 +61,18 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
+  /** Bumping this re-runs `term` in SearchBar — how a recent-search chip in
+   *  the empty state re-triggers a past search. */
+  const [quickSearch, setQuickSearch] = useState<{ term: string; nonce: number } | null>(null)
   const [serviceQueue, setServiceQueue] = useState<QueueItem[]>([])
   const [projectionOpen, setProjectionOpen] = useState(false)
   const [indexer, setIndexer] = useState<IndexerProgress | null>(null)
   const [projected, setProjected] = useState<Projected | null>(null)
   const [isScreenBlanked, setIsScreenBlanked] = useState(false)
   const [fontSize, setFontSize] = useState(4.5)
+  // Reported up by BiblePanel so the remote can request the same translation
+  // that's actually live on desktop, instead of being hardcoded to KJV.
+  const [bibleTranslation, setBibleTranslation] = useState('KJV')
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
@@ -308,12 +314,16 @@ export default function App() {
   }, [])
 
   const handleAddQuote = useCallback(
-    (quote: Quote) => addToQueue([quoteToItem(quote)]),
+    (quote: Quote) => {
+      addToQueue([quoteToItem(quote)])
+      window.electronAPI.noteSermonUsed(quote)
+    },
     [addToQueue]
   )
   const handleProjectQuote = useCallback(
     (quote: Quote) => {
       doProject(quoteToItem(quote), 0, null)
+      window.electronAPI.noteSermonUsed(quote)
       // switch the results list to the whole-sermon follow view
       setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
     },
@@ -330,6 +340,7 @@ export default function App() {
       const item = quoteToItem(quote)
       const slide = findMatchingSlideIndex(item.slides.map((s) => s.text), query)
       doProject(item, slide, null)
+      window.electronAPI.noteSermonUsed(quote)
       setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
     },
     [doProject, searchQuery]
@@ -358,11 +369,17 @@ export default function App() {
   })
 
   const handleAddPassage = useCallback(
-    (p: ResolvedPassage) => addToQueue([passageToItem(p)]),
+    (p: ResolvedPassage) => {
+      addToQueue([passageToItem(p)])
+      window.electronAPI.noteBibleUsed(p.reference, p.translation)
+    },
     [addToQueue]
   )
   const handleProjectPassage = useCallback(
-    (p: ResolvedPassage, slide = 0) => doProject(passageToItem(p), slide, null),
+    (p: ResolvedPassage, slide = 0) => {
+      doProject(passageToItem(p), slide, null)
+      window.electronAPI.noteBibleUsed(p.reference, p.translation)
+    },
     [doProject]
   )
 
@@ -539,6 +556,7 @@ export default function App() {
       activeIndex: activeQueueIndex,
       activeSlide: projected?.slide ?? 0,
       blanked: isScreenBlanked,
+      bibleTranslation,
       onScreen:
         projected && projectionOpen
           ? {
@@ -552,7 +570,7 @@ export default function App() {
             }
           : null
     })
-  }, [serviceQueue, activeQueueIndex, projected, isScreenBlanked, projectionOpen])
+  }, [serviceQueue, activeQueueIndex, projected, isScreenBlanked, projectionOpen, bibleTranslation])
 
   useEffect(
     () => window.electronAPI.onWebRemoteProject((index) => handleProjectFromQueue(index)),
@@ -606,9 +624,9 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteProjectSong(async (songId) => {
+      window.electronAPI.onWebRemoteProjectSong(async (songId, slide) => {
         const s = await window.electronAPI.getSong(songId)
-        if (s) handleProjectSong(s as SongDetail)
+        if (s) handleProjectSong(s as SongDetail, slide)
       }),
     [handleProjectSong]
   )
@@ -1008,7 +1026,6 @@ export default function App() {
               <button className={`panel-subtab${sermonsTab === 'browse' ? ' active' : ''}`} onClick={() => setSermonsTab('browse')}>Browse</button>
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
-              <SearchBar onResults={handleSearch} onSearchingChange={setSearching} />
               {followSermon ? (
                 <SermonFollowView
                   sermonId={followSermon.sermonId}
@@ -1019,21 +1036,28 @@ export default function App() {
                       ? onScreenLoc.paragraphRef
                       : null
                   }
+                  query={searchQuery}
+                  matchType={searchResults[0]?.matchType}
                   onBack={() => setFollowSermon(null)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
                 />
               ) : (
-                <ResultsList
-                  results={searchResults}
-                  query={searchQuery}
-                  loading={searching}
-                  searched={searched}
-                  onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
-                  onAddToQueue={handleAddQuote}
-                  onSendToProjection={handleProjectSearchResult}
-                  onOpenSermon={handleOpenSermon}
-                />
+                <>
+                  <SearchBar onResults={handleSearch} onSearchingChange={setSearching} externalQuery={quickSearch} />
+                  <ResultsList
+                    results={searchResults}
+                    query={searchQuery}
+                    loading={searching}
+                    searched={searched}
+                    onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
+                    onAddToQueue={handleAddQuote}
+                    onSendToProjection={handleProjectSearchResult}
+                    onOpenSermon={handleOpenSermon}
+                    onQuickSearch={(term) => setQuickSearch({ term, nonce: Date.now() })}
+                    onJumpToSermon={(sermonId, anchorRef) => setFollowSermon({ sermonId, anchorRef })}
+                  />
+                </>
               )}
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'browse'}>
@@ -1053,6 +1077,7 @@ export default function App() {
               preview={biblePreview}
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
+              onTranslationChange={setBibleTranslation}
             />
           </div>
 

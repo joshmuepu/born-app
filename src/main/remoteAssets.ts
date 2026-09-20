@@ -82,13 +82,22 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    dominates the screen; what's next is clearly visible but visually
    muted; everything else collapses into a small horizontal strip. */
 .queue-header-row{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 0}
-.queue-header-row h2{margin:0; font-size:18px; font-weight:800}
+.queue-header-row .qh-label{margin:0; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
 .queue-file-actions{display:flex; gap:6px}
+.filebtn{
+  display:flex; align-items:center; gap:5px; padding:0 12px; height:36px;
+  border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--text2);
+  font-size:12.5px; font-weight:700;
+}
+.filebtn:active{background:var(--surface2)}
+/* Legacy icon-only button, kept for call sites elsewhere in the sheet UI. */
 .iconbtn{
   display:flex; align-items:center; justify-content:center; width:36px; height:36px;
   border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--text2);
 }
 .iconbtn:active{background:var(--surface2)}
+
+.queue-empty-card{margin:14px 18px 0; padding:28px 20px; border-radius:14px; border:1.5px dashed var(--border); background:rgba(255,255,255,0.02); text-align:center; color:var(--text2); font-size:14px; line-height:1.5}
 
 .now-card{margin:14px 18px 0; border-radius:14px; background:var(--surface); border:1px solid var(--border); overflow:hidden}
 .now-card-body{padding:14px}
@@ -139,11 +148,18 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .slide-row{display:block; width:100%; text-align:left; padding:14px 16px; border-radius:12px; background:var(--surface2); border:1px solid var(--border)}
 .slide-row:active{background:var(--surface)}
 .slide-row.live{border-color:var(--live); background:rgba(46,160,67,0.12)}
-.slide-row.static{background:var(--surface); cursor:default}
+/* The verse the operator actually opened on — a lighter accent than "live",
+ * same distinction the desktop app draws between .bible-verse--focus and
+ * .bible-verse--on-screen. */
+.slide-row.focus{border-color:var(--accent); background:rgba(139,111,209,0.14)}
+.jumpchips{display:flex; flex-shrink:0; gap:6px; overflow-x:auto; margin-bottom:10px}
+.jumpchips button{flex-shrink:0; padding:7px 13px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text)}
+.jumpchips button:active{background:var(--surface)}
+.jumpchips button.is-focus{background:rgba(139,111,209,0.22); border-color:var(--accent); color:#fff}
 .slide-label{font-size:11px; font-weight:800; letter-spacing:0.05em; color:var(--accent); margin-bottom:5px}
 .slide-row.live .slide-label{color:var(--live)}
 .live-tag{font-size:10px; font-weight:800; color:var(--live)}
-.slide-text{font-size:16px; line-height:1.5; color:var(--text)}
+.slide-text{font-size:16px; line-height:1.5; color:var(--text); white-space:pre-wrap}
 
 /* ── Bottom tab bar (phone) ────────────────────────────────────────── */
 .tabbar{
@@ -181,6 +197,11 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .rmeta.bible{color:var(--sage)}
 .rsnippet{font-size:12.5px; color:var(--text2); line-height:1.4}
 
+.browse-chip-row{display:flex; gap:8px; padding-bottom:14px}
+.browse-chip{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border-radius:12px; background:var(--surface); border:1px solid var(--border); color:var(--stone)}
+.browse-chip:active{background:var(--surface2)}
+.browse-chip span{font-size:11px; font-weight:700; color:var(--text)}
+
 /* ── Songs tab ─────────────────────────────────────────────────────── */
 .recent-head{padding:20px 18px 0; display:flex; align-items:center; gap:7px}
 .recent-head svg{color:var(--text2)}
@@ -191,16 +212,21 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .recent-item:active{background:var(--surface2)}
 .recent-item span{font-size:14.5px; font-weight:700; color:var(--text)}
 
-/* The Recent shortlist + section label stay put; only the A-Z list (and its
-   rail) scroll internally, in the space actually left after them. */
+/* The Recent shortlist + section label stay put; only the A-Z list scrolls
+   internally, in the space actually left after them. The jump strip is a
+   full-width horizontal row of real tap targets under the search box —
+   not a sliver of 9px letters pinned to the screen edge, which was there
+   but essentially undiscoverable and untappable one-handed. */
 .songs-body{flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden}
-.songlist-wrap{display:flex; padding:8px 0 0; flex:1; min-height:0}
-.songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 6px 0 18px; overflow-y:auto}
-.song-letter{font-size:11px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
+.azstrip{display:flex; gap:4px; padding:2px 2px 10px; overflow-x:auto; flex-shrink:0}
+.azstrip button{flex-shrink:0; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
+.azstrip button:disabled{color:var(--text3); opacity:0.4}
+.azstrip button.current{background:var(--accent); color:#fff}
+.songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}
+.song-letter{position:sticky; top:0; z-index:1; background:var(--bg); font-size:11px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
 .song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none}
 .song-row:active{background:var(--surface)}
-.azrail{width:20px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; padding:4px 6px 4px 0}
-.azrail button{font-size:9px; font-weight:700; color:var(--text3); background:none; border:none; padding:1px 2px}
+.song-row mark{background:rgba(139,111,209,0.35); color:var(--text); font-weight:800; border-radius:2px}
 
 /* ── Bible book / chapter grid ─────────────────────────────────────── */
 .bible-groups{padding:16px 18px 0; flex:1; overflow-y:auto}
@@ -217,6 +243,17 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .chapter-chip:active{background:rgba(131,192,142,0.14); border-color:var(--sage)}
 
 .verse-list{padding:12px 18px 0; display:flex; flex-direction:column; gap:8px}
+
+/* ── Search scope: default "Whole Bible", opt-in narrowing ───────────── */
+.scope-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap}
+.scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700}
+.scope-pill.active{color:var(--sage); border-color:var(--sage); background:rgba(131,192,142,0.14); font-family:ui-monospace,monospace}
+.scope-clear{padding:6px 9px; border-radius:999px; background:rgba(131,192,142,0.14); border:1px solid var(--sage); color:var(--sage); font-size:14px; line-height:1; font-weight:700}
+.scope-translation{font-size:11px; color:var(--text3); margin-left:auto}
+.scope-options{display:flex; flex-direction:column; gap:2px}
+.scope-opt{padding:10px 12px; border-radius:10px; background:none; border:none; color:var(--text); font-size:14px; font-weight:600; text-align:left}
+.scope-opt:active{background:var(--surface)}
+.scope-opt.active{color:var(--sage)}
 .verse-row{display:flex; gap:10px; padding:13px 14px; border-radius:12px; background:var(--surface); border:1px solid var(--border); text-align:left; width:100%}
 .verse-row:active{background:var(--surface2)}
 .verse-num{font-size:12px; font-weight:800; color:var(--sage); flex-shrink:0; padding-top:1px}
@@ -266,8 +303,15 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .a2hs .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
 .a2hs .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
 
-/* ── Tablet / landscape layout ─────────────────────────────────────── */
-@media (min-width: 860px){
+/* ── Tablet / landscape layout ─────────────────────────────────────────
+ * 768px, not 860px: a QA pass found every standard iPad in PORTRAIT (iPad
+ * Mini 768, iPad 810, iPad Air/Pro 11" 834) fell just under the old 860px
+ * breakpoint and got the cramped phone layout with a huge dead column of
+ * empty space, instead of the sidebar + list + preview layout this was
+ * actually built for. 768 is also the conventional tablet breakpoint (same
+ * one Bootstrap/Tailwind use) and comfortably above any real phone's width,
+ * portrait or landscape. ──────────────────────────────────────────── */
+@media (min-width: 768px){
   #phoneShell{display:none}
   #tabletShell{display:flex}
 
@@ -353,7 +397,9 @@ const ICON = {
   save: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
   plus: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
   share: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><rect x="4" y="13" width="16" height="8" rx="2"/></svg>',
-  flame: '<svg class="dot" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg>'
+  flame: '<svg class="dot" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  book: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
 }
 
 export function buildAppBody(): string {
@@ -423,8 +469,8 @@ var state = {
   tab: 'queue',
   qs: { queue: [], activeIndex: null, activeSlide: 0, blanked: false, onScreen: null },
   sermonQuery: '', sermonDate: '', sermonResults: [],
-  bibleQuery: '', bibleView: 'grid', bibleBooks: [], bibleBook: null, bibleChapterNum: null, bibleChapter: null, bibleResults: null,
-  songsQuery: '', songsAll: [], songsRecent: [],
+  bibleQuery: '', bibleView: 'grid', bibleBooks: [], bibleBook: null, bibleChapterNum: null, bibleChapter: null, bibleResults: null, bibleScope: { type: 'all' },
+  songsQuery: '', songsAll: [], songsRecent: [], songsResults: null,
   selected: null,
   detailIndex: null,
   savedList: null
@@ -536,17 +582,17 @@ function liveBarHtml(){
 /* ── Queue tab ─────────────────────────────────────────────────────── */
 function queueHeaderHtml(){
   return '<div class="queue-header-row">'
-    + '<h2>Service Queue</h2>'
+    + '<h2 class="qh-label">SERVICE QUEUE</h2>'
     + '<div class="queue-file-actions">'
-    + '<button class="iconbtn" title="New" onclick="newService()">' + ICON_PLUS + '</button>'
-    + '<button class="iconbtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + '</button>'
-    + '<button class="iconbtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + '</button>'
+    + '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
+    + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
+    + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>'
     + '</div></div>';
 }
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
   if(!on){
-    return '<div class="empty">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>';
+    return '<div class="queue-empty-card">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>';
   }
   var refClass = kindClass(on.kind);
   var clickable = state.qs.activeIndex != null;
@@ -613,15 +659,15 @@ function renderQueueTab(){
 
   var list = $('tabletList');
   if(list && state.tab === 'queue'){
-    list.innerHTML = '<h2>Service Queue</h2>'
+    list.innerHTML = '<h2 class="qh-label">SERVICE QUEUE</h2>'
       + '<div class="transport-inline">'
       + '<button onclick="cmd(\\'prev\\')">‹ Prev</button>'
       + '<button onclick="cmd(\\'next\\')">Next ›</button>'
       + '</div>'
       + '<div class="queue-file-actions" style="margin-bottom:14px">'
-      + '<button class="iconbtn" title="New" onclick="newService()">' + ICON_PLUS + '</button>'
-      + '<button class="iconbtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + '</button>'
-      + '<button class="iconbtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + '</button>'
+      + '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
+      + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
+      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>'
       + '</div>'
       + '<div class="scroll">' + restOfQueueHtml() + '</div>';
   }
@@ -784,9 +830,12 @@ function runSermonSearch(tablet){
 }
 function sermonResultsHtml(){
   var rows = state.sermonResults;
-  if(!state.sermonQuery) return '<div class="empty">Search for a word or phrase to find a quote.</div>';
+  if(!state.sermonQuery) return sermonBrowseChipsHtml();
   if(!rows || rows.length === 0) return '<div class="empty">No results for “' + esc(state.sermonQuery) + '”' + (state.sermonDate ? ' on ' + esc(state.sermonDate) : '') + '.</div>';
-  var html = '';
+  // 200 == MAX_REMOTE_RESULTS (src/shared/searchLimits.ts) — the server
+  // already truncates there, so hitting it here means "at least this many."
+  var countLabel = (rows.length >= 200 ? rows.length + '+' : rows.length) + ' RESULT' + (rows.length === 1 ? '' : 'S');
+  var html = '<div class="section-label">' + countLabel + '</div>';
   for(var i=0;i<rows.length;i++){
     var q = rows[i];
     html += '<button class="ritem" onclick="selectSermon(' + i + ')">'
@@ -809,15 +858,166 @@ function selectSermon(i){
   openPreview();
 }
 
+/* ── Sermons: lightweight Browse (Date / Series / Recent) ────────────
+   Shown in place of the empty-search hint. Date and Series both drill into
+   a sermon's full paragraph list (tap any part to project it, same freedom
+   as the queue detail view); Recent re-opens a past quote the same way a
+   fresh search result does — Queue/Project, nothing projects by accident. */
+function sermonBrowseChipsHtml(){
+  return '<div class="browse-chip-row">'
+    + '<button class="browse-chip" onclick="openOnThisDay()">' + ICON_CALENDAR + '<span>Date</span></button>'
+    + '<button class="browse-chip" onclick="openSeriesList()">' + ICON_BOOK + '<span>Series</span></button>'
+    + '<button class="browse-chip" onclick="openRecentSermons()">' + ICON_CLOCK + '<span>Recent</span></button>'
+    + '</div>'
+    + '<div class="empty">Search for a word or phrase, or browse above.</div>';
+}
+function sermonListSheetHtml(list, onTap){
+  if(!list || list.length === 0) return '<div class="empty">Nothing here.</div>';
+  var html = '<div class="qlist">';
+  for(var i=0;i<list.length;i++){
+    var s = list[i];
+    html += '<button class="qitem" data-kind="quote" onclick="(' + onTap + ')(' + i + ')">'
+      + '<div class="qkind">' + esc(s.date_code || '') + '</div>'
+      + '<div class="qtitle">' + esc(s.title) + '</div>'
+      + '</button>';
+  }
+  html += '</div>';
+  return html;
+}
+function openOnThisDay(){
+  openGenericSheet('On This Day', '<div id="onThisDayBody" class="empty">Loading…</div>');
+  getJSON('/api/sermons/on-this-day').then(function(rows){
+    window._onThisDay = rows || [];
+    var body = $('onThisDayBody');
+    if(body) body.outerHTML = '<div id="onThisDayBody">' + sermonListSheetHtml(window._onThisDay, 'pickOnThisDay') + '</div>';
+  });
+}
+function pickOnThisDay(i){
+  var s = window._onThisDay[i];
+  if(!s) return;
+  openSermonDetailSheet(s.id, s.title, s.date_code);
+}
+function openSeriesList(){
+  openGenericSheet('Series', '<div id="seriesListBody" class="empty">Loading…</div>');
+  getJSON('/api/sermons/series').then(function(rows){
+    window._series = rows || [];
+    var html = '<div class="qlist">';
+    for(var i=0;i<window._series.length;i++){
+      var s = window._series[i];
+      html += '<button class="qitem" data-kind="quote" onclick="pickSeries(' + i + ')">'
+        + '<div class="qkind">' + (s.s ? s.s.length : 0) + ' SERMONS</div>'
+        + '<div class="qtitle">' + esc(s.n) + '</div>'
+        + '</button>';
+    }
+    html += '</div>';
+    var body = $('seriesListBody');
+    if(body) body.outerHTML = '<div id="seriesListBody">' + html + '</div>';
+  });
+}
+function pickSeries(i){
+  var series = window._series[i];
+  if(!series) return;
+  openGenericSheet(series.n, '<div id="seriesSermonsBody" class="empty">Loading…</div>');
+  getJSON('/api/sermons/by-ids?ids=' + series.s.join(',')).then(function(rows){
+    window._seriesSermons = rows || [];
+    var body = $('seriesSermonsBody');
+    if(body) body.outerHTML = '<div id="seriesSermonsBody">' + sermonListSheetHtml(window._seriesSermons, 'pickSeriesSermon') + '</div>';
+  });
+}
+function pickSeriesSermon(i){
+  var s = window._seriesSermons[i];
+  if(!s) return;
+  openSermonDetailSheet(s.id, s.title, s.date_code);
+}
+function openSermonDetailSheet(sermonId, title, dateCode){
+  openGenericSheet(title, '<div id="sermonDetailBody" class="empty">Loading…</div>');
+  getJSON('/api/sermons/' + sermonId + '/paragraphs').then(function(paras){
+    window._sermonDetailParas = paras || [];
+    var html = '<div class="sheet-meta sermon">' + esc(dateCode || '') + '</div><div class="slide-list">';
+    for(var i=0;i<paras.length;i++){
+      var p = paras[i];
+      html += '<button class="slide-row" onclick="projectSermonParagraph(' + i + ')">'
+        + '<div class="slide-label">¶' + esc(p.paragraphRef) + '</div>'
+        + '<div class="slide-text">' + esc(p.text) + '</div></button>';
+    }
+    html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
+    var body = $('sermonDetailBody');
+    if(body) body.outerHTML = '<div id="sermonDetailBody">' + html + '</div>';
+  });
+}
+function projectSermonParagraph(i){
+  var p = (window._sermonDetailParas || [])[i];
+  if(!p) return;
+  cmd('project-sermon', { quote: p, query: '' });
+}
+function openRecentSermons(){
+  openGenericSheet('Recently Played', '<div id="recentSermonsBody" class="empty">Loading…</div>');
+  getJSON('/api/sermons/recent').then(function(rows){
+    window._recentSermons = rows || [];
+    var html;
+    if(window._recentSermons.length === 0){
+      html = '<div class="empty">Sermon quotes you queue or project show up here.</div>';
+    } else {
+      html = '';
+      for(var i=0;i<window._recentSermons.length;i++){
+        var q = window._recentSermons[i];
+        html += '<button class="ritem" onclick="selectRecentSermon(' + i + ')">'
+          + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
+          + '<div class="rmeta sermon">' + esc(q.dateCode || '') + ' · ¶' + esc(q.paragraphRef) + '</div>'
+          + '<div class="rsnippet">' + esc(q.text).slice(0,160) + '</div>'
+          + '</button>';
+      }
+    }
+    var body = $('recentSermonsBody');
+    if(body) body.outerHTML = '<div id="recentSermonsBody">' + html + '</div>';
+  });
+}
+function selectRecentSermon(i){
+  var q = window._recentSermons[i];
+  if(!q) return;
+  closeSheet();
+  state.selected = {
+    kind: 'sermon',
+    title: q.sermonTitle,
+    meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    full: q.text,
+    payload: { quote: q, query: '' }
+  };
+  openPreview();
+}
+
 /* ── Bible tab ─────────────────────────────────────────────────────── */
 function loadBibleBooks(){
   getJSON('/api/bible/books').then(function(books){ state.bibleBooks = books || []; if(state.tab === 'bible') renderBibleTab(); });
 }
+/** Whatever the desktop app currently has selected — the remote has no
+ *  translation picker of its own, it just reflects this. */
+function currentTranslation(){ return (state.qs && state.qs.bibleTranslation) || 'KJV'; }
+function bibleScoped(){ return !state.bibleScope || state.bibleScope.type !== 'all'; }
+function bibleScopeLabel(){
+  var s = state.bibleScope;
+  if(!s || s.type === 'all') return 'Whole Bible';
+  if(s.type === 'ot') return 'Old Testament';
+  if(s.type === 'nt') return 'New Testament';
+  return s.abbrev || 'Book';
+}
+function bibleScopeParam(){
+  var s = state.bibleScope;
+  if(!s || s.type === 'all') return 'all';
+  if(s.type === 'book') return String(s.num);
+  return s.type;
+}
 function renderBibleTab(){
+  var scopeRow = '<div class="scope-row">'
+    + '<button class="scope-pill' + (bibleScoped() ? ' active' : '') + '" onclick="openScopePicker()">' + esc(bibleScopeLabel()) + '</button>'
+    + (bibleScoped() ? '<button class="scope-clear" onclick="clearBibleScope()">&times;</button>' : '')
+    + '<span class="scope-translation">' + esc(currentTranslation()) + ' · set on desktop</span>'
+    + '</div>';
   var html = '<div class="sticky-head">'
     + '<div class="searchbar">'
     + '<div class="searchbox bible"><span>' + ICON_SEARCH + '</span><input id="bibleInput" placeholder="John 3:16, or &quot;faith&quot;…" value="' + esc(state.bibleQuery) + '" onkeydown="if(event.key===\\'Enter\\')runBibleSearch()"/></div>'
     + '</div>'
+    + scopeRow
     + '<div class="livebar-slot" id="livebar-bible">' + liveBarHtml() + '</div>'
     + '</div>'
     + '<div id="bibleBody">' + bibleBodyHtml() + '</div>';
@@ -830,10 +1030,41 @@ function renderBibleTab(){
     list.innerHTML = '<h2>Bible</h2>'
       + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
       + '<div class="searchbox bible" style="margin-bottom:10px"><span>' + ICON_SEARCH + '</span><input id="bibleInputT" placeholder="John 3:16, or &quot;faith&quot;…" value="' + esc(state.bibleQuery) + '" onkeydown="if(event.key===\\'Enter\\')runBibleSearch(true)"/></div>'
+      + scopeRow
       + '<div class="livebar-slot" id="livebar-bibleT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="bibleBodyT">' + bibleBodyHtml() + '</div>';
   }
   renderTabletPreview();
+}
+function openScopePicker(){
+  var html = '<div class="scope-options">'
+    + '<button class="scope-opt' + (!bibleScoped() ? ' active' : '') + '" onclick="pickScope(\\'all\\')">Whole Bible</button>'
+    + '<button class="scope-opt' + (state.bibleScope && state.bibleScope.type==='ot' ? ' active' : '') + '" onclick="pickScope(\\'ot\\')">Old Testament</button>'
+    + '<button class="scope-opt' + (state.bibleScope && state.bibleScope.type==='nt' ? ' active' : '') + '" onclick="pickScope(\\'nt\\')">New Testament</button>'
+    + '</div><div class="book-grid" style="margin-top:12px">';
+  for(var i=0;i<state.bibleBooks.length;i++){
+    var b = state.bibleBooks[i];
+    html += '<button class="book-chip" onclick="pickScope(' + b.num + ')">' + esc(b.abbrev) + '</button>';
+  }
+  html += '</div>';
+  openGenericSheet('Search in…', html);
+}
+function pickScope(v){
+  if(v === 'all') state.bibleScope = { type: 'all' };
+  else if(v === 'ot') state.bibleScope = { type: 'ot' };
+  else if(v === 'nt') state.bibleScope = { type: 'nt' };
+  else {
+    var b = state.bibleBooks.find(function(x){ return x.num === v; });
+    state.bibleScope = { type: 'book', num: v, abbrev: b ? b.abbrev : String(v) };
+  }
+  closeSheet();
+  renderBibleTab();
+  if(state.bibleQuery) runBibleSearch();
+}
+function clearBibleScope(){
+  state.bibleScope = { type: 'all' };
+  renderBibleTab();
+  if(state.bibleQuery) runBibleSearch();
 }
 function bibleBodyHtml(){
   if(state.bibleView === 'results') return bibleResultsHtml();
@@ -875,7 +1106,7 @@ function pickChapter(c){
   state.bibleView = 'verses';
   renderBibleTab();
   var b = state.bibleBook;
-  getJSON('/api/bible/chapter?book=' + b.num + '&chapter=' + c + '&translation=KJV').then(function(data){
+  getJSON('/api/bible/chapter?book=' + b.num + '&chapter=' + c).then(function(data){
     state.bibleChapter = data;
     if(state.bibleView === 'verses') renderBibleTab();
   });
@@ -893,17 +1124,38 @@ function bibleVerseListHtml(){
   return h + '</div>';
 }
 function backToChapters(){ state.bibleView = 'chapters'; state.bibleChapter = null; renderBibleTab(); }
+function bookNameFor(num){
+  var b = state.bibleBooks.find(function(x){ return x.num === num; });
+  return b ? b.name : '';
+}
+/** The one place every entry path (browse, reference lookup, keyword hit)
+ *  converges: the WHOLE chapter, not an isolated verse, so the song leader
+ *  — sorry, the reader — can see what comes before and after. Every verse
+ *  is tappable to project immediately, same as the queue's own slide list. */
+function openChapterContext(bookNum, chapterNum, focusVerses){
+  var trans = currentTranslation();
+  getJSON('/api/bible/chapter?book=' + bookNum + '&chapter=' + chapterNum).then(function(ch){
+    if(!ch || ch.error || !ch.verses) return;
+    var bookName = bookNameFor(bookNum);
+    var slides = ch.verses.map(function(v){ return { label: 'Verse ' + v.verse, text: v.text, verseNum: v.verse }; });
+    var verseRefs = ch.verses.map(function(v){ return bookName + ' ' + chapterNum + ':' + v.verse; });
+    var idx = ch.verses.findIndex(function(v){ return focusVerses.indexOf(v.verse) !== -1; });
+    var primary = idx >= 0 ? idx : 0;
+    state.selected = {
+      kind: 'bible',
+      title: bookName + ' ' + chapterNum,
+      meta: trans,
+      slides: slides,
+      focusVerses: focusVerses,
+      focusIndex: primary,
+      payload: { reference: verseRefs[primary], translation: trans, verseRefs: verseRefs }
+    };
+    openPreview();
+  });
+}
 function selectVerse(v){
-  var b = state.bibleBook; var ch = state.bibleChapter;
-  var verseText = ch.verses.find(function(x){ return x.verse === v; });
-  state.selected = {
-    kind: 'bible',
-    title: b.name + ' ' + state.bibleChapterNum + ':' + v + ' · KJV',
-    meta: 'KJV',
-    full: v + ' ' + (verseText ? verseText.text : ''),
-    payload: { reference: b.name + ' ' + state.bibleChapterNum + ':' + v, translation: 'KJV' }
-  };
-  openPreview();
+  var b = state.bibleBook;
+  openChapterContext(b.num, state.bibleChapterNum, [v]);
 }
 function runBibleSearch(tablet){
   var q = ((tablet ? $('bibleInputT') : $('bibleInput')) || {}).value || '';
@@ -912,7 +1164,7 @@ function runBibleSearch(tablet){
   state.bibleQuery = q;
   state.bibleView = 'results';
   renderBibleTab();
-  getJSON('/api/search/bible?q=' + encodeURIComponent(q)).then(function(data){
+  getJSON('/api/search/bible?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(bibleScopeParam())).then(function(data){
     state.bibleResults = data;
     if(state.bibleView === 'results') renderBibleTab();
   });
@@ -925,45 +1177,54 @@ function bibleResultsHtml(){
   if(data.kind === 'passage'){
     var p = data.passage;
     var text = p.verses.map(function(v){ return v.verse + ' ' + v.text; }).join('  ');
+    window._passage = p;
     return backRow + '<div class="results"><button class="ritem" onclick="selectPassage()">'
       + '<div class="rtitle">' + esc(p.reference) + ' · ' + esc(p.translation) + '</div>'
-      + '<div class="rsnippet">' + esc(text).slice(0,200) + '</div></button></div>'
-      + (function(){ window._passage = p; return ''; })();
+      + '<div class="rsnippet">' + esc(text).slice(0,200) + '</div></button></div>';
   }
   var hits = data.hits || [];
+  window._bibleHits = hits;
   if(hits.length === 0) return backRow + '<div class="empty">No matches.</div>';
-  var html = backRow + '<div class="results">';
+  var q = state.bibleQuery || '';
+  // 200 == MAX_REMOTE_RESULTS (src/shared/searchLimits.ts) — the server already
+  // truncates there, so hitting it here means "at least this many," not exact.
+  var countLabel = (hits.length >= 200 ? hits.length + '+' : hits.length) + ' RESULT' + (hits.length === 1 ? '' : 'S');
+  var html = backRow + '<div class="section-label">' + countLabel + (bibleScoped() ? ' IN ' + esc(bibleScopeLabel()).toUpperCase() : '') + '</div><div class="results">';
   for(var i=0;i<hits.length;i++){
     var h = hits[i];
     html += '<button class="ritem" onclick="selectBibleHit(' + i + ')">'
       + '<div class="rtitle">' + esc(h.reference) + ' · ' + esc(h.translation) + '</div>'
-      + '<div class="rsnippet">' + esc(h.text).slice(0,160) + '</div></button>';
+      + '<div class="rsnippet">' + hlText(h.text.slice(0,160), q) + '</div></button>';
   }
-  window._bibleHits = hits;
   return html + '</div>';
 }
 function clearBibleSearch(){ state.bibleQuery = ''; state.bibleView = 'grid'; renderBibleTab(); }
 function selectPassage(){
   var p = window._passage;
-  var text = p.verses.map(function(v){ return v.verse + ' ' + v.text; }).join('  ');
-  state.selected = { kind:'bible', title: p.reference + ' · ' + p.translation, meta: p.translation, full: text, payload: { reference: p.reference, translation: p.translation } };
-  openPreview();
+  var focus = [];
+  if(p.verseStart != null){
+    for(var i=p.verseStart;i<=p.verseEnd;i++) focus.push(i);
+  }
+  openChapterContext(p.bookNum, p.chapter, focus);
 }
 function selectBibleHit(i){
   var h = window._bibleHits[i];
-  state.selected = { kind:'bible', title: h.reference + ' · ' + h.translation, meta: h.translation, full: h.text, payload: { reference: h.reference, translation: h.translation } };
-  openPreview();
+  openChapterContext(h.bookNum, h.chapter, [h.verse]);
 }
 
 /* ── Songs tab ─────────────────────────────────────────────────────── */
+var songsSearchTimer = null;
+var songsSearchSeq = 0;
 function loadSongs(){
-  getJSON('/api/search/songs?q=').then(function(rows){ state.songsAll = rows || []; if(state.tab === 'songs') renderSongsTab(); });
-  getJSON('/api/songs/recent').then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsTab(); });
+  // The full library, loaded once — Browse and the A-Z strip work off this,
+  // no cap, no re-fetch per keystroke.
+  getJSON('/api/search/songs?q=').then(function(rows){ state.songsAll = rows || []; if(state.tab === 'songs') renderSongsBody(); });
+  getJSON('/api/songs/recent').then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsBody(); });
 }
 function renderSongsTab(){
   var html = '<div class="sticky-head">'
     + '<div class="searchbar">'
-    + '<div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInput" placeholder="Search songs…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value)"/></div>'
+    + '<div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInput" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value)"/></div>'
     + '</div>'
     + '<div class="livebar-slot" id="livebar-songs">' + liveBarHtml() + '</div>'
     + '</div>'
@@ -976,41 +1237,112 @@ function renderSongsTab(){
   if(list && state.tab === 'songs'){
     list.innerHTML = '<h2>Songs</h2>'
       + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
-      + '<div class="searchbox" style="margin-bottom:10px"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search songs…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div>'
+      + '<div class="searchbox" style="margin-bottom:10px"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div>'
       + '<div class="livebar-slot" id="livebar-songsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div id="songsBodyT" class="songs-body songs-body--tablet">' + songsBodyHtml() + '</div>';
   }
   renderTabletPreview();
 }
-function filterSongs(v, tablet){
-  state.songsQuery = v;
+function renderSongsBody(){
   var ids = ['songsBody','songsBodyT'];
   ids.forEach(function(id){ var el = $(id); if(el) el.innerHTML = songsBodyHtml(); });
+}
+function filterSongs(v){
+  state.songsQuery = v;
+  var q = v.trim();
+  if(songsSearchTimer) clearTimeout(songsSearchTimer);
+  if(q.length < 2){
+    state.songsResults = null;
+    renderSongsBody();
+    return;
+  }
+  // Server-side search — the same title+lyrics FTS the desktop app uses, not
+  // a client-side title-only substring filter over whatever's cached, so a
+  // half-remembered lyric line finds the song here too.
+  var seq = ++songsSearchSeq;
+  songsSearchTimer = setTimeout(function(){
+    getJSON('/api/search/songs?q=' + encodeURIComponent(q)).then(function(rows){
+      if(seq !== songsSearchSeq) return; // a newer keystroke already won
+      state.songsResults = rows || [];
+      renderSongsBody();
+    });
+  }, 200);
+  renderSongsBody(); // show the "keep typing" / stale state immediately
 }
 function clearRecentSongs(){
   cmd('clear-recent-songs').then(function(){
     state.songsRecent = [];
-    var ids = ['songsBody','songsBodyT'];
-    ids.forEach(function(id){ var el = $(id); if(el) el.innerHTML = songsBodyHtml(); });
+    renderSongsBody();
   });
 }
+/** First occurrence of 'q' in 'text', wrapped in <mark>, everything escaped. */
+function hlText(text, q){
+  text = text || '';
+  if(!q) return esc(text);
+  var idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if(idx === -1) return esc(text);
+  return esc(text.slice(0, idx)) + '<mark>' + esc(text.slice(idx, idx + q.length)) + '</mark>' + esc(text.slice(idx + q.length));
+}
+function songRowHtml(s, q){
+  var html = '<button class="song-row" onclick="selectSongById(' + s.id + ')">' + (q ? hlText(s.title, q) : esc(s.title));
+  if(s.source === 'import') html += ' <span style="opacity:.6;font-size:10.5px;font-weight:700;letter-spacing:.03em">IMPORTED</span>';
+  if(q && s.matchedInTitle === false && s.matchSlide){
+    html += '<div style="margin-top:4px;font-size:12.5px;color:var(--text2);font-style:italic">“' + hlText(s.matchSlide.text, q) + '”</div>'
+      + '<div style="margin-top:2px;font-size:10.5px;color:var(--text3)">Matched in lyrics' + (s.matchSlide.label ? ' — ' + esc(s.matchSlide.label) : '') + '</div>';
+  }
+  html += '</button>';
+  return html;
+}
+function azStripHtml(list){
+  var present = {};
+  for(var i=0;i<list.length;i++){
+    var ch = /[A-Za-z]/.test((list[i].title||'')[0] || '') ? list[i].title[0].toUpperCase() : '#';
+    present[ch] = true;
+  }
+  var letters = ['#'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+  var html = '<div class="azstrip">';
+  for(var j=0;j<letters.length;j++){
+    var l = letters[j];
+    html += present[l]
+      ? '<button onclick="jumpToLetter(this,\\'' + l + '\\')">' + l + '</button>'
+      : '<button disabled>' + l + '</button>';
+  }
+  html += '</div>';
+  return html;
+}
 function songsBodyHtml(){
-  var q = (state.songsQuery || '').trim().toLowerCase();
-  var recent = q ? [] : state.songsRecent;
-  var all = q ? state.songsAll.filter(function(s){ return s.title.toLowerCase().indexOf(q) !== -1; }) : state.songsAll;
+  var q = (state.songsQuery || '').trim();
+  if(q.length > 0 && q.length < 2){
+    return '<div class="section-label">SEARCH</div><div class="empty">Keep typing — search needs at least 2 letters.</div>';
+  }
 
+  if(q.length >= 2){
+    if(state.songsResults === null) return '<div class="section-label">SEARCHING…</div>';
+    var results = state.songsResults;
+    var html = '<div class="section-label">' + results.length + ' RESULT' + (results.length === 1 ? '' : 'S') + '</div>';
+    if(results.length === 0){ html += '<div class="empty">No songs found.</div>'; return html; }
+    html += '<div class="songlist">';
+    for(var i=0;i<results.length;i++) html += songRowHtml(results[i], q);
+    html += '</div>';
+    return html;
+  }
+
+  // No query: Recent shortlist, then the full A-Z library — no cap, so every
+  // song in a 1,000+ song library is actually reachable by scrolling.
+  var recent = state.songsRecent;
+  var all = state.songsAll;
   var html = '';
   if(recent.length > 0){
     html += '<div class="recent-head">' + ICON_CLOCK + '<span>RECENT</span><button class="recent-clear" onclick="clearRecentSongs()">Clear</button></div><div class="recent-list">';
-    for(var i=0;i<recent.length;i++){
-      html += '<button class="recent-item" onclick="selectSongById(' + recent[i].id + ')"><span>' + esc(recent[i].title) + '</span></button>';
+    for(var r=0;r<recent.length;r++){
+      html += '<button class="recent-item" onclick="selectSongById(' + recent[r].id + ')"><span>' + esc(recent[r].title) + '</span></button>';
     }
     html += '</div>';
   }
-  html += '<div class="section-label">' + (q ? 'RESULTS' : 'ALL SONGS') + '</div>';
+  html += '<div class="section-label">ALL SONGS' + (all.length ? ' · ' + all.length : '') + '</div>';
   if(all.length === 0){ html += '<div class="empty">No songs found.</div>'; return html; }
-  var letters = [];
-  html += '<div class="songlist-wrap"><div class="songlist">';
+  html += azStripHtml(all);
+  html += '<div class="songlist">';
   var lastLetter = '';
   for(var j=0;j<all.length;j++){
     var s = all[j];
@@ -1018,22 +1350,32 @@ function songsBodyHtml(){
     if(letter !== lastLetter){
       html += '<div class="song-letter" data-letter="' + letter + '">' + letter + '</div>';
       lastLetter = letter;
-      letters.push(letter);
     }
-    html += '<button class="song-row" onclick="selectSongById(' + s.id + ')">' + esc(s.title) + '</button>';
+    html += songRowHtml(s, null);
   }
-  html += '</div><div class="azrail">';
-  for(var k=0;k<letters.length;k++){
-    html += '<button onclick="jumpToLetter(this,\\'' + letters[k] + '\\')">' + letters[k] + '</button>';
-  }
-  html += '</div></div>';
+  html += '</div>';
   return html;
 }
 function jumpToLetter(btn, letter){
-  var wrap = btn.closest('.songlist-wrap');
-  if(!wrap) return;
-  var target = wrap.querySelector('[data-letter="' + letter + '"]');
+  var container = btn.closest('.songs-body');
+  if(!container) return;
+  var target = container.querySelector('[data-letter="' + letter + '"]');
   if(target) target.scrollIntoView({ block: 'start' });
+}
+function afterProjectFromSheet(){
+  toast('Projecting…');
+  closeSheet();
+  state.selected = null;
+  setTab('queue');
+}
+function projectPreviewSlide(i){
+  var item = state.selected;
+  if(!item) return;
+  if(item.kind === 'song'){
+    cmd('project-song', { songId: item.payload.songId, slide: i }).then(afterProjectFromSheet);
+  } else if(item.kind === 'bible' && item.payload && item.payload.verseRefs){
+    cmd('project-bible', { reference: item.payload.verseRefs[i], translation: item.payload.translation }).then(afterProjectFromSheet);
+  }
 }
 function selectSongById(id){
   getJSON('/api/song/' + id).then(function(s){
@@ -1053,13 +1395,30 @@ function selectSongById(id){
 /* ── Shared preview (sheet on phone, side pane on tablet) ─────────── */
 function previewInnerHtml(item){
   var bodyHtml;
-  if(item.slides && item.slides.length){
-    bodyHtml = '<div class="slide-list">';
+  // Only a song sets .slides — sermon/bible previews use .full/.html.
+  // Every slide carries a real label now (Verse 2, Verse 3… not just the
+  // first one), and tapping a slide projects it immediately instead of
+  // being a static read-only list — the same "one tap = live" rule the
+  // desktop app's own slide cards already follow.
+  var isSlidesItem = item.slides && item.slides.length > 0;
+  var focusVerses = item.focusVerses || [];
+  if(isSlidesItem){
+    bodyHtml = '';
+    if(item.slides.length > 1){
+      bodyHtml += '<div class="jumpchips">';
+      for(var c=0;c<item.slides.length;c++){
+        var chipFocus = item.kind === 'bible' && focusVerses.indexOf(item.slides[c].verseNum) !== -1;
+        bodyHtml += '<button class="' + (chipFocus ? 'is-focus' : '') + '" onclick="projectPreviewSlide(' + c + ')">' + esc(item.slides[c].label || ('Slide ' + (c + 1))) + '</button>';
+      }
+      bodyHtml += '</div>';
+    }
+    bodyHtml += '<div class="slide-list">';
     for(var s=0;s<item.slides.length;s++){
       var sl = item.slides[s];
-      bodyHtml += '<div class="slide-row static">'
+      var rowFocus = item.kind === 'bible' && focusVerses.indexOf(sl.verseNum) !== -1;
+      bodyHtml += '<button class="slide-row' + (rowFocus ? ' focus' : '') + '" data-idx="' + s + '" onclick="projectPreviewSlide(' + s + ')">'
         + (sl.label ? '<div class="slide-label">' + esc(sl.label) + '</div>' : '')
-        + '<div class="slide-text">' + esc(sl.text) + '</div></div>';
+        + '<div class="slide-text">' + esc(sl.text) + '</div></button>';
     }
     bodyHtml += '</div>';
   } else if(item.html){
@@ -1067,6 +1426,9 @@ function previewInnerHtml(item){
   } else {
     bodyHtml = '<div class="sheet-text">' + esc(item.full || 'Tap Project to send this live.') + '</div>';
   }
+  var hint = (isSlidesItem && item.slides.length > 1)
+    ? 'Tap any verse to put it on screen instantly'
+    : 'Nothing goes on screen until you tap Project';
   return '<div class="sheet-title">' + esc(item.title) + '</div>'
     + (item.meta ? '<div class="sheet-meta ' + item.kind + '">' + esc(item.meta) + '</div>' : '')
     + bodyHtml
@@ -1074,19 +1436,33 @@ function previewInnerHtml(item){
     + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'
     + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Project ▸</button>'
     + '</div>'
-    + '<div class="sheet-hint">Nothing goes on screen until you tap Project</div>';
+    + '<div class="sheet-hint">' + hint + '</div>';
 }
 function isTabletLayout(){
-  return window.matchMedia('(min-width: 860px)').matches;
+  // Must match the @media breakpoint above (768px) exactly, or the CSS layout
+  // and this JS-side branch (which decides sheet-vs-side-pane behavior) can
+  // disagree at some widths.
+  return window.matchMedia('(min-width: 768px)').matches;
+}
+/** Jump straight to the verse/slide the operator actually asked for,
+ *  instead of always opening scrolled to the top of a whole chapter. */
+function scrollToPreviewFocus(){
+  if(!state.selected || state.selected.focusIndex == null) return;
+  var idx = state.selected.focusIndex;
+  setTimeout(function(){
+    var els = document.querySelectorAll('.slide-row[data-idx="' + idx + '"]');
+    for(var i=0;i<els.length;i++) els[i].scrollIntoView({ block: 'center' });
+  }, 0);
 }
 function openPreview(){
   state.detailIndex = null;
   renderTabletPreview();
-  if(isTabletLayout()) return; // tablet shows the preview in the persistent side pane, not a sheet
+  if(isTabletLayout()){ scrollToPreviewFocus(); return; } // tablet shows the preview in the persistent side pane, not a sheet
   var body = $('sheetBody');
   if(body) body.innerHTML = '<div class="sheet-grip"></div>' + previewInnerHtml(state.selected);
   var overlay = $('sheetOverlay');
   if(overlay) overlay.classList.add('active');
+  scrollToPreviewFocus();
 }
 function closeSheet(){
   var overlay = $('sheetOverlay');
@@ -1182,3 +1558,5 @@ document.addEventListener('DOMContentLoaded', function(){ on($('a2hsSkip'), 'cli
   .replace(/ICON_SAVE/g, JSON.stringify(ICON.save))
   .replace(/ICON_PLUS/g, JSON.stringify(ICON.plus))
   .replace(/ICON_SHARE/g, JSON.stringify(ICON.share))
+  .replace(/ICON_CALENDAR/g, JSON.stringify(ICON.calendar))
+  .replace(/ICON_BOOK/g, JSON.stringify(ICON.book))

@@ -25,6 +25,13 @@ describe('parseReference', () => {
     expect(ok('John 3 : 16 - 18')).toMatchObject({ verseStart: 16, verseEnd: 18 })
   })
 
+  it('reads "book chapter verse" with no colon at all — how it might be said aloud', () => {
+    expect(ok('John 3 16')).toMatchObject({ bookNum: 43, chapter: 3, verseStart: 16, verseEnd: 16 })
+    expect(ok('john 3 16')).toMatchObject({ bookNum: 43, chapter: 3, verseStart: 16, verseEnd: 16 })
+    expect(ok('1 Cor 13 4')).toMatchObject({ bookNum: 46, chapter: 13, verseStart: 4 })
+    expect(ok('Genesis 1 1')).toMatchObject({ bookNum: 1, chapter: 1, verseStart: 1 })
+  })
+
   it('abbreviations', () => {
     expect(ok('Jn 3:16').bookNum).toBe(43)
     expect(ok('Ps 23').bookNum).toBe(19)

@@ -131,6 +131,25 @@ export function getLocalDateTree(db: Database): DateTree {
   }
 }
 
+/** Sermons preached on this month/day, any year — a quick "on this day in
+ *  history" pull that's more useful for a weekly service than starting a
+ *  search from nothing. `month`/`day` are 1-indexed calendar values. */
+export function getOnThisDay(
+  db: Database,
+  month: number,
+  day: number
+): Array<{ id: number; date_code: string; title: string }> {
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return db
+    .prepare<[string, string], { id: number; date_code: string; title: string }>(
+      `SELECT id, date_code, title FROM sermon_index
+       WHERE SUBSTR(date_code, 4, 2) = ? AND SUBSTR(date_code, 6, 2) = ?
+       ORDER BY date_code`
+    )
+    .all(mm, dd)
+}
+
 export function getLocalDateGroups(db: Database): BrowseGroup[] {
   const rows = db
     .prepare<[], { id: number; date_code: string }>(
@@ -183,7 +202,12 @@ function loadLocations(): LocationsFile | null {
   const candidates = [
     join(process.resourcesPath ?? '', 'locations.json'),
     join(app.getAppPath(), 'resources', 'locations.json'),
-    join(app.getAppPath(), '..', 'resources', 'locations.json')
+    join(app.getAppPath(), '..', 'resources', 'locations.json'),
+    // Unpackaged (`npm run dev`, or launching out/main/index.js directly),
+    // app.getAppPath() resolves to out/main itself, two levels below the
+    // project root the other candidates assume — without this, Location
+    // browse silently comes back empty outside a packaged build.
+    join(app.getAppPath(), '..', '..', 'resources', 'locations.json')
   ]
   for (const p of candidates) {
     try {

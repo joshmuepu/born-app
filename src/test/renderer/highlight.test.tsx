@@ -7,23 +7,35 @@ const html = (node: ReturnType<typeof highlight>): string =>
   renderToStaticMarkup(<>{node}</>)
 
 describe('highlight', () => {
-  it('marks the full phrase and significant words', () => {
-    const out = html(highlight('We received the Holy Spirit by faith today.', 'holy spirit'))
+  it('phrase mode marks only the exact contiguous phrase', () => {
+    const out = html(highlight('We received the Holy Spirit by faith today.', 'holy spirit', 'phrase'))
     expect(out).toContain('<mark class="hl">Holy Spirit</mark>')
   })
 
+  it('phrase mode does not separately mark the phrase\'s own words elsewhere', () => {
+    const out = html(highlight('Spirit and faith move the Holy nation.', 'holy spirit', 'phrase'))
+    expect(out).not.toContain('<mark')
+  })
+
+  it('all-words mode marks each significant word on its own, not stitched into a phrase', () => {
+    const out = html(highlight('The Spirit is Holy and faithful.', 'holy spirit', 'all'))
+    expect(out).toContain('<mark class="hl">Holy</mark>')
+    expect(out).toContain('<mark class="hl">Spirit</mark>')
+    expect(out).not.toContain('Holy Spirit</mark>')
+  })
+
   it('does not highlight stopwords like "the" on their own', () => {
-    const out = html(highlight('the man and the woman', 'the holy spirit'))
+    const out = html(highlight('the man and the woman', 'the holy spirit', 'all'))
     expect(out).not.toContain('<mark')
   })
 
   it('does not highlight partial words (there / they)', () => {
-    const out = html(highlight('There they were, faithfully waiting.', 'faith'))
+    const out = html(highlight('There they were, faithfully waiting.', 'faith', 'all'))
     expect(out).not.toContain('<mark')
   })
 
   it('matches case-insensitively', () => {
-    const out = html(highlight('FAITH moves mountains', 'faith'))
+    const out = html(highlight('FAITH moves mountains', 'faith', 'all'))
     expect(out).toContain('<mark class="hl">FAITH</mark>')
   })
 

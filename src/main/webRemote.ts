@@ -27,6 +27,10 @@ export interface WebRemoteState {
   activeIndex: number | null
   activeSlide: number
   blanked: boolean
+  /** Whatever translation the desktop app currently has selected for Bible —
+   *  the remote has no translation picker of its own, it just reflects this,
+   *  so it never shows different wording than what's actually on screen. */
+  bibleTranslation: string
   onScreen: {
     kind: string
     text: string
@@ -56,13 +60,18 @@ type CommandCallback = (cmd: {
  *  are what the remote calls too. Results never drift between the two. */
 export interface WebRemoteSearchHandlers {
   sermons: (query: string, dateCode?: string) => Promise<unknown[]>
-  bible: (query: string) => Promise<unknown>
+  bible: (query: string, scope?: string) => Promise<unknown>
   songs: (query: string) => Promise<unknown[]>
   song: (id: number) => Promise<unknown>
   bibleBooks: () => Promise<unknown>
-  bibleChapter: (bookNum: number, chapter: number, translation: string) => Promise<unknown>
+  bibleChapter: (bookNum: number, chapter: number) => Promise<unknown>
   recentSongs: () => Promise<unknown[]>
   recentServices: () => Promise<unknown[]>
+  sermonSeries: () => Promise<unknown[]>
+  sermonsByIds: (ids: number[]) => Promise<unknown[]>
+  sermonParagraphs: (sermonId: number) => Promise<unknown[]>
+  recentSermons: () => Promise<unknown[]>
+  onThisDay: () => Promise<unknown[]>
 }
 
 let currentState: WebRemoteState = {
@@ -70,6 +79,7 @@ let currentState: WebRemoteState = {
   activeIndex: null,
   activeSlide: 0,
   blanked: false,
+  bibleTranslation: 'KJV',
   onScreen: null
 }
 let commandCallback: CommandCallback | null = null
@@ -210,8 +220,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
   if (path === '/api/search/bible' && req.method === 'GET') {
     const q = url.searchParams.get('q') ?? ''
+    const scope = url.searchParams.get('scope') ?? undefined
     try {
-      sendJSON(res, 200, await searchHandlers!.bible(q))
+      sendJSON(res, 200, await searchHandlers!.bible(q, scope))
     } catch {
       sendJSON(res, 200, { kind: 'error', message: 'Search failed.' })
     }
@@ -242,9 +253,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (path === '/api/bible/chapter' && req.method === 'GET') {
     const book = Number(url.searchParams.get('book') ?? '0')
     const chapter = Number(url.searchParams.get('chapter') ?? '0')
-    const translation = url.searchParams.get('translation') ?? 'KJV'
     try {
-      sendJSON(res, 200, await searchHandlers!.bibleChapter(book, chapter, translation))
+      sendJSON(res, 200, await searchHandlers!.bibleChapter(book, chapter))
     } catch {
       sendJSON(res, 200, { error: 'Lookup failed.' })
     }
@@ -256,6 +266,43 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
   if (path === '/api/services/recent' && req.method === 'GET') {
     sendJSON(res, 200, await searchHandlers!.recentServices())
+    return
+  }
+  if (path === '/api/sermons/series' && req.method === 'GET') {
+    try {
+      sendJSON(res, 200, await searchHandlers!.sermonSeries())
+    } catch {
+      sendJSON(res, 200, [])
+    }
+    return
+  }
+  if (path === '/api/sermons/by-ids' && req.method === 'GET') {
+    const ids = (url.searchParams.get('ids') ?? '')
+      .split(',')
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n))
+    try {
+      sendJSON(res, 200, await searchHandlers!.sermonsByIds(ids))
+    } catch {
+      sendJSON(res, 200, [])
+    }
+    return
+  }
+  const sermonParasMatch = /^\/api\/sermons\/(\d+)\/paragraphs$/.exec(path)
+  if (sermonParasMatch && req.method === 'GET') {
+    try {
+      sendJSON(res, 200, await searchHandlers!.sermonParagraphs(Number(sermonParasMatch[1])))
+    } catch {
+      sendJSON(res, 200, [])
+    }
+    return
+  }
+  if (path === '/api/sermons/recent' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.recentSermons())
+    return
+  }
+  if (path === '/api/sermons/on-this-day' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.onThisDay())
     return
   }
 
@@ -311,6 +358,13 @@ export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSear
     remoteAvailable = true
     console.log(`Web remote available at http://${getLocalIP()}:${REMOTE_PORT}`)
   })
+}
+
+/** The translation the desktop app currently has selected — always read this
+ *  instead of trusting anything a remote request itself claims, so the two
+ *  can never drift apart. */
+export function getWebRemoteTranslation(): string {
+  return currentState.bibleTranslation || 'KJV'
 }
 
 export function updateWebRemoteState(state: WebRemoteState): void {

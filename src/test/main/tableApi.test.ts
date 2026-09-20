@@ -188,6 +188,14 @@ describe('serverSearch', () => {
     expect(result).toEqual([])
   })
 
+  it('defaults to a real page size, not the old 25-hit cap', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse({ Status: 'Successful', Result: {} }) as unknown as Response)
+    await serverSearch('grace', 'AllWords')
+    const [, init] = vi.mocked(global.fetch).mock.calls[0]
+    const body = JSON.parse((init as RequestInit).body as string)
+    expect(body.PageSize).toBeGreaterThanOrEqual(200)
+  })
+
   it('maps the current Results[].Properties shape and strips highlight markup', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
       mockResponse({

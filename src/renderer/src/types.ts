@@ -76,6 +76,10 @@ export interface SongSummary {
   songKey: string | null
   slideCount: number
   source: string
+  /** Set on a search hit: false means the query matched only the lyrics,
+   *  not the title, so the UI shows the matching slide below. */
+  matchedInTitle?: boolean
+  matchSlide?: { label: string | null; text: string }
 }
 
 export interface SongDetail {

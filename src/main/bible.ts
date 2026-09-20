@@ -7,6 +7,7 @@ import { parseReference, isRefError, formatReference, formatVerse } from '../sha
 import { buildBibleSlides } from '../shared/bibleSlides'
 import { stripMarginalNotes } from '../shared/bibleText'
 import type { Slide } from '../shared/queueItem'
+import { MAX_SEARCH_RESULTS } from '../shared/searchLimits'
 
 export interface BibleTranslation {
   code: string
@@ -161,6 +162,12 @@ export function getAdjacentVerse(
   }
 }
 
+/** See src/shared/searchLimits.ts for why this is 25000, not a number sized
+ *  to never be hit — that was tried and a common-word search rendering that
+ *  many rows crashed the renderer. Treat a result set of exactly this length
+ *  as "at least this many," never as an exact total. */
+export const NO_PRACTICAL_LIMIT = MAX_SEARCH_RESULTS
+
 export type BibleSearchMode = 'phrase' | 'all' | 'any'
 
 export interface BibleSearchRange {
@@ -188,7 +195,7 @@ function buildMatchExpr(query: string, mode: BibleSearchMode): string | null {
 export function searchBible(
   query: string,
   translation: string,
-  limit = 50,
+  limit = NO_PRACTICAL_LIMIT,
   mode: BibleSearchMode = 'phrase',
   range?: BibleSearchRange
 ): BibleSearchHit[] {

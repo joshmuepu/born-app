@@ -2,6 +2,7 @@
  * search.ts — SQL building for FTS5 queries.
  * No Electron deps — fully testable in Node.js.
  */
+import { MAX_SEARCH_RESULTS } from '../shared/searchLimits'
 
 export const SEARCH_BASE = `
   SELECT p.sermon_id       AS sermonId,
@@ -17,11 +18,24 @@ export const SEARCH_BASE = `
   WHERE paragraphs_fts MATCH ?
 `
 
+/** See src/shared/searchLimits.ts for why this is 25000 and not "big enough
+ *  that no real search can ever hit it" — that approach was tried and it
+ *  crashed the renderer on a large-enough common-word search. Any caller
+ *  showing this count to a user MUST treat a result set of exactly this
+ *  length as "at least this many" (see MAX_SEARCH_RESULTS's doc comment),
+ *  never as an exact total. */
+export const NO_PRACTICAL_LIMIT = MAX_SEARCH_RESULTS
+
+export type MatchMode = 'phrase' | 'all' | 'any'
+
 export interface SearchFilters {
   yearFrom?: string
   yearTo?: string
   titleFilter?: string
-  forceTokens?: boolean
+  /** 'phrase' (default) tries the exact phrase, falling back to 'all' when
+   *  it has no hits; 'all' requires every significant word; 'any' matches
+   *  if any one of them appears. */
+  matchMode?: MatchMode
   /** A date-code prefix — "61-0317" for one service, "63-08" for all of
    *  August 1963. Matched as a LIKE prefix so a partial code still narrows. */
   dateCode?: string
@@ -50,7 +64,7 @@ export function buildSearchSQL(filters: SearchFilters): { sql: string; extraPara
     extraParams.push(`${filters.dateCode.trim().toUpperCase()}%`)
   }
 
-  sql += ` ORDER BY rank LIMIT 50`
+  sql += ` ORDER BY rank LIMIT ?`
   return { sql, extraParams }
 }
 
@@ -60,9 +74,10 @@ export function buildPhraseQuery(query: string): string {
 }
 
 /**
- * FTS5 token query: each word AND-ed together, with FTS operator characters
- * stripped so user punctuation can't blow up the MATCH expression.
- * Returns '' when nothing usable remains.
+ * FTS5 token query: each word AND-ed together (a bare space between FTS5
+ * tokens is an implicit AND), with FTS operator characters stripped so user
+ * punctuation can't blow up the MATCH expression. Returns '' when nothing
+ * usable remains.
  */
 export function buildTokenQuery(query: string): string {
   return query
@@ -72,6 +87,17 @@ export function buildTokenQuery(query: string): string {
     .map((w) => w.replace(/["*()[\]^:]/g, ''))
     .filter(Boolean)
     .join(' ')
+}
+
+/** FTS5 "any of these words" query: each word OR-ed together. */
+export function buildAnyWordQuery(query: string): string {
+  return query
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/["*()[\]^:]/g, ''))
+    .filter(Boolean)
+    .join(' OR ')
 }
 
 export interface QuoteRow {
@@ -91,13 +117,14 @@ export function stableParagraphRef(ref: string | null | undefined, rowId: number
   return r || `§${rowId}`
 }
 
-export function rowToQuote(r: QuoteRow) {
+export function rowToQuote(r: QuoteRow, matchType: MatchMode) {
   return {
     text: r.text,
     sermonTitle: r.sermonTitle,
     dateCode: r.dateCode,
     sermonId: r.sermonId,
     paragraphIndex: r.paragraphIndex,
-    paragraphRef: stableParagraphRef(r.paragraphRef, r.paragraphId)
+    paragraphRef: stableParagraphRef(r.paragraphRef, r.paragraphId),
+    matchType
   }
 }

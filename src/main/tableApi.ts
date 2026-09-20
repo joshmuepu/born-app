@@ -110,10 +110,20 @@ interface UserQueryHit {
   Content?: string
 }
 
+// A brand-new install (before the local index has synced) was silently
+// capped at 25 hits here — the exact same "arbitrary limit, no indication"
+// bug found and fixed in Sermon/Bible/Songs local search, just on the
+// network fallback path instead of a SQL query. Unlike those, this one
+// hits a real HTTP API: table.branham.org happily returns everything for a
+// common word (13k+ hits, several MB, 2+ seconds) if asked, so "no limit at
+// all" isn't the right fix — 200 is confirmed fast (~100KB, well under a
+// second) and is a real, useful first page rather than an arbitrary sliver.
+const SERVER_SEARCH_PAGE_SIZE = 200
+
 export async function serverSearch(
   text: string,
   searchType: 'AllWords' | 'ExactPhrase',
-  pageSize = 25
+  pageSize = SERVER_SEARCH_PAGE_SIZE
 ): Promise<ServerSearchResult[]> {
   try {
     const data = await post<{

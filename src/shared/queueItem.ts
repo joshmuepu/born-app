@@ -14,6 +14,10 @@ export interface Quote {
   paragraphIndex: number
   paragraphRef: string
   language?: string
+  /** Which match actually produced this row — lets highlighting show only the
+   *  exact phrase for a true phrase match, vs. every significant word when
+   *  the row came from an all/any-word (or a phrase-search fallback) match. */
+  matchType?: 'phrase' | 'all' | 'any'
 }
 
 export interface Slide {

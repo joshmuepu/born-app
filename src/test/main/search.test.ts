@@ -3,6 +3,7 @@ import {
   buildSearchSQL,
   buildPhraseQuery,
   buildTokenQuery,
+  buildAnyWordQuery,
   rowToQuote,
   SEARCH_BASE
 } from '../../main/search'
@@ -28,11 +29,23 @@ describe('buildTokenQuery', () => {
   })
 })
 
+describe('buildAnyWordQuery', () => {
+  it('OR-joins the words', () => {
+    expect(buildAnyWordQuery('faith  hope   love')).toBe('faith OR hope OR love')
+  })
+  it('strips FTS operator characters that would break MATCH', () => {
+    expect(buildAnyWordQuery('faith* (hope) "love"')).toBe('faith OR hope OR love')
+  })
+  it('returns an empty string when nothing usable remains', () => {
+    expect(buildAnyWordQuery('  ** () ')).toBe('')
+  })
+})
+
 describe('buildSearchSQL', () => {
   it('returns base SQL with no filters', () => {
     const { sql, extraParams } = buildSearchSQL({})
     expect(sql).toContain(SEARCH_BASE.trim())
-    expect(sql).toContain('ORDER BY rank LIMIT 50')
+    expect(sql).toContain('ORDER BY rank LIMIT ?')
     expect(extraParams).toEqual([])
   })
 
@@ -91,44 +104,48 @@ describe('buildSearchSQL', () => {
     expect(extraParams).toEqual(['63', '65', '%word%'])
   })
 
-  it('always ends with ORDER BY rank LIMIT 50', () => {
+  it('always ends with ORDER BY rank LIMIT ? (a placeholder, not a baked-in cap)', () => {
     const { sql } = buildSearchSQL({ yearFrom: '1960', titleFilter: 'Grace' })
-    expect(sql.trimEnd()).toMatch(/ORDER BY rank LIMIT 50$/)
+    expect(sql.trimEnd()).toMatch(/ORDER BY rank LIMIT \?$/)
   })
 })
 
 describe('rowToQuote', () => {
-  it('maps all fields correctly', () => {
+  it('maps all fields correctly and attaches the match type', () => {
     const row = {
       sermonId: 42,
+      paragraphId: 700,
       paragraphRef: 'p7',
       paragraphIndex: 7,
       text: 'And God said',
       dateCode: '63-0901M',
       sermonTitle: 'Come Follow Me'
     }
-    const quote = rowToQuote(row)
+    const quote = rowToQuote(row, 'phrase')
     expect(quote).toEqual({
       sermonId: 42,
       paragraphRef: 'p7',
       paragraphIndex: 7,
       text: 'And God said',
       dateCode: '63-0901M',
-      sermonTitle: 'Come Follow Me'
+      sermonTitle: 'Come Follow Me',
+      matchType: 'phrase'
     })
   })
 
   it('handles zero/empty values', () => {
     const row = {
       sermonId: 0,
+      paragraphId: 0,
       paragraphRef: 'header',
       paragraphIndex: 0,
       text: '',
       dateCode: '',
       sermonTitle: ''
     }
-    const quote = rowToQuote(row)
+    const quote = rowToQuote(row, 'all')
     expect(quote.paragraphIndex).toBe(0)
     expect(quote.text).toBe('')
+    expect(quote.matchType).toBe('all')
   })
 })

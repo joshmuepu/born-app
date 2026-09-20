@@ -9,6 +9,7 @@ import {
   lookupPassage,
   searchBible,
   getAdjacentVerse,
+  NO_PRACTICAL_LIMIT as BIBLE_SEARCH_LIMIT,
   type BibleSearchMode,
   type BibleSearchRange
 } from './bible'
@@ -19,17 +20,21 @@ import {
   updateWebRemoteState,
   getLocalIP,
   isWebRemoteAvailable,
+  getWebRemoteTranslation,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { highlightToHtml } from '../shared/searchHighlight'
+import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import {
   buildSearchSQL,
   buildPhraseQuery,
   buildTokenQuery,
+  buildAnyWordQuery,
   rowToQuote,
   stableParagraphRef,
+  NO_PRACTICAL_LIMIT as SERMON_SEARCH_LIMIT,
   type SearchFilters,
   type QuoteRow
 } from './search'
@@ -51,7 +56,8 @@ import {
   getLocalDateGroups,
   getLocalDateTree,
   getLocalDurationGroups,
-  getLocalLocationTree
+  getLocalLocationTree,
+  getOnThisDay
 } from './browseLocal'
 import { getSettings, updateSettings } from './settings'
 import {
@@ -111,6 +117,15 @@ function getSettingsSafe(): {
   recentServices: string[]
   theme: 'dark' | 'light'
   recentSongIds: number[]
+  recentQuotes: Array<{
+    sermonId: number
+    sermonTitle: string
+    dateCode: string
+    paragraphIndex: number
+    paragraphRef: string
+    text: string
+  }>
+  recentBibleRefs: Array<{ reference: string; translation: string }>
 } {
   try {
     return getSettings()
@@ -121,7 +136,9 @@ function getSettingsSafe(): {
       stageDisplayId: null,
       recentServices: [],
       theme: 'dark',
-      recentSongIds: []
+      recentSongIds: [],
+      recentQuotes: [],
+      recentBibleRefs: []
     }
   }
 }
@@ -647,6 +664,7 @@ ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
 async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
   const query = (rawQuery ?? '').trim()
   if (!query) return []
+  const matchMode = filters.matchMode ?? 'phrase'
   log.debug(`search:query "${query}"`, filters)
 
   try {
@@ -657,9 +675,9 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
 
     if (localCount < 100) {
       log.info(`search:query falling back to server search (localCount=${localCount})`)
-      const searchType = filters.forceTokens ? 'AllWords' : 'ExactPhrase'
+      const searchType = matchMode === 'phrase' ? 'ExactPhrase' : 'AllWords'
       const serverResults = await serverSearch(query, searchType)
-      if (serverResults.length === 0 && !filters.forceTokens) {
+      if (serverResults.length === 0 && matchMode === 'phrase') {
         return serverSearch(query, 'AllWords')
       }
       return serverResults
@@ -667,24 +685,38 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
 
     const { sql, extraParams } = buildSearchSQL(filters)
 
-    if (!filters.forceTokens) {
+    if (matchMode === 'phrase') {
       try {
-        const rows = db.prepare(sql).all(buildPhraseQuery(query), ...extraParams) as QuoteRow[]
+        const rows = db
+          .prepare(sql)
+          .all(buildPhraseQuery(query), ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         if (rows.length > 0) {
           log.debug(`search:query phrase match: ${rows.length} results`)
-          return rows.map(rowToQuote)
+          return rows.map((r) => rowToQuote(r, 'phrase'))
         }
       } catch (e) {
         log.warn('search:query phrase match FTS error', e)
       }
+      // No exact phrase hit — fall back to requiring all the words instead
+      // of returning nothing.
+      try {
+        const tokenQuery = buildTokenQuery(query)
+        if (!tokenQuery) return []
+        const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
+        log.debug(`search:query phrase-fallback all-words match: ${rows.length} results`)
+        return rows.map((r) => rowToQuote(r, 'all'))
+      } catch (e) {
+        log.error('search:query token match error', e)
+        return []
+      }
     }
 
     try {
-      const tokenQuery = buildTokenQuery(query)
+      const tokenQuery = matchMode === 'any' ? buildAnyWordQuery(query) : buildTokenQuery(query)
       if (!tokenQuery) return []
-      const rows = db.prepare(sql).all(tokenQuery, ...extraParams) as QuoteRow[]
-      log.debug(`search:query token match: ${rows.length} results`)
-      return rows.map(rowToQuote)
+      const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
+      log.debug(`search:query ${matchMode} match: ${rows.length} results`)
+      return rows.map((r) => rowToQuote(r, matchMode))
     } catch (e) {
       log.error('search:query token match error', e)
       return []
@@ -699,13 +731,58 @@ ipcMain.handle('search:query', (_event, rawQuery: string, filters: SearchFilters
   searchSermons(rawQuery, filters)
 )
 
+/** Called whenever a sermon quote is queued or projected, from the desktop
+ *  app or the web remote alike — feeds "Recently Played" on both. */
+ipcMain.on(
+  'sermons:note-used',
+  (
+    _event,
+    quote: { sermonId: number; sermonTitle: string; dateCode: string; paragraphIndex: number; paragraphRef: string; text: string }
+  ) => {
+    try {
+      const prev = getSettingsSafe().recentQuotes ?? []
+      const next = [
+        quote,
+        ...prev.filter((q) => !(q.sermonId === quote.sermonId && q.paragraphRef === quote.paragraphRef))
+      ].slice(0, 8)
+      updateSettings({ recentQuotes: next })
+    } catch (e) {
+      log.error('sermons:note-used failed', e)
+    }
+  }
+)
+
+ipcMain.handle('sermons:recent', () => getSettingsSafe().recentQuotes ?? [])
+ipcMain.handle('sermons:clear-recent', () => updateSettings({ recentQuotes: [] }))
+
+/** Sermons preached on today's calendar date, any year — backs the Browse
+ *  hub's "On This Day" card and the search empty state's same pull. */
+ipcMain.handle('browse:on-this-day', () => {
+  try {
+    const now = new Date()
+    return getOnThisDay(getDb(), now.getMonth() + 1, now.getDate())
+  } catch (e) {
+    log.error('browse:on-this-day error', e)
+    return []
+  }
+})
+
 /** The remote's sermon search: same searchSermons the desktop uses (plus the
  *  optional date-code filter it doesn't expose), with the matched term
  *  wrapped in <mark> server-side so the remote never re-implements — and
  *  can't drift from — the app's own highlighting rules. */
 async function searchSermonsForRemote(query: string, dateCode?: string): Promise<unknown[]> {
-  const rows = (await searchSermons(query, dateCode ? { dateCode } : {})) as Array<{ text: string }>
-  return rows.map((r) => ({ ...r, highlightedText: highlightToHtml(r.text, query) }))
+  const rows = (await searchSermons(query, dateCode ? { dateCode } : {})) as Array<{
+    text: string
+    matchType?: 'phrase' | 'all' | 'any'
+  }>
+  // The desktop's own cap (MAX_SEARCH_RESULTS, 25000) is sized for a virtual
+  // scrolled desktop list — sent to a phone browser as-is, a common-word
+  // search built a ~75MB DOM and put the whole remote session at risk.
+  // Cut down hard before it ever reaches the wire.
+  return rows
+    .slice(0, MAX_REMOTE_RESULTS)
+    .map((r) => ({ ...r, highlightedText: highlightToHtml(r.text, query, r.matchType ?? 'all') }))
 }
 
 /** The web remote's one Bible search box, unlike the desktop app's separate
@@ -713,18 +790,31 @@ async function searchSermonsForRemote(query: string, dateCode?: string): Promise
  *  same lookupPassage the app itself uses), then falls back to a phrase
  *  search, then an "any word" search, same fallback order SearchBar already
  *  uses for sermons. */
-async function searchBibleForRemote(query: string): Promise<unknown> {
+/** 'all' | 'ot' | 'nt' | a book number, as a string over the wire. */
+function rangeForRemoteScope(scope?: string): BibleSearchRange | undefined {
+  if (!scope || scope === 'all') return undefined
+  if (scope === 'ot') return { bookFrom: 1, bookTo: 39 }
+  if (scope === 'nt') return { bookFrom: 40, bookTo: 66 }
+  const n = Number(scope)
+  return Number.isFinite(n) && n > 0 ? { bookFrom: n, bookTo: n } : undefined
+}
+
+async function searchBibleForRemote(query: string, scope?: string): Promise<unknown> {
   const q = (query ?? '').trim()
   if (!q) return { kind: 'hits', hits: [] }
+  const translation = getWebRemoteTranslation()
+  const range = rangeForRemoteScope(scope)
 
-  const passage = lookupPassage(q, 'KJV')
+  // A reference always means exactly that reference, regardless of scope —
+  // scope only narrows a keyword search.
+  const passage = lookupPassage(q, translation)
   if (!('error' in passage)) return { kind: 'passage', passage }
 
-  const phraseHits = searchBible(q, 'KJV', 20, 'phrase')
-  if (phraseHits.length > 0) return { kind: 'hits', hits: phraseHits }
+  const phraseHits = searchBible(q, translation, BIBLE_SEARCH_LIMIT, 'phrase', range)
+  if (phraseHits.length > 0) return { kind: 'hits', hits: phraseHits.slice(0, MAX_REMOTE_RESULTS) }
 
-  const anyHits = searchBible(q, 'KJV', 20, 'any')
-  if (anyHits.length > 0) return { kind: 'hits', hits: anyHits }
+  const anyHits = searchBible(q, translation, BIBLE_SEARCH_LIMIT, 'any', range)
+  if (anyHits.length > 0) return { kind: 'hits', hits: anyHits.slice(0, MAX_REMOTE_RESULTS) }
 
   return { kind: 'error', message: `No matches for "${q}".` }
 }
@@ -735,11 +825,14 @@ function bibleBooksForRemote(): unknown {
   return BIBLE_BOOKS
 }
 
-/** One chapter's verses, for the remote's tap-a-book → tap-a-chapter drill. */
-async function bibleChapterForRemote(bookNum: number, chapter: number, translation: string): Promise<unknown> {
+/** One chapter's verses, for the remote's tap-a-book → tap-a-chapter drill.
+ *  Always the desktop's current translation — the remote has no picker of
+ *  its own, so it never shows different wording than what's on screen. */
+async function bibleChapterForRemote(bookNum: number, chapter: number): Promise<unknown> {
+  const translation = getWebRemoteTranslation()
   const book = bookByNum(bookNum)
   if (!book) return { error: 'Unknown book.' }
-  return lookupPassage(`${book.name} ${chapter}`, translation || 'KJV')
+  return lookupPassage(`${book.name} ${chapter}`, translation)
 }
 
 // ── Queue navigation relay (projection window → main window) ──────────────────
@@ -989,8 +1082,8 @@ ipcMain.handle('browse:location', () => {
   }
 })
 
-ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
-  log.debug(`ipc browse:sermons-by-ids count=${ids?.length ?? 0}`)
+function getSermonsByIdsFor(ids: number[]): unknown[] {
+  log.debug(`browse:sermons-by-ids count=${ids?.length ?? 0}`)
   try {
     const db = getDb()
     if (!ids || ids.length === 0) return []
@@ -1004,10 +1097,15 @@ ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => {
     log.error('browse:sermons-by-ids error', e)
     return []
   }
-})
+}
 
-ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, language: string) => {
-  log.debug(`ipc browse:sermon-paragraphs sermonId=${sermonId} lang=${language}`)
+ipcMain.handle('browse:sermons-by-ids', (_event, ids: number[]) => getSermonsByIdsFor(ids))
+
+/** Every paragraph of one sermon, bundled-English first, translating and
+ *  caching on demand — used by the desktop's own Browse/follow views and the
+ *  remote's sermon detail view alike. */
+async function getSermonParagraphsFor(sermonId: number, language: string): Promise<unknown[]> {
+  log.debug(`browse:sermon-paragraphs sermonId=${sermonId} lang=${language}`)
 
   /** The bundled English paragraphs for this sermon — always available offline. */
   const englishLocal = (): Array<Record<string, unknown>> => {
@@ -1102,7 +1200,11 @@ ipcMain.handle('browse:sermon-paragraphs', async (_event, sermonId: number, lang
     log.error('browse:sermon-paragraphs error', e)
     return englishLocal()
   }
-})
+}
+
+ipcMain.handle('browse:sermon-paragraphs', (_event, sermonId: number, language: string) =>
+  getSermonParagraphsFor(sermonId, language)
+)
 
 // ── Subtitles IPC ─────────────────────────────────────────────────────────────
 
@@ -1133,7 +1235,7 @@ ipcMain.handle(
     translation: string,
     mode?: BibleSearchMode,
     range?: BibleSearchRange
-  ) => searchBible(query, translation, 50, mode, range)
+  ) => searchBible(query, translation, BIBLE_SEARCH_LIMIT, mode, range)
 )
 
 ipcMain.handle(
@@ -1142,6 +1244,23 @@ ipcMain.handle(
     getAdjacentVerse(translation, bookNum, chapter, verse, direction)
 )
 
+/** Called whenever a reference is looked up or projected on the desktop —
+ *  feeds the "Recently Looked Up" shortlist on the Bible tab's Search empty
+ *  state, mirroring songs:note-used above. Desktop-only for now: the remote's
+ *  Bible tab has no equivalent surface yet. */
+ipcMain.on('bible:note-used', (_event, reference: string, translation: string) => {
+  try {
+    const prev = getSettingsSafe().recentBibleRefs ?? []
+    const next = [{ reference, translation }, ...prev.filter((r) => r.reference !== reference)].slice(0, 8)
+    updateSettings({ recentBibleRefs: next })
+  } catch (e) {
+    log.error('bible:note-used failed', e)
+  }
+})
+
+ipcMain.handle('bible:recent', () => getSettingsSafe().recentBibleRefs ?? [])
+ipcMain.handle('bible:clear-recent', () => updateSettings({ recentBibleRefs: [] }))
+
 // ── Songs IPC ─────────────────────────────────────────────────────────────────
 
 ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
@@ -1149,7 +1268,8 @@ ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
 ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
 
 /** Called whenever a song is queued or projected, from the desktop app or
- *  the web remote alike — feeds the remote's "Recent" shortlist. */
+ *  the web remote alike — feeds the "Recently Played" shortlist both surfaces
+ *  show under Browse. */
 ipcMain.on('songs:note-used', (_event, id: number) => {
   try {
     const prev = getSettingsSafe().recentSongIds ?? []
@@ -1175,6 +1295,9 @@ function recentSongSummaries(): unknown[] {
 function clearRecentSongs(): void {
   updateSettings({ recentSongIds: [] })
 }
+
+ipcMain.handle('songs:recent', () => recentSongSummaries())
+ipcMain.handle('songs:clear-recent', () => clearRecentSongs())
 
 ipcMain.handle('songs:import', async () => {
   const result = await dialog.showOpenDialog({
@@ -1306,6 +1429,8 @@ app.whenReady().then(() => {
         mainWindow.webContents.send('webremote:project-at', { index: cmd.index, slide: cmd.slide ?? 0 })
       } else if (cmd.action === 'clear-recent-songs') {
         clearRecentSongs()
+      } else if (cmd.action === 'clear-recent-sermons') {
+        updateSettings({ recentQuotes: [] })
       } else if (cmd.action === 'queue-sermon' && cmd.quote) {
         mainWindow.webContents.send('webremote:queue-sermon', cmd.quote)
       } else if (cmd.action === 'project-sermon' && cmd.quote) {
@@ -1326,7 +1451,7 @@ app.whenReady().then(() => {
       } else if (cmd.action === 'queue-song' && cmd.songId !== undefined) {
         mainWindow.webContents.send('webremote:queue-song', cmd.songId)
       } else if (cmd.action === 'project-song' && cmd.songId !== undefined) {
-        mainWindow.webContents.send('webremote:project-song', cmd.songId)
+        mainWindow.webContents.send('webremote:project-song', { songId: cmd.songId, slide: cmd.slide ?? 0 })
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
@@ -1338,19 +1463,30 @@ app.whenReady().then(() => {
     },
     {
       sermons: (query, dateCode) => searchSermonsForRemote(query, dateCode),
-      bible: (query) => searchBibleForRemote(query),
+      bible: (query, scope) => searchBibleForRemote(query, scope),
       songs: (query) => Promise.resolve(searchSongs(query)),
       song: (id) => Promise.resolve(getSong(id)),
       bibleBooks: () => Promise.resolve(bibleBooksForRemote()),
-      bibleChapter: (bookNum, chapter, translation) =>
-        bibleChapterForRemote(bookNum, chapter, translation),
+      bibleChapter: (bookNum, chapter) => bibleChapterForRemote(bookNum, chapter),
       recentSongs: () => Promise.resolve(recentSongSummaries()),
       recentServices: () =>
         Promise.resolve(
           (getSettingsSafe().recentServices ?? [])
             .filter((p) => existsSync(p))
             .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
-        )
+        ),
+      sermonSeries: () => fetchAllSeries(),
+      sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
+      sermonParagraphs: (sermonId) => getSermonParagraphsFor(sermonId, 'en'),
+      recentSermons: () => Promise.resolve(getSettingsSafe().recentQuotes ?? []),
+      onThisDay: () => {
+        try {
+          const now = new Date()
+          return Promise.resolve(getOnThisDay(getDb(), now.getMonth() + 1, now.getDate()))
+        } catch {
+          return Promise.resolve([])
+        }
+      }
     }
   )
   startMdns(REMOTE_PORT)

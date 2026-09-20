@@ -13,21 +13,29 @@ const STOPWORDS = new Set([
   'you', 'not', 'but', 'they', 'them', 'their', 'there', 'from', 'have', 'has'
 ])
 
-/** The significant search terms in a query — the whole phrase (if multi-word)
- *  plus each word worth matching on its own, longest first. */
-export function extractSearchTerms(query: string | undefined): string[] {
+/** Which query actually produced a result — see shared/queueItem.ts's Quote.matchType. */
+export type HighlightMode = 'phrase' | 'all' | 'any'
+
+/** The significant search terms in a query.
+ *  'phrase' mode: only the exact contiguous phrase counts as a match — highlighting
+ *  every word it's made of too would bold text that isn't actually why the row
+ *  matched. 'all'/'any' mode: no contiguous phrase is guaranteed to appear, so
+ *  each significant word is highlighted on its own, longest first. */
+export function extractSearchTerms(query: string | undefined, mode: HighlightMode = 'all'): string[] {
   const q = (query ?? '').trim()
   if (!q) return []
 
   const phrase = q.replace(/["*()[\]^:]/g, '').replace(/\s+/g, ' ').trim()
+  if (!phrase) return []
+
+  if (mode === 'phrase') return [phrase]
+
   const words = phrase
     .split(' ')
     .map((t) => t.replace(/["*()[\]^:]/g, '').trim())
     .filter((t) => t.length >= 3 && !STOPWORDS.has(t.toLowerCase()))
 
-  // Phrase first (longest match wins), then the significant single words.
-  return Array.from(new Set([phrase.includes(' ') ? phrase : '', ...words].filter(Boolean)))
-    .sort((a, b) => b.length - a.length)
+  return Array.from(new Set(words)).sort((a, b) => b.length - a.length)
 }
 
 function escapeHtml(s: string): string {
@@ -40,8 +48,8 @@ function escapeHtml(s: string): string {
  * search results. Escapes everything else, so the result is always safe to
  * insert as innerHTML.
  */
-export function highlightToHtml(text: string, query: string | undefined): string {
-  const terms = extractSearchTerms(query)
+export function highlightToHtml(text: string, query: string | undefined, mode: HighlightMode = 'all'): string {
+  const terms = extractSearchTerms(query, mode)
   if (terms.length === 0) return escapeHtml(text)
 
   const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))

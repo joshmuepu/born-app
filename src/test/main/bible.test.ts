@@ -74,4 +74,12 @@ describe('searchBible', () => {
   it('returns [] for a too-short query', () => {
     expect(bible.searchBible('a', 'KJV')).toEqual([])
   })
+
+  it('never truncates at the old 50-row cap', () => {
+    for (let i = 0; i < 60; i++) {
+      ins.run('KJV', 45, 1, 100 + i, `Verse about steadfast covenant number ${i}`)
+    }
+    const hits = bible.searchBible('covenant', 'KJV')
+    expect(hits.length).toBeGreaterThan(50)
+  })
 })

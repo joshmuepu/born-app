@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Search } from 'lucide-react'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
+import { highlight } from '../highlight'
+import './SermonPanel.css'
+import type { HighlightMode } from '../../../shared/searchHighlight'
 
 interface Props {
   /** The sermon being shown. */
@@ -10,10 +13,20 @@ interface Props {
   anchorRef: string
   /** The paragraph on the projector right now (null unless this sermon is live). */
   liveRef: string | null
+  /** Still-active search term, if the operator got here from a search result —
+   *  kept highlighted here too, since this is the screen where they're actually
+   *  choosing which paragraph to put on the screen. */
+  query?: string
+  matchType?: HighlightMode
   onBack: () => void
   onProject: (quote: Quote) => void
   onAddToQueue: (quote: Quote) => void
 }
+
+/** Long enough that the default 12-line clamp on the focused paragraph would
+ *  still cut it off mid-thought — offer an explicit "show more" instead of
+ *  silently truncating. */
+const LONG_PARAGRAPH_CHARS = 700
 
 /**
  * Clicking a search result opens this — the whole sermon, scrolled to the
@@ -25,12 +38,15 @@ export default function SermonFollowView({
   sermonId,
   anchorRef,
   liveRef,
+  query,
+  matchType,
   onBack,
   onProject,
   onAddToQueue
 }: Props) {
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const focusEl = useRef<HTMLDivElement>(null)
   // The first jump into a sermon (from a search result, possibly hundreds of
   // paragraphs in) should land instantly — animating that whole distance
@@ -77,6 +93,12 @@ export default function SermonFollowView({
         </button>
         <span className="follow-title">{title}</span>
         <span className="follow-meta">{dateCode}</span>
+        {query && (
+          <span className="follow-still-searching">
+            <Search width={12} height={12} strokeWidth={2.2} aria-hidden="true" />
+            still searching &ldquo;<b>{query}</b>&rdquo;
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -86,6 +108,8 @@ export default function SermonFollowView({
           {paras.map((q) => {
             const live = liveRef !== null && refsOverlap(liveRef, q.paragraphRef)
             const focused = !live && refsOverlap(focusRef, q.paragraphRef)
+            const isLong = q.text.length > LONG_PARAGRAPH_CHARS
+            const isExpanded = expanded.has(q.paragraphRef)
             return (
               <div
                 key={q.paragraphRef}
@@ -93,7 +117,8 @@ export default function SermonFollowView({
                 className={[
                   'follow-para',
                   live ? 'follow-para--on-screen' : '',
-                  focused ? 'follow-para--focus' : ''
+                  focused ? 'follow-para--focus' : '',
+                  isExpanded ? 'follow-para--expanded' : ''
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
@@ -110,7 +135,24 @@ export default function SermonFollowView({
                   <span className="follow-para-ref">¶{q.paragraphRef}</span>
                   {live && <span className="on-screen-tag">On screen</span>}
                 </div>
-                <p className="follow-para-text">{q.text}</p>
+                <p className="follow-para-text">{highlight(q.text, query, matchType)}</p>
+                {isLong && (focused || live) && (
+                  <button
+                    className="follow-para-expand"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setExpanded((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(q.paragraphRef)) next.delete(q.paragraphRef)
+                        else next.add(q.paragraphRef)
+                        return next
+                      })
+                    }}
+                  >
+                    <ChevronDown width={12} height={12} strokeWidth={2.4} aria-hidden="true" />
+                    {isExpanded ? 'Show less' : 'Show full paragraph'}
+                  </button>
+                )}
                 <div className="result-actions">
                   <button
                     className="btn-quiet btn-sm"

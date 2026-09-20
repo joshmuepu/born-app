@@ -477,92 +477,12 @@ body {
   font-size: var(--text-sm);
 }
 
-/* ── Search Bar ──────────────────────────────────────────── */
-
-.search-bar-container {
-  flex-shrink: 0;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-}
-
-.search-bar {
-  display: flex;
-  gap: 8px;
-  padding: 14px 16px;
-}
-
-.filter-toggle {
-  white-space: nowrap;
-}
-
-.filter-toggle--active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.search-filters {
-  padding: 4px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.filter-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.filter-label {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  width: 56px;
-  flex-shrink: 0;
-}
-
-.filter-clear {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  padding: 2px 0;
-  text-decoration: underline;
-}
-.filter-clear:hover {
-  color: var(--text-primary);
-}
-
-.filter-input {
-  flex: 1;
-  padding: 5px 10px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  outline: none;
-  transition: border-color var(--dur-fast) var(--ease-out);
-}
-
-.filter-input:focus {
-  border-color: var(--accent);
-}
-
-.filter-input::placeholder {
-  color: var(--text-secondary);
-}
-
-.filter-input--sm {
-  max-width: 130px;
-}
-
-.filter-sep {
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-}
+/* ── Search Bar ──────────────────────────────────────────────────────────
+   Sermon-specific search chrome (the bar itself, filters popover,
+   autocomplete, results, follow-along view) lives in SermonPanel.css now,
+   matching Bible/Songs. What's left here is genuinely shared with them —
+   .search-input itself, and the Phrase/All/Any-style toggle Bible reuses
+   for its own Reference/Keyword/Browse switch. ────────────────────────── */
 
 .filter-mode {
   display: flex;
@@ -599,15 +519,6 @@ body {
   align-items: center;
 }
 
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-secondary);
-  pointer-events: none;
-}
-
 .search-input {
   flex: 1;
   padding: 10px 34px 10px 34px;
@@ -629,24 +540,40 @@ body {
   color: var(--text-secondary);
 }
 
-/* ── Results ─────────────────────────────────────────────── */
+/* ── Results / empty-state hub / follow-along view ──────────────────────
+   Section-specific results UI lives in each section's own stylesheet. What
+   stays here: the search-highlight mark, the results-count label, the
+   empty-state icon (also used by the home start screen), and the on-screen
+   accent — all genuinely shared across Sermon/Bible/Songs. ─────────────── */
 
-.results-empty,
-.queue-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--text-secondary);
-  font-size: var(--text-md);
-  text-align: center;
-  padding: 0 32px;
+/* The search-term highlight <mark class="hl"> the shared highlight() helper
+ * (highlight.tsx) renders — used by Sermon, Bible, AND Songs search results.
+ * It used to live in SermonPanel.css and only worked for the other two
+ * sections because Vite happens to bundle every section's CSS into one file;
+ * nothing declared it as actually shared. Keep it here, in the file that's
+ * genuinely cross-section, so a future change to how the CSS bundles (per
+ * route/section code-splitting, for instance) can't silently break
+ * highlighting everywhere except Sermon with no error to catch it. */
+mark.hl {
+  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--text-primary);
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 0 1px;
 }
-.results-empty-hint {
-  font-size: var(--text-base);
-  opacity: 0.8;
+
+/* Result count above a results list — Sermon/Bible/Songs all show one.
+ * One shared rule instead of three independently-written near-duplicates,
+ * which had drifted: different padding, Sermon alone had a bottom border,
+ * and Bible hardcoded its font-size instead of using the --text-xs token. */
+.results-count {
+  flex-shrink: 0;
+  padding: 8px 16px 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* Icon badge shared by view-level empty/start states (not small inline hints). */
@@ -662,48 +589,12 @@ body {
   color: var(--accent);
 }
 
-.results-count {
-  flex-shrink: 0;
-  padding: 8px 16px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 1px solid var(--border);
-}
-
-.results-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.result-item {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 12px 14px;
-  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
-}
-
-.result-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background-color: var(--bg-panel);
-}
-
 /* The paragraph / verse currently on the projector. */
 .result-item--on-screen,
 .bible-verse--on-screen {
   border-color: var(--accent) !important;
   background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary)) !important;
   box-shadow: inset 3px 0 0 var(--accent);
-}
-.result-item--on-screen .result-text {
-  -webkit-line-clamp: 12;
 }
 
 .on-screen-tag {
@@ -719,15 +610,11 @@ body {
   white-space: nowrap;
 }
 
-/* ── Sermon follow-along view (replaces the results list while projecting) ── */
+/* ── Follow-along header/list shell ──────────────────────────────────────
+   Sermon-specific follow-view body (paragraphs, expand toggle, "still
+   searching" indicator) moved to SermonPanel.css. .follow-head/-title/-meta/
+   -list stay here — Bible's chapter-reading view reuses this same shell. ── */
 
-.follow-view {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-}
 .follow-head {
   flex-shrink: 0;
   display: flex;
@@ -758,42 +645,6 @@ body {
   flex-direction: column;
   gap: 6px;
 }
-.follow-para {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-}
-.follow-para--on-screen {
-  border-color: var(--accent);
-  background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary));
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-.follow-para-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.follow-para-ref {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--accent);
-  font-family: var(--font-mono);
-}
-.follow-para-text {
-  font-size: var(--text-md);
-  line-height: 1.5;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.follow-para--on-screen .follow-para-text {
-  -webkit-line-clamp: 40;
-}
 
 /* Click a result / verse / paragraph / slide to open or project it. */
 .result-body,
@@ -801,11 +652,6 @@ body {
 .bible-verse[role='button'],
 .song-slide[role='button'] {
   cursor: pointer;
-}
-.result-body {
-  border-radius: var(--r-sm);
-  margin: -2px -2px 0;
-  padding: 2px 2px 0;
 }
 .follow-para[role='button']:hover,
 .bible-verse[role='button']:hover,
@@ -827,56 +673,6 @@ body {
 .bible-verse--focus {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   background-color: color-mix(in srgb, var(--accent) 6%, var(--bg-secondary));
-}
-.follow-para--focus .follow-para-text {
-  -webkit-line-clamp: 12;
-}
-
-.result-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.result-title {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.result-meta {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  flex-shrink: 0;
-}
-
-.result-text {
-  font-size: var(--text-md);
-  line-height: 1.55;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.result-item:hover .result-text {
-  -webkit-line-clamp: 12;
-}
-
-mark.hl {
-  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  color: var(--text-primary);
-  font-weight: 700;
-  border-radius: 2px;
-  padding: 0 1px;
 }
 
 .result-actions {
@@ -1185,6 +981,39 @@ mark.hl {
   letter-spacing: 0.06em;
   color: var(--text-secondary);
   margin-right: 4px;
+}
+
+/* One-tap verse/chorus jump for the item currently on screen — today that's
+ * always a song (the only kind with more than a couple of meaningfully
+ * labeled slides), but the row lives here because ServiceQueue, not
+ * SongsPanel, is what's showing while something is actually live. */
+.live-slide-jump {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+.live-slide-jump-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.live-slide-jump-chip:hover {
+  border-color: color-mix(in srgb, var(--live) 55%, var(--border));
+  color: var(--text-primary);
+}
+.live-slide-jump-chip.is-active {
+  background: color-mix(in srgb, var(--live) 16%, var(--bg-secondary));
+  border-color: var(--live);
+  color: var(--live);
 }
 
 .queue-live-nav {
@@ -1581,7 +1410,8 @@ mark.hl {
   border-left-color: var(--songs);
 }
 
-/* ── Autocomplete dropdown ───────────────────────────────── */
+/* ── Search input wrap ────────────────────────────────────
+   Sermon's autocomplete dropdown moved to SermonPanel.css. */
 
 .search-input-wrap {
   position: relative;
@@ -1590,33 +1420,6 @@ mark.hl {
 
 .search-input-wrap .search-input {
   width: 100%;
-}
-
-.autocomplete-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  z-index: 200;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-}
-
-.autocomplete-item {
-  padding: 8px 12px;
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
-}
-
-.autocomplete-item:hover,
-.autocomplete-item.active {
-  background: var(--tint-accent-weak);
-  color: var(--accent);
 }
 
 /* ── Language selector ───────────────────────────────────── */
@@ -1667,33 +1470,8 @@ mark.hl {
   background: var(--text-secondary);
 }
 
-/* ── Loading / spinner ───────────────────────────────────── */
-
-.results-loading {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s3);
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* ── Status copy button ─────────────────────────────────────
+   Sermon's loading spinner/keyframes moved to SermonPanel.css. */
 
 .status-copy {
   background: none;
@@ -1816,10 +1594,15 @@ mark.hl {
   justify-content: space-between;
   gap: 10px;
 }
+/* Matches the app's other section labels (.results-count, .screens-popover-title
+ * above it) — was plain sentence-case body text, out of step with the rest of
+ * this same popover. */
 .screens-group-title {
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .screens-select {
   width: 100%;

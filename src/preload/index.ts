@@ -155,7 +155,13 @@ const api = {
   // Search (local index, with automatic server fallback in main process)
   searchSermons: (
     query: string,
-    filters?: { yearFrom?: string; yearTo?: string; titleFilter?: string; forceTokens?: boolean }
+    filters?: {
+      yearFrom?: string
+      yearTo?: string
+      titleFilter?: string
+      matchMode?: 'phrase' | 'all' | 'any'
+      dateCode?: string
+    }
   ): Promise<Quote[]> => ipcRenderer.invoke('search:query', query, filters),
 
   // Autocomplete
@@ -277,6 +283,7 @@ const api = {
     activeIndex: number | null
     activeSlide: number
     blanked: boolean
+    bibleTranslation: string
     onScreen: {
       kind: string
       text: string
@@ -339,8 +346,9 @@ const api = {
     ipcRenderer.on('webremote:queue-song', handler)
     return () => ipcRenderer.removeListener('webremote:queue-song', handler)
   },
-  onWebRemoteProjectSong: (callback: (songId: number) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, songId: number): void => callback(songId)
+  onWebRemoteProjectSong: (callback: (songId: number, slide: number) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { songId: number; slide: number }): void =>
+      callback(data.songId, data.slide)
     ipcRenderer.on('webremote:project-song', handler)
     return () => ipcRenderer.removeListener('webremote:project-song', handler)
   },
@@ -362,6 +370,10 @@ const api = {
   saveServiceNamed: (name: string, items: unknown): Promise<boolean> =>
     ipcRenderer.invoke('service:save-named', name, items),
   noteSongUsed: (id: number): void => ipcRenderer.send('songs:note-used', id),
+  noteSermonUsed: (quote: Quote): void => ipcRenderer.send('sermons:note-used', quote),
+  getRecentSermons: (): Promise<Quote[]> => ipcRenderer.invoke('sermons:recent'),
+  clearRecentSermons: (): Promise<void> => ipcRenderer.invoke('sermons:clear-recent'),
+  getOnThisDay: (): Promise<unknown[]> => ipcRenderer.invoke('browse:on-this-day'),
 
   // Browse
   getBrowseSeries: (): Promise<unknown[]> => ipcRenderer.invoke('browse:series'),
@@ -399,12 +411,19 @@ const api = {
     direction: 'next' | 'prev'
   ): Promise<unknown> =>
     ipcRenderer.invoke('bible:adjacent-verse', translation, bookNum, chapter, verse, direction),
+  noteBibleUsed: (reference: string, translation: string): void =>
+    ipcRenderer.send('bible:note-used', reference, translation),
+  getRecentBibleRefs: (): Promise<Array<{ reference: string; translation: string }>> =>
+    ipcRenderer.invoke('bible:recent'),
+  clearRecentBibleRefs: (): Promise<void> => ipcRenderer.invoke('bible:clear-recent'),
 
   // Songs
   searchSongs: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:search', query),
   getSong: (id: number): Promise<unknown> => ipcRenderer.invoke('songs:get', id),
   importSongs: (): Promise<unknown> => ipcRenderer.invoke('songs:import'),
   deleteSong: (id: number): Promise<boolean> => ipcRenderer.invoke('songs:delete', id),
+  getRecentSongs: (): Promise<unknown[]> => ipcRenderer.invoke('songs:recent'),
+  clearRecentSongs: (): Promise<void> => ipcRenderer.invoke('songs:clear-recent'),
 
   // Languages / translation
   getLanguages: (): Promise<Record<string, string>> => ipcRenderer.invoke('languages:list'),

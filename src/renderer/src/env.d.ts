@@ -77,7 +77,13 @@ declare global {
       // Search (local, with server fallback)
       searchSermons: (
         query: string,
-        filters?: { yearFrom?: string; yearTo?: string; titleFilter?: string; forceTokens?: boolean }
+        filters?: {
+          yearFrom?: string
+          yearTo?: string
+          titleFilter?: string
+          matchMode?: 'phrase' | 'all' | 'any'
+          dateCode?: string
+        }
       ) => Promise<Quote[]>
       // Autocomplete
       getAutocompleteSuggestions: (wordPart: string) => Promise<string[]>
@@ -136,6 +142,7 @@ declare global {
         activeIndex: number | null
         activeSlide: number
         blanked: boolean
+        bibleTranslation: string
         onScreen: {
           kind: string
           text: string
@@ -156,12 +163,16 @@ declare global {
         callback: (data: { reference: string; translation: string }) => void
       ) => () => void
       onWebRemoteQueueSong: (callback: (songId: number) => void) => () => void
-      onWebRemoteProjectSong: (callback: (songId: number) => void) => () => void
+      onWebRemoteProjectSong: (callback: (songId: number, slide: number) => void) => () => void
       onWebRemoteNewService: (callback: () => void) => () => void
       onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void
       onWebRemoteOpenService: (callback: (items: unknown[]) => void) => () => void
       saveServiceNamed: (name: string, items: unknown) => Promise<boolean>
       noteSongUsed: (id: number) => void
+      noteSermonUsed: (quote: Quote) => void
+      getRecentSermons: () => Promise<Quote[]>
+      clearRecentSermons: () => Promise<void>
+      getOnThisDay: () => Promise<Array<{ id: number; date_code: string; title: string }>>
       // Browse
       getBrowseSeries: () => Promise<SeriesEntry[]>
       getBrowseStates: () => Promise<StateEntry[]>
@@ -193,11 +204,16 @@ declare global {
         verse: number,
         direction: 'next' | 'prev'
       ) => Promise<AdjacentVerse | null>
+      noteBibleUsed: (reference: string, translation: string) => void
+      getRecentBibleRefs: () => Promise<Array<{ reference: string; translation: string }>>
+      clearRecentBibleRefs: () => Promise<void>
       // Songs
       searchSongs: (query: string) => Promise<SongSummary[]>
       getSong: (id: number) => Promise<SongDetail | null>
       importSongs: () => Promise<SongImportResult | null>
       deleteSong: (id: number) => Promise<boolean>
+      getRecentSongs: () => Promise<SongSummary[]>
+      clearRecentSongs: () => Promise<void>
       // Languages / translation
       getLanguages: () => Promise<Record<string, string>>
       translateQuote: (

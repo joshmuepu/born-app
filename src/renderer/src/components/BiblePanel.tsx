@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronLeft, X, BookOpen } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { ChevronLeft, ChevronDown, X, BookOpen, Search, Check, Clock } from 'lucide-react'
 import type {
   BibleTranslation,
   ResolvedPassage,
@@ -7,8 +7,10 @@ import type {
   BibleSearchMode,
   BibleSearchRange
 } from '../types'
-import { formatVerse } from '../../../shared/bibleRef'
+import { formatVerse, parseReference, isRefError, formatReference, type ParsedRef } from '../../../shared/bibleRef'
 import { bookByNum, BIBLE_BOOKS } from '../../../shared/bibleBooks'
+import { resultCountLabel } from '../../../shared/searchLimits'
+import { highlight } from '../highlight'
 import './BiblePanel.css'
 
 interface Props {
@@ -20,11 +22,14 @@ interface Props {
   preview?: { bookNum: number; chapter: number; verse: number } | null
   onAddPassage: (p: ResolvedPassage) => void
   onProjectPassage: (p: ResolvedPassage, slide?: number) => void
+  /** Reported on every change (including the initial default) so the app can
+   *  tell the remote which translation is actually live — the remote has no
+   *  picker of its own, it just reflects this. */
+  onTranslationChange?: (code: string) => void
 }
 
-type Mode = 'reference' | 'keyword'
-
-/** Keyword-search range: the whole Bible, a testament, or one book. */
+/** Search scope: the whole Bible (default), a testament, or one book —
+ *  opt-in narrowing, never required to get a result. */
 type RangeSel = 'all' | 'ot' | 'nt' | number
 
 const OT_BOOKS = BIBLE_BOOKS.filter((b) => b.num <= 39)
@@ -37,31 +42,80 @@ function rangeFor(sel: RangeSel): BibleSearchRange | undefined {
   return { bookFrom: sel, bookTo: sel }
 }
 
-export default function BiblePanel({ visible, onScreen, preview, onAddPassage, onProjectPassage }: Props) {
+export default function BiblePanel({
+  visible,
+  onScreen,
+  preview,
+  onAddPassage,
+  onProjectPassage,
+  onTranslationChange
+}: Props) {
   const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
   const [translation, setTranslation] = useState(
     () => localStorage.getItem('born.bibleTranslation') || 'KJV'
   )
-  const [mode, setMode] = useState<Mode>('reference')
+  useEffect(() => {
+    onTranslationChange?.(translation)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translation])
 
-  const [refInput, setRefInput] = useState('')
+  const [tab, setTab] = useState<'search' | 'browse'>('search')
+
+  // One smart box: parseReference (pure, synchronous) decides on every
+  // keystroke whether this reads as a reference or a keyword search — no
+  // mode to declare up front.
+  const [query, setQuery] = useState('')
   const [passage, setPassage] = useState<ResolvedPassage | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
 
-  const [keyword, setKeyword] = useState('')
   const [hits, setHits] = useState<BibleSearchHit[]>([])
   const [searchMode, setSearchMode] = useState<BibleSearchMode>('phrase')
-  const [rangeSel, setRangeSel] = useState<RangeSel>('all')
-  const keywordTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Browse drawer: slides over the right third of the panel, whatever's
-  // showing underneath stays put. null = show the book grid; otherwise the
-  // book whose chapter grid is showing. Picking a chapter drops a
-  // browseAnchor (below), which is what actually opens the reading view.
-  const [browseOpen, setBrowseOpen] = useState(false)
+  // Search scope — default whole-Bible, opt-in narrowing via the popover.
+  const [scope, setScope] = useState<RangeSel>('all')
+  const [scopePopoverOpen, setScopePopoverOpen] = useState(false)
+  const scopeRef = useRef<HTMLDivElement>(null)
+  const scopeToggleRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const onOutside = (e: MouseEvent): void => {
+      if (
+        scopeRef.current &&
+        !scopeRef.current.contains(e.target as Node) &&
+        !scopeToggleRef.current?.contains(e.target as Node)
+      ) {
+        setScopePopoverOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+  const scoped = scope !== 'all'
+  const scopeLabel =
+    scope === 'all' ? 'Whole Bible' : scope === 'ot' ? 'Old Testament' : scope === 'nt' ? 'New Testament' : bookByNum(scope)?.abbrev ?? 'Book'
+
+  // Browse tab: a 2-hub picker (All Books / Recently Looked Up), then either
+  // the full-width book grid → chapter grid, or the recent list — all in
+  // place, no drawer.
+  const [browseSection, setBrowseSection] = useState<'all' | 'recent'>('all')
   const [browseBook, setBrowseBook] = useState<number | null>(null)
+
+  const [recentRefs, setRecentRefs] = useState<Array<{ reference: string; translation: string }>>([])
+  const [recentLoaded, setRecentLoaded] = useState(false)
+  const loadRecent = useCallback(() => {
+    window.electronAPI.getRecentBibleRefs().then((r) => {
+      setRecentRefs(r)
+      setRecentLoaded(true)
+    })
+  }, [])
+  useEffect(() => {
+    if (visible) loadRecent()
+  }, [visible, loadRecent])
+  const clearRecent = useCallback(() => {
+    window.electronAPI.clearRecentBibleRefs().then(() => setRecentRefs([]))
+  }, [])
 
   // The chapter view: click a search result (or project a passage) and the panel
   // shows the whole chapter, scrolled to that verse. While something is on the
@@ -73,8 +127,8 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     verse: number
   } | null>(null)
   const [chapterView, setChapterView] = useState<ResolvedPassage | null>(null)
-  // Set by "← Search" so the operator can look something else up even mid-service;
-  // cleared again the moment a new verse hits the projector.
+  // Set by "← Search"/"← Browse" so the operator can look something else up
+  // even mid-service; cleared again the moment a new verse hits the projector.
   const [showSearch, setShowSearch] = useState(false)
   const focusVerseRef = useRef<HTMLDivElement>(null)
 
@@ -135,21 +189,37 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     })
   }, [visible, translation])
 
-  const doLookup = useCallback(
-    async (ref: string, trans: string) => {
-      const r = ref.trim()
-      if (!r) return
-      const res = await window.electronAPI.lookupPassage(r, trans)
-      if ((res as { error?: string }).error) {
-        setPassage(null)
-        setLookupError((res as { error: string }).error)
-      } else {
-        setPassage(res as ResolvedPassage)
-        setLookupError(null)
-        setRefInput((res as ResolvedPassage).reference)
-      }
+  const doLookup = useCallback(async (ref: string, trans: string) => {
+    const r = ref.trim()
+    if (!r) return
+    const res = await window.electronAPI.lookupPassage(r, trans)
+    if ((res as { error?: string }).error) {
+      setPassage(null)
+      setLookupError((res as { error: string }).error)
+    } else {
+      setPassage(res as ResolvedPassage)
+      setLookupError(null)
+    }
+  }, [])
+
+  // Wrap the parent's add/project callbacks so every path through this panel
+  // also refreshes "Recently Looked Up" — noteBibleUsed (called by the
+  // parent) writes to settings, but this panel's own recentRefs state won't
+  // see that until asked again. Same pattern as SongsPanel's queueSong/
+  // projectSong wrapping onAddSong/onProjectSong.
+  const addPassage = useCallback(
+    (p: ResolvedPassage) => {
+      onAddPassage(p)
+      loadRecent()
     },
-    []
+    [onAddPassage, loadRecent]
+  )
+  const projectPassage = useCallback(
+    (p: ResolvedPassage, slide = 0) => {
+      onProjectPassage(p, slide)
+      loadRecent()
+    },
+    [onProjectPassage, loadRecent]
   )
 
   /** Queue or project a single verse (or any reference) straight from a result,
@@ -161,18 +231,32 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     },
     [translation]
   )
-  const queueRef = useCallback((ref: string) => resolveThen(ref, onAddPassage), [resolveThen, onAddPassage])
+  const queueRef = useCallback((ref: string) => resolveThen(ref, addPassage), [resolveThen, addPassage])
   const projectRef = useCallback(
-    (ref: string) => resolveThen(ref, (p) => onProjectPassage(p, 0)),
-    [resolveThen, onProjectPassage]
+    (ref: string) => resolveThen(ref, (p) => projectPassage(p, 0)),
+    [resolveThen, projectPassage]
   )
 
   /** Click a result: open the whole chapter, sitting on that verse (no projection). */
   const openChapterAt = useCallback((bookNum: number, chapter: number, verse: number) => {
     setShowSearch(false)
     setBrowseAnchor({ bookNum, chapter, verse })
-    setBrowseOpen(false)
   }, [])
+
+  /** Click a "Recently Looked Up" chip: re-resolve the reference (translation
+   *  may have changed since) and open it, same as any other browse entry. */
+  const openRecentRef = useCallback(
+    (r: { reference: string; translation: string }) => {
+      setShowSearch(false)
+      window.electronAPI.lookupPassage(r.reference, r.translation).then((res) => {
+        if (res && !(res as { error?: string }).error) {
+          const p = res as ResolvedPassage
+          setBrowseAnchor({ bookNum: p.bookNum, chapter: p.chapter, verse: p.verseStart })
+        }
+      })
+    },
+    []
+  )
 
   const changeTranslation = (code: string): void => {
     setTranslation(code)
@@ -181,25 +265,66 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     } catch {
       /* ignore */
     }
-    if (passage) doLookup(passage.reference, code)
+    const q = query.trim()
+    if (!q) return
+    const parsed = parseReference(q)
+    if (!isRefError(parsed)) doLookup(q, code)
+    else if (q.length >= 2) window.electronAPI.searchBible(q, code, searchMode, rangeFor(scope)).then(setHits)
   }
 
-  // keyword search (debounced)
+  // What the box currently reads as — recomputed synchronously on every
+  // keystroke (parseReference is pure/instant), so the "Recognized as…"
+  // confirmation and the mode-specific controls never lag behind typing.
+  const parsedRef = useMemo(() => (query.trim() ? parseReference(query.trim()) : null), [query])
+  const validRef: ParsedRef | null = parsedRef && !isRefError(parsedRef) ? parsedRef : null
+  const isReferenceIntent = !!validRef
+
+  const runQuery = useCallback(
+    (q: string) => {
+      const parsed = parseReference(q)
+      if (!isRefError(parsed)) {
+        doLookup(q, translation)
+        setHits([])
+      } else if (q.length >= 2) {
+        window.electronAPI.searchBible(q, translation, searchMode, rangeFor(scope)).then(setHits)
+        setPassage(null)
+        setLookupError(null)
+      } else {
+        setHits([])
+        setPassage(null)
+        setLookupError(null)
+      }
+    },
+    [translation, searchMode, scope, doLookup]
+  )
+
+  // The actual lookup/search is debounced; the "Recognized as…" preview
+  // above is not (it's a pure function, no reason to wait).
   useEffect(() => {
-    if (keywordTimer.current) clearTimeout(keywordTimer.current)
-    if (mode !== 'keyword' || keyword.trim().length < 2) {
+    if (timer.current) clearTimeout(timer.current)
+    const q = query.trim()
+    if (!q) {
+      setPassage(null)
+      setLookupError(null)
       setHits([])
       return
     }
-    keywordTimer.current = setTimeout(() => {
-      window.electronAPI
-        .searchBible(keyword.trim(), translation, searchMode, rangeFor(rangeSel))
-        .then(setHits)
-    }, 250)
+    timer.current = setTimeout(() => runQuery(q), 200)
     return () => {
-      if (keywordTimer.current) clearTimeout(keywordTimer.current)
+      if (timer.current) clearTimeout(timer.current)
     }
-  }, [keyword, translation, mode, searchMode, rangeSel])
+  }, [query, runQuery])
+
+  const handleQueryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      if (timer.current) clearTimeout(timer.current)
+      const q = query.trim()
+      if (q) runQuery(q)
+    } else if (e.key === 'Escape' && query) {
+      e.preventDefault()
+      setQuery('')
+    }
+  }
 
   const readingView = focusVerse && chapterView && !showSearch && (() => {
     const book = bookByNum(focusVerse.bookNum)
@@ -212,9 +337,17 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
       <>
         <div className="follow-head">
           <button className="btn-quiet btn-sm btn-icon-text" onClick={() => setShowSearch(true)}>
-            <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Search
+            <ChevronLeft width={14} height={14} strokeWidth={2.4} /> {tab === 'search' ? 'Search' : 'Browse'}
           </button>
-          <button className="btn-secondary btn-sm btn-icon-text" onClick={() => setBrowseOpen(true)} title="Jump to a different book or chapter">
+          <button
+            className="btn-secondary btn-sm btn-icon-text"
+            onClick={() => {
+              setBrowseBook(focusVerse.bookNum)
+              setTab('browse')
+              setShowSearch(true)
+            }}
+            title="Jump to a different book or chapter"
+          >
             <BookOpen width={14} height={14} strokeWidth={2} /> Books
           </button>
           <span className="follow-title">
@@ -230,7 +363,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
             const focused = !live && v.verse === focusVerse.verse
             const project = (): void => {
               setBrowseAnchor({ bookNum: focusVerse.bookNum, chapter: focusVerse.chapter, verse: v.verse })
-              onProjectPassage(chapterView, chapterView.slideStarts[i] ?? 0)
+              projectPassage(chapterView, chapterView.slideStarts[i] ?? 0)
             }
             return (
               <div
@@ -282,13 +415,64 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
     )
   })()
 
+  const scopePopover = scopePopoverOpen && (
+    <div className="bible-scope-popover" ref={scopeRef}>
+      <button className={`bible-scope-option${scope === 'all' ? ' active' : ''}`} onClick={() => { setScope('all'); setScopePopoverOpen(false) }}>
+        Whole Bible
+      </button>
+      <button className={`bible-scope-option${scope === 'ot' ? ' active' : ''}`} onClick={() => { setScope('ot'); setScopePopoverOpen(false) }}>
+        Old Testament
+      </button>
+      <button className={`bible-scope-option${scope === 'nt' ? ' active' : ''}`} onClick={() => { setScope('nt'); setScopePopoverOpen(false) }}>
+        New Testament
+      </button>
+      <div className="bible-scope-grid">
+        {BIBLE_BOOKS.map((b) => (
+          <button
+            key={b.num}
+            className={`bible-scope-book${scope === b.num ? ' active' : ''}`}
+            onClick={() => { setScope(b.num); setScopePopoverOpen(false) }}
+          >
+            {b.abbrev}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   const searchView = (
     <>
       <div className="bible-controls">
-        <div className="bible-mode">
-          <button className={`filter-mode-btn${mode === 'reference' ? ' active' : ''}`} onClick={() => setMode('reference')}>Reference</button>
-          <button className={`filter-mode-btn${mode === 'keyword' ? ' active' : ''}`} onClick={() => setMode('keyword')}>Keyword</button>
-          <button className={`filter-mode-btn${browseOpen ? ' active' : ''}`} onClick={() => setBrowseOpen(true)}>Browse</button>
+        <div className="search-input-wrap">
+          <Search className="search-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
+          <input
+            className="search-input"
+            placeholder="Reference or a word — John 3:16, or faith…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleQueryKeyDown}
+            autoFocus
+          />
+          {query && (
+            <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
+          )}
+        </div>
+        <div className="bible-scope-wrap">
+          <button
+            ref={scopeToggleRef}
+            className={`bible-scope-btn${scoped ? ' is-scoped' : ''}`}
+            onClick={() => setScopePopoverOpen((o) => !o)}
+            title="Narrow search to a testament or book"
+          >
+            {scopeLabel}
+            {!scoped && <ChevronDown width={11} height={11} strokeWidth={2.5} />}
+          </button>
+          {scoped && (
+            <button className="bible-scope-clear" title="Search the whole Bible again" onClick={() => setScope('all')}>
+              <X width={11} height={11} strokeWidth={2.5} />
+            </button>
+          )}
+          {scopePopover}
         </div>
         <select
           className="language-select"
@@ -303,38 +487,63 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
         </select>
       </div>
 
-      {mode === 'reference' ? (
-        <>
-          <div className="bible-ref-row">
-            <div className="search-input-wrap">
-              <input
-                className="search-input"
-                placeholder="Reference — e.g. John 3:16, Psalm 23, 1 Cor 13:4-7"
-                value={refInput}
-                onChange={(e) => setRefInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') doLookup(refInput, translation)
-                  else if (e.key === 'Escape' && refInput) { e.preventDefault(); setRefInput('') }
-                }}
-                autoFocus
-              />
-              {refInput && (
-                <button className="search-clear" onClick={() => setRefInput('')} title="Clear (Esc)" aria-label="Clear reference"><X width={13} height={13} strokeWidth={2.4} /></button>
-              )}
-            </div>
-            <button className="btn-primary" onClick={() => doLookup(refInput, translation)} disabled={!refInput.trim()}>
-              Look up
+      {validRef && (
+        <div className="bible-recognized">
+          <Check width={11} height={11} strokeWidth={2.5} />
+          Recognized as {formatReference(validRef)}
+        </div>
+      )}
+
+      {!isReferenceIntent && query.trim().length > 0 && (
+        <div className="bible-search-options">
+          <div className="filter-mode" role="tablist" aria-label="Search mode">
+            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'phrase' ? ' active' : ''}`} title="Match the words in this exact order" onClick={() => setSearchMode('phrase')}>
+              Phrase
+            </button>
+            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'all' ? ' active' : ''}`} title="Match verses containing every word, in any order" onClick={() => setSearchMode('all')}>
+              All words
+            </button>
+            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'any' ? ' active' : ''}`} title="Match verses containing any of the words" onClick={() => setSearchMode('any')}>
+              Any word
             </button>
           </div>
-          {lookupError && <div className="bible-hint bible-hint--error">{lookupError}</div>}
+          {scoped && <span className="bible-scope-hint">Searching only {scopeLabel} — clear the {scopeLabel === 'Old Testament' || scopeLabel === 'New Testament' ? 'testament' : 'book'} chip to search everywhere again</span>}
+        </div>
+      )}
 
+      {query.trim() === '' && (
+        <div className="bible-search-empty">
+          <p className="bible-search-empty-hint">
+            Type a reference or a word — or{' '}
+            <button className="bible-inline-link" onClick={() => setTab('browse')}>browse all books</button>.
+          </p>
+          {recentLoaded && recentRefs.length > 0 && (
+            <div className="bible-recent-chips">
+              <div className="bible-recent-chips-label">
+                <Clock width={12} height={12} strokeWidth={2} /> RECENTLY LOOKED UP
+              </div>
+              <div className="bible-recent-chips-row">
+                {recentRefs.map((r) => (
+                  <button key={r.reference} className="bible-recent-chip" onClick={() => openRecentRef(r)}>
+                    {r.reference}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isReferenceIntent ? (
+        <>
+          {lookupError && <div className="bible-hint bible-hint--error">{lookupError}</div>}
           {passage && (
             <div className="bible-passage">
               <div className="bible-passage-head">
                 <span className="bible-passage-ref">{passage.reference} · {passage.translation}</span>
                 <div className="result-actions">
-                  <button className="btn-secondary btn-sm" onClick={() => onAddPassage(passage)}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={() => onProjectPassage(passage, 0)}>Project</button>
+                  <button className="btn-secondary btn-sm" onClick={() => addPassage(passage)}>+ Queue</button>
+                  <button className="btn-primary btn-sm" onClick={() => projectPassage(passage, 0)}>Project</button>
                 </div>
               </div>
               <div className="bible-verses">
@@ -374,7 +583,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
                         title={`Put verse ${v.verse} on the screen`}
                         onClick={(e) => {
                           e.stopPropagation()
-                          onProjectPassage(passage, passage.slideStarts[i] ?? 0)
+                          projectPassage(passage, passage.slideStarts[i] ?? 0)
                         }}
                       >
                         Project
@@ -386,73 +595,15 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
             </div>
           )}
         </>
-      ) : (
+      ) : query.trim().length > 0 ? (
         <>
-          <div className="bible-ref-row">
-            <div className="search-input-wrap">
-              <input
-                className="search-input"
-                placeholder="Search the Bible for a word or phrase…"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape' && keyword) { e.preventDefault(); setKeyword('') } }}
-                autoFocus
-              />
-              {keyword && (
-                <button className="search-clear" onClick={() => setKeyword('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
-              )}
+          {hits.length > 0 && (
+            <div className="results-count">
+              {resultCountLabel(hits.length)}{scoped ? ` in ${scopeLabel}` : ''}
             </div>
-          </div>
-          <div className="bible-search-options">
-            <div className="bible-mode bible-mode--sub" role="tablist" aria-label="Search mode">
-              <button
-                className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'phrase' ? ' active' : ''}`}
-                title="Match the words in this exact order"
-                onClick={() => setSearchMode('phrase')}
-              >
-                Phrase
-              </button>
-              <button
-                className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'all' ? ' active' : ''}`}
-                title="Match verses containing every word, in any order"
-                onClick={() => setSearchMode('all')}
-              >
-                All words
-              </button>
-              <button
-                className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'any' ? ' active' : ''}`}
-                title="Match verses containing any of the words"
-                onClick={() => setSearchMode('any')}
-              >
-                Any word
-              </button>
-            </div>
-            <select
-              className="language-select"
-              value={rangeSel}
-              onChange={(e) => {
-                const v = e.target.value
-                setRangeSel(v === 'all' || v === 'ot' || v === 'nt' ? v : Number(v))
-              }}
-              title="Restrict the search to part of the Bible"
-            >
-              <option value="all">Whole Bible</option>
-              <option value="ot">Old Testament</option>
-              <option value="nt">New Testament</option>
-              <optgroup label="Old Testament">
-                {OT_BOOKS.map((b) => (
-                  <option key={b.num} value={b.num}>{b.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="New Testament">
-                {NT_BOOKS.map((b) => (
-                  <option key={b.num} value={b.num}>{b.name}</option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
+          )}
           <div className="bible-verses">
-            {hits.length === 0 && keyword.trim().length >= 2 && (
+            {hits.length === 0 && query.trim().length >= 2 && (
               <div className="bible-hint">No verses found.</div>
             )}
             {hits.map((h) => (
@@ -474,7 +625,7 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
                   }}
                 >
                   <span className="bible-verse-ref">{h.reference}</span>
-                  <span className="bible-verse-text">{h.text}</span>
+                  <span className="bible-verse-text">{highlight(h.text, query)}</span>
                 </div>
                 <div className="bible-verse-actions">
                   <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={() => queueRef(h.reference)}>
@@ -488,69 +639,114 @@ export default function BiblePanel({ visible, onScreen, preview, onAddPassage, o
             ))}
           </div>
         </>
-      )}
+      ) : null}
     </>
+  )
+
+  const browseView = (
+    <div className="bible-browse">
+      {browseBook === null && (
+        <div className="bible-browse-hub">
+          <button
+            className={`bible-browse-hub-card${browseSection === 'all' ? ' active' : ''}`}
+            onClick={() => setBrowseSection('all')}
+          >
+            <div className="bible-browse-hub-icon"><BookOpen width={16} height={16} strokeWidth={2} /></div>
+            <div className="bible-browse-hub-title">All Books</div>
+            <div className="bible-browse-hub-sub">Old &amp; New Testament</div>
+          </button>
+          <button
+            className={`bible-browse-hub-card${browseSection === 'recent' ? ' active' : ''}`}
+            onClick={() => setBrowseSection('recent')}
+          >
+            <div className="bible-browse-hub-icon"><Clock width={16} height={16} strokeWidth={2} /></div>
+            <div className="bible-browse-hub-title">Recently Looked Up</div>
+            <div className="bible-browse-hub-sub">What you opened last{recentLoaded ? ` · ${recentRefs.length}` : ''}</div>
+          </button>
+        </div>
+      )}
+      {browseBook === null && browseSection === 'recent' ? (
+        <div className="bible-browse-scroll">
+          {recentLoaded && recentRefs.length === 0 && (
+            <div className="bible-hint">Nothing looked up yet this session.</div>
+          )}
+          {recentRefs.length > 0 && (
+            <div className="bible-recent-clear-row">
+              <button className="bible-inline-link" onClick={clearRecent}>Clear</button>
+            </div>
+          )}
+          <div className="bible-browse-grid">
+            {recentRefs.map((r) => (
+              <button key={r.reference} className="bible-browse-book" onClick={() => openRecentRef(r)} title={r.reference}>
+                <span className="bible-browse-book-abbrev">{r.reference}</span>
+                <span className="bible-browse-book-count">{r.translation}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : browseBook === null ? (
+        <div className="bible-browse-scroll">
+          <div className="bible-browse-section">
+            <div className="bible-browse-head">
+              <span>Old Testament</span>
+              <span className="bible-browse-count">39 books</span>
+            </div>
+            <div className="bible-browse-grid">
+              {OT_BOOKS.map((b) => (
+                <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
+                  <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-count">{b.chapters} ch</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="bible-browse-section">
+            <div className="bible-browse-head">
+              <span>New Testament</span>
+              <span className="bible-browse-count">27 books</span>
+            </div>
+            <div className="bible-browse-grid">
+              {NT_BOOKS.map((b) => (
+                <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
+                  <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-count">{b.chapters} ch</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bible-browse-scroll">
+          <div className="bible-browse-crumb">
+            <button className="btn-quiet btn-sm btn-icon-text" onClick={() => setBrowseBook(null)}>
+              <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Books
+            </button>
+            <span className="bible-browse-crumb-title">{bookByNum(browseBook)?.name}</span>
+          </div>
+          <div className="bible-browse-grid bible-browse-grid--chapters">
+            {Array.from({ length: bookByNum(browseBook)?.chapters ?? 0 }, (_, i) => i + 1).map((c) => (
+              <button key={c} className="bible-browse-chapter" onClick={() => openChapterAt(browseBook, c, 1)}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 
   return (
     <div className="bible-panel">
-      <div className="bible-panel-main">{readingView || searchView}</div>
-
-      <div
-        className={`bible-browse-scrim${browseOpen ? ' is-open' : ''}`}
-        onClick={() => setBrowseOpen(false)}
-        aria-hidden={!browseOpen}
-      />
-      <div className={`bible-browse-drawer${browseOpen ? ' is-open' : ''}`} aria-hidden={!browseOpen}>
-        <div className="bible-browse-drawer-head">
-          <span className="bible-browse-drawer-title">
-            {browseBook === null ? 'Books' : bookByNum(browseBook)?.name}
-          </span>
-          <button className="btn-quiet btn-sm" onClick={() => setBrowseOpen(false)}>Cancel</button>
-        </div>
-        <div className="bible-browse-drawer-body">
-          {browseBook === null ? (
-            <>
-              <div className="bible-browse-section">
-                <div className="bible-browse-head">Old Testament</div>
-                <div className="bible-browse-grid">
-                  {OT_BOOKS.map((b) => (
-                    <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
-                      {b.abbrev}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="bible-browse-section">
-                <div className="bible-browse-head">New Testament</div>
-                <div className="bible-browse-grid">
-                  {NT_BOOKS.map((b) => (
-                    <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
-                      {b.abbrev}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="bible-browse-section">
-              <div className="bible-browse-head">
-                <button className="btn-quiet btn-sm btn-icon-text" onClick={() => setBrowseBook(null)}><ChevronLeft width={14} height={14} strokeWidth={2.4} /> Books</button>
-              </div>
-              <div className="bible-browse-grid bible-browse-grid--chapters">
-                {Array.from({ length: bookByNum(browseBook)?.chapters ?? 0 }, (_, i) => i + 1).map((c) => (
-                  <button
-                    key={c}
-                    className="bible-browse-chapter"
-                    onClick={() => openChapterAt(browseBook, c, 1)}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="panel-subtab-bar">
+        <button className={`panel-subtab${tab === 'search' ? ' active' : ''}`} onClick={() => { setTab('search'); setShowSearch(true) }}>
+          Search
+        </button>
+        <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => { setTab('browse'); setShowSearch(true) }}>
+          Browse
+        </button>
+      </div>
+      <div className="bible-panel-main">
+        {readingView || (tab === 'search' ? searchView : browseView)}
       </div>
     </div>
   )

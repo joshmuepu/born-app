@@ -5,43 +5,59 @@
   overflow: hidden;
 }
 
-.browse-tabs {
-  display: flex;
-  align-items: center;
+/* ── Browse hub: four entry cards replace the old plain text tab bar ──────── */
+.browse-hub {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
+.browse-hub-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  color: var(--sermons);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.browse-hub-card:hover {
+  background: var(--bg-hover);
+}
+.browse-hub-card.active {
+  border-color: var(--sermons);
+  background: var(--sermons-wash);
+}
+.browse-hub-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.browse-hub-sub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.browse-language-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px 0;
+  flex-shrink: 0;
+}
+
 .browse-language {
-  margin: 0 6px;
   flex-shrink: 0;
   font-size: var(--text-xs);
   padding: 3px 6px;
-  max-width: 120px;
-}
-
-.browse-tab {
-  flex: 1;
-  padding: 8px 4px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
-}
-
-.browse-tab:hover {
-  color: var(--text-primary);
-}
-
-.browse-tab.active {
-  color: var(--sermons);
-  border-bottom-color: var(--sermons);
+  max-width: 140px;
 }
 
 .browse-content {
@@ -57,15 +73,34 @@
   padding: 8px 0;
 }
 
+/* Series / Location / sermon-in-a-group lists — a real card grid instead of
+   a flat list of black text, so scale (2 sermons vs. 295) reads at a glance. */
+.browse-list--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  padding: 12px;
+}
+
 .browse-item {
-  padding: 10px 14px;
+  padding: 12px 14px;
   cursor: pointer;
-  border-radius: var(--r-sm);
-  transition: background var(--dur-fast) var(--ease-out);
+  border-radius: var(--r-md);
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.browse-list--grid .browse-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
 }
 
 .browse-item:hover {
   background: var(--bg-secondary);
+}
+
+.browse-list--grid .browse-item:hover {
+  border-color: color-mix(in srgb, var(--sermons) 55%, var(--border));
+  background: var(--bg-hover);
 }
 
 .browse-item.selected {

@@ -1,7 +1,7 @@
 {
   "name": "born",
   "productName": "Branham or Nothing",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "BORN — Branham or Nothing: sermon quote search and projection tool",
   "main": "out/main/index.js",
   "scripts": {

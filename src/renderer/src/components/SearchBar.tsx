@@ -1,11 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
 import type { Quote } from '../types'
+import { addRecentSearch } from '../recentSearches'
+import './SermonPanel.css'
 
 interface Props {
   onResults: (results: Quote[], query: string) => void
   onSearchingChange?: (searching: boolean) => void
+  /** Bump `nonce` to run `term` as if the operator had typed and searched it —
+   *  how the empty state's recent-search chips re-run a past search. */
+  externalQuery?: { term: string; nonce: number } | null
 }
+
+type MatchMode = 'phrase' | 'all' | 'any'
 
 /** The word fragment the caret is completing (last whitespace-delimited token). */
 function lastWord(text: string): string {
@@ -13,14 +20,15 @@ function lastWord(text: string): string {
   return parts[parts.length - 1] ?? ''
 }
 
-export default function SearchBar({ onResults, onSearchingChange }: Props) {
+export default function SearchBar({ onResults, onSearchingChange, externalQuery }: Props) {
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [yearFrom, setYearFrom] = useState('')
   const [yearTo, setYearTo] = useState('')
   const [titleFilter, setTitleFilter] = useState('')
-  const [forceTokens, setForceTokens] = useState(false)
+  const [exactDate, setExactDate] = useState('')
+  const [matchMode, setMatchMode] = useState<MatchMode>('phrase')
 
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -28,6 +36,8 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
 
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const filtersRef = useRef<HTMLDivElement>(null)
+  const filtersToggleRef = useRef<HTMLButtonElement>(null)
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Monotonic id so a slow in-flight request can't overwrite a newer one.
   const reqId = useRef(0)
@@ -66,7 +76,7 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
     }
   }, [query])
 
-  // Close the dropdown on an outside click.
+  // Close the suggestions dropdown and the filters popover on an outside click.
   useEffect(() => {
     const onOutside = (e: MouseEvent): void => {
       if (
@@ -75,6 +85,13 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
         !inputRef.current?.contains(e.target as Node)
       ) {
         setShowSuggestions(false)
+      }
+      if (
+        filtersRef.current &&
+        !filtersRef.current.contains(e.target as Node) &&
+        !filtersToggleRef.current?.contains(e.target as Node)
+      ) {
+        setShowFilters(false)
       }
     }
     document.addEventListener('mousedown', onOutside)
@@ -101,25 +118,40 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
     [closeSuggestions]
   )
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim()) return
-    setIsSearching(true)
-    onSearchingChange?.(true)
-    closeSuggestions()
-    try {
-      const filters = {
-        yearFrom: yearFrom.trim() || undefined,
-        yearTo: yearTo.trim() || undefined,
-        titleFilter: titleFilter.trim() || undefined,
-        forceTokens
+  const runSearch = useCallback(
+    async (q: string) => {
+      if (!q.trim()) return
+      setIsSearching(true)
+      onSearchingChange?.(true)
+      closeSuggestions()
+      try {
+        const filters = {
+          yearFrom: yearFrom.trim() || undefined,
+          yearTo: yearTo.trim() || undefined,
+          titleFilter: titleFilter.trim() || undefined,
+          dateCode: exactDate.trim() || undefined,
+          matchMode
+        }
+        const results = await window.electronAPI.searchSermons(q.trim(), filters)
+        onResults(results, q.trim())
+        addRecentSearch(q.trim())
+      } finally {
+        setIsSearching(false)
+        onSearchingChange?.(false)
       }
-      const results = await window.electronAPI.searchSermons(query.trim(), filters)
-      onResults(results, query.trim())
-    } finally {
-      setIsSearching(false)
-      onSearchingChange?.(false)
-    }
-  }, [query, yearFrom, yearTo, titleFilter, forceTokens, onResults, onSearchingChange, closeSuggestions])
+    },
+    [yearFrom, yearTo, titleFilter, exactDate, matchMode, onResults, onSearchingChange, closeSuggestions]
+  )
+
+  const handleSearch = useCallback(() => runSearch(query), [runSearch, query])
+
+  // A recent-search chip elsewhere in the panel re-runs a past query.
+  useEffect(() => {
+    if (!externalQuery?.term) return
+    setQuery(externalQuery.term)
+    runSearch(externalQuery.term)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalQuery?.nonce])
 
   const clearSearch = useCallback(() => {
     setQuery('')
@@ -161,14 +193,14 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
     [showSuggestions, suggestions, activeSuggestion, applySuggestion, closeSuggestions, handleSearch, query, clearSearch]
   )
 
-  const filterCount = [yearFrom || yearTo, titleFilter].filter(Boolean).length
+  const filterCount = [yearFrom || yearTo, titleFilter, exactDate, matchMode !== 'phrase'].filter(Boolean).length
   const hasFilters = filterCount > 0
 
   return (
     <div className="search-bar-container">
       <div className="search-bar">
         <div className="search-input-wrap">
-          <Search className="search-icon" width={16} height={16} strokeWidth={2} aria-hidden="true" />
+          <Search className="search-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
           <input
             ref={inputRef}
             id="born-search-input"
@@ -211,77 +243,102 @@ export default function SearchBar({ onResults, onSearchingChange }: Props) {
             </div>
           )}
         </div>
-        <button
-          className={`btn-secondary filter-toggle${hasFilters ? ' filter-toggle--active' : ''}`}
-          onClick={() => setShowFilters((v) => !v)}
-          title="Narrow your search by year or sermon"
-        >
-          Filters{hasFilters ? ` (${filterCount})` : ''}
-        </button>
+        <div className="filter-popover-wrap">
+          <button
+            ref={filtersToggleRef}
+            className={`btn-secondary filter-toggle${hasFilters ? ' filter-toggle--active' : ''}`}
+            onClick={() => setShowFilters((v) => !v)}
+            title="Narrow your search"
+          >
+            <SlidersHorizontal width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            Filters{hasFilters ? ` (${filterCount})` : ''}
+          </button>
+
+          {showFilters && (
+            <div className="filter-popover" ref={filtersRef}>
+              <div className="filter-section">
+                <div className="filter-section-label">Match</div>
+                <div className="filter-mode">
+                  <button
+                    className={`filter-mode-btn${matchMode === 'phrase' ? ' active' : ''}`}
+                    onClick={() => setMatchMode('phrase')}
+                  >
+                    Phrase
+                  </button>
+                  <button
+                    className={`filter-mode-btn${matchMode === 'all' ? ' active' : ''}`}
+                    onClick={() => setMatchMode('all')}
+                  >
+                    All words
+                  </button>
+                  <button
+                    className={`filter-mode-btn${matchMode === 'any' ? ' active' : ''}`}
+                    onClick={() => setMatchMode('any')}
+                  >
+                    Any word
+                  </button>
+                </div>
+              </div>
+
+              <div className="filter-section">
+                <div className="filter-section-label">Date</div>
+                <div className="filter-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="filter-input filter-input--sm"
+                    placeholder="Year from"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                  />
+                  <span className="filter-sep">to</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="filter-input filter-input--sm"
+                    placeholder="Year to"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                  />
+                </div>
+                <input
+                  type="text"
+                  className="filter-input filter-input--date"
+                  placeholder="Exact date — e.g. 63-0825E"
+                  value={exactDate}
+                  onChange={(e) => setExactDate(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-section">
+                <div className="filter-section-label">Sermon title</div>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Only search sermons whose title contains…"
+                  value={titleFilter}
+                  onChange={(e) => setTitleFilter(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-popover-footer">
+                {hasFilters ? (
+                  <button
+                    className="filter-clear"
+                    onClick={() => { setYearFrom(''); setYearTo(''); setTitleFilter(''); setExactDate(''); setMatchMode('phrase') }}
+                  >
+                    Clear filters
+                  </button>
+                ) : <span />}
+                <button className="btn-primary btn-sm" onClick={() => setShowFilters(false)}>Done</button>
+              </div>
+            </div>
+          )}
+        </div>
         <button className="btn-primary" onClick={handleSearch} disabled={isSearching || !query.trim()}>
           {isSearching ? 'Searching…' : 'Search'}
         </button>
       </div>
-
-      {showFilters && (
-        <div className="search-filters">
-          <div className="filter-row">
-            <label className="filter-label">Years</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="filter-input filter-input--sm"
-              placeholder="From"
-              value={yearFrom}
-              onChange={(e) => setYearFrom(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-            />
-            <span className="filter-sep">to</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="filter-input filter-input--sm"
-              placeholder="To"
-              value={yearTo}
-              onChange={(e) => setYearTo(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-            />
-          </div>
-          <div className="filter-row">
-            <label className="filter-label">Sermon</label>
-            <input
-              type="text"
-              className="filter-input"
-              placeholder="Only search sermons whose title contains…"
-              value={titleFilter}
-              onChange={(e) => setTitleFilter(e.target.value)}
-            />
-          </div>
-          <div className="filter-row">
-            <label className="filter-label">Match</label>
-            <div className="filter-mode">
-              <button
-                className={`filter-mode-btn${!forceTokens ? ' active' : ''}`}
-                onClick={() => setForceTokens(false)}
-              >
-                This exact phrase
-              </button>
-              <button
-                className={`filter-mode-btn${forceTokens ? ' active' : ''}`}
-                onClick={() => setForceTokens(true)}
-              >
-                Any of these words
-              </button>
-            </div>
-          </div>
-          {hasFilters && (
-            <button
-              className="filter-clear"
-              onClick={() => { setYearFrom(''); setYearTo(''); setTitleFilter('') }}
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 }

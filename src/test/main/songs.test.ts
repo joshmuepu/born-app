@@ -27,6 +27,45 @@ insertSong(
   'import',
   'import:mine.txt'
 )
+// Deliberately lopsided for the title-priority ranking test below: "harbor"
+// appears once in this song's title but nowhere else, giving it a weak bm25
+// score on its own.
+insertSong(
+  db,
+  { title: 'Harbor Of Rest', slides: [{ text: 'Jesus is my harbor when the storms arise' }] },
+  'bundled',
+  'bundled:harbor.pro'
+)
+// "harbor" never appears in the title, but repeats across every slide, which
+// gives plain bm25 a strong reason to rank this ABOVE the title match above —
+// exactly the case the title-priority sort exists to override.
+insertSong(
+  db,
+  {
+    title: 'Anchor Song',
+    slides: [
+      { text: 'Safe harbor, safe harbor, my soul has found a harbor' },
+      { text: 'Harbor, harbor, blessed harbor of the Lord' },
+      { text: 'In the harbor, in the harbor, I will stay' }
+    ]
+  },
+  'bundled',
+  'bundled:anchor.pro'
+)
+insertSong(
+  db,
+  {
+    title: 'Blessed Assurance',
+    slides: [
+      { label: 'Verse 1', text: 'Blessed assurance, Jesus is mine' },
+      { label: 'Chorus', text: 'This is my story, this is my song' },
+      { text: 'Perfect submission, perfect delight' }, // no label — should become "Verse 2"
+      { text: 'Watching and waiting, looking above' } // no label — should become "Verse 3"
+    ]
+  },
+  'bundled',
+  'bundled:blessed.pro'
+)
 
 vi.mock('../../main/libraryDb', () => ({ getLibraryDb: () => db }))
 vi.mock('../../main/logger', () => ({
@@ -40,7 +79,13 @@ beforeAll(async () => {
 
 describe('searchSongs', () => {
   it('lists everything for an empty query', () => {
-    expect(songs.searchSongs('').map((s) => s.title).sort()).toEqual(['Amazing Grace', 'My Own Song'])
+    expect(songs.searchSongs('').map((s) => s.title).sort()).toEqual([
+      'Amazing Grace',
+      'Anchor Song',
+      'Blessed Assurance',
+      'Harbor Of Rest',
+      'My Own Song'
+    ])
   })
   it('FTS-matches title and lyrics', () => {
     expect(songs.searchSongs('chains').map((s) => s.title)).toEqual(['Amazing Grace'])
@@ -51,6 +96,39 @@ describe('searchSongs', () => {
     expect(s.slideCount).toBe(2)
     expect(s.source).toBe('bundled')
   })
+  it('flags a title match, with no lyric snippet attached', () => {
+    const s = songs.searchSongs('grace')[0]
+    expect(s.matchedInTitle).toBe(true)
+    expect(s.matchSlide).toBeUndefined()
+  })
+  it('flags a lyrics-only match and attaches the matching slide', () => {
+    const s = songs.searchSongs('chains')[0]
+    expect(s.matchedInTitle).toBe(false)
+    expect(s.matchSlide?.label).toBe('Chorus')
+    expect(s.matchSlide?.text).toContain('chains')
+  })
+  it('ranks a title match above a lyrics-only match even when bm25 alone would not', () => {
+    const results = songs.searchSongs('harbor')
+    const titles = results.map((s) => s.title)
+    expect(titles).toContain('Harbor Of Rest')
+    expect(titles).toContain('Anchor Song')
+    expect(titles.indexOf('Harbor Of Rest')).toBeLessThan(titles.indexOf('Anchor Song'))
+    expect(results.find((s) => s.title === 'Harbor Of Rest')?.matchedInTitle).toBe(true)
+    expect(results.find((s) => s.title === 'Anchor Song')?.matchedInTitle).toBe(false)
+  })
+  it('never truncates the library at the old 50-row cap', () => {
+    const bulkDb = db
+    for (let i = 0; i < 60; i++) {
+      insertSong(
+        bulkDb,
+        { title: `Revival Song ${String(i).padStart(3, '0')}`, slides: [{ text: 'send a revival' }] },
+        'bundled',
+        `bundled:revival-${i}.pro`
+      )
+    }
+    expect(songs.searchSongs('').length).toBeGreaterThan(50)
+    expect(songs.searchSongs('revival').length).toBeGreaterThan(50)
+  })
 })
 
 describe('getSong', () => {
@@ -59,6 +137,11 @@ describe('getSong', () => {
     const detail = songs.getSong(all[0].id)!
     expect(detail.author).toBe('John Newton')
     expect(detail.slides.map((s) => s.label)).toEqual(['Verse 1', 'Chorus'])
+  })
+  it('numbers unlabeled slides as verses in sequence, counting through a chorus', () => {
+    const all = songs.searchSongs('blessed assurance')
+    const detail = songs.getSong(all[0].id)!
+    expect(detail.slides.map((s) => s.label)).toEqual(['Verse 1', 'Chorus', 'Verse 2', 'Verse 3'])
   })
   it('returns null for an unknown id', () => {
     expect(songs.getSong(9999)).toBeNull()

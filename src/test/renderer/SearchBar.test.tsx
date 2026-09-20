@@ -80,13 +80,14 @@ describe('SearchBar', () => {
     await waitFor(() => expect(onSearchingChange).toHaveBeenCalledWith(false))
   })
 
-  it('shows the Filters panel when Filters is clicked', async () => {
+  it('shows the Filters popover when Filters is clicked', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    expect(screen.getByPlaceholderText(/^From$/i)).toBeDefined()
-    expect(screen.getByPlaceholderText(/^To$/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/^Year from$/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/^Year to$/i)).toBeDefined()
     expect(screen.getByPlaceholderText(/whose title contains/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/exact date/i)).toBeDefined()
   })
 
   it('passes filter values to searchSermons', async () => {
@@ -95,9 +96,10 @@ describe('SearchBar', () => {
 
     await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'holy')
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    await user.type(screen.getByPlaceholderText(/^From$/i), '1960')
-    await user.type(screen.getByPlaceholderText(/^To$/i), '1965')
+    await user.type(screen.getByPlaceholderText(/^Year from$/i), '1960')
+    await user.type(screen.getByPlaceholderText(/^Year to$/i), '1965')
     await user.type(screen.getByPlaceholderText(/whose title contains/i), 'Spirit')
+    await user.type(screen.getByPlaceholderText(/exact date/i), '63-0825E')
     await user.click(screen.getByRole('button', { name: /^search$/i }))
 
     await waitFor(() =>
@@ -105,24 +107,42 @@ describe('SearchBar', () => {
         yearFrom: '1960',
         yearTo: '1965',
         titleFilter: 'Spirit',
-        forceTokens: false
+        dateCode: '63-0825E',
+        matchMode: 'phrase'
       })
     )
   })
 
-  it('switches to "Any of these words" mode', async () => {
+  it('switches to "All words" mode', async () => {
     const user = userEvent.setup()
     render(<SearchBar onResults={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /filters/i }))
-    await user.click(screen.getByRole('button', { name: /any of these words/i }))
+    await user.click(screen.getByRole('button', { name: /^all words$/i }))
     await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'faith hope')
     await user.click(screen.getByRole('button', { name: /^search$/i }))
 
     await waitFor(() =>
       expect(window.electronAPI.searchSermons).toHaveBeenCalledWith(
         'faith hope',
-        expect.objectContaining({ forceTokens: true })
+        expect.objectContaining({ matchMode: 'all' })
+      )
+    )
+  })
+
+  it('switches to "Any word" mode', async () => {
+    const user = userEvent.setup()
+    render(<SearchBar onResults={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /filters/i }))
+    await user.click(screen.getByRole('button', { name: /^any word$/i }))
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'faith hope')
+    await user.click(screen.getByRole('button', { name: /^search$/i }))
+
+    await waitFor(() =>
+      expect(window.electronAPI.searchSermons).toHaveBeenCalledWith(
+        'faith hope',
+        expect.objectContaining({ matchMode: 'any' })
       )
     )
   })
@@ -133,11 +153,11 @@ describe('SearchBar', () => {
 
     await user.click(screen.getByRole('button', { name: /filters/i }))
     expect(screen.queryByRole('button', { name: /clear filters/i })).toBeNull()
-    await user.type(screen.getByPlaceholderText(/^From$/i), '1960')
+    await user.type(screen.getByPlaceholderText(/^Year from$/i), '1960')
     expect(screen.getByRole('button', { name: /clear filters/i })).toBeDefined()
 
     await user.click(screen.getByRole('button', { name: /clear filters/i }))
-    expect((screen.getByPlaceholderText(/^From$/i) as HTMLInputElement).value).toBe('')
+    expect((screen.getByPlaceholderText(/^Year from$/i) as HTMLInputElement).value).toBe('')
   })
 
   it('shows autocomplete suggestions after typing 2+ chars', async () => {

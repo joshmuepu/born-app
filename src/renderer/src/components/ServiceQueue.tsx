@@ -29,7 +29,7 @@ interface Props {
   projectionOpen: boolean
   stageOpen: boolean
   blanked: boolean
-  onProject: (index: number) => void
+  onProject: (index: number, slide?: number) => void
   /** Click a row to go to that item in the source panel (does NOT project it). */
   onSelect: (index: number) => void
   onRemove: (index: number) => void
@@ -110,6 +110,12 @@ export default function ServiceQueue({
   const nextItemIndex =
     activeIndex == null ? (queue.length > 0 ? 0 : -1) : activeIndex + 1
   const nextItem = nextItemIndex >= 0 && nextItemIndex < queue.length ? queue[nextItemIndex] : null
+
+  // A song's slides carry real labels (Verse 1, Chorus…) — surface them as
+  // one-tap jump chips right where the operator is already looking, instead
+  // of making them reopen the Songs panel to jump to (or repeat) the chorus.
+  const activeItem = activeIndex != null ? queue[activeIndex] : null
+  const showSlideJump = !status && activeItem?.kind === 'song' && activeItem.slides.length > 1
 
   return (
     <div className="service-queue">
@@ -273,6 +279,22 @@ export default function ServiceQueue({
               </div>
             )}
           </div>
+          {showSlideJump && activeItem?.kind === 'song' && (
+            <div className="live-slide-jump" role="tablist" aria-label="Jump to a verse or chorus">
+              {activeItem.slides.map((s, i) => (
+                <button
+                  key={i}
+                  role="tab"
+                  aria-selected={i === activeSlide}
+                  className={`live-slide-jump-chip${i === activeSlide ? ' is-active' : ''}`}
+                  onClick={() => onProject(activeIndex as number, i)}
+                  title={i === activeSlide ? `Repeat: ${s.label ?? `Slide ${i + 1}`}` : `Jump to ${s.label ?? `Slide ${i + 1}`}`}
+                >
+                  {s.label ?? `Slide ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="queue-live-nav">
             <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back — previous slide / verse / paragraph (← or Shift+Space)">
               ‹ Back

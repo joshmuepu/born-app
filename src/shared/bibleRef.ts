@@ -22,32 +22,17 @@ export interface RefError {
 const SINGLE_CHAPTER = new Set([31, 57, 63, 64, 65]) // Obadiah, Philemon, 2 John, 3 John, Jude
 
 const REF_RE = /^(.+?)\s+(\d+)(?:\s*:\s*(\d+)(?:\s*[-–—]\s*(\d+))?)?\s*$/
+// No colon at all — "john 3 16", how someone might naturally say or type it.
+// Requires both a chapter and a verse number so it never fires on a plain
+// "book chapter" reference (that's REF_RE's job, with n2 left undefined).
+const REF_RE_SPACE_VERSE = /^(.+?)\s+(\d+)\s+(\d+)(?:\s*[-–—]\s*(\d+))?\s*$/
 
-export function parseReference(input: string): ParsedRef | RefError {
-  const raw = (input ?? '').trim().replace(/\s+/g, ' ')
-  if (!raw) return { error: 'Enter a reference, e.g. John 3:16' }
+interface BookLike {
+  num: number
+  name: string
+}
 
-  const m = raw.match(REF_RE)
-  if (!m) {
-    // A bare book name ("Malachi", "MAL", "1 John", "Song of Solomon") means
-    // the whole of that book's first chapter.
-    const bookOnly = findBook(raw)
-    if (bookOnly) {
-      return {
-        bookNum: bookOnly.num,
-        bookName: bookOnly.name,
-        chapter: 1,
-        verseStart: null,
-        verseEnd: null
-      }
-    }
-    return { error: `Couldn't read "${input}". Try "John 3:16" or "Psalm 23".` }
-  }
-
-  const [, bookRaw, n1, n2, n3] = m
-  const book = findBook(bookRaw)
-  if (!book) return { error: `Unknown book "${bookRaw.trim()}".` }
-
+function buildRef(book: BookLike, n1: string, n2: string | undefined, n3: string | undefined): ParsedRef | RefError {
   let chapter: number
   let verseStart: number | null
   let verseEnd: number | null
@@ -82,6 +67,49 @@ export function parseReference(input: string): ParsedRef | RefError {
     verseStart,
     verseEnd
   }
+}
+
+export function parseReference(input: string): ParsedRef | RefError {
+  const raw = (input ?? '').trim().replace(/\s+/g, ' ')
+  if (!raw) return { error: 'Enter a reference, e.g. John 3:16' }
+
+  const m = raw.match(REF_RE)
+  if (m) {
+    const [, bookRaw, n1, n2, n3] = m
+    const book = findBook(bookRaw)
+    if (book) return buildRef(book, n1, n2, n3)
+    // The book portion didn't resolve — REF_RE's lazy match may have folded
+    // a bare verse number into what looked like the book name (typing
+    // "john 3 16" with no colon parses here as book="john 3", chapter=16).
+    // Before giving up, try reading the whole thing as "book chapter verse"
+    // with no colon at all.
+    const m2 = raw.match(REF_RE_SPACE_VERSE)
+    if (m2) {
+      const book2 = findBook(m2[1])
+      if (book2) return buildRef(book2, m2[2], m2[3], m2[4])
+    }
+    return { error: `Unknown book "${bookRaw.trim()}".` }
+  }
+
+  const m2 = raw.match(REF_RE_SPACE_VERSE)
+  if (m2) {
+    const book2 = findBook(m2[1])
+    if (book2) return buildRef(book2, m2[2], m2[3], m2[4])
+  }
+
+  // A bare book name ("Malachi", "MAL", "1 John", "Song of Solomon") means
+  // the whole of that book's first chapter.
+  const bookOnly = findBook(raw)
+  if (bookOnly) {
+    return {
+      bookNum: bookOnly.num,
+      bookName: bookOnly.name,
+      chapter: 1,
+      verseStart: null,
+      verseEnd: null
+    }
+  }
+  return { error: `Couldn't read "${input}". Try "John 3:16" or "Psalm 23".` }
 }
 
 export function isRefError(x: ParsedRef | RefError): x is RefError {
