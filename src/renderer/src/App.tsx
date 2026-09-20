@@ -654,6 +654,17 @@ export default function App() {
       }
 
       const mod = e.metaKey || e.ctrlKey
+
+      // ⌘/Ctrl+Shift+W: open/close the projection window. Deliberately not
+      // plain ⌘/Ctrl+W (which reads as "close this — the control — window")
+      // and not Cmd+C/Cmd+X (already Copy/Cut everywhere, including inside
+      // this app's own search boxes — repurposing either would risk closing
+      // the projector mid-service just from copying a quote).
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault()
+        handleToggleProjection()
+        return
+      }
       if (mod && e.key === 'Enter') {
         if (searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
         return
@@ -719,7 +730,8 @@ export default function App() {
     handlePrev,
     handleNext,
     projectQueueDelta,
-    handleToggleBlank
+    handleToggleBlank,
+    handleToggleProjection
   ])
 
   // ── Alert / service files ──────────────────────────────────────────────────
@@ -1170,6 +1182,7 @@ export default function App() {
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
