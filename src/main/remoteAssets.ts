@@ -531,7 +531,12 @@ function renderCurrentTab(){
 
 /* ── Polling: queue / on-screen / blank state ─────────────────────── */
 function poll(){
-  getJSON('/state').then(function(s){
+  // Returns the fetch promise so a just-fired project/queue command can wait
+  // for one fresh /state before switching the view to it — otherwise the
+  // Queue tab renders with whatever state.qs was BEFORE this action, up to
+  // 1s stale, showing "Nothing on screen yet" right after the operator just
+  // projected something.
+  return getJSON('/state').then(function(s){
     state.qs = s;
     setConn(true);
     if(state.tab === 'queue') renderQueueTab();
@@ -540,6 +545,28 @@ function poll(){
     refreshOpenDetailSheet();
     renderTabletPreview();
   }).catch(function(){ setConn(false); });
+}
+
+/* A "project" command's HTTP response only means the desktop received it —
+ * the actual on-screen update still has to cross an IPC hop into the
+ * desktop's own React state (and, if the projection window was closed, wait
+ * for a whole new window to open) before this remote's next /state fetch can
+ * see it. One immediate poll often loses that race and switches to the Queue
+ * tab showing a stale "Nothing on screen yet." Poll a few times, short delay
+ * between each, and stop as soon as the state we're after actually shows up
+ * — falls back to just moving on after the last attempt either way, since a
+ * bounded wait beats blocking indefinitely on an edge case. */
+function pollUntilOnScreen(done){
+  var attempts = 0;
+  function attempt(){
+    attempts++;
+    poll().then(function(){
+      if(state.qs && state.qs.onScreen) { done(); return; }
+      if(attempts >= 6) { done(); return; }
+      setTimeout(attempt, 200);
+    });
+  }
+  attempt();
 }
 function setConn(ok){
   var p = $('conn-p'); var t = $('conn-t');
@@ -1029,7 +1056,7 @@ function renderBibleTab(){
   if(list && state.tab === 'bible'){
     list.innerHTML = '<h2>Bible</h2>'
       + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
-      + '<div class="searchbox bible" style="margin-bottom:10px"><span>' + ICON_SEARCH + '</span><input id="bibleInputT" placeholder="John 3:16, or &quot;faith&quot;…" value="' + esc(state.bibleQuery) + '" onkeydown="if(event.key===\\'Enter\\')runBibleSearch(true)"/></div>'
+      + '<div style="display:flex;margin-bottom:10px"><div class="searchbox bible"><span>' + ICON_SEARCH + '</span><input id="bibleInputT" placeholder="John 3:16, or &quot;faith&quot;…" value="' + esc(state.bibleQuery) + '" onkeydown="if(event.key===\\'Enter\\')runBibleSearch(true)"/></div></div>'
       + scopeRow
       + '<div class="livebar-slot" id="livebar-bibleT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="bibleBodyT">' + bibleBodyHtml() + '</div>';
@@ -1237,7 +1264,7 @@ function renderSongsTab(){
   if(list && state.tab === 'songs'){
     list.innerHTML = '<h2>Songs</h2>'
       + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
-      + '<div class="searchbox" style="margin-bottom:10px"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div>'
+      + '<div style="display:flex;margin-bottom:10px"><div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div></div>'
       + '<div class="livebar-slot" id="livebar-songsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div id="songsBodyT" class="songs-body songs-body--tablet">' + songsBodyHtml() + '</div>';
   }
@@ -1366,7 +1393,10 @@ function afterProjectFromSheet(){
   toast('Projecting…');
   closeSheet();
   state.selected = null;
-  setTab('queue');
+  // Fetch the just-updated on-screen state before switching to the Queue
+  // tab, so it never briefly renders "Nothing on screen yet" right after
+  // the operator's own tap projected something.
+  pollUntilOnScreen(function(){ setTab('queue'); });
 }
 function projectPreviewSlide(i){
   var item = state.selected;
@@ -1487,7 +1517,10 @@ function sheetAction(which){
     closeSheet();
     if(which === 'project'){
       state.selected = null;
-      setTab('queue');
+      // Same fix as afterProjectFromSheet: wait for a fresh /state before
+      // switching to the Queue tab, so it doesn't render a stale "nothing
+      // on screen" for up to a second right after this project tap.
+      pollUntilOnScreen(function(){ setTab('queue'); });
     } else {
       renderTabletPreview();
     }
