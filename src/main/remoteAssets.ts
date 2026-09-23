@@ -101,15 +101,24 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 .now-card{margin:14px 18px 0; border-radius:14px; background:var(--surface); border:1px solid var(--border); overflow:hidden}
 .now-card-body{padding:14px}
-.now-head{display:flex; align-items:center; gap:6px; margin-bottom:8px}
-.now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22)}
-.now-label{font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:var(--live)}
-.now-ref{margin-left:auto; font-size:11px; font-family:ui-monospace,monospace}
+/* flex-wrap so a long reference (title + date + marker) drops to its own
+   full-width line on a narrow phone instead of squeezing into a mid-word
+   wrap beside the label — found during a broad QA pass, not a regression
+   from any single change. */
+.now-head{display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin-bottom:8px}
+.now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
+.now-label{font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:var(--live); flex-shrink:0}
+.now-ref{margin-left:auto; font-size:11px; font-family:ui-monospace,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
 .now-text{font-size:19px; line-height:1.5; color:var(--text)}
 
-.now-card.perf{min-height:45vh; max-height:52vh; display:flex; flex-direction:column}
-.now-card.perf .now-card-body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:flex-start; padding:22px; overflow-y:auto}
-.now-card.perf .now-text{font-size:32px; line-height:1.42}
+/* Fixed, compact — content is always one bounded slide (a sermon paragraph,
+   a Bible verse, a song section) now, never the old multi-paragraph blob
+   this used to be sized for. fitLiveText() sets the actual font-size; this
+   is just its ceiling and the box's height. overflow-y:auto stays as a
+   last-resort safety net, not the primary fit mechanism. */
+.now-card.perf{height:22vh; display:flex; flex-direction:column}
+.now-card.perf .now-card-body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; padding:18px; overflow-y:auto}
+.now-card.perf .now-text{line-height:1.4}
 
 .next-card{margin:12px 18px 0; min-height:21vh; display:flex; flex-direction:column; padding:16px 18px; border-radius:14px; border:1.5px dashed var(--border); background:rgba(255,255,255,0.02); opacity:0.72}
 .next-card .next-label-lg{font-size:10px; font-weight:800; letter-spacing:0.07em; color:var(--text2); flex-shrink:0}
@@ -341,8 +350,11 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
   .preview-pane{flex:1; display:flex; flex-direction:column; padding:30px 34px; min-width:0}
   .preview-empty{flex:1; display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:15px; text-align:center; padding:0 40px}
-  .preview-now{flex:1; display:flex; align-items:center; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border)}
-  .preview-now .now-text{font-size:30px; line-height:1.5}
+  /* Fixed, compact — see the matching comment on .now-card.perf: content is
+     always one bounded slide now, not the old multi-paragraph blob this
+     column-filling box used to be sized for. */
+  .preview-now{height:35vh; display:flex; align-items:center; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border); overflow-y:auto}
+  .preview-now .now-text{line-height:1.4}
   .preview-next-box{margin-top:16px; padding:18px 22px; border-radius:16px; background:var(--surface2); border:1.5px dashed var(--border); opacity:0.78; display:flex; gap:12px; align-items:flex-start}
   .preview-next-box svg{flex-shrink:0; margin-top:3px}
   .preview-next-box .next-text{white-space:normal; font-size:16px; line-height:1.45}
@@ -480,6 +492,26 @@ function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace
 function $(id){ return document.getElementById(id); }
 function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
 function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 'sermon'; }
+
+/* Shrinks container's own font-size (its single child inherits it) until
+   that child's scrollHeight fits within container's clientHeight, starting
+   from basePx and never going below minPx — same idea as the desktop app's
+   confidence-monitor auto-fit, ported here so the remote's "on screen now"
+   preview doesn't rely on a fixed size + scroll for anything longer than a
+   short line. */
+function fitLiveText(container, basePx, minPx){
+  if(!container) return;
+  var inner = container.firstElementChild;
+  if(!inner) return;
+  var size = basePx;
+  container.style.fontSize = size + 'px';
+  var guard = 0;
+  while(inner.scrollHeight > container.clientHeight + 1 && size > minPx && guard < 120){
+    size = Math.max(minPx, size - basePx * 0.04);
+    container.style.fontSize = size + 'px';
+    guard++;
+  }
+}
 
 function cmd(action, extra){
   var body = Object.assign({ action: action }, extra || {});
@@ -682,7 +714,10 @@ function openViewAllQueueSheet(){
 }
 function renderQueueTab(){
   var phone = $('view-queue');
-  if(phone) phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
+  if(phone){
+    phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
+    fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 19, 13);
+  }
 
   var list = $('tabletList');
   if(list && state.tab === 'queue'){
@@ -714,6 +749,7 @@ function renderTabletPreview(){
       + (state.qs.onScreen && state.qs.onScreen.reference ? '<span class="now-ref" style="margin-left:auto;font-size:13px;color:var(--sage)">' + esc(state.qs.onScreen.reference) + '</span>' : '')
       + '</div>'
       + nowNextBigHtml();
+    fitLiveText(pane.querySelector('.preview-now'), 22, 14);
     return;
   }
   if(!state.selected){

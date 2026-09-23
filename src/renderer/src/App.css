@@ -890,12 +890,14 @@ mark.hl {
 /* The exact text on the projector — the operator's confidence monitor.
    Font size is auto-fit (see useAutoFitFontSize) so the whole verse/quote is
    always visible with no scrollbar: a short one reads large, a long one
-   shrinks just enough to still fit, the same way the real projector does. */
+   shrinks just enough to still fit, the same way the real projector does.
+   Fixed, compact height: since the one-paragraph-per-slide fix, content here
+   is always a single bounded unit (a sermon paragraph, a Bible verse, a song
+   section) — never the old multi-paragraph blob this used to be sized for. */
 .live-now-text {
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--text-primary);
-  min-height: 60px;
-  max-height: 24vh;
+  height: 132px;
   overflow: hidden;
   padding: 10px 12px;
   background: var(--bg-primary);

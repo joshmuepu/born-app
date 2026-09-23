@@ -57,6 +57,19 @@ const TRANSLATIONS = [
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** A data-completeness audit found bolls.life's KJV feed appends the Greek
+ *  Apocryphal "Additions to Esther" directly onto canonical Esther 10 as
+ *  verses 4–13 ("Mardocheus", "the two dragons", "Aman" — none of that is in
+ *  the Hebrew Masoretic text the real KJV Esther translates). BORN only ever
+ *  represents the 66-book Protestant canon — there's no Apocrypha section
+ *  anywhere in the app — so those verses would otherwise show up as if they
+ *  were normal, canonical Esther text. Esther 10 is 3 verses; drop the rest.
+ *  Checked every other classic Apocrypha-attachment point (Daniel 3, all of
+ *  Daniel, the rest of Esther) — this is the only chapter affected. */
+const KNOWN_MAX_VERSE: Partial<Record<string, number>> = {
+  'KJV:17:10': 3 // Esther 10
+}
+
 async function fetchChapter(
   bollsCode: string,
   bookNum: number,
@@ -67,7 +80,9 @@ async function fetchChapter(
     const res = await fetch(`https://bolls.life/get-text/${bollsCode}/${bookNum}/${chapter}/`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = (await res.json()) as Array<{ verse: number; text: string }>
-    return json.map((v) => ({ verse: v.verse, text: cleanVerse(v.text) }))
+    const maxVerse = KNOWN_MAX_VERSE[`${bollsCode}:${bookNum}:${chapter}`]
+    const rows = maxVerse ? json.filter((v) => v.verse <= maxVerse) : json
+    return rows.map((v) => ({ verse: v.verse, text: cleanVerse(v.text) }))
   } catch (e) {
     if (attempt < 5) {
       await sleep(800 * (attempt + 1))

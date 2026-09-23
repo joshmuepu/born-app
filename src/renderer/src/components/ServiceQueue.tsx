@@ -7,8 +7,10 @@ import { useAutoFitFontSize } from '../useAutoFitFontSize'
 
 /** Ceiling for the confidence-monitor text — auto-fit shrinks below this for
  *  longer passages, so a short verse reads large and a long one still fits
- *  in full, with no scrollbar. */
-const LIVE_TEXT_BASE_REM = 2.7
+ *  in full, with no scrollbar. Sized for a compact glance-at box: content is
+ *  always one bounded slide now (a sermon paragraph, a Bible verse, a song
+ *  section), never the old multi-paragraph blob this used to accommodate. */
+const LIVE_TEXT_BASE_REM = 1.45
 
 interface OnScreen {
   /** The exact text on the projector right now. */

@@ -68,29 +68,59 @@ export function makeId(prefix = 'item'): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter}`
 }
 
+/** Inline paragraph numbers sit after a sentence-ish boundary, before a
+ *  capital letter or quote — e.g. "…while we pray? 174 Father, bless…". */
+const INLINE_PARAGRAPH_START = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘A-Z])/g
+
 /**
- * A Branham "paragraph" is often a numbered *range* ("41-47") with the
- * sub-paragraph numbers written inline in the text. Once that range is split
- * into pages, work out which number(s) each page actually shows, so the
- * on-screen citation reads "· 6" rather than "· 5-6" when you're only on 6.
+ * A Branham "paragraph" row is often a numbered *range* ("173-174") with the
+ * sub-paragraph numbers written inline in one combined block of text. Split
+ * it into one chunk per source paragraph *before* pagination, so a slide
+ * never mixes two paragraphs together (the projected slide has to open
+ * exactly on the paragraph a search matched, not somewhere above it).
+ *
+ * Only ever accepts the next sequential number as a real boundary — a
+ * coincidental number elsewhere in the text (a street address, a count)
+ * can't be mistaken for one, because it has to match the *specific* value
+ * `current + 1` at the point it's found. If a transition is never found
+ * (rare — a paragraph that doesn't open with a capital letter, say), that
+ * one boundary just doesn't split — the same combined-text behavior as
+ * before the fix, not a broken split.
  */
-function pageParagraphRefs(pages: string[], paragraphRef: string): string[] {
-  const range = /^\s*(\d+)\s*[-–]\s*(\d+)\s*$/.exec(paragraphRef || '')
-  if (!range) return pages.map(() => paragraphRef)
-  const hi = parseInt(range[2], 10)
-  let current = parseInt(range[1], 10)
-  return pages.map((page) => {
-    const start = current
-    // Inline numbers sit after a sentence-ish boundary, before a capital or
-    // quote. Only ever accept the next sequential number.
-    const re = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘A-Z])/g
-    let match: RegExpExecArray | null
-    while ((match = re.exec(page)) !== null) {
-      const n = parseInt(match[1], 10)
-      if (n === current + 1 && n <= hi) current = n
+function splitSubParagraphs(body: string, lo: number, hi: number): Array<{ num: number; text: string }> {
+  if (hi <= lo) return [{ num: lo, text: body }]
+
+  const boundaries: Array<{ index: number; num: number }> = []
+  let current = lo
+  INLINE_PARAGRAPH_START.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = INLINE_PARAGRAPH_START.exec(body)) !== null) {
+    const n = parseInt(match[1], 10)
+    if (n === current + 1 && n <= hi) {
+      boundaries.push({ index: match.index + (match[0].length - match[1].length), num: n })
+      current = n
     }
-    return start === current ? String(start) : `${start}-${current}`
-  })
+  }
+  if (boundaries.length === 0) return [{ num: lo, text: body }]
+
+  const parts: Array<{ num: number; text: string }> = []
+  let cursor = 0
+  let num = lo
+  for (const b of boundaries) {
+    parts.push({ num, text: body.slice(cursor, b.index).trim() })
+    cursor = b.index
+    num = b.num
+  }
+  parts.push({ num, text: body.slice(cursor).trim() })
+
+  // Each part after the first still has its own leading number as literal
+  // text ("174 Father…") — lift it out; it's shown separately as `marker`.
+  return parts
+    .map((p) => {
+      const lead = /^(\d{1,3})\s+([\s\S]*)$/.exec(p.text)
+      return lead && parseInt(lead[1], 10) === p.num ? { num: p.num, text: lead[2] } : p
+    })
+    .filter((p) => p.text.length > 0)
 }
 
 /**
@@ -109,38 +139,46 @@ function displayRef(ref: string): string {
 export function quoteToItem(quote: Quote): QuoteItem {
   // Sermon text starts with the paragraph number, e.g. "146 But the …".
   const m = quote.text.match(/^\s*(\d+(?:[-–]\d+)?)\s+(.*)$/s)
-  const marker = m ? m[1] : displayRef(quote.paragraphRef) || undefined
+  const leadMarker = m ? m[1] : displayRef(quote.paragraphRef) || undefined
   const body = m ? m[2] : quote.text
   const cite = (ref: string): string =>
     [quote.sermonTitle, quote.dateCode, displayRef(ref)].filter(Boolean).join(' · ')
 
-  const pages = paginateText(body)
-  if (pages.length === 0) {
+  const range = parseParagraphRef(quote.paragraphRef)
+  // Only split when the row's own leading number and its paragraphRef agree
+  // it's a real numbered paragraph — a structural/synthetic ref ("header",
+  // "§123") never has sub-paragraphs to find.
+  const subParagraphs: Array<{ num: number | null; text: string }> =
+    range && leadMarker && /^\d+$/.test(leadMarker)
+      ? splitSubParagraphs(body, range[0], range[1])
+      : [{ num: null, text: body }]
+
+  const slides: Slide[] = []
+  subParagraphs.forEach((sub, subIdx) => {
+    const pages = paginateText(sub.text)
+    const pageTexts = pages.length > 0 ? pages : [sub.text]
+    // A split paragraph gets an a/b/c suffix on every page (including the
+    // first), same convention as a long Bible verse — "26a", "26b", ….
+    pageTexts.forEach((text, i) => {
+      const suffix = pageTexts.length > 1 ? String.fromCharCode(97 + i) : ''
+      const num = sub.num !== null ? String(sub.num) : subIdx === 0 ? leadMarker : undefined
+      const refValue = sub.num !== null ? String(sub.num) : quote.paragraphRef
+      slides.push({
+        text,
+        reference: cite(`${refValue}${suffix}`),
+        marker: num ? `${num}${suffix}` : undefined
+      })
+    })
+  })
+
+  if (slides.length === 0) {
     return {
       kind: 'quote',
       id: makeId('q'),
       quote,
-      slides: [{ text: body, reference: cite(quote.paragraphRef), marker }]
+      slides: [{ text: body, reference: cite(quote.paragraphRef), marker: leadMarker }]
     }
   }
-  const pageRefs = pageParagraphRefs(pages, quote.paragraphRef)
-  const range = parseParagraphRef(quote.paragraphRef)
-  const slides: Slide[] = pages.map((text, i) => {
-    // A page can open on an inline sub-paragraph number ("147 And now…"); lift
-    // it out so it shows as the marker, not doubled up in the body.
-    let body = text
-    let mk = i === 0 ? marker : undefined
-    const lead = /^(\d{1,3})\s+([\s\S]*)$/.exec(text)
-    if (lead && range) {
-      const n = parseInt(lead[1], 10)
-      if (n >= range[0] && n <= range[1]) {
-        mk = lead[1]
-        body = lead[2]
-      }
-    }
-    if (!mk && i > 0 && /^\d/.test(pageRefs[i])) mk = pageRefs[i].split(/[-–]/)[0]
-    return { text: body, reference: cite(pageRefs[i]), marker: mk }
-  })
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
