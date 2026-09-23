@@ -207,6 +207,27 @@ function spawnDetached(cmd: string, args: string[]): void {
 }
 
 /**
+ * Batch helper (Windows): run the silent installer, then explicitly relaunch
+ * BORN — the silent installer's own "run after finish" only fires from its
+ * finish-page UI, which /S skips entirely, so without this the app installs
+ * correctly but never comes back up on its own.
+ */
+function writeWindowsUpdateScript(installerPath: string, exePath: string): string {
+  const script = join(app.getPath('temp'), `born-update-${Date.now()}.bat`)
+  const swaplog = join(app.getPath('temp'), 'born-update.log')
+  writeFileSync(
+    script,
+    `@echo off\r\n` +
+      `echo --- born update %date% %time% --- >> "${swaplog}"\r\n` +
+      `"${installerPath}" /S >> "${swaplog}" 2>&1\r\n` +
+      `start "" "${exePath}"\r\n` +
+      `del "${installerPath}" >nul 2>&1\r\n` +
+      `del "%~f0"\r\n`
+  )
+  return script
+}
+
+/**
  * Apply a downloaded installer with no further clicks. Returns { ok:true } when
  * the update is armed (caller then quits BORN), or { needsManual:true } when it
  * has to fall back to the drag / click-through flow.
@@ -215,8 +236,13 @@ export async function applyUpdate(installerPath: string): Promise<ApplyResult> {
   if (!app.isPackaged) return { ok: false, needsManual: true } // never swap a dev build
   try {
     if (process.platform === 'win32') {
-      // NSIS silent install: closes BORN, replaces it, relaunches.
-      spawnDetached(installerPath, ['/S', '--update'])
+      // NSIS silent install closes BORN and replaces it, but /S skips the
+      // finish page entirely — the "run after finish" checkbox that would
+      // normally relaunch the app never fires, so this script does it
+      // explicitly once the installer itself has finished.
+      const exePath = app.getPath('exe')
+      const script = writeWindowsUpdateScript(installerPath, exePath)
+      spawnDetached('cmd.exe', ['/c', script])
       return { ok: true }
     }
 
