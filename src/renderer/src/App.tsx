@@ -875,6 +875,26 @@ export default function App() {
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
   const showFallbackBanner = projectionOpen && displayInfo?.isFallback
 
+  // Version/update-check/sermon-refresh only need to be visible on demand —
+  // they're true almost all the time, so keeping them out of the footer text
+  // keeps it quiet except when something actually needs attention.
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false)
+  const statusPopoverRef = useRef<HTMLDivElement>(null)
+  const statusTriggerRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const onOutside = (e: MouseEvent): void => {
+      if (
+        statusPopoverRef.current &&
+        !statusPopoverRef.current.contains(e.target as Node) &&
+        !statusTriggerRef.current?.contains(e.target as Node)
+      ) {
+        setStatusPopoverOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+
   // What's on the projector right now, so the source panels can highlight it.
   const onScreenLoc = useMemo<OnScreenLoc>(() => {
     if (!projected || !projectionOpen || isScreenBlanked) return null
@@ -1238,27 +1258,51 @@ export default function App() {
       )}
 
       <footer className="status-bar">
-        <span className="status-version">
-          BORN v{appVersion || '—'}
-          {update?.hasUpdate ? (
-            <button
-              className="status-update-link"
-              onClick={() => setUpdateDismissed(false)}
-              title={`Version ${update.latest} is available — click to update`}
-            >
-              {updateStage === 'ready' ? `· restart to update to ${update.latest} →` : `· update to ${update.latest} →`}
-            </button>
-          ) : (
-            <button
-              className="status-update-link status-update-link--check"
-              onClick={handleCheckForUpdate}
-              title="Check for a newer version of BORN"
-            >
-              · check for updates
-            </button>
+        <div className="status-trigger-wrap">
+          <button
+            className="status-trigger"
+            ref={statusTriggerRef}
+            onClick={() => setStatusPopoverOpen((v) => !v)}
+            title="App info"
+          >
+            BORN v{appVersion || '—'}
+            {update?.hasUpdate && updateDismissed && <span className="status-trigger-dot" />}
+          </button>
+          {statusPopoverOpen && (
+            <div className="status-popover" ref={statusPopoverRef}>
+              <div className="status-popover-row">
+                {update?.hasUpdate ? (
+                  <button
+                    className="status-update-link"
+                    onClick={() => {
+                      setUpdateDismissed(false)
+                      setStatusPopoverOpen(false)
+                    }}
+                  >
+                    {updateStage === 'ready' ? `restart to update to ${update.latest} →` : `update to ${update.latest} →`}
+                  </button>
+                ) : (
+                  <button className="status-update-link status-update-link--check" onClick={handleCheckForUpdate}>
+                    check for updates
+                  </button>
+                )}
+              </div>
+              {updateMsg && <div className="status-popover-row status-text">{updateMsg}</div>}
+              {indexer?.status === 'done' && (
+                <div className="status-popover-row">
+                  <span className="status-text status-ready">● {indexer.indexed.toLocaleString()} sermons ready</span>
+                  <button
+                    className="btn-secondary btn-sm"
+                    title="Re-check the sermon library for any additions or corrections"
+                    onClick={() => window.electronAPI.startIndexer()}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-        </span>
-        {updateMsg && <span className="status-text">{updateMsg}</span>}
+        </div>
 
         {indexer === null ? (
           <span className="status-text">Starting…</span>
@@ -1275,17 +1319,12 @@ export default function App() {
             <span className="status-text status-warn">Preparing sermon database — search needs an internet connection the first time</span>
             <button className="btn-primary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Retry</button>
           </>
-        ) : indexer.status === 'done' ? (
-          <>
-            <span className="status-text status-ready">● {indexer.indexed.toLocaleString()} sermons ready</span>
-            <button className="btn-secondary btn-sm" title="Re-check the sermon library for any additions or corrections" onClick={() => window.electronAPI.startIndexer()}>Refresh sermon list</button>
-          </>
-        ) : (
+        ) : indexer.status !== 'done' ? (
           <>
             <span className="status-text">{indexer.indexed.toLocaleString()} of {indexer.total.toLocaleString()} sermons — some still downloading</span>
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Resume</button>
           </>
-        )}
+        ) : null}
       </footer>
     </div>
   )

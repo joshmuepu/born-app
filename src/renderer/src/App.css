@@ -1187,16 +1187,6 @@ mark.hl {
   color: var(--warn);
 }
 
-.status-remote {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  border-right: 1px solid var(--border);
-  padding-right: 10px;
-  margin-right: 4px;
-  white-space: nowrap;
-}
-
 .status-progress {
   flex: 1;
   height: 3px;
@@ -1845,21 +1835,61 @@ mark.hl {
   transition: width var(--dur-slow) var(--ease-out);
 }
 
-.status-version {
+.status-trigger-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.status-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
   font-size: var(--text-xs);
-  color: var(--text-secondary);
   font-family: var(--font-mono);
+  color: var(--text-secondary);
+  padding: 0;
+}
+.status-trigger:hover {
+  color: var(--text-primary);
+}
+.status-trigger-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.status-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 240px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+}
+.status-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
   white-space: nowrap;
-  border-right: 1px solid var(--border);
-  padding-right: 10px;
-  margin-right: 4px;
 }
 .status-update-link {
   background: none;
   border: none;
   cursor: pointer;
   font: inherit;
-  padding: 0 0 0 4px;
+  padding: 0;
   color: var(--accent);
 }
 .status-update-link--check {

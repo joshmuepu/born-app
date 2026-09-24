@@ -105,6 +105,12 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+/* A little extra room before Delete, physically apart from + Queue /
+   Project — the same cluster is too easy to mis-click into for the one
+   destructive action sitting among routine, frequent ones. */
+.song-delete-btn {
+  margin-left: 8px;
+}
 .song-detail-title {
   flex: 1;
   font-size: var(--text-md);

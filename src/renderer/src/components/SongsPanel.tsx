@@ -161,7 +161,14 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   }, [query])
 
   const handleDelete = useCallback(
-    async (id: number) => {
+    async (id: number, title: string) => {
+      // Safe to delete without touching anything already queued or on
+      // screen — songToItem() copies the song's text in at add-time, so an
+      // already-queued copy keeps working even after the library row is
+      // gone. The real cost of a mistaken delete is just re-importing it.
+      if (!window.confirm(`Delete "${title}"? You can re-import it from Hymnary.org later if you need it again.`)) {
+        return
+      }
       if (await window.electronAPI.deleteSong(id)) {
         setSelected(null)
         setAllSongs(null)
@@ -296,7 +303,10 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                 Project
               </button>
               {selected.source === 'import' && (
-                <button className="btn-secondary btn-sm" onClick={() => handleDelete(selected.id)}>
+                <button
+                  className="btn-danger btn-sm song-delete-btn"
+                  onClick={() => handleDelete(selected.id, selected.title)}
+                >
                   Delete
                 </button>
               )}
