@@ -42,15 +42,23 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .conn.bad{color:var(--text2)}
 .conn .led{width:6px; height:6px; border-radius:50%; background:currentColor}
 
-/* Persistent transport strip — on every tab */
-.transport{flex-shrink:0; display:flex; gap:8px; padding:12px 18px 0}
+/* Persistent transport strip — on every tab. Sized for a thumb reaching across
+   a phone one-handed mid-service, not a mouse: tall targets, generous gaps so
+   a miss-tap can't land on the neighboring button, and Next set apart visually
+   (filled) from Prev (outline) since it's the one an operator reaches for far
+   more often. */
+.transport{flex-shrink:0; display:flex; gap:20px; padding:14px 18px 0}
 .transport button{
-  flex:1; padding:14px; border-radius:13px; background:var(--surface);
-  border:1px solid var(--border); color:var(--text); font-size:14px; font-weight:700;
+  flex:1; min-height:64px; padding:14px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  background:var(--surface); border:1.5px solid var(--border); color:var(--text);
+  font-size:15px; font-weight:800;
 }
 .transport button:active{background:var(--surface2)}
 .transport button:disabled{opacity:0.4}
-.transport .blank{flex:0 0 74px; background:rgba(227,179,65,0.12); border-color:rgba(227,179,65,0.4); color:var(--warn)}
+.transport .btn-next{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.transport .btn-next:active{background:var(--accent-hover)}
+.transport .blank{flex:0 0 86px; min-height:64px; background:rgba(227,179,65,0.12); border-color:rgba(227,179,65,0.4); color:var(--warn)}
 .transport .blank.active{background:var(--warn); color:var(--warn-ink)}
 
 /* Scrolling happens on the active .view itself (not .scroll) so a tab that
@@ -69,13 +77,17 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    somewhere else, without giving up the room needed to search. Tapping it
    jumps back to the Queue tab, which is the only place content gets big. */
 .livebar-slot{padding:0 18px}
-.livebar{display:flex; align-items:center; gap:10px; width:100%; margin-top:10px; padding:10px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--live); text-align:left}
+.livebar{display:flex; align-items:center; gap:10px; width:100%; margin-top:10px; padding:10px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--live); text-align:left; transition:border-color .2s}
+.livebar--blanked{border-left-color:var(--warn)}
 .livebar:active{background:var(--surface2)}
 .livebar svg{flex-shrink:0; color:var(--text2)}
 .livebar-dot{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
+.livebar-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
 .livebar-body{flex:1; min-width:0}
 .livebar-ref{font-size:10px; font-weight:800; letter-spacing:0.05em; color:var(--live)}
-.livebar-text{font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px}
+.livebar--blanked .livebar-ref{color:var(--warn)}
+.livebar-text{font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; transition:opacity .2s}
+.livebar--blanked .livebar-text{opacity:0.6}
 
 /* ── Queue tab: "performance mode" ───────────────────────────────────
    The song leader reads from this device, so what's on screen now
@@ -105,23 +117,39 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    full-width line on a narrow phone instead of squeezing into a mid-word
    wrap beside the label — found during a broad QA pass, not a regression
    from any single change. */
-.now-head{display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin-bottom:8px}
+.now-head{display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin:14px 18px 8px}
 .now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
+.now-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
 .now-label{font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:var(--live); flex-shrink:0}
+.now-label--blanked{color:var(--warn)}
 .now-ref{margin-left:auto; font-size:11px; font-family:ui-monospace,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
-.now-text{font-size:19px; line-height:1.5; color:var(--text)}
+/* font-size: inherit, not a fixed px, is load-bearing — fitLiveText() sets
+   the size on this element's ancestor (.now-card-body or .preview-now) and
+   expects the text to scale with it. A fixed value here silently pinned the
+   text to 19px forever: the container's font-size kept changing (visible in
+   dev tools) but nothing on screen ever did, because this rule always won
+   the cascade over inheriting that value. */
+.now-text{font-size:inherit; line-height:1.5; color:var(--text)}
 
 /* Fixed, compact — content is always one bounded slide (a sermon paragraph,
    a Bible verse, a song section) now, never the old multi-paragraph blob
    this used to be sized for. fitLiveText() sets the actual font-size; this
    is just its ceiling and the box's height. overflow-y:auto stays as a
-   last-resort safety net, not the primary fit mechanism. */
-.now-card.perf{height:22vh; display:flex; flex-direction:column}
+   last-resort safety net, not the primary fit mechanism. A colored left
+   edge (green live, amber blanked) is a second, independent read on the
+   state — registers from the card's silhouette alone, not just the dot. */
+.now-card.perf{height:28vh; margin-top:0; display:flex; flex-direction:column; box-shadow:inset 3px 0 0 var(--live); transition:box-shadow .2s}
+.now-card.perf.now-card--blanked{box-shadow:inset 3px 0 0 var(--warn)}
 .now-card.perf .now-card-body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; padding:18px; overflow-y:auto}
-.now-card.perf .now-text{line-height:1.4}
+.now-card.perf .now-text{line-height:1.4; transition:opacity .2s}
+.now-card--blanked .now-text{opacity:0.55}
+.now-card.flash{animation:nowFlash .5s ease-out}
+@keyframes nowFlash{0%{box-shadow:inset 3px 0 0 var(--live), 0 0 0 3px rgba(139,111,209,0.35)}100%{box-shadow:inset 3px 0 0 var(--live), 0 0 0 0 rgba(139,111,209,0)}}
+.now-card--blanked.flash{animation:nowFlashWarn .5s ease-out}
+@keyframes nowFlashWarn{0%{box-shadow:inset 3px 0 0 var(--warn), 0 0 0 3px rgba(227,179,65,0.35)}100%{box-shadow:inset 3px 0 0 var(--warn), 0 0 0 0 rgba(227,179,65,0)}}
 
 .next-card{margin:12px 18px 0; min-height:21vh; display:flex; flex-direction:column; padding:16px 18px; border-radius:14px; border:1.5px dashed var(--border); background:rgba(255,255,255,0.02); opacity:0.72}
-.next-card .next-label-lg{font-size:10px; font-weight:800; letter-spacing:0.07em; color:var(--text2); flex-shrink:0}
+.next-card .next-label-lg{font-size:10px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75; flex-shrink:0}
 .next-card .next-text-lg{flex:1; display:flex; align-items:center; font-size:18px; line-height:1.45; color:var(--text2); margin-top:6px}
 
 .qstrip-row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 8px}
@@ -288,6 +316,15 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .sheet-actions .btn-project{flex:1.3; padding:16px; border-radius:14px; background:var(--accent); border:none; color:var(--accent-ink); font-size:15.5px; font-weight:800; box-shadow:0 6px 18px rgba(139,111,209,0.4)}
 .sheet-hint{text-align:center; font-size:11px; color:var(--text2)}
 
+/* ── Song key picker ──────────────────────────────────────────────── */
+.key-edit-btn{align-self:flex-start; margin-top:6px; padding:5px 11px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700}
+.key-picker-label{margin-top:14px; margin-bottom:8px; font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--text2)}
+.key-picker-label:first-child{margin-top:0}
+.key-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.key-chip{padding:12px 0; border-radius:10px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:15px; font-weight:700; text-align:center}
+.key-chip.active{background:rgba(139,111,209,0.22); border-color:var(--accent); color:#fff}
+.key-clear{width:100%; margin-top:16px; padding:14px; border-radius:12px; background:transparent; border:1.5px dashed var(--border); color:var(--text2); font-size:14px; font-weight:700}
+
 /* ── Save-queue sheet ──────────────────────────────────────────────── */
 .name-input{padding:14px; border-radius:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-size:16px; outline:none}
 .name-input:focus{border-color:var(--accent)}
@@ -335,15 +372,18 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .sidebar-tab[data-tab="bible"].active{background:rgba(131,192,142,0.14); color:var(--sage)}
   .sidebar-tab[data-tab="songs"].active{background:rgba(217,162,92,0.14); color:var(--amber)}
   .sidebar-spacer{flex:1}
-  .sidebar .blank{width:72px; padding:12px 0; border-radius:12px; background:rgba(227,179,65,0.12); border:1px solid rgba(227,179,65,0.4); color:var(--warn); font-size:12px; font-weight:800; margin-bottom:16px}
+  .sidebar .blank{width:84px; min-height:60px; padding:12px 0; border-radius:14px; background:rgba(227,179,65,0.12); border:1.5px solid rgba(227,179,65,0.4); color:var(--warn); font-size:13px; font-weight:800; margin-bottom:16px}
   .sidebar .blank.active{background:var(--warn); color:var(--warn-ink)}
   .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--live)}
 
   .tablet-main{flex:1; display:flex; min-width:0}
   .list-pane{width:400px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; padding:26px 22px; overflow:hidden}
   .list-pane h2{margin:0 0 14px; font-size:18px; font-weight:800}
-  .list-pane .transport-inline{display:flex; gap:8px; margin-bottom:18px}
-  .list-pane .transport-inline button{flex:1; padding:12px; border-radius:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:700}
+  .list-pane .transport-inline{display:flex; gap:20px; margin-bottom:18px}
+  .list-pane .transport-inline button{flex:1; min-height:60px; padding:12px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--bg); border:1.5px solid var(--border); color:var(--text); font-size:14px; font-weight:800}
+  .list-pane .transport-inline button:active{background:var(--surface2)}
+  .list-pane .transport-inline .btn-next{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .list-pane .transport-inline .btn-next:active{background:var(--accent-hover)}
   .list-pane .scroll{flex:1; padding-bottom:0; overflow-y:auto}
   .list-pane .songs-body{flex:1; min-height:0}
   .list-pane .searchbar,.list-pane .section-label,.list-pane .results,.list-pane .qlist,.list-pane .now-card,.list-pane .recent-head,.list-pane .recent-list,.list-pane .bible-groups,.list-pane .chapter-grid,.list-pane .verse-list,.list-pane .searchbox,.list-pane .datebar,.list-pane .livebar-slot{padding-left:0 !important; padding-right:0 !important}
@@ -353,11 +393,17 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   /* Fixed, compact — see the matching comment on .now-card.perf: content is
      always one bounded slide now, not the old multi-paragraph blob this
      column-filling box used to be sized for. */
-  .preview-now{height:35vh; display:flex; align-items:center; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border); overflow-y:auto}
+  .preview-now{height:42vh; display:flex; align-items:center; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:inset 4px 0 0 var(--live); overflow-y:auto; transition:box-shadow .2s}
+  .preview-now.now-card--blanked{box-shadow:inset 4px 0 0 var(--warn)}
   .preview-now .now-text{line-height:1.4}
+  .preview-now.flash{animation:nowFlash .5s ease-out}
+  .preview-now.now-card--blanked.flash{animation:nowFlashWarn .5s ease-out}
   .preview-next-box{margin-top:16px; padding:18px 22px; border-radius:16px; background:var(--surface2); border:1.5px dashed var(--border); opacity:0.78; display:flex; gap:12px; align-items:flex-start}
   .preview-next-box svg{flex-shrink:0; margin-top:3px}
-  .preview-next-box .next-text{white-space:normal; font-size:16px; line-height:1.45}
+  /* Previously unstyled — "NEXT" inherited plain body text size/weight, so it
+     read as almost the same line as the next-content text below it. */
+  .preview-next-box .next-label{font-size:11px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75}
+  .preview-next-box .next-text{white-space:normal; font-size:16px; line-height:1.45; color:var(--text2)}
   .preview-sheet-inline{flex:1; display:flex; flex-direction:column; min-height:0}
   .preview-sheet-inline .sheet-title{font-size:20px}
   .preview-sheet-inline .sheet-text{flex:1; padding:24px 26px; border-radius:16px; background:var(--surface); border:1px solid var(--border); font-size:18px; overflow-y:auto}
@@ -423,8 +469,8 @@ export function buildAppBody(): string {
       <div class="conn bad" id="conn-p"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="transport">
-      <button id="prev-p">‹ Prev</button>
-      <button id="next-p">Next ›</button>
+      <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
+      <button id="next-p" class="btn-next"><span>Next</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
       <button class="blank" id="blank-p">Blank</button>
     </div>
     <div class="scroll">
@@ -501,19 +547,42 @@ function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 
    short line. */
 function fitLiveText(container, basePx, minPx){
   if(!container) return;
-  var inner = container.firstElementChild;
+  // The phone card wraps .now-text alongside a status/reference row
+  // (.now-head) that isn't part of the text being measured — firstElementChild
+  // picked that up instead on phone, so the shrink check compared the wrong
+  // element's height and the loop always exited on its first look. Target
+  // .now-text by class so both the phone (two children) and tablet (one
+  // child) layouts measure the actual text being sized.
+  var inner = container.querySelector('.now-text') || container.firstElementChild;
   if(!inner) return;
   var size = basePx;
   container.style.fontSize = size + 'px';
   var guard = 0;
-  while(inner.scrollHeight > container.clientHeight + 1 && size > minPx && guard < 120){
+  // Measure the CONTAINER's full scrollHeight, not just inner's — on phone
+  // that container also holds the status/reference row (.now-head) above the
+  // text, at its own fixed size. Checking inner alone let text grow until it
+  // fit the box on its own, ignoring the header sharing that same space, so
+  // the two together overflowed: with justify-content:center this clipped
+  // evenly off both ends, hiding the header and cutting the last line.
+  while(container.scrollHeight > container.clientHeight + 1 && size > minPx && guard < 120){
     size = Math.max(minPx, size - basePx * 0.04);
     container.style.fontSize = size + 'px';
     guard++;
   }
 }
 
+/* A short, distinct buzz per action — confirms the tap landed before the
+   next /state poll (up to 1s away) can confirm it visually. try/catch and
+   the method check both matter: iOS Safari has no navigator.vibrate at all,
+   and this must stay silent there, never throw. */
+var HAPTIC_MS = { prev: 12, next: 12, blank: 22, unblank: 22 };
+function haptic(action){
+  try{
+    if(navigator.vibrate) navigator.vibrate(HAPTIC_MS[action] || 12);
+  }catch(e){}
+}
 function cmd(action, extra){
+  haptic(action);
   var body = Object.assign({ action: action }, extra || {});
   return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
 }
@@ -562,6 +631,13 @@ function renderCurrentTab(){
 }
 
 /* ── Polling: queue / on-screen / blank state ─────────────────────── */
+/* undefined (not '') on purpose — the very first poll always has "no prior
+   state to compare against", and must never flash. */
+var lastNowSig;
+function nowSignature(qs){
+  if(!qs || !qs.onScreen) return '';
+  return (qs.blanked ? 'B' : 'L') + '|' + (qs.onScreen.reference || '') + '|' + qs.onScreen.text;
+}
 function poll(){
   // Returns the fetch promise so a just-fired project/queue command can wait
   // for one fresh /state before switching the view to it — otherwise the
@@ -569,6 +645,14 @@ function poll(){
   // 1s stale, showing "Nothing on screen yet" right after the operator just
   // projected something.
   return getJSON('/state').then(function(s){
+    var sig = nowSignature(s);
+    // A brief pulse on the "on screen now" card whenever what's live actually
+    // changes (new slide, or blanked/restored) — a second, glanceable signal
+    // beyond the dot+label text, for an operator watching from across the
+    // room. Only ever true when a *previous* poll already ran; the first
+    // paint after a page load or tab switch is not a change.
+    state.nowJustChanged = (lastNowSig !== undefined && sig !== lastNowSig);
+    lastNowSig = sig;
     state.qs = s;
     setConn(true);
     if(state.tab === 'queue') renderQueueTab();
@@ -625,17 +709,40 @@ function refreshOpenDetailSheet(){
     if(body) body.innerHTML = '<div class="sheet-grip"></div>' + queueDetailInnerHtml(state.detailIndex);
   }
 }
+/* Same phrase the desktop app's own confidence monitor already uses for this
+   exact state ("Hidden from screen") — one vocabulary for "blanked but still
+   loaded" everywhere in BORN, not a different word on each surface. Dot
+   color, label text, and a shared modifier class (for dimming the content
+   and an edge color, both driven by CSS) all come from this one place so the
+   three places "on screen" is shown can never drift out of sync with each
+   other. */
+function nowStatusHtml(blanked){
+  return blanked
+    ? '<span class="now-dot now-dot--blanked"></span><span class="now-label now-label--blanked">HIDDEN FROM SCREEN</span>'
+    : '<span class="now-dot"></span><span class="now-label">ON SCREEN NOW</span>';
+}
 function liveBarHtml(){
   var on = state.qs.onScreen;
   if(!on) return '';
-  return '<button class="livebar" onclick="setTab(\\'queue\\')">'
-    + '<span class="livebar-dot"></span>'
+  var blanked = !!state.qs.blanked;
+  return '<button class="livebar' + (blanked ? ' livebar--blanked' : '') + '" onclick="setTab(\\'queue\\')">'
+    + '<span class="livebar-dot' + (blanked ? ' livebar-dot--blanked' : '') + '"></span>'
     + '<div class="livebar-body">'
-    + '<div class="livebar-ref">' + (on.reference ? esc(on.reference) : 'ON SCREEN') + '</div>'
+    + '<div class="livebar-ref">' + (blanked ? 'HIDDEN' : (on.reference ? esc(on.reference) : 'ON SCREEN')) + '</div>'
     + '<div class="livebar-text">' + esc(on.text) + '</div>'
     + '</div>'
     + ICON_CHEVRON_RIGHT
     + '</button>';
+}
+/* One builder for all four tablet list panes (Queue/Sermons/Bible/Songs) —
+   was four copies of the same markup that had already drifted once (this
+   pass changes size and Next/Prev styling; without a shared source that's
+   four edits to keep in sync instead of one). */
+function transportInlineHtml(){
+  return '<div class="transport-inline">'
+    + '<button class="btn-prev" onclick="cmd(\\'prev\\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>'
+    + '<button class="btn-next" onclick="cmd(\\'next\\')"><span>Next</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '</div>';
 }
 
 /* ── Queue tab ─────────────────────────────────────────────────────── */
@@ -653,12 +760,18 @@ function nowNextPerfHtml(){
   if(!on){
     return '<div class="queue-empty-card">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>';
   }
+  var blanked = !!state.qs.blanked;
   var refClass = kindClass(on.kind);
   var clickable = state.qs.activeIndex != null;
-  var html = '<div class="now-card perf"' + (clickable ? ' style="cursor:pointer" onclick="openQueueItemDetail(' + state.qs.activeIndex + ')"' : '') + '>'
+  // Status + reference sit above the card now, not inside it — same split
+  // the tablet layout already used. Sharing one box with the verse text
+  // meant the status row ate into the space fitLiveText had to work with,
+  // and once the text was actually sized to fill that space (see the
+  // fitLiveText fixes above) the two visually ran together as one clump.
+  var html = '<div class="now-head">' + nowStatusHtml(blanked)
+    + (on.reference ? '<span class="now-ref ' + refClass + '-ref">' + esc(on.reference) + '</span>' : '') + '</div>';
+  html += '<div class="now-card perf' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"' + (clickable ? ' style="cursor:pointer" onclick="openQueueItemDetail(' + state.qs.activeIndex + ')"' : '') + '>'
     + '<div class="now-card-body">'
-    + '<div class="now-head"><span class="now-dot"></span><span class="now-label">ON SCREEN NOW</span>'
-    + (on.reference ? '<span class="now-ref ' + refClass + '-ref">' + esc(on.reference) + '</span>' : '') + '</div>'
     + '<div class="now-text">' + esc(on.text) + '</div>'
     + '</div></div>';
   html += '<div class="next-card">'
@@ -670,8 +783,9 @@ function nowNextPerfHtml(){
 function nowNextBigHtml(){
   var on = state.qs.onScreen;
   if(!on) return '<div class="preview-empty">Nothing on screen yet.</div>';
+  var blanked = !!state.qs.blanked;
   var nextLine = on.nextText ? esc(on.nextText) : 'End of this item — pick the next one from the queue';
-  return '<div class="preview-now"><div class="now-text">' + esc(on.text) + '</div></div>'
+  return '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>'
     + '<div class="preview-next-box">' + ICON_CHEVRON_RIGHT
     + '<div><div class="next-label" style="margin-bottom:4px">NEXT</div><div class="next-text">' + nextLine + '</div></div></div>';
 }
@@ -716,16 +830,13 @@ function renderQueueTab(){
   var phone = $('view-queue');
   if(phone){
     phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
-    fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 19, 13);
+    fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 34, 20);
   }
 
   var list = $('tabletList');
   if(list && state.tab === 'queue'){
     list.innerHTML = '<h2 class="qh-label">SERVICE QUEUE</h2>'
-      + '<div class="transport-inline">'
-      + '<button onclick="cmd(\\'prev\\')">‹ Prev</button>'
-      + '<button onclick="cmd(\\'next\\')">Next ›</button>'
-      + '</div>'
+      + transportInlineHtml()
       + '<div class="queue-file-actions" style="margin-bottom:14px">'
       + '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
       + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
@@ -745,11 +856,11 @@ function renderTabletPreview(){
       return;
     }
     pane.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
-      + '<span class="now-dot"></span><span class="now-label" style="font-size:12px">ON SCREEN NOW</span>'
+      + nowStatusHtml(!!state.qs.blanked)
       + (state.qs.onScreen && state.qs.onScreen.reference ? '<span class="now-ref" style="margin-left:auto;font-size:13px;color:var(--sage)">' + esc(state.qs.onScreen.reference) + '</span>' : '')
       + '</div>'
       + nowNextBigHtml();
-    fitLiveText(pane.querySelector('.preview-now'), 22, 14);
+    fitLiveText(pane.querySelector('.preview-now'), 36, 20);
     return;
   }
   if(!state.selected){
@@ -864,7 +975,7 @@ function renderSermonsTab(){
   var list = $('tabletList');
   if(list && state.tab === 'sermons'){
     list.innerHTML = '<h2>Sermons</h2>'
-      + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
+      + transportInlineHtml()
       + '<div style="display:flex;gap:8px;margin-bottom:10px">'
       + '<div class="searchbox" style="flex:1"><span>' + ICON_SEARCH + '</span><input id="sermonInputT" placeholder="Search sermon quotes…" value="' + esc(state.sermonQuery) + '" onkeydown="if(event.key===\\'Enter\\')runSermonSearch(true)"/></div>'
       + '<button class="gobtn" onclick="runSermonSearch(true)">Go</button>'
@@ -911,10 +1022,18 @@ function sermonResultsHtml(){
 }
 function selectSermon(i){
   var q = state.sermonResults[i];
+  // A source row can legitimately span several numbered paragraphs
+  // ("156-157") — q.slides is the same one-paragraph-per-slide split
+  // quoteToItem() computes everywhere else (server-side, so it can never
+  // drift from it). Without this the preview fell back to .html below and
+  // showed the whole multi-paragraph span as one undivided block, even
+  // though projecting it already split correctly.
+  var slides = (q.slides || []).map(function(sl){ return { text: sl.text, label: sl.marker ? ('¶' + sl.marker) : '' }; });
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
     meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    slides: slides,
     html: q.highlightedText || esc(q.text),
     payload: { quote: q, query: state.sermonQuery }
   };
@@ -996,22 +1115,37 @@ function openSermonDetailSheet(sermonId, title, dateCode){
   openGenericSheet(title, '<div id="sermonDetailBody" class="empty">Loading…</div>');
   getJSON('/api/sermons/' + sermonId + '/paragraphs').then(function(paras){
     window._sermonDetailParas = paras || [];
+    // Flatten each row's own one-paragraph-per-slide split into one flat,
+    // tap-to-project list — a source row can span several numbered
+    // paragraphs ("156-157"), and without this every one of them showed as
+    // a single row with both paragraphs' text run together. Each flattened
+    // row remembers which source row and which of its slides it came from,
+    // so a tap projects exactly that paragraph, not the whole source row.
+    window._sermonDetailSlides = [];
     var html = '<div class="sheet-meta sermon">' + esc(dateCode || '') + '</div><div class="slide-list">';
     for(var i=0;i<paras.length;i++){
       var p = paras[i];
-      html += '<button class="slide-row" onclick="projectSermonParagraph(' + i + ')">'
-        + '<div class="slide-label">¶' + esc(p.paragraphRef) + '</div>'
-        + '<div class="slide-text">' + esc(p.text) + '</div></button>';
+      var slides = (p.slides && p.slides.length) ? p.slides : [{ text: p.text, marker: null }];
+      for(var s=0;s<slides.length;s++){
+        var sl = slides[s];
+        var flatIdx = window._sermonDetailSlides.length;
+        window._sermonDetailSlides.push({ paraIndex: i, slideIndex: s });
+        html += '<button class="slide-row" onclick="projectSermonParagraph(' + flatIdx + ')">'
+          + '<div class="slide-label">¶' + esc(sl.marker || p.paragraphRef) + '</div>'
+          + '<div class="slide-text">' + esc(sl.text) + '</div></button>';
+      }
     }
     html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
     var body = $('sermonDetailBody');
     if(body) body.outerHTML = '<div id="sermonDetailBody">' + html + '</div>';
   });
 }
-function projectSermonParagraph(i){
-  var p = (window._sermonDetailParas || [])[i];
+function projectSermonParagraph(flatIdx){
+  var ref = (window._sermonDetailSlides || [])[flatIdx];
+  if(!ref) return;
+  var p = (window._sermonDetailParas || [])[ref.paraIndex];
   if(!p) return;
-  cmd('project-sermon', { quote: p, query: '' });
+  cmd('project-sermon', { quote: p, query: '', slide: ref.slideIndex });
 }
 function openRecentSermons(){
   openGenericSheet('Recently Played', '<div id="recentSermonsBody" class="empty">Loading…</div>');
@@ -1039,10 +1173,12 @@ function selectRecentSermon(i){
   var q = window._recentSermons[i];
   if(!q) return;
   closeSheet();
+  var slides = (q.slides || []).map(function(sl){ return { text: sl.text, label: sl.marker ? ('¶' + sl.marker) : '' }; });
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
     meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    slides: slides,
     full: q.text,
     payload: { quote: q, query: '' }
   };
@@ -1091,7 +1227,7 @@ function renderBibleTab(){
   var list = $('tabletList');
   if(list && state.tab === 'bible'){
     list.innerHTML = '<h2>Bible</h2>'
-      + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
+      + transportInlineHtml()
       + '<div style="display:flex;margin-bottom:10px"><div class="searchbox bible"><span>' + ICON_SEARCH + '</span><input id="bibleInputT" placeholder="John 3:16, or &quot;faith&quot;…" value="' + esc(state.bibleQuery) + '" onkeydown="if(event.key===\\'Enter\\')runBibleSearch(true)"/></div></div>'
       + scopeRow
       + '<div class="livebar-slot" id="livebar-bibleT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
@@ -1299,7 +1435,7 @@ function renderSongsTab(){
   var list = $('tabletList');
   if(list && state.tab === 'songs'){
     list.innerHTML = '<h2>Songs</h2>'
-      + '<div class="transport-inline"><button onclick="cmd(\\'prev\\')">‹ Prev</button><button onclick="cmd(\\'next\\')">Next ›</button></div>'
+      + transportInlineHtml()
       + '<div style="display:flex;margin-bottom:10px"><div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div></div>'
       + '<div class="livebar-slot" id="livebar-songsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div id="songsBodyT" class="songs-body songs-body--tablet">' + songsBodyHtml() + '</div>';
@@ -1441,6 +1577,8 @@ function projectPreviewSlide(i){
     cmd('project-song', { songId: item.payload.songId, slide: i }).then(afterProjectFromSheet);
   } else if(item.kind === 'bible' && item.payload && item.payload.verseRefs){
     cmd('project-bible', { reference: item.payload.verseRefs[i], translation: item.payload.translation }).then(afterProjectFromSheet);
+  } else if(item.kind === 'sermon' && item.payload && item.payload.quote){
+    cmd('project-sermon', { quote: item.payload.quote, query: item.payload.query, slide: i }).then(afterProjectFromSheet);
   }
 }
 function selectSongById(id){
@@ -1450,10 +1588,68 @@ function selectSongById(id){
     state.selected = {
       kind: 'song',
       title: s.title,
+      songKey: s.songKey,
       meta: [s.author, s.songKey ? ('Key of ' + s.songKey) : null].filter(Boolean).join(' · '),
       slides: slides,
       payload: { songId: s.id }
     };
+    openPreview();
+  });
+}
+
+/* ── Key picker (song leader can fix a key from the remote, live or ahead
+   of time) — same 12-root × major/minor grid the desktop popover uses,
+   presented as a sheet since the remote has no inline-popover real estate. */
+var KEY_MAJORS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+var KEY_MINORS = KEY_MAJORS.map(function(k){ return k + 'm'; });
+function keyChipHtml(k, current){
+  // Single-quoted JS arg inside the double-quoted onclick attribute — same
+  // escaping pattern jumpToLetter() already uses; JSON.stringify would wrap
+  // in double quotes and collide with the attribute's own quoting.
+  return '<button class="key-chip' + (k === current ? ' active' : '') + '" onclick="setSongKey(\\'' + k + '\\')">' + esc(k) + '</button>';
+}
+function renderKeyPickerSheet(){
+  var item = state.selected;
+  if(!item || item.kind !== 'song') return;
+  var current = item.songKey;
+  var recent = state.recentKeys || [];
+  var html = '';
+  if(recent.length){
+    html += '<div class="key-picker-label">RECENTLY USED</div><div class="key-grid">'
+      + recent.map(function(k){ return keyChipHtml(k, current); }).join('') + '</div>';
+  }
+  html += '<div class="key-picker-label">MAJOR</div><div class="key-grid">'
+    + KEY_MAJORS.map(function(k){ return keyChipHtml(k, current); }).join('') + '</div>';
+  html += '<div class="key-picker-label">MINOR</div><div class="key-grid">'
+    + KEY_MINORS.map(function(k){ return keyChipHtml(k, current); }).join('') + '</div>';
+  html += '<button class="key-clear" onclick="setSongKey(null)">No key</button>';
+  openGenericSheet('Set key', html);
+}
+function openKeyPickerSheet(){
+  var item = state.selected;
+  if(!item || item.kind !== 'song') return;
+  // Fetch fresh each time rather than trusting a possibly-stale cache —
+  // this sheet is opened rarely enough that one extra round trip is free.
+  getJSON('/api/songs/recent-keys').then(function(k){
+    state.recentKeys = k || [];
+    renderKeyPickerSheet();
+  });
+}
+function setSongKey(key){
+  var item = state.selected;
+  if(!item || item.kind !== 'song') return;
+  var songId = item.payload.songId;
+  cmd('update-song-key', { songId: songId, key: key }).then(function(){
+    return getJSON('/api/song/' + songId);
+  }).then(function(s){
+    if(!s) { closeSheet(); return; }
+    item.songKey = s.songKey;
+    item.meta = [s.author, s.songKey ? ('Key of ' + s.songKey) : null].filter(Boolean).join(' · ');
+    // On tablet the key picker is its own overlay on top of the persistent
+    // side pane, not the pane itself — close it explicitly (openPreview()'s
+    // tablet branch only re-renders the pane, it was never the thing
+    // holding the picker open) before rebuilding the preview underneath.
+    closeSheet();
     openPreview();
   });
 }
@@ -1495,8 +1691,12 @@ function previewInnerHtml(item){
   var hint = (isSlidesItem && item.slides.length > 1)
     ? 'Tap any verse to put it on screen instantly'
     : 'Nothing goes on screen until you tap Project';
+  var keyEditHtml = item.kind === 'song'
+    ? '<button class="key-edit-btn" onclick="openKeyPickerSheet()">' + (item.songKey ? 'Change key' : '+ Add key') + '</button>'
+    : '';
   return '<div class="sheet-title">' + esc(item.title) + '</div>'
     + (item.meta ? '<div class="sheet-meta ' + item.kind + '">' + esc(item.meta) + '</div>' : '')
+    + keyEditHtml
     + bodyHtml
     + '<div class="sheet-actions">'
     + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'

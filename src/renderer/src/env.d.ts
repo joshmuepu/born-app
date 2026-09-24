@@ -21,6 +21,9 @@ import type {
   SongSummary,
   SongDetail,
   SongImportResult,
+  HymnaryCandidate,
+  HymnaryPreview,
+  HymnaryImportResult,
   DisplayInfo as DisplayInfoType
 } from './types'
 
@@ -155,7 +158,9 @@ declare global {
       onWebRemoteProject: (callback: (index: number) => void) => () => void
       onWebRemoteProjectAt: (callback: (data: { index: number; slide: number }) => void) => () => void
       onWebRemoteQueueSermon: (callback: (quote: Quote) => void) => () => void
-      onWebRemoteProjectSermon: (callback: (data: { quote: Quote; query: string }) => void) => () => void
+      onWebRemoteProjectSermon: (
+        callback: (data: { quote: Quote; query: string; slideIndex?: number }) => void
+      ) => () => void
       onWebRemoteQueueBible: (
         callback: (data: { reference: string; translation: string }) => void
       ) => () => void
@@ -214,6 +219,11 @@ declare global {
       deleteSong: (id: number) => Promise<boolean>
       getRecentSongs: () => Promise<SongSummary[]>
       clearRecentSongs: () => Promise<void>
+      updateSongKey: (id: number, key: string | null) => Promise<boolean>
+      getRecentKeys: () => Promise<string[]>
+      hymnarySearch: (query: string) => Promise<HymnaryCandidate[]>
+      hymnaryPreview: (url: string) => Promise<HymnaryPreview>
+      hymnaryImport: (url: string) => Promise<HymnaryImportResult>
       // Languages / translation
       getLanguages: () => Promise<Record<string, string>>
       translateQuote: (

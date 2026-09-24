@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Copy, Check } from 'lucide-react'
+import { Smartphone, Copy, Check, AlertTriangle } from 'lucide-react'
 import QRCode from 'qrcode'
 
 interface RemoteInfo {
@@ -14,20 +14,36 @@ interface RemoteInfo {
  * Shows a QR code for the mDNS address (falls back to the raw IP until/unless
  * mDNS finishes probing) so a phone never needs to type anything in.
  */
+/** A few retries covers the real "still starting up" window (the server and
+ *  mDNS take a moment right after launch) — past this, retrying forever
+ *  silently is what actually caused an outage once: the panel just said
+ *  "Starting…" no matter how long the port stayed stuck, and the only fix
+ *  anyone thought to try was rebooting the computer. */
+const FAILED_ATTEMPTS_BEFORE_ERROR = 4
+
 export default function RemotePanel(): JSX.Element {
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<RemoteInfo | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [failedAttempts, setFailedAttempts] = useState(0)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
+    let attempts = 0
     const fetchInfo = (): void => {
       window.electronAPI.getWebRemoteURL().then((next) => {
         if (cancelled) return
         setInfo(next)
-        if (!next.available) setTimeout(fetchInfo, 1500)
+        if (next.available) {
+          attempts = 0
+          setFailedAttempts(0)
+          return
+        }
+        attempts += 1
+        setFailedAttempts(attempts)
+        if (attempts < FAILED_ATTEMPTS_BEFORE_ERROR) setTimeout(fetchInfo, 1500)
       })
     }
     fetchInfo()
@@ -40,6 +56,13 @@ export default function RemotePanel(): JSX.Element {
       clearInterval(upgrade)
     }
   }, [])
+
+  const retryNow = (): void => {
+    setFailedAttempts(0)
+    window.electronAPI.getWebRemoteURL().then(setInfo)
+  }
+
+  const remoteErrored = !info?.available && failedAttempts >= FAILED_ATTEMPTS_BEFORE_ERROR
 
   useEffect(() => {
     if (!info?.url) {
@@ -85,17 +108,34 @@ export default function RemotePanel(): JSX.Element {
   return (
     <div className="remote-panel" ref={wrapRef}>
       <button
-        className={`btn-secondary remote-trigger${open ? ' is-open' : ''}`}
+        className={`btn-secondary remote-trigger${open ? ' is-open' : ''}${remoteErrored ? ' remote-trigger--error' : ''}`}
         onClick={() => setOpen((v) => !v)}
-        title="Control the service from a phone or tablet"
+        title={remoteErrored ? "Remote couldn't start — click for details" : 'Control the service from a phone or tablet'}
       >
-        <Smartphone width={14} height={14} strokeWidth={2} aria-hidden="true" />
+        {remoteErrored ? (
+          <AlertTriangle width={14} height={14} strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Smartphone width={14} height={14} strokeWidth={2} aria-hidden="true" />
+        )}
         Remote
       </button>
 
       {open && (
         <div className="remote-popover" role="dialog" aria-label="Remote control">
           <div className="remote-popover-title">Remote control</div>
+          {remoteErrored ? (
+            <div className="remote-popover-body remote-popover-body--error">
+              <AlertTriangle width={22} height={22} strokeWidth={1.75} aria-hidden="true" />
+              <p className="remote-error-text">
+                The remote couldn&rsquo;t start — usually another copy of BORN is already running
+                somewhere and is holding the connection. Try quitting BORN completely (not just
+                closing the window) and reopening it.
+              </p>
+              <button className="btn-secondary btn-sm" onClick={retryNow}>
+                Try again
+              </button>
+            </div>
+          ) : (
           <div className="remote-popover-body">
             <div className="remote-qr">
               {qrDataUrl ? (
@@ -130,6 +170,7 @@ export default function RemotePanel(): JSX.Element {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

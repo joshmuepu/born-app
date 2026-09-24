@@ -377,11 +377,12 @@ export default function BiblePanel({
                 role="button"
                 tabIndex={0}
                 title={`Put verse ${v.verse} on the screen`}
-                onClick={project}
+                onClick={(e) => { project(); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     project()
+                    e.currentTarget.blur()
                   }
                 }}
               >
@@ -395,6 +396,7 @@ export default function BiblePanel({
                     onClick={(e) => {
                       e.stopPropagation()
                       queueRef(formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse))
+                      e.currentTarget.blur()
                     }}
                   >
                     + Queue
@@ -402,7 +404,7 @@ export default function BiblePanel({
                   <button
                     className="btn-secondary btn-sm"
                     title={`Put verse ${v.verse} on the screen`}
-                    onClick={(e) => { e.stopPropagation(); project() }}
+                    onClick={(e) => { e.stopPropagation(); project(); e.currentTarget.blur() }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>
@@ -542,8 +544,8 @@ export default function BiblePanel({
               <div className="bible-passage-head">
                 <span className="bible-passage-ref">{passage.reference} · {passage.translation}</span>
                 <div className="result-actions">
-                  <button className="btn-secondary btn-sm" onClick={() => addPassage(passage)}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={() => projectPassage(passage, 0)}>Project</button>
+                  <button className="btn-secondary btn-sm" onClick={(e) => { addPassage(passage); e.currentTarget.blur() }}>+ Queue</button>
+                  <button className="btn-primary btn-sm" onClick={(e) => { projectPassage(passage, 0); e.currentTarget.blur() }}>Project</button>
                 </div>
               </div>
               <div className="bible-verses">
@@ -554,11 +556,12 @@ export default function BiblePanel({
                     role="button"
                     tabIndex={0}
                     title={`Open ${bookByNum(passage.bookNum)?.name ?? ''} ${passage.chapter} at verse ${v.verse}`}
-                    onClick={() => openChapterAt(passage.bookNum, passage.chapter, v.verse)}
+                    onClick={(e) => { openChapterAt(passage.bookNum, passage.chapter, v.verse); e.currentTarget.blur() }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         openChapterAt(passage.bookNum, passage.chapter, v.verse)
+                        e.currentTarget.blur()
                       }
                     }}
                   >
@@ -574,6 +577,7 @@ export default function BiblePanel({
                         onClick={(e) => {
                           e.stopPropagation()
                           queueRef(formatVerse(passage.bookNum, passage.chapter, v.verse))
+                          e.currentTarget.blur()
                         }}
                       >
                         + Queue
@@ -584,6 +588,7 @@ export default function BiblePanel({
                         onClick={(e) => {
                           e.stopPropagation()
                           projectPassage(passage, passage.slideStarts[i] ?? 0)
+                          e.currentTarget.blur()
                         }}
                       >
                         Project
@@ -616,11 +621,12 @@ export default function BiblePanel({
                   role="button"
                   tabIndex={0}
                   title="Open the whole chapter at this verse"
-                  onClick={() => openChapterAt(h.bookNum, h.chapter, h.verse)}
+                  onClick={(e) => { openChapterAt(h.bookNum, h.chapter, h.verse); e.currentTarget.blur() }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       openChapterAt(h.bookNum, h.chapter, h.verse)
+                      e.currentTarget.blur()
                     }
                   }}
                 >
@@ -628,10 +634,10 @@ export default function BiblePanel({
                   <span className="bible-verse-text">{highlight(h.text, query)}</span>
                 </div>
                 <div className="bible-verse-actions">
-                  <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={() => queueRef(h.reference)}>
+                  <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={(e) => { queueRef(h.reference); e.currentTarget.blur() }}>
                     + Queue
                   </button>
-                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={() => projectRef(h.reference)}>
+                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={(e) => { projectRef(h.reference); e.currentTarget.blur() }}>
                     Project
                   </button>
                 </div>

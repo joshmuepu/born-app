@@ -476,24 +476,6 @@
 .follow-para--on-screen .follow-para-text {
   -webkit-line-clamp: 40;
 }
-.follow-para--expanded .follow-para-text {
-  -webkit-line-clamp: unset;
-}
-.follow-para-expand {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0 0 8px;
-}
-.follow-para-expand:hover {
-  color: var(--accent-hover);
-}
 .follow-para--focus .follow-para-text {
   -webkit-line-clamp: 12;
 }

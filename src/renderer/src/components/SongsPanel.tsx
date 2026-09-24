@@ -3,6 +3,8 @@ import { ChevronLeft, X, Search, ListMusic, Clock } from 'lucide-react'
 import type { SongSummary, SongDetail } from '../types'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import { highlight } from '../highlight'
+import SongKeyPicker from './SongKeyPicker'
+import HymnaryImport from './HymnaryImport'
 import './SongsPanel.css'
 
 interface Props {
@@ -52,6 +54,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
 
   const [selected, setSelected] = useState<SongDetail | null>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [hymnaryQuery, setHymnaryQuery] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadRecent = useCallback(() => {
@@ -168,10 +171,38 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     [query]
   )
 
-  const rowMeta = (s: SongSummary): string =>
-    [s.author, s.songKey ? `Key of ${s.songKey}` : null, `${s.slideCount} slide${s.slideCount === 1 ? '' : 's'}`]
-      .filter(Boolean)
-      .join(' · ')
+  /** Refresh every place this song's key could already be showing — the
+   *  detail view's own state, plus whichever list is currently on screen —
+   *  rather than a full re-fetch of everything. */
+  const handleUpdateKey = useCallback(
+    async (key: string | null) => {
+      if (!selected) return
+      const ok = await window.electronAPI.updateSongKey(selected.id, key)
+      if (!ok) return
+      setSelected((prev) => (prev ? { ...prev, songKey: key } : prev))
+      const patchList = (list: SongSummary[]): SongSummary[] =>
+        list.map((s) => (s.id === selected.id ? { ...s, songKey: key } : s))
+      setResults(patchList)
+      setAllSongs((prev) => (prev ? patchList(prev) : prev))
+      setRecentSongs(patchList)
+    },
+    [selected]
+  )
+
+  // A row's meta line always shows a key segment — "No key" included, not
+  // dropped — so the list itself is scannable at a glance for which songs
+  // still need one, dimmed so it doesn't read as an alarm.
+  const rowMeta = (s: SongSummary): ReactElement => (
+    <>
+      {[s.author, `${s.slideCount} slide${s.slideCount === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+      {' · '}
+      {s.songKey ? (
+        `Key of ${s.songKey}`
+      ) : (
+        <span className="song-row-meta-nokey">No key</span>
+      )}
+    </>
+  )
 
   const letterRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const allGroups = useMemo(() => (allSongs ? groupByLetter(allSongs) : []), [allSongs])
@@ -235,7 +266,18 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       </div>
       {importMsg && <div className="songs-import-msg">{importMsg}</div>}
 
-      {selected ? (
+      {hymnaryQuery !== null ? (
+        <HymnaryImport
+          query={hymnaryQuery}
+          onClose={() => setHymnaryQuery(null)}
+          onImported={(songId) => {
+            setHymnaryQuery(null)
+            setAllSongs(null)
+            if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
+            openSong(songId)
+          }}
+        />
+      ) : selected ? (
         <div className="song-detail">
           <div className="song-detail-head">
             <button className="browse-back" onClick={() => setSelected(null)}>
@@ -244,13 +286,13 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             <div className="song-detail-title">
               {selected.title}
               {selected.author ? <span className="song-detail-author"> · {selected.author}</span> : null}
-              {selected.songKey ? <span className="song-detail-key">Key of {selected.songKey}</span> : null}
+              <SongKeyPicker songKey={selected.songKey} onChange={handleUpdateKey} />
             </div>
             <div className="result-actions">
-              <button className="btn-secondary btn-sm" onClick={() => onAddSong(selected)}>
+              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); e.currentTarget.blur() }}>
                 + Queue
               </button>
-              <button className="btn-primary btn-sm" onClick={() => onProjectSong(selected, 0)}>
+              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
                 Project
               </button>
               {selected.source === 'import' && (
@@ -261,6 +303,18 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             </div>
           </div>
 
+          {selected.provenance && (
+            <div className="song-provenance">
+              {selected.provenance.url ? (
+                <a href={selected.provenance.url} target="_blank" rel="noreferrer">
+                  {selected.provenance.label}
+                </a>
+              ) : (
+                selected.provenance.label
+              )}
+            </div>
+          )}
+
           {selected.slides.length > 1 && (
             <div className="song-jump-row">
               {selected.slides.map((s, i) => {
@@ -269,7 +323,10 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   <button
                     key={i}
                     className={`song-jump-chip${live ? ' is-live' : ''}`}
-                    onClick={() => projectSlide(i)}
+                    onClick={(e) => {
+                      projectSlide(i)
+                      e.currentTarget.blur()
+                    }}
                     title={live ? `Repeat ${s.label}` : `Jump to ${s.label}`}
                   >
                     {s.label}
@@ -290,11 +347,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   role="button"
                   tabIndex={0}
                   title="Put this slide on the screen"
-                  onClick={() => onProjectSong(selected, i)}
+                  onClick={(e) => {
+                    onProjectSong(selected, i)
+                    e.currentTarget.blur()
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       onProjectSong(selected, i)
+                      e.currentTarget.blur()
                     }
                   }}
                 >
@@ -305,7 +366,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   <div className="song-slide-text">{s.text}</div>
                   <button
                     className="btn-secondary btn-sm song-slide-project"
-                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i) }}
+                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>
@@ -364,6 +425,11 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             )}
             {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
             {searched && results.map((s) => renderSongRow(s))}
+            {searched && (
+              <button className="hymnary-check-link" onClick={() => setHymnaryQuery(query.trim())}>
+                Check Hymnary.org for &ldquo;{query.trim()}&rdquo; →
+              </button>
+            )}
           </div>
         </div>
       ) : (

@@ -37,6 +37,11 @@ export interface AppSettings {
    *  the one gap Sermon/Songs already covered: no memory of what you last
    *  opened. Surfaces on the desktop's Search empty state. */
   recentBibleRefs: Array<{ reference: string; translation: string }>
+  /** Keys most recently assigned to a song, newest first — a worship team
+   *  plays in a small rotating set of keys, so surfacing these at the top of
+   *  the key picker turns the common case into one tap instead of a search
+   *  through all 24. */
+  recentKeys: string[]
 }
 
 const DEFAULTS: AppSettings = {
@@ -49,7 +54,8 @@ const DEFAULTS: AppSettings = {
   theme: 'dark',
   recentSongIds: [],
   recentQuotes: [],
-  recentBibleRefs: []
+  recentBibleRefs: [],
+  recentKeys: []
 }
 
 let cache: AppSettings | null = null

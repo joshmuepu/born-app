@@ -8,6 +8,8 @@ import { log } from './logger'
 import { parseSong } from './songParsers'
 import { insertSong, songExistsByPath } from './songInsert'
 import { MAX_SEARCH_RESULTS } from '../shared/searchLimits'
+import { isStandardKey } from '../shared/songKeys'
+import { searchHymnary, fetchHymnaryHymn, type HymnaryCandidate } from './hymnary'
 
 export interface SongSummary {
   id: number
@@ -29,7 +31,20 @@ export interface SongDetail {
   author: string | null
   songKey: string | null
   source: string
+  provenance: { label: string; url?: string } | null
   slides: Array<{ label: string | null; text: string }>
+}
+
+const ONLINE_HYMNARY_PREFIX = 'online:hymnary:'
+
+/** origin_path for a song pulled in from Hymnary.org is the prefix above
+ *  plus the exact page URL it came from — doubles as the dedupe key (so
+ *  re-importing the same hymn is a no-op, same as a file's origin_path
+ *  already does) and, unpacked here, the provenance shown on the song. */
+function provenanceFromOriginPath(originPath: string | null): { label: string; url?: string } | null {
+  if (!originPath || !originPath.startsWith(ONLINE_HYMNARY_PREFIX)) return null
+  const url = originPath.slice(ONLINE_HYMNARY_PREFIX.length)
+  return { label: 'Imported from Hymnary.org · Public Domain', url: url || undefined }
 }
 
 /** See src/shared/searchLimits.ts. The full song library (~1,163 songs) is
@@ -118,8 +133,11 @@ export function getSong(id: number): SongDetail | null {
   try {
     const db = getLibraryDb()
     const song = db
-      .prepare<[number], { id: number; title: string; author: string | null; song_key: string | null; source: string }>(
-        'SELECT id, title, author, song_key, source FROM songs WHERE id = ?'
+      .prepare<
+        [number],
+        { id: number; title: string; author: string | null; song_key: string | null; source: string; origin_path: string | null }
+      >(
+        'SELECT id, title, author, song_key, source, origin_path FROM songs WHERE id = ?'
       )
       .get(id)
     if (!song) return null
@@ -134,6 +152,7 @@ export function getSong(id: number): SongDetail | null {
       author: song.author,
       songKey: song.song_key,
       source: song.source,
+      provenance: provenanceFromOriginPath(song.origin_path),
       slides: normalizeSlideLabels(slides)
     }
   } catch (e) {
@@ -200,6 +219,24 @@ export function importSongs(paths: string[]): ImportResult {
   return result
 }
 
+/** `key: null` clears it — that's the explicit "we genuinely don't know it
+ *  yet" state, not an error. Any non-null value must be one of the 24
+ *  standard keys; anything else is refused rather than silently written,
+ *  since the whole point of the constrained picker is that bad data can't
+ *  reach this column. Allowed on any song, bundled or imported — unlike
+ *  Delete, correcting a key doesn't destroy anything. */
+export function updateSongKey(id: number, key: string | null): boolean {
+  try {
+    if (key !== null && !isStandardKey(key)) return false
+    const db = getLibraryDb()
+    const info = db.prepare('UPDATE songs SET song_key = ? WHERE id = ?').run(key, id)
+    return info.changes > 0
+  } catch (e) {
+    log.error('updateSongKey error', e)
+    return false
+  }
+}
+
 export function deleteSong(id: number): boolean {
   try {
     const db = getLibraryDb()
@@ -210,4 +247,44 @@ export function deleteSong(id: number): boolean {
     log.error('deleteSong error', e)
     return false
   }
+}
+
+// ── Hymnary.org import — see hymnary.ts for the fetch/parse/PD-gate itself ──
+
+export function hymnarySearch(query: string): Promise<HymnaryCandidate[]> {
+  return searchHymnary(query)
+}
+
+export type HymnaryPreview =
+  | { ok: true; title: string; author?: string; slides: Array<{ label?: string; text: string }>; url: string }
+  | { ok: false; reason: string; copyright?: string }
+
+/** No-commit lookup for the preview screen — fetches and parses but never
+ *  writes to the db, so the operator can see exactly what would be imported
+ *  (and confirm the hard PD filter really did pass) before committing. */
+export async function hymnaryPreview(url: string): Promise<HymnaryPreview> {
+  const r = await fetchHymnaryHymn(url)
+  if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
+  return { ok: true, title: r.song.title, author: r.song.author, slides: r.song.slides, url: r.url }
+}
+
+export type HymnaryImportResult =
+  | { ok: true; id: number; title: string; alreadyImported: boolean }
+  | { ok: false; reason: string; copyright?: string }
+
+/** Re-fetches rather than trusting a client-held preview — the whole point
+ *  of the hard gate is that nothing reaches the db without this check
+ *  passing right before the write, not several seconds/screens earlier. */
+export async function hymnaryImport(url: string): Promise<HymnaryImportResult> {
+  const originPath = `online:hymnary:${url}`
+  const db = getLibraryDb()
+  const existing = db.prepare<[string], { id: number; title: string }>(
+    'SELECT id, title FROM songs WHERE origin_path = ?'
+  ).get(originPath)
+  if (existing) return { ok: true, id: existing.id, title: existing.title, alreadyImported: true }
+
+  const r = await fetchHymnaryHymn(url)
+  if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
+  const ins = insertSong(db, r.song, 'import', originPath)
+  return { ok: true, id: ins.id, title: ins.title, alreadyImported: false }
 }

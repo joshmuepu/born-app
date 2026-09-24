@@ -276,8 +276,10 @@ export default function ServiceQueue({
             )}
             {!status && monitor === 'stage' && (
               <div className="live-next">
-                <span className="live-next-label">Next</span>{' '}
-                {onScreen?.nextText || 'End of this item — pick the next one from the queue'}
+                <div className="live-next-label">Next</div>
+                <div className="live-next-text">
+                  {onScreen?.nextText || 'End of this item — pick the next one from the queue'}
+                </div>
               </div>
             )}
           </div>

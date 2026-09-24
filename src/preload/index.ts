@@ -314,10 +314,12 @@ const api = {
     return () => ipcRenderer.removeListener('webremote:queue-sermon', handler)
   },
   onWebRemoteProjectSermon: (
-    callback: (data: { quote: Quote; query: string }) => void
+    callback: (data: { quote: Quote; query: string; slideIndex?: number }) => void
   ): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, data: { quote: Quote; query: string }): void =>
-      callback(data)
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { quote: Quote; query: string; slideIndex?: number }
+    ): void => callback(data)
     ipcRenderer.on('webremote:project-sermon', handler)
     return () => ipcRenderer.removeListener('webremote:project-sermon', handler)
   },
@@ -424,6 +426,12 @@ const api = {
   deleteSong: (id: number): Promise<boolean> => ipcRenderer.invoke('songs:delete', id),
   getRecentSongs: (): Promise<unknown[]> => ipcRenderer.invoke('songs:recent'),
   clearRecentSongs: (): Promise<void> => ipcRenderer.invoke('songs:clear-recent'),
+  updateSongKey: (id: number, key: string | null): Promise<boolean> =>
+    ipcRenderer.invoke('songs:update-key', id, key),
+  getRecentKeys: (): Promise<string[]> => ipcRenderer.invoke('songs:recent-keys'),
+  hymnarySearch: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:hymnary-search', query),
+  hymnaryPreview: (url: string): Promise<unknown> => ipcRenderer.invoke('songs:hymnary-preview', url),
+  hymnaryImport: (url: string): Promise<unknown> => ipcRenderer.invoke('songs:hymnary-import', url),
 
   // Languages / translation
   getLanguages: (): Promise<Record<string, string>> => ipcRenderer.invoke('languages:list'),

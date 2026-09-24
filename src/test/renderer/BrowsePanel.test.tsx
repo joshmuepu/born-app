@@ -271,7 +271,8 @@ describe('BrowsePanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Project' }))
     expect(onSendToProjection).toHaveBeenCalledWith(
-      expect.objectContaining({ sermonTitle: 'Come Follow Me' })
+      expect.objectContaining({ sermonTitle: 'Come Follow Me' }),
+      0
     )
   })
 

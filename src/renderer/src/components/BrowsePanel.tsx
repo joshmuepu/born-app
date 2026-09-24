@@ -9,7 +9,7 @@ import type {
   DateTreeYear
 } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
-import { highlight } from '../highlight'
+import { quoteToItem } from '../../../shared/queueItem'
 import './BrowsePanel.css'
 
 interface Props {
@@ -17,7 +17,10 @@ interface Props {
   /** The sermon paragraph currently on the projector, so its row can be marked. */
   onScreen?: { sermonId: number; paragraphRef: string } | null
   onAddToQueue: (quote: Quote) => void
-  onSendToProjection: (quote: Quote) => void
+  /** `slideIndex` projects that exact sub-paragraph of `quote` — a source row
+   *  can span several numbered paragraphs ("156-157"), so which flattened
+   *  row was clicked has to reach the projector as that specific paragraph. */
+  onSendToProjection: (quote: Quote, slideIndex?: number) => void
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
@@ -216,38 +219,41 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         <div className="browse-loading">Loading paragraphs…</div>
       ) : (
         <div className="browse-list">
-          {paragraphs.map((q) => {
-            const live =
-              !!onScreen &&
-              onScreen.sermonId === q.sermonId &&
-              refsOverlap(onScreen.paragraphRef, q.paragraphRef)
-            return (
-            <div
-              key={q.paragraphRef}
-              className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
-            >
-              <div className="browse-para-ref">
-                {q.paragraphRef}
-                {live && <span className="on-screen-tag">On screen</span>}
-              </div>
-              <div className="browse-para-text">{q.text}</div>
-              <div className="browse-para-actions">
-                <button
-                  className="btn-secondary btn-sm"
-                  onClick={() => onAddToQueue(q)}
+          {paragraphs.flatMap((q) =>
+            // One paragraph per row, not per source row — see the Props note
+            // on onSendToProjection.
+            quoteToItem(q).slides.map((s, slideIndex) => {
+              const marker = s.marker ?? q.paragraphRef
+              const live =
+                !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, marker)
+              return (
+                <div
+                  key={`${q.paragraphRef}:${slideIndex}`}
+                  className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
                 >
-                  + Queue
-                </button>
-                <button
-                  className="btn-primary btn-sm"
-                  onClick={() => onSendToProjection(q)}
-                >
-                  Project
-                </button>
-              </div>
-            </div>
-            )
-          })}
+                  <div className="browse-para-ref">
+                    {marker}
+                    {live && <span className="on-screen-tag">On screen</span>}
+                  </div>
+                  <div className="browse-para-text">{s.text}</div>
+                  <div className="browse-para-actions">
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={() => onAddToQueue(q)}
+                    >
+                      + Queue
+                    </button>
+                    <button
+                      className="btn-primary btn-sm"
+                      onClick={() => onSendToProjection(q, slideIndex)}
+                    >
+                      Project
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
           {paragraphs.length === 0 && !loadingParagraphs && (
             <div className="browse-empty">No paragraphs found</div>
           )}
@@ -601,25 +607,28 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         </div>
       ) : (
         <div className="browse-list">
-          {recentQuotes.map((q, i) => {
-            const live =
-              !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, q.paragraphRef)
-            return (
-              <div key={i} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
-                <div className="browse-para-ref">
-                  {q.sermonTitle} · {q.dateCode} · ¶{q.paragraphRef}
-                  {live && <span className="on-screen-tag">On screen</span>}
+          {recentQuotes.flatMap((q, i) =>
+            quoteToItem(q).slides.map((s, slideIndex) => {
+              const marker = s.marker ?? q.paragraphRef
+              const live =
+                !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, marker)
+              return (
+                <div key={`${i}:${slideIndex}`} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
+                  <div className="browse-para-ref">
+                    {q.sermonTitle} · {q.dateCode} · ¶{marker}
+                    {live && <span className="on-screen-tag">On screen</span>}
+                  </div>
+                  <div className="browse-para-text">{s.text}</div>
+                  <div className="browse-para-actions">
+                    <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>+ Queue</button>
+                    <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q, slideIndex)}>
+                      {live ? 'Restart here' : 'Project'}
+                    </button>
+                  </div>
                 </div>
-                <div className="browse-para-text">{highlight(q.text, undefined)}</div>
-                <div className="browse-para-actions">
-                  <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q)}>
-                    {live ? 'Restart here' : 'Project'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       )}
     </div>

@@ -305,6 +305,37 @@ export default function App() {
 
   useEffect(() => window.electronAPI.onQueueNavigate((dir) => advance(dir)), [advance])
 
+  // "Next" preview text (confidence monitor + remote) — a queue item only ever
+  // holds the slides loaded so far, not the whole source. Sitting on the last
+  // loaded slide of a Bible passage or sermon quote does NOT mean the source
+  // is exhausted — Next still rolls into the next verse/paragraph via
+  // fetchAdjacentSlide (see advance() above). Previously this was inferred
+  // from item.slides[slide + 1] alone, so it always said "End of this item —
+  // pick the next one" on that last loaded slide even when pressing Next
+  // would clearly continue. Peek at the real source with the same read-only
+  // fetch, without touching the projected item, so the preview matches what
+  // Next will actually do. Songs have no flow-through (cursorsFor returns no
+  // tail for them), so fetchAdjacentSlide correctly resolves to null there —
+  // "end of item" stays accurate for songs.
+  const [nextPreviewText, setNextPreviewText] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    const p = projected
+    if (!p) {
+      setNextPreviewText(undefined)
+      return
+    }
+    const loaded = p.item.slides[p.slide + 1]?.text
+    if (loaded !== undefined) {
+      setNextPreviewText(loaded)
+      return
+    }
+    setNextPreviewText(undefined)
+    fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current).then((ext) => {
+      if (projectedRef.current !== p) return // stale — a newer projection landed first
+      setNextPreviewText(ext?.slide.text)
+    })
+  }, [projected])
+
   // ── Queue ──────────────────────────────────────────────────────────────────
 
   const addToQueue = useCallback((items: QueueItem[]) => {
@@ -321,8 +352,8 @@ export default function App() {
     [addToQueue]
   )
   const handleProjectQuote = useCallback(
-    (quote: Quote) => {
-      doProject(quoteToItem(quote), 0, null)
+    (quote: Quote, slideIndex = 0) => {
+      doProject(quoteToItem(quote), slideIndex, null)
       window.electronAPI.noteSermonUsed(quote)
       // switch the results list to the whole-sermon follow view
       setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
@@ -336,9 +367,12 @@ export default function App() {
    *  `query` defaults to the desktop search box's own text, but the web
    *  remote passes its own query explicitly since it isn't the same search. */
   const handleProjectSearchResult = useCallback(
-    (quote: Quote, query: string = searchQuery) => {
+    (quote: Quote, query: string = searchQuery, slideIndex?: number) => {
       const item = quoteToItem(quote)
-      const slide = findMatchingSlideIndex(item.slides.map((s) => s.text), query)
+      const slide =
+        slideIndex !== undefined
+          ? slideIndex
+          : findMatchingSlideIndex(item.slides.map((s) => s.text), query)
       doProject(item, slide, null)
       window.electronAPI.noteSermonUsed(quote)
       setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
@@ -566,11 +600,19 @@ export default function App() {
               reference:
                 projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
               label: projected.item.slides[projected.slide]?.label,
-              nextText: projected.item.slides[projected.slide + 1]?.text
+              nextText: nextPreviewText
             }
           : null
     })
-  }, [serviceQueue, activeQueueIndex, projected, isScreenBlanked, projectionOpen, bibleTranslation])
+  }, [
+    serviceQueue,
+    activeQueueIndex,
+    projected,
+    isScreenBlanked,
+    projectionOpen,
+    bibleTranslation,
+    nextPreviewText
+  ])
 
   useEffect(
     () => window.electronAPI.onWebRemoteProject((index) => handleProjectFromQueue(index)),
@@ -593,8 +635,8 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteProjectSermon(({ quote, query }) =>
-        handleProjectSearchResult(quote, query)
+      window.electronAPI.onWebRemoteProjectSermon(({ quote, query, slideIndex }) =>
+        handleProjectSearchResult(quote, query, slideIndex)
       ),
     [handleProjectSearchResult]
   )
@@ -1117,7 +1159,7 @@ export default function App() {
                     reference:
                       projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
                     label: projected.item.slides[projected.slide]?.label,
-                    nextText: projected.item.slides[projected.slide + 1]?.text
+                    nextText: nextPreviewText
                   }
                 : null
             }

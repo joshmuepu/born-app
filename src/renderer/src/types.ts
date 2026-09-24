@@ -88,8 +88,25 @@ export interface SongDetail {
   author: string | null
   songKey: string | null
   source: string
+  /** Set only for a song imported from an online source — shown as a small
+   *  provenance line so "are we allowed to use this" has a visible answer,
+   *  not just a value sitting in the database. */
+  provenance: { label: string; url?: string } | null
   slides: Array<{ label: string | null; text: string }>
 }
+
+export interface HymnaryCandidate {
+  title: string
+  url: string
+}
+
+export type HymnaryPreview =
+  | { ok: true; title: string; author?: string; slides: Array<{ label?: string; text: string }>; url: string }
+  | { ok: false; reason: string; copyright?: string }
+
+export type HymnaryImportResult =
+  | { ok: true; id: number; title: string; alreadyImported: boolean }
+  | { ok: false; reason: string; copyright?: string }
 
 export interface SongImportResult {
   added: Array<{ id: number; title: string }>

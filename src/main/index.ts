@@ -13,7 +13,16 @@ import {
   type BibleSearchMode,
   type BibleSearchRange
 } from './bible'
-import { searchSongs, getSong, importSongs, deleteSong } from './songs'
+import {
+  searchSongs,
+  getSong,
+  importSongs,
+  deleteSong,
+  updateSongKey,
+  hymnarySearch,
+  hymnaryPreview,
+  hymnaryImport
+} from './songs'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
   startWebRemote,
@@ -27,6 +36,7 @@ import { startMdns, stopMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
+import { quoteToItem, type Quote } from '../shared/queueItem'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -73,6 +83,23 @@ import {
   fetchSubtitles,
   fetchLanguages
 } from './tableApi'
+
+/**
+ * Single-instance lock — must run before anything else touches `app`. Without
+ * this, launching BORN a second time (or a first instance left running with
+ * its windows closed, forgotten about) starts a fully separate process. Both
+ * copies work fine for local search/project, but only one can ever bind the
+ * web remote's port — the second's remote silently fails, and nothing in the
+ * UI says so (see RemotePanel.tsx). A real outage traced to exactly this: the
+ * operator had no way to know a stale background copy was still holding the
+ * port, and rebooting the computer was the only thing that occurred to them.
+ * This closes the whole class of bug: a second launch attempt just quits
+ * itself and brings the existing window forward instead.
+ */
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+}
 
 let mainWindow: BrowserWindow | null = null
 let projectionWindow: BrowserWindow | null = null
@@ -126,6 +153,7 @@ function getSettingsSafe(): {
     text: string
   }>
   recentBibleRefs: Array<{ reference: string; translation: string }>
+  recentKeys: string[]
 } {
   try {
     return getSettings()
@@ -138,7 +166,8 @@ function getSettingsSafe(): {
       theme: 'dark',
       recentSongIds: [],
       recentQuotes: [],
-      recentBibleRefs: []
+      recentBibleRefs: [],
+      recentKeys: []
     }
   }
 }
@@ -770,19 +799,23 @@ ipcMain.handle('browse:on-this-day', () => {
 /** The remote's sermon search: same searchSermons the desktop uses (plus the
  *  optional date-code filter it doesn't expose), with the matched term
  *  wrapped in <mark> server-side so the remote never re-implements — and
- *  can't drift from — the app's own highlighting rules. */
+ *  can't drift from — the app's own highlighting rules. Also ships the same
+ *  one-paragraph-per-slide split quoteToItem() computes for every other
+ *  surface — a source row can legitimately span several numbered
+ *  paragraphs ("156-157"), and without this the remote's preview had no
+ *  slide list to show at all, just that whole span as one undivided block,
+ *  even though projecting it already correctly split by paragraph. */
 async function searchSermonsForRemote(query: string, dateCode?: string): Promise<unknown[]> {
-  const rows = (await searchSermons(query, dateCode ? { dateCode } : {})) as Array<{
-    text: string
-    matchType?: 'phrase' | 'all' | 'any'
-  }>
+  const rows = (await searchSermons(query, dateCode ? { dateCode } : {})) as Quote[]
   // The desktop's own cap (MAX_SEARCH_RESULTS, 25000) is sized for a virtual
   // scrolled desktop list — sent to a phone browser as-is, a common-word
   // search built a ~75MB DOM and put the whole remote session at risk.
   // Cut down hard before it ever reaches the wire.
-  return rows
-    .slice(0, MAX_REMOTE_RESULTS)
-    .map((r) => ({ ...r, highlightedText: highlightToHtml(r.text, query, r.matchType ?? 'all') }))
+  return rows.slice(0, MAX_REMOTE_RESULTS).map((r) => ({
+    ...r,
+    highlightedText: highlightToHtml(r.text, query, r.matchType ?? 'all'),
+    slides: quoteToItem(r).slides
+  }))
 }
 
 /** The web remote's one Bible search box, unlike the desktop app's separate
@@ -1267,6 +1300,36 @@ ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
 ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
 ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
 
+/** Sets or clears a song's key (null = explicitly unknown, not an error).
+ *  On success, remembers it in recentKeys so the picker can surface it —
+ *  clearing a key isn't "used," so only a real key value is remembered.
+ *  Shared by the desktop IPC handler and the web remote's /command action
+ *  below — both are a pure data write, neither needs a round-trip through
+ *  the renderer the way project/queue actions do. */
+function applyUpdateSongKey(id: number, key: string | null): boolean {
+  const ok = updateSongKey(id, key)
+  if (ok && key !== null) {
+    try {
+      const prev = getSettingsSafe().recentKeys ?? []
+      const next = [key, ...prev.filter((x) => x !== key)].slice(0, 4)
+      updateSettings({ recentKeys: next })
+    } catch (e) {
+      log.error('songs:update-key recentKeys failed', e)
+    }
+  }
+  return ok
+}
+ipcMain.handle('songs:update-key', (_event, id: number, key: string | null) => applyUpdateSongKey(id, key))
+ipcMain.handle('songs:recent-keys', () => getSettingsSafe().recentKeys ?? [])
+
+// Hymnary.org import — desktop-only (never offered on the remote): a
+// deliberate, occasional lookup, not something to build a live-service
+// dependency on. See songs.ts / hymnary.ts for the actual fetch and the
+// hard Public-Domain gate.
+ipcMain.handle('songs:hymnary-search', (_event, query: string) => hymnarySearch(query))
+ipcMain.handle('songs:hymnary-preview', (_event, url: string) => hymnaryPreview(url))
+ipcMain.handle('songs:hymnary-import', (_event, url: string) => hymnaryImport(url))
+
 /** Called whenever a song is queued or projected, from the desktop app or
  *  the web remote alike — feeds the "Recently Played" shortlist both surfaces
  *  show under Browse. */
@@ -1429,6 +1492,8 @@ app.whenReady().then(() => {
         mainWindow.webContents.send('webremote:project-at', { index: cmd.index, slide: cmd.slide ?? 0 })
       } else if (cmd.action === 'clear-recent-songs') {
         clearRecentSongs()
+      } else if (cmd.action === 'update-song-key' && cmd.songId !== undefined) {
+        applyUpdateSongKey(cmd.songId, cmd.key ?? null)
       } else if (cmd.action === 'clear-recent-sermons') {
         updateSettings({ recentQuotes: [] })
       } else if (cmd.action === 'queue-sermon' && cmd.quote) {
@@ -1436,7 +1501,8 @@ app.whenReady().then(() => {
       } else if (cmd.action === 'project-sermon' && cmd.quote) {
         mainWindow.webContents.send('webremote:project-sermon', {
           quote: cmd.quote,
-          query: cmd.query ?? ''
+          query: cmd.query ?? '',
+          slideIndex: cmd.slide
         })
       } else if (cmd.action === 'queue-bible' && cmd.reference) {
         mainWindow.webContents.send('webremote:queue-bible', {
@@ -1469,6 +1535,7 @@ app.whenReady().then(() => {
       bibleBooks: () => Promise.resolve(bibleBooksForRemote()),
       bibleChapter: (bookNum, chapter) => bibleChapterForRemote(bookNum, chapter),
       recentSongs: () => Promise.resolve(recentSongSummaries()),
+      recentKeys: () => Promise.resolve(getSettingsSafe().recentKeys ?? []),
       recentServices: () =>
         Promise.resolve(
           (getSettingsSafe().recentServices ?? [])
@@ -1477,8 +1544,17 @@ app.whenReady().then(() => {
         ),
       sermonSeries: () => fetchAllSeries(),
       sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
-      sermonParagraphs: (sermonId) => getSermonParagraphsFor(sermonId, 'en'),
-      recentSermons: () => Promise.resolve(getSettingsSafe().recentQuotes ?? []),
+      // Same one-paragraph-per-slide split as the search results above — a
+      // browsed or recently-used quote can span several numbered paragraphs
+      // just as easily as a search hit can.
+      sermonParagraphs: (sermonId) =>
+        getSermonParagraphsFor(sermonId, 'en').then((rows) =>
+          (rows as Quote[]).map((r) => ({ ...r, slides: quoteToItem(r).slides }))
+        ),
+      recentSermons: () =>
+        Promise.resolve(
+          (getSettingsSafe().recentQuotes ?? []).map((r) => ({ ...r, slides: quoteToItem(r).slides }))
+        ),
       onThisDay: () => {
         try {
           const now = new Date()
@@ -1496,6 +1572,21 @@ app.whenReady().then(() => {
       createMainWindow()
     }
   })
+})
+
+// A second launch attempt quits itself (see the single-instance-lock guard
+// up top) and this fires on the ORIGINAL instance instead — bring its window
+// forward, exactly like clicking the Dock icon, rather than leaving the
+// operator staring at a launch that appeared to do nothing.
+app.on('second-instance', () => {
+  log.info('second-instance — focusing the existing window instead of starting a new copy')
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  } else {
+    createMainWindow()
+  }
 })
 
 app.on('before-quit', () => stopMdns())

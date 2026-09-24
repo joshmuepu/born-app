@@ -52,6 +52,7 @@ type CommandCallback = (cmd: {
   songId?: number
   name?: string
   path?: string
+  key?: string | null
 }) => void
 
 /** Everything the remote's HTTP server needs from the rest of the app, all
@@ -72,6 +73,7 @@ export interface WebRemoteSearchHandlers {
   sermonParagraphs: (sermonId: number) => Promise<unknown[]>
   recentSermons: () => Promise<unknown[]>
   onThisDay: () => Promise<unknown[]>
+  recentKeys: () => Promise<string[]>
 }
 
 let currentState: WebRemoteState = {
@@ -262,6 +264,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
   if (path === '/api/songs/recent' && req.method === 'GET') {
     sendJSON(res, 200, await searchHandlers!.recentSongs())
+    return
+  }
+  if (path === '/api/songs/recent-keys' && req.method === 'GET') {
+    sendJSON(res, 200, await searchHandlers!.recentKeys())
     return
   }
   if (path === '/api/services/recent' && req.method === 'GET') {
