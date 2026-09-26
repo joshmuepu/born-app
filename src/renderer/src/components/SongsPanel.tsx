@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
-import { ChevronLeft, X, Search, ListMusic, Clock } from 'lucide-react'
-import type { SongSummary, SongDetail } from '../types'
+import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown } from 'lucide-react'
+import type { SongSummary, SongDetail, ReviewItem, ParsedSong } from '../types'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import { highlight } from '../highlight'
 import SongKeyPicker from './SongKeyPicker'
-import HymnaryImport from './HymnaryImport'
+import OnlineImport from './OnlineImport'
+import PasteSongScreen from './PasteSongScreen'
+import SongReviewScreen from './SongReviewScreen'
 import './SongsPanel.css'
 
 interface Props {
@@ -54,8 +56,27 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
 
   const [selected, setSelected] = useState<SongDetail | null>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
-  const [hymnaryQuery, setHymnaryQuery] = useState<string | null>(null)
+  const [importFailures, setImportFailures] = useState<Array<{ file: string; error: string }>>([])
+  const [onlineQuery, setOnlineQuery] = useState<string | null>(null)
+  const [showPaste, setShowPaste] = useState(false)
+  const [importMenuOpen, setImportMenuOpen] = useState(false)
+  // Files whose structure was guessed (plain text/docx/pdf) rather than read
+  // from explicit markup — reviewed one at a time before any of them are
+  // actually written, never trusted straight through the way a ChordPro or
+  // ProPresenter7 file already is.
+  const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>([])
+  const [reviewIndex, setReviewIndex] = useState(0)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const importMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!importMenuOpen) return
+    const onDown = (e: MouseEvent): void => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) setImportMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [importMenuOpen])
 
   const loadRecent = useCallback(() => {
     window.electronAPI.getRecentSongs().then((r) => {
@@ -143,8 +164,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     [selected, onProjectSong, loadRecent]
   )
 
-  const handleImport = useCallback(async () => {
+  const refreshAfterChange = useCallback(() => {
+    if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
+    setAllSongs(null)
+  }, [query])
+
+  const handleImportFile = useCallback(async () => {
+    setImportMenuOpen(false)
     setImportMsg('Importing…')
+    setImportFailures([])
     const r = await window.electronAPI.importSongs()
     if (!r) {
       setImportMsg(null)
@@ -154,11 +182,36 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     if (r.added.length) parts.push(`${r.added.length} added`)
     if (r.skipped) parts.push(`${r.skipped} already present`)
     if (r.failed.length) parts.push(`${r.failed.length} failed`)
+    if (r.needsReview.length) parts.push(`${r.needsReview.length} need${r.needsReview.length === 1 ? 's' : ''} a quick review`)
     setImportMsg(parts.join(' · ') || 'Nothing imported')
-    if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
-    setAllSongs(null)
+    setImportFailures(r.failed)
+    refreshAfterChange()
+    if (r.needsReview.length > 0) {
+      setReviewQueue(r.needsReview)
+      setReviewIndex(0)
+    }
     setTimeout(() => setImportMsg(null), 6000)
-  }, [query])
+  }, [refreshAfterChange])
+
+  const currentReview = reviewQueue[reviewIndex] ?? null
+  const advanceReviewQueue = useCallback(() => {
+    if (reviewIndex + 1 < reviewQueue.length) {
+      setReviewIndex((i) => i + 1)
+    } else {
+      setReviewQueue([])
+      setReviewIndex(0)
+    }
+  }, [reviewIndex, reviewQueue.length])
+
+  const handleSaveReview = useCallback(
+    async (song: ParsedSong) => {
+      if (!currentReview) return
+      await window.electronAPI.commitReviewedSong(song, currentReview.originPath)
+      refreshAfterChange()
+      advanceReviewQueue()
+    },
+    [currentReview, refreshAfterChange, advanceReviewQueue]
+  )
 
   const handleDelete = useCallback(
     async (id: number, title: string) => {
@@ -166,7 +219,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       // screen — songToItem() copies the song's text in at add-time, so an
       // already-queued copy keeps working even after the library row is
       // gone. The real cost of a mistaken delete is just re-importing it.
-      if (!window.confirm(`Delete "${title}"? You can re-import it from Hymnary.org later if you need it again.`)) {
+      if (!window.confirm(`Delete "${title}"? You can re-import it later if you need it again.`)) {
         return
       }
       if (await window.electronAPI.deleteSong(id)) {
@@ -258,6 +311,23 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     )
   }
 
+  if (currentReview) {
+    return (
+      <SongReviewScreen
+        song={currentReview.song}
+        reviewKey={currentReview.originPath}
+        headerTitle={`Reviewing "${currentReview.displayName}"`}
+        queueLabel={reviewQueue.length > 1 ? `Song ${reviewIndex + 1} of ${reviewQueue.length}` : undefined}
+        onClose={() => {
+          setReviewQueue([])
+          setReviewIndex(0)
+        }}
+        onSkip={advanceReviewQueue}
+        onSave={handleSaveReview}
+      />
+    )
+  }
+
   return (
     <div className="songs-panel">
       <div className="panel-subtab-bar">
@@ -267,20 +337,59 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
         <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => setTab('browse')}>
           Browse
         </button>
-        <button className="btn-secondary btn-sm songs-import-btn" onClick={handleImport}>
-          Import…
-        </button>
+        <div className="songs-import-menu" ref={importMenuRef}>
+          <button
+            className="btn-secondary btn-sm songs-import-btn"
+            onClick={() => setImportMenuOpen((v) => !v)}
+            aria-expanded={importMenuOpen}
+          >
+            Import… <ChevronDown width={12} height={12} strokeWidth={2.4} aria-hidden="true" />
+          </button>
+          {importMenuOpen && (
+            <div className="songs-import-popover" role="menu">
+              <button role="menuitem" onClick={handleImportFile}>
+                From a file…
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setImportMenuOpen(false)
+                  setShowPaste(true)
+                }}
+              >
+                Paste text…
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       {importMsg && <div className="songs-import-msg">{importMsg}</div>}
+      {importFailures.length > 0 && (
+        <div className="songs-import-failures">
+          {importFailures.map((f, i) => (
+            <div key={i} className="songs-import-failure-row">
+              <strong>{f.file}</strong> — {f.error}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {hymnaryQuery !== null ? (
-        <HymnaryImport
-          query={hymnaryQuery}
-          onClose={() => setHymnaryQuery(null)}
+      {showPaste ? (
+        <PasteSongScreen
+          onClose={() => setShowPaste(false)}
+          onSaved={(songId) => {
+            setShowPaste(false)
+            refreshAfterChange()
+            openSong(songId)
+          }}
+        />
+      ) : onlineQuery !== null ? (
+        <OnlineImport
+          query={onlineQuery}
+          onClose={() => setOnlineQuery(null)}
           onImported={(songId) => {
-            setHymnaryQuery(null)
-            setAllSongs(null)
-            if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
+            setOnlineQuery(null)
+            refreshAfterChange()
             openSong(songId)
           }}
         />
@@ -436,8 +545,8 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
             {searched && results.map((s) => renderSongRow(s))}
             {searched && (
-              <button className="hymnary-check-link" onClick={() => setHymnaryQuery(query.trim())}>
-                Check Hymnary.org for &ldquo;{query.trim()}&rdquo; →
+              <button className="hymnary-check-link" onClick={() => setOnlineQuery(query.trim())}>
+                Check online for &ldquo;{query.trim()}&rdquo; →
               </button>
             )}
           </div>

@@ -5,11 +5,14 @@ import { readFileSync, statSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
 import { getLibraryDb } from './libraryDb'
 import { log } from './logger'
-import { parseSong } from './songParsers'
+import { parseSong, needsReview, NO_TEXT_FOUND } from './songParsers'
+import { parsePlainText } from './songParsers/plainText'
 import { insertSong, songExistsByPath } from './songInsert'
 import { MAX_SEARCH_RESULTS } from '../shared/searchLimits'
 import { isStandardKey } from '../shared/songKeys'
-import { searchHymnary, fetchHymnaryHymn, type HymnaryCandidate } from './hymnary'
+import { isUsableSong, type ParsedSong } from '../shared/song'
+import { searchHymnary, fetchHymnaryHymn } from './hymnary'
+import { searchCyberHymnal, fetchCyberHymnalHymn } from './cyberHymnal'
 
 export interface SongSummary {
   id: number
@@ -161,7 +164,7 @@ export function getSong(id: number): SongDetail | null {
   }
 }
 
-const SONG_EXT_RE = /\.(pro|pro7|xml|cho|crd|chordpro|chopro|txt)$/i
+const SONG_EXT_RE = /\.(pro|pro7|xml|cho|crd|chordpro|chopro|txt|docx|pdf)$/i
 
 function collectFiles(paths: string[]): string[] {
   const out: string[] = []
@@ -181,35 +184,72 @@ function collectFiles(paths: string[]): string[] {
   return out
 }
 
+/** A parsed-but-uncommitted song awaiting the operator's review — its
+ *  structure was guessed (blank lines, "Chorus:" labels), not read from
+ *  explicit file markup, so it's never written until they've seen it. */
+export interface ReviewItem {
+  /** Same dedupe key a straight-through import would have used — carried
+   *  through to commitReviewedSong so a re-import of the same file still
+   *  can't create a duplicate, even after a detour through review. */
+  originPath: string
+  displayName: string
+  song: ParsedSong
+}
+
 export interface ImportResult {
   added: Array<{ id: number; title: string }>
   failed: Array<{ file: string; error: string }>
   skipped: number
+  needsReview: ReviewItem[]
 }
 
-export function importSongs(paths: string[]): ImportResult {
-  const result: ImportResult = { added: [], failed: [], skipped: 0 }
+function friendlyParseError(error: string): string {
+  if (error === NO_TEXT_FOUND) {
+    return "No readable text found — if this is a scanned document, try copying the text and pasting it instead."
+  }
+  return error
+}
+
+/** Structured formats (ChordPro/OpenSong/OpenLyrics/ProPresenter7) commit
+ *  straight through exactly as before — their verse/chorus shape came from
+ *  the file's own explicit markup, not a guess. A guessed format (plain
+ *  text, docx, pdf) is parsed here too, but held in `needsReview` instead of
+ *  written, so the caller can show it to the operator before anything
+ *  touches the database — parsing happens up front (it's async: docx/pdf
+ *  extraction needs it) so only the actual writes need the sync db
+ *  transaction better-sqlite3 requires. */
+export async function importSongs(paths: string[]): Promise<ImportResult> {
+  const result: ImportResult = { added: [], failed: [], skipped: 0, needsReview: [] }
   try {
     const db = getLibraryDb()
     const files = collectFiles(paths)
-    const tx = db.transaction(() => {
-      for (const file of files) {
-        const originPath = `import:${basename(file)}`
-        if (songExistsByPath(db, originPath)) {
-          result.skipped++
+    const toCommit: Array<{ song: ParsedSong; originPath: string }> = []
+
+    for (const file of files) {
+      const originPath = `import:${basename(file)}`
+      if (songExistsByPath(db, originPath)) {
+        result.skipped++
+        continue
+      }
+      try {
+        const r = await parseSong(basename(file), readFileSync(file))
+        if ('error' in r) {
+          result.failed.push({ file: basename(file), error: friendlyParseError(r.error) })
           continue
         }
-        try {
-          const r = parseSong(basename(file), readFileSync(file))
-          if ('error' in r) {
-            result.failed.push({ file: basename(file), error: r.error })
-            continue
-          }
-          const ins = insertSong(db, r.song, 'import', originPath)
-          result.added.push(ins)
-        } catch (e) {
-          result.failed.push({ file: basename(file), error: (e as Error).message })
+        if (needsReview(r.format)) {
+          result.needsReview.push({ originPath, displayName: basename(file), song: r.song })
+        } else {
+          toCommit.push({ song: r.song, originPath })
         }
+      } catch (e) {
+        result.failed.push({ file: basename(file), error: (e as Error).message })
+      }
+    }
+
+    const tx = db.transaction(() => {
+      for (const { song, originPath } of toCommit) {
+        result.added.push(insertSong(db, song, 'import', originPath))
       }
     })
     tx()
@@ -217,6 +257,37 @@ export function importSongs(paths: string[]): ImportResult {
     log.error('importSongs error', e)
   }
   return result
+}
+
+/** Parses pasted text the exact same way a .txt file would be — same
+ *  blank-line/label auto-detection — but never commits it; the paste screen
+ *  is a review-first surface by design, there's no "trust it, it's a whole
+ *  file" shortcut the way structured file formats get. */
+export function parsePastedText(text: string, titleHint?: string): ParsedSong | { error: string } {
+  const song = parsePlainText(text, titleHint?.trim() || 'Untitled')
+  if (!isUsableSong(song)) return { error: 'No lyrics found in that text.' }
+  return song
+}
+
+/** The one place any reviewed ParsedSong — from a file, a paste, or an
+ *  online source — actually reaches the database, after the operator has
+ *  seen and possibly corrected it. `originPath` is omitted for a paste
+ *  (nothing to dedupe against); when present, re-checked here rather than
+ *  trusted from whenever review started, same reasoning as hymnaryImport's
+ *  own re-check right before its write. */
+export function commitReviewedSong(
+  song: ParsedSong,
+  originPath?: string
+): { id: number; title: string; alreadyImported: boolean } {
+  const db = getLibraryDb()
+  if (originPath) {
+    const existing = db
+      .prepare<[string], { id: number; title: string }>('SELECT id, title FROM songs WHERE origin_path = ?')
+      .get(originPath)
+    if (existing) return { ...existing, alreadyImported: true }
+  }
+  const ins = insertSong(db, song, 'import', originPath)
+  return { ...ins, alreadyImported: false }
 }
 
 /** `key: null` clears it — that's the explicit "we genuinely don't know it
@@ -249,42 +320,92 @@ export function deleteSong(id: number): boolean {
   }
 }
 
-// ── Hymnary.org import — see hymnary.ts for the fetch/parse/PD-gate itself ──
+// ── Online import (Hymnary.org + the Cyber Hymnal) ──────────────────────────
+// See hymnary.ts / cyberHymnal.ts for the fetch/parse/PD-gate of each source.
+// One unified search/preview/import surface so the review screen (and the
+// operator) never need to think about which source a result came from until
+// it matters — e.g. the Cyber Hymnal's softer, confirm-it-yourself gate.
 
-export function hymnarySearch(query: string): Promise<HymnaryCandidate[]> {
-  return searchHymnary(query)
+export interface OnlineCandidate {
+  title: string
+  url: string
+  source: 'hymnary' | 'cyberhymnal'
 }
 
-export type HymnaryPreview =
-  | { ok: true; title: string; author?: string; slides: Array<{ label?: string; text: string }>; url: string }
+/** Queries both sources concurrently. One source being unreachable doesn't
+ *  hide the other's results — only when BOTH fail does this throw, so the
+ *  UI can tell "nothing matched" apart from "couldn't search at all." */
+export async function onlineSongSearch(query: string): Promise<OnlineCandidate[]> {
+  const [hymnary, cyber] = await Promise.allSettled([searchHymnary(query), searchCyberHymnal(query)])
+  const out: OnlineCandidate[] = []
+  if (hymnary.status === 'fulfilled') out.push(...hymnary.value.map((c) => ({ ...c, source: 'hymnary' as const })))
+  if (cyber.status === 'fulfilled') out.push(...cyber.value.map((c) => ({ ...c, source: 'cyberhymnal' as const })))
+  if (hymnary.status === 'rejected' && cyber.status === 'rejected') {
+    throw new Error("Couldn't reach the internet — check your connection and try again.")
+  }
+  return out
+}
+
+export type OnlinePreview =
+  | {
+      ok: true
+      song: ParsedSong
+      url: string
+      source: 'hymnary' | 'cyberhymnal'
+      provenanceLabel: string
+      /** Only ever true for a Cyber Hymnal result — Hymnary's explicit
+       *  "Copyright: Public Domain" field is trusted outright; the Cyber
+       *  Hymnal's softer "no notice found" signal isn't, so the operator is
+       *  asked to actually look at the source page before saving. */
+      needsConfirmation: boolean
+      confirmationNote?: string
+    }
   | { ok: false; reason: string; copyright?: string }
 
-/** No-commit lookup for the preview screen — fetches and parses but never
- *  writes to the db, so the operator can see exactly what would be imported
- *  (and confirm the hard PD filter really did pass) before committing. */
-export async function hymnaryPreview(url: string): Promise<HymnaryPreview> {
-  const r = await fetchHymnaryHymn(url)
+/** No-commit lookup for the review screen — fetches and parses but never
+ *  writes to the db. */
+export async function onlineSongPreview(url: string, source: 'hymnary' | 'cyberhymnal'): Promise<OnlinePreview> {
+  if (source === 'hymnary') {
+    const r = await fetchHymnaryHymn(url)
+    if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
+    return { ok: true, song: r.song, url: r.url, source, provenanceLabel: 'Public Domain · Hymnary.org', needsConfirmation: false }
+  }
+  const r = await fetchCyberHymnalHymn(url)
   if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
-  return { ok: true, title: r.song.title, author: r.song.author, slides: r.song.slides, url: r.url }
+  return {
+    ok: true,
+    song: r.song,
+    url: r.url,
+    source,
+    provenanceLabel: r.needsConfirmation ? 'Public domain — unconfirmed · Cyber Hymnal' : 'Public Domain · Cyber Hymnal',
+    needsConfirmation: r.needsConfirmation,
+    confirmationNote: r.confirmationNote
+  }
 }
 
-export type HymnaryImportResult =
+export type OnlineImportResult =
   | { ok: true; id: number; title: string; alreadyImported: boolean }
   | { ok: false; reason: string; copyright?: string }
 
-/** Re-fetches rather than trusting a client-held preview — the whole point
- *  of the hard gate is that nothing reaches the db without this check
- *  passing right before the write, not several seconds/screens earlier. */
-export async function hymnaryImport(url: string): Promise<HymnaryImportResult> {
-  const originPath = `online:hymnary:${url}`
+/** Commits the operator's reviewed (possibly hand-corrected) song, but only
+ *  after re-fetching and re-checking the PD gate right before the write —
+ *  the gate has to still pass *now*, not just when review started a few
+ *  screens ago, while still saving whatever the operator actually edited
+ *  rather than throwing their corrections away by re-parsing from scratch. */
+export async function onlineSongImport(
+  url: string,
+  source: 'hymnary' | 'cyberhymnal',
+  edited: ParsedSong
+): Promise<OnlineImportResult> {
+  const originPath = `online:${source}:${url}`
   const db = getLibraryDb()
-  const existing = db.prepare<[string], { id: number; title: string }>(
-    'SELECT id, title FROM songs WHERE origin_path = ?'
-  ).get(originPath)
+  const existing = db
+    .prepare<[string], { id: number; title: string }>('SELECT id, title FROM songs WHERE origin_path = ?')
+    .get(originPath)
   if (existing) return { ok: true, id: existing.id, title: existing.title, alreadyImported: true }
 
-  const r = await fetchHymnaryHymn(url)
+  const r = source === 'hymnary' ? await fetchHymnaryHymn(url) : await fetchCyberHymnalHymn(url)
   if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
-  const ins = insertSong(db, r.song, 'import', originPath)
+  const ins = insertSong(db, edited, 'import', originPath)
   return { ok: true, id: ins.id, title: ins.title, alreadyImported: false }
 }

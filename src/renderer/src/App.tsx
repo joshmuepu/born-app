@@ -65,6 +65,12 @@ export default function App() {
    *  the empty state re-triggers a past search. */
   const [quickSearch, setQuickSearch] = useState<{ term: string; nonce: number } | null>(null)
   const [serviceQueue, setServiceQueue] = useState<QueueItem[]>([])
+  /** Ids of queue items actually projected at least once this run — not a
+   *  positional "everything before the current index" rule, since operators
+   *  jump around and skip items; tracked by id so it survives a reorder and
+   *  never marks a skipped item as if it had been shown. Resets on New/Open
+   *  service — it describes this run, not a saved property of the file. */
+  const [playedIds, setPlayedIds] = useState<Set<string>>(new Set())
   const [projectionOpen, setProjectionOpen] = useState(false)
   const [indexer, setIndexer] = useState<IndexerProgress | null>(null)
   const [projected, setProjected] = useState<Projected | null>(null)
@@ -113,6 +119,15 @@ export default function App() {
   useEffect(() => { projectedRef.current = projected }, [projected])
 
   const activeQueueIndex = projected?.queueIndex ?? null
+
+  // True once flow-through has carried the live slide past the queued item's
+  // own material (see `advance` below) — the operator is still reading, but
+  // no longer reading what was actually queued, which the queue list needs
+  // to say plainly rather than just keep showing the original preview text.
+  const readingAhead =
+    activeQueueIndex != null && projected != null && !!serviceQueue[activeQueueIndex]
+      ? projected.slide >= serviceQueue[activeQueueIndex].slides.length
+      : false
 
   // Load persisted queue on mount (migrating the old Quote[] format).
   useEffect(() => {
@@ -250,6 +265,13 @@ export default function App() {
       const next: Projected = { item: stored, slide, queueIndex, head: c.head, tail: c.tail }
       projectedRef.current = next
       setProjected(next)
+      // Marked here, not in the queue-row click handler — flow-through
+      // re-invokes doProject with the same queueIndex on the same item, so
+      // this only ever adds an id, never needs to check "is this already
+      // the active one" itself.
+      if (queueIndex != null) {
+        setPlayedIds((prev) => (prev.has(item.id) ? prev : new Set(prev).add(item.id)))
+      }
       setIsScreenBlanked(false)
       setBiblePreview(null) // projecting anything ends a queue-item preview
       if (item.kind === 'song') setFocusSongId(item.songId)
@@ -266,25 +288,32 @@ export default function App() {
   // Next / Prev walk the current item's slides; past either end they flow into
   // the source (next sermon paragraph, next Bible verse — rolling across
   // chapters). They never jump to another queue item — that's a click.
+  // Returns whether it actually moved anything — flow-through means "next"
+  // rarely runs out, but it genuinely can (Revelation 22:21, a sermon
+  // transcript's last paragraph), and the caller needs to know so it can
+  // give feedback instead of leaving a click looking like it did nothing.
   const advance = useCallback(
-    async (dir: 'next' | 'prev') => {
+    async (dir: 'next' | 'prev'): Promise<boolean> => {
       const p = projectedRef.current
       const q = queueRef.current
       if (!p) {
-        if (q.length > 0) doProject(q[0], 0, 0)
-        return
+        if (q.length > 0) {
+          doProject(q[0], 0, 0)
+          return true
+        }
+        return false
       }
       const step = dir === 'next' ? 1 : -1
       const target = p.slide + step
 
       if (target >= 0 && target < p.item.slides.length) {
         doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
-        return
+        return true
       }
 
       if (dir === 'next') {
         const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
-        if (!ext) return
+        if (!ext) return false
         const slides = [...p.item.slides, ext.slide]
         doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
           head: p.head,
@@ -292,10 +321,11 @@ export default function App() {
         })
       } else {
         const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
-        if (!ext) return
+        if (!ext) return false
         const slides = [ext.slide, ...p.item.slides]
         doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
       }
+      return true
     },
     [doProject]
   )
@@ -580,6 +610,7 @@ export default function App() {
         kind: it.kind,
         subtitle: it.slides[0]?.reference ?? '',
         slideCount: it.slides.length,
+        played: playedIds.has(it.id),
         slides: it.slides.map((s) => ({
           text: s.text,
           label: s.label,
@@ -600,18 +631,21 @@ export default function App() {
               reference:
                 projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
               label: projected.item.slides[projected.slide]?.label,
-              nextText: nextPreviewText
+              nextText: nextPreviewText,
+              readingAhead
             }
           : null
     })
   }, [
     serviceQueue,
+    playedIds,
     activeQueueIndex,
     projected,
     isScreenBlanked,
     projectionOpen,
     bibleTranslation,
-    nextPreviewText
+    nextPreviewText,
+    readingAhead
   ])
 
   useEffect(
@@ -624,6 +658,19 @@ export default function App() {
         handleProjectFromQueue(index, slide)
       ),
     [handleProjectFromQueue]
+  )
+  // The remote's own touch-friendly Up/Down reorder + Remove — native HTML5
+  // drag-and-drop (the desktop interaction) is a mouse-only browser API and
+  // simply cannot fire from a touchscreen, so this reuses the exact same
+  // handleReorder/handleRemoveFromQueue the desktop's own drag drop calls
+  // rather than being a separate, parallel implementation.
+  useEffect(
+    () => window.electronAPI.onWebRemoteReorder(({ from, to }) => handleReorder(from, to)),
+    [handleReorder]
+  )
+  useEffect(
+    () => window.electronAPI.onWebRemoteRemove((index) => handleRemoveFromQueue(index)),
+    [handleRemoveFromQueue]
   )
 
   // The mobile remote's search results reuse the exact same add/project
@@ -807,6 +854,7 @@ export default function App() {
       projectedRef.current = null
       setProjected(null)
       setFollowSermon(null)
+      setPlayedIds(new Set())
     }
   }, [serviceQueue.length])
 
@@ -820,6 +868,7 @@ export default function App() {
     projectedRef.current = null
     setProjected(null)
     setFollowSermon(null)
+    setPlayedIds(new Set())
   }, [])
 
   const handleOpenService = useCallback(async () => {
@@ -851,6 +900,7 @@ export default function App() {
         projectedRef.current = null
         setProjected(null)
         setFollowSermon(null)
+        setPlayedIds(new Set())
       }),
     []
   )
@@ -873,7 +923,12 @@ export default function App() {
 
   const isRunning = indexer?.status === 'running'
   const pct = indexer ? Math.round((indexer.scanned / indexer.total) * 100) : 0
-  const showFallbackBanner = projectionOpen && displayInfo?.isFallback
+  // Covers two cases that used to look identical to the operator: no external
+  // display exists at all (isFallback), and a named/remembered display went
+  // missing so the app silently picked a different one instead
+  // (missingOverrideName) — previously that second case produced no signal
+  // whatsoever, the dropdown just quietly relabelled itself.
+  const showFallbackBanner = projectionOpen && (displayInfo?.isFallback || !!displayInfo?.missingOverrideName)
 
   // Version/update-check/sermon-refresh only need to be visible on demand —
   // they're true almost all the time, so keeping them out of the footer text
@@ -980,6 +1035,7 @@ export default function App() {
             onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
             onFontSize={handleFontSizeChange}
             onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
+            onDisplayInfoChange={setDisplayInfo}
           />
 
           <RemotePanel />
@@ -995,9 +1051,16 @@ export default function App() {
 
       {showFallbackBanner && (
         <div className="fallback-banner">
-          {displayInfo?.isOverride
-            ? 'Projection is set to this screen. '
-            : 'No external display detected — projecting to this screen. '}
+          {displayInfo?.missingOverrideName ? (
+            <>
+              <strong>“{displayInfo.missingOverrideName}”</strong> isn’t detected right now — projecting to{' '}
+              {displayInfo.isFallback ? 'this screen' : 'a different screen'} instead.{' '}
+            </>
+          ) : displayInfo?.isOverride ? (
+            'Projection is set to this screen. '
+          ) : (
+            'No external display detected — projecting to this screen. '
+          )}
           Press <kbd>Esc</kbd> to hide or show it{displayInfo && displayInfo.displays.length > 1 ? ', or pick a screen above' : ''}.
         </div>
       )}
@@ -1169,6 +1232,8 @@ export default function App() {
         <div className="queue-panel">
           <ServiceQueue
             queue={serviceQueue}
+            playedIds={playedIds}
+            readingAhead={readingAhead}
             activeIndex={activeQueueIndex}
             activeSlide={projected?.slide ?? 0}
             onScreen={

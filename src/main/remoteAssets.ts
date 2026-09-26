@@ -102,6 +102,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   font-size:12.5px; font-weight:700;
 }
 .filebtn:active{background:var(--surface2)}
+.filebtn--active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
 /* Legacy icon-only button, kept for call sites elsewhere in the sheet UI. */
 .iconbtn{
   display:flex; align-items:center; justify-content:center; width:36px; height:36px;
@@ -140,7 +141,11 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    state — registers from the card's silhouette alone, not just the dot. */
 .now-card.perf{height:28vh; margin-top:0; display:flex; flex-direction:column; box-shadow:inset 3px 0 0 var(--live); transition:box-shadow .2s}
 .now-card.perf.now-card--blanked{box-shadow:inset 3px 0 0 var(--warn)}
-.now-card.perf .now-card-body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; padding:18px; overflow-y:auto}
+/* justify-content:flex-start, not center — the same overflow-clips-the-top
+   flaw fixed on .preview-now below: this box didn't happen to overflow with
+   the quotes tested live, but the flaw is latent here too, and a long verse
+   or paragraph would trigger it the same way. */
+.now-card.perf .now-card-body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:flex-start; padding:18px; overflow-y:auto}
 .now-card.perf .now-text{line-height:1.4; transition:opacity .2s}
 .now-card--blanked .now-text{opacity:0.55}
 .now-card.flash{animation:nowFlash .5s ease-out}
@@ -175,7 +180,34 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .qitem[data-kind="bible"] .qkind{color:var(--sage)}
 .qtitle{font-size:14.5px; font-weight:700; color:var(--text); margin-top:3px}
 .qsub{font-size:12px; color:var(--text2); margin-top:2px}
+/* Tablet-only (richPreview) — the item's own first line, so a real tablet's
+   extra width goes toward reading the plan, not sitting empty. */
+.qpreview{font-size:12.5px; color:var(--text2); margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .empty{text-align:center; color:var(--text2); padding:40px 24px; font-size:14px; line-height:1.5}
+
+/* Already shown this run — dimmed, not hidden, so a glance up the list still
+   confirms "yes we already did that one" instead of it just vanishing. */
+.qitem--played,.qstrip-card--played{opacity:0.5}
+.qstrip-card--played .qstrip-kind{color:var(--live)}
+
+/* Edit mode — Up/Down/Remove replace the normal tap-to-preview row. Native
+   HTML5 drag-and-drop (the desktop's own reorder gesture) can't fire from a
+   touchscreen at all, so this is a deliberately different, button-based
+   interaction rather than an attempted port of the desktop's. */
+.qitem--editable{display:flex; align-items:center; gap:10px; cursor:default}
+.qitem--editable .qitem-body{flex:1; min-width:0}
+.qitem-editbar{display:flex; flex-direction:column; gap:4px; flex-shrink:0}
+.qitem-editbtn{width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px; background:var(--surface2); border:1px solid var(--border); color:var(--text)}
+.qitem-editbtn:active{background:var(--surface)}
+.qitem-editbtn:disabled{opacity:0.3}
+.qitem-editbtn--danger{color:var(--warn)}
+
+/* "Reading ahead" / "Not in your queue" — a stronger flag than the routine
+   blanked-badge tint, since these two mean something's genuinely worth a
+   second look, not just an expected state. */
+.now-flag{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:var(--surface2); color:var(--text2); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em}
+.now-flag--warn{background:color-mix(in srgb, var(--warn) 25%, var(--bg)); color:var(--warn); border:1px solid color-mix(in srgb, var(--warn) 55%, transparent)}
+.preview-now-flags{display:flex; gap:8px; margin-bottom:10px}
 
 /* ── Item detail view — verse/slide-by-slide, tap any part to project ─
    Opened from a queue item (Songs, Bible, sermon quotes alike). This is
@@ -255,7 +287,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    not a sliver of 9px letters pinned to the screen edge, which was there
    but essentially undiscoverable and untappable one-handed. */
 .songs-body{flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden}
-.azstrip{display:flex; gap:4px; padding:2px 2px 10px; overflow-x:auto; flex-shrink:0}
+/* 27 buttons (# + A-Z) never fit a phone-width screen, but overflow-x:auto
+   on its own gives zero visual hint that L-Z etc. exist off to the right —
+   nothing peeks in, no scrollbar on touch devices. A right-edge fade is the
+   standard, cheap fix: it reads as "more here" without needing JS to track
+   scroll position. */
+.azstrip{display:flex; gap:4px; padding:2px 2px 10px; overflow-x:auto; flex-shrink:0;
+  -webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);
+  mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);}
 .azstrip button{flex-shrink:0; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
 .azstrip button:disabled{color:var(--text3); opacity:0.4}
 .azstrip button.current{background:var(--accent); color:#fff}
@@ -307,6 +346,17 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 }
 .sheet-overlay.detail-mode .sheet{max-height:92vh}
 .sheet-grip{width:36px; height:4px; border-radius:2px; background:var(--border); margin:4px auto 0}
+/* Tap-backdrop and swipe-the-grip both close a sheet already, but neither is
+   a certain, visible affordance for someone moving fast without close
+   attention to the screen — an explicit X is. Sits in the dimmed area above
+   the sheet card (never inside it, so it never scrolls with the content) and
+   is a sibling of .sheet, not part of any dynamically-rebuilt sheet body. */
+.sheet-close{
+  position:absolute; top:calc(14px + env(safe-area-inset-top,0px)); right:16px;
+  width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.12); border:none; color:#fff; z-index:1;
+}
+.sheet-close:active{background:rgba(255,255,255,0.22)}
 .sheet-title{font-size:17px; font-weight:800; color:var(--text)}
 .sheet-meta{font-size:12px; font-family:ui-monospace,monospace; margin-top:3px}
 .sheet-meta.sermon{color:var(--stone)} .sheet-meta.bible{color:var(--sage)} .sheet-meta.song{color:var(--amber)}
@@ -393,7 +443,13 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   /* Fixed, compact — see the matching comment on .now-card.perf: content is
      always one bounded slide now, not the old multi-paragraph blob this
      column-filling box used to be sized for. */
-  .preview-now{height:42vh; display:flex; align-items:center; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:inset 4px 0 0 var(--live); overflow-y:auto; transition:box-shadow .2s}
+  /* align-items:flex-start, not center: fitLiveText() shrinks the font to
+     try to fit this box, but on a short viewport (see the landscape-phone
+     media query below) it still sometimes can't — confirmed live, centering
+     an overflowing flex child clips the TOP of the text off-screen and
+     starts the visible box mid-sentence, which is worse than just starting
+     from the beginning and letting the tail scroll out of view instead. */
+  .preview-now{height:42vh; display:flex; align-items:flex-start; padding:26px 28px; border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:inset 4px 0 0 var(--live); overflow-y:auto; transition:box-shadow .2s}
   .preview-now.now-card--blanked{box-shadow:inset 4px 0 0 var(--warn)}
   .preview-now .now-text{line-height:1.4}
   .preview-now.flash{animation:nowFlash .5s ease-out}
@@ -412,6 +468,26 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .preview-sheet-inline .slide-list{flex:1; overflow-y:auto; padding-right:2px}
   .preview-sheet-inline .slide-row{padding:18px 20px}
   .preview-sheet-inline .slide-text{font-size:19px}
+}
+
+/* A landscape phone is wide enough to cross the 768px breakpoint above and
+   gets the tablet sidebar layout — but it's still phone-short (~390-430px),
+   not tablet-tall, so the tablet-sized transport strip alone was eating
+   roughly a third of the screen before any results showed. Width already
+   picked the right layout; this narrows it further to viewports that are
+   ALSO short, which no real tablet in either orientation is (iPad landscape
+   is 820px+ tall), so this never touches an actual tablet. */
+@media (min-width: 768px) and (max-height: 500px){
+  .list-pane{padding-top:14px; padding-bottom:14px}
+  .list-pane h2{margin-bottom:8px}
+  .list-pane .transport-inline{gap:10px; margin-bottom:8px}
+  .list-pane .transport-inline button{min-height:36px; padding:6px 10px; font-size:13px; border-radius:10px}
+  /* The preview column's own vertical rhythm assumes tablet-height too — on a
+     short landscape phone, more of what little height exists should go to
+     the actual on-screen text, not the surrounding padding. */
+  .preview-pane{padding:16px 20px}
+  .preview-now{height:52vh; padding:16px 20px}
+  .preview-next-box{margin-top:10px; padding:12px 16px}
 }
 `
 
@@ -457,7 +533,12 @@ const ICON = {
   share: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><rect x="4" y="13" width="16" height="8" rx="2"/></svg>',
   flame: '<svg class="dot" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg>',
   calendar: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-  book: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+  book: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  chevronUp: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
+  chevronDown: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 }
 
 export function buildAppBody(): string {
@@ -504,7 +585,7 @@ export function buildAppBody(): string {
     </div>
   </div>
 
-  <div class="sheet-overlay" id="sheetOverlay"><div class="sheet" id="sheetBody"></div></div>
+  <div class="sheet-overlay" id="sheetOverlay"><button class="sheet-close" onclick="closeSheet()" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="sheet" id="sheetBody"></div></div>
   <div class="a2hs-overlay" id="a2hsOverlay">
     <div class="a2hs">
       <h3>Add this to your Home Screen</h3>
@@ -531,7 +612,14 @@ var state = {
   songsQuery: '', songsAll: [], songsRecent: [], songsResults: null,
   selected: null,
   detailIndex: null,
-  savedList: null
+  savedList: null,
+  // Native HTML5 drag-and-drop (the desktop's own reorder gesture) is a
+  // mouse-only browser API — it cannot fire from a touchscreen at all, so
+  // the remote needs its own interaction rather than a port of the
+  // desktop's. Explicit Edit mode + Up/Down/Remove buttons per row is
+  // slower than a drag, but it's unambiguous and never misfires under
+  // thumb pressure, which matters more here than speed.
+  queueEditMode: false
 };
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -597,7 +685,31 @@ function toast(msg){
 }
 
 /* ── Tab switching ─────────────────────────────────────────────────── */
+/** #tabletList's own innerHTML is fully rebuilt on every render (each tab's
+ *  renderXTab() writes a brand-new scroll container), which silently drops
+ *  scroll position on every switch away and back — unlike the phone body,
+ *  which keeps the same element and so keeps its scrollTop for free.
+ *
+ *  The element holding that scroll position is destroyed the moment you
+ *  LEAVE a tab (the next renderXTab() call replaces #tabletList's whole
+ *  innerHTML), not when you return to it — so it has to be saved at the
+ *  point of leaving, keyed by tab, and restored after that tab's own
+ *  render rebuilds its scroll container fresh. */
+var tabletScrollSave = {};
+function tabletScrollEl(){
+  var list = $('tabletList');
+  return list ? list.querySelector('.scroll, .songlist') : null;
+}
+function saveTabletScroll(tab){
+  var el = tabletScrollEl();
+  if(el) tabletScrollSave[tab] = el.scrollTop;
+}
+function restoreTabletScroll(tab){
+  var el = tabletScrollEl();
+  if(el && tabletScrollSave[tab] != null) el.scrollTop = tabletScrollSave[tab];
+}
 function setTab(tab){
+  saveTabletScroll(state.tab);
   state.tab = tab;
   if(tab !== 'queue') state.detailIndex = null;
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
@@ -605,6 +717,27 @@ function setTab(tab){
   document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.getAttribute('data-view') === tab); });
   renderCurrentTab();
 }
+/* Keyboard fallback: 100dvh on #app (see the CSS above) already resizes the
+   layout correctly on iOS Safari 15.4+ / modern Chrome when the keyboard
+   opens, which covers the normal case. This is the belt-and-suspenders for
+   anything that resizes late or not at all: whenever a text field gains
+   focus, and again on the real "keyboard just opened" signal where
+   visualViewport is supported, make sure that field is actually still
+   visible rather than trusting the layout resize alone. */
+function scrollFocusedIntoView(){
+  var el = document.activeElement;
+  if(!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+document.addEventListener('focusin', function(e){
+  var el = e.target;
+  if(!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+  setTimeout(scrollFocusedIntoView, 300);
+});
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', function(){ setTimeout(scrollFocusedIntoView, 50); });
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   document.querySelectorAll('.tab, .sidebar-tab').forEach(function(b){
     on(b, 'click', function(){ setTab(b.getAttribute('data-tab')); });
@@ -747,13 +880,34 @@ function transportInlineHtml(){
 
 /* ── Queue tab ─────────────────────────────────────────────────────── */
 function queueHeaderHtml(){
+  var editing = state.queueEditMode;
   return '<div class="queue-header-row">'
     + '<h2 class="qh-label">SERVICE QUEUE</h2>'
     + '<div class="queue-file-actions">'
-    + '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
-    + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
-    + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>'
+    + (editing ? '' : '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
+      + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
+      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>')
+    + '<button class="filebtn' + (editing ? ' filebtn--active' : '') + '" title="Reorder or remove queue items" onclick="toggleQueueEdit()">'
+    + (editing ? ICON_CHECK + ' Done' : ICON_PENCIL + ' Edit') + '</button>'
     + '</div></div>';
+}
+function toggleQueueEdit(){
+  state.queueEditMode = !state.queueEditMode;
+  renderQueueTab();
+}
+/** Native HTML5 drag-and-drop (the desktop's own reorder gesture) is a
+ *  mouse-only browser API — it cannot fire from a touchscreen at all, so
+ *  Edit mode's Up/Down buttons are the remote's own interaction, not a port
+ *  of the desktop's. Sends the same {action:'reorder', index, to} the
+ *  desktop's drag-drop ends up calling on the app side. */
+function moveQueueItemRemote(i, dir){
+  var to = i + dir;
+  var q = state.qs.queue || [];
+  if(to < 0 || to >= q.length) return;
+  cmd('reorder', { index: i, to: to });
+}
+function removeQueueItemRemote(i){
+  cmd('remove', { index: i });
 }
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
@@ -768,7 +922,10 @@ function nowNextPerfHtml(){
   // meant the status row ate into the space fitLiveText had to work with,
   // and once the text was actually sized to fill that space (see the
   // fitLiveText fixes above) the two visually ran together as one clump.
+  var orphaned = !clickable;
   var html = '<div class="now-head">' + nowStatusHtml(blanked)
+    + (orphaned ? '<span class="now-flag now-flag--warn">Not in your queue</span>' : '')
+    + (on.readingAhead && !orphaned ? '<span class="now-flag">Reading ahead</span>' : '')
     + (on.reference ? '<span class="now-ref ' + refClass + '-ref">' + esc(on.reference) + '</span>' : '') + '</div>';
   html += '<div class="now-card perf' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"' + (clickable ? ' style="cursor:pointer" onclick="openQueueItemDetail(' + state.qs.activeIndex + ')"' : '') + '>'
     + '<div class="now-card-body">'
@@ -784,8 +941,13 @@ function nowNextBigHtml(){
   var on = state.qs.onScreen;
   if(!on) return '<div class="preview-empty">Nothing on screen yet.</div>';
   var blanked = !!state.qs.blanked;
+  var orphaned = state.qs.activeIndex == null;
   var nextLine = on.nextText ? esc(on.nextText) : 'End of this item — pick the next one from the queue';
-  return '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>'
+  var flags = '';
+  if(orphaned) flags += '<span class="now-flag now-flag--warn">Not in your queue</span>';
+  else if(on.readingAhead) flags += '<span class="now-flag">Reading ahead</span>';
+  return (flags ? '<div class="preview-now-flags">' + flags + '</div>' : '')
+    + '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>'
     + '<div class="preview-next-box">' + ICON_CHEVRON_RIGHT
     + '<div><div class="next-label" style="margin-bottom:4px">NEXT</div><div class="next-text">' + nextLine + '</div></div></div>';
 }
@@ -797,28 +959,48 @@ function compactQueueStripHtml(){
   for(var i=0;i<q.length;i++){
     var it = q[i];
     var active = i === state.qs.activeIndex;
-    html += '<button class="qstrip-card" data-kind="' + esc(it.kind) + '"' + (active ? ' style="outline:2px solid var(--live)"' : '') + ' onclick="openQueueItemDetail(' + i + ')">'
-      + '<div class="qstrip-kind">' + esc(it.kind).toUpperCase() + '</div>'
+    var played = !active && it.played;
+    html += '<button class="qstrip-card' + (played ? ' qstrip-card--played' : '') + '" data-kind="' + esc(it.kind) + '"' + (active ? ' style="outline:2px solid var(--live)"' : '') + ' onclick="openQueueItemDetail(' + i + ')">'
+      + '<div class="qstrip-kind">' + (played ? ICON_CHECK : esc(it.kind).toUpperCase()) + '</div>'
       + '<div class="qstrip-title">' + esc(it.title) + '</div>'
       + '</button>';
   }
   html += '</div>';
   return html;
 }
-function restOfQueueHtml(includeActive){
+/** Shared by the phone's "View all" sheet, the phone's Edit mode, and the
+ *  tablet's own queue list — editable swaps the normal tap-to-preview row
+ *  for explicit Up/Down/Remove buttons (see moveQueueItemRemote), and
+ *  richPreview (tablet only, which has the width to spare) adds the
+ *  item's own first line of text instead of just its reference, so a real
+ *  tablet's extra space goes toward actually reading the plan rather than
+ *  sitting empty. */
+function restOfQueueHtml(includeActive, editable, richPreview){
   var q = state.qs.queue || [];
   if(q.length === 0) return includeActive ? '<div class="empty">Queue is empty.</div>' : '';
-  var html = includeActive ? '' : '<div class="section-label">QUEUE</div>';
+  var html = includeActive ? '' : '<div class="section-label">QUEUE' + (editable ? ' — tap ' + ICON_CHEVRON_UP + '/' + ICON_CHEVRON_DOWN + ' to reorder' : '') + '</div>';
   html += '<div class="qlist">';
   for(var i=0;i<q.length;i++){
     var it = q[i];
     var active = i === state.qs.activeIndex;
     if(active && !includeActive) continue;
-    html += '<button class="qitem" data-kind="' + esc(it.kind) + '" onclick="openQueueItemDetail(' + i + ')">'
-      + '<div class="qkind">' + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
+    var played = !active && it.played;
+    var rowClass = 'qitem' + (played ? ' qitem--played' : '') + (editable ? ' qitem--editable' : '');
+    var body = '<div class="qkind">' + (played ? ICON_CHECK + ' ' : '') + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
       + '<div class="qtitle">' + esc(it.title) + '</div>'
       + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
-      + '</button>';
+      + (richPreview && it.slides && it.slides[0] ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
+    if(editable){
+      html += '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
+        + '<div class="qitem-body">' + body + '</div>'
+        + '<div class="qitem-editbar">'
+        + '<button class="qitem-editbtn" aria-label="Move up" ' + (i === 0 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',-1)">' + ICON_CHEVRON_UP + '</button>'
+        + '<button class="qitem-editbtn" aria-label="Move down" ' + (i === q.length - 1 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',1)">' + ICON_CHEVRON_DOWN + '</button>'
+        + '<button class="qitem-editbtn qitem-editbtn--danger" aria-label="Remove" onclick="removeQueueItemRemote(' + i + ')">' + ICON_TRASH + '</button>'
+        + '</div></div>';
+    } else {
+      html += '<button class="' + rowClass + '" data-kind="' + esc(it.kind) + '" onclick="openQueueItemDetail(' + i + ')">' + body + '</button>';
+    }
   }
   html += '</div>';
   return html;
@@ -829,20 +1011,24 @@ function openViewAllQueueSheet(){
 function renderQueueTab(){
   var phone = $('view-queue');
   if(phone){
-    phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
-    fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 34, 20);
+    if(state.queueEditMode){
+      // Editing is a different, less time-pressured task than running the
+      // service live — swapping to the full list (same shape the tablet and
+      // the "View all" sheet already use) rather than cramming Up/Down/
+      // Remove into the compact performance-mode strip.
+      phone.innerHTML = queueHeaderHtml() + restOfQueueHtml(true, true, false);
+    } else {
+      phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
+      fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 34, 20);
+    }
   }
 
   var list = $('tabletList');
   if(list && state.tab === 'queue'){
-    list.innerHTML = '<h2 class="qh-label">SERVICE QUEUE</h2>'
-      + transportInlineHtml()
-      + '<div class="queue-file-actions" style="margin-bottom:14px">'
-      + '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
-      + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
-      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>'
-      + '</div>'
-      + '<div class="scroll">' + restOfQueueHtml() + '</div>';
+    list.innerHTML = transportInlineHtml()
+      + queueHeaderHtml()
+      + '<div class="scroll">' + restOfQueueHtml(true, state.queueEditMode, true) + '</div>';
+    restoreTabletScroll('queue');
   }
   renderTabletPreview();
 }
@@ -983,6 +1169,7 @@ function renderSermonsTab(){
       + '<div class="datebar" style="margin-bottom:16px"><input id="sermonDateInputT" class="date-input" placeholder="Optional date filter — e.g. 63-0825E" value="' + esc(state.sermonDate) + '" onkeydown="if(event.key===\\'Enter\\')runSermonSearch(true)"/></div>'
       + '<div class="livebar-slot" id="livebar-sermonsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="sermonResultsBoxT">' + sermonResultsHtml() + '</div>';
+    restoreTabletScroll('sermons');
   }
   renderTabletPreview();
 }
@@ -1232,6 +1419,7 @@ function renderBibleTab(){
       + scopeRow
       + '<div class="livebar-slot" id="livebar-bibleT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="bibleBodyT">' + bibleBodyHtml() + '</div>';
+    restoreTabletScroll('bible');
   }
   renderTabletPreview();
 }
@@ -1439,6 +1627,7 @@ function renderSongsTab(){
       + '<div style="display:flex;margin-bottom:10px"><div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div></div>'
       + '<div class="livebar-slot" id="livebar-songsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div id="songsBodyT" class="songs-body songs-body--tablet">' + songsBodyHtml() + '</div>';
+    restoreTabletScroll('songs');
   }
   renderTabletPreview();
 }
@@ -1829,3 +2018,8 @@ document.addEventListener('DOMContentLoaded', function(){ on($('a2hsSkip'), 'cli
   .replace(/ICON_SHARE/g, JSON.stringify(ICON.share))
   .replace(/ICON_CALENDAR/g, JSON.stringify(ICON.calendar))
   .replace(/ICON_BOOK/g, JSON.stringify(ICON.book))
+  .replace(/ICON_TRASH/g, JSON.stringify(ICON.trash))
+  .replace(/ICON_CHEVRON_UP/g, JSON.stringify(ICON.chevronUp))
+  .replace(/ICON_CHEVRON_DOWN/g, JSON.stringify(ICON.chevronDown))
+  .replace(/ICON_PENCIL/g, JSON.stringify(ICON.pencil))
+  .replace(/ICON_CHECK/g, JSON.stringify(ICON.check))

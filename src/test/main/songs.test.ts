@@ -149,14 +149,36 @@ describe('getSong', () => {
 })
 
 describe('importSongs', () => {
-  it('imports a fixture file and dedupes on re-import', () => {
+  it('imports a fixture file and dedupes on re-import', async () => {
     const fx = join(__dirname, '../fixtures/songs/doxology.txt')
-    const r1 = songs.importSongs([fx])
-    expect(r1.added).toHaveLength(1)
-    expect(r1.added[0].title).toBe('Doxology')
-    const r2 = songs.importSongs([fx])
+    const r1 = await songs.importSongs([fx])
+    // Plain text is a guessed structure, not explicit markup — it's queued
+    // for review rather than committed straight through (see songs.ts).
+    expect(r1.added).toHaveLength(0)
+    expect(r1.needsReview).toHaveLength(1)
+    expect(r1.needsReview[0].song.title).toBe('Doxology')
+    const committed = songs.commitReviewedSong(r1.needsReview[0].song, r1.needsReview[0].originPath)
+    expect(committed.title).toBe('Doxology')
+
+    const r2 = await songs.importSongs([fx])
     expect(r2.added).toHaveLength(0)
+    expect(r2.needsReview).toHaveLength(0)
     expect(r2.skipped).toBe(1)
+  })
+
+  it('a real .docx and a real .pdf both flow through to review, and a text-less PDF gets a friendly failure reason', async () => {
+    const docx = join(__dirname, '../fixtures/songs/be-thou-my-vision.docx')
+    const pdf = join(__dirname, '../fixtures/songs/holy-holy-holy.pdf')
+    const blank = join(__dirname, '../fixtures/songs/blank-scanned.pdf')
+    const r = await songs.importSongs([docx, pdf, blank])
+
+    expect(r.needsReview.map((x) => x.song.title).sort()).toEqual(['Be Thou My Vision', 'Holy, Holy, Holy'])
+    expect(r.failed).toHaveLength(1)
+    expect(r.failed[0].file).toBe('blank-scanned.pdf')
+    // The raw NO_TEXT_FOUND sentinel must never reach the operator directly —
+    // friendlyParseError() turns it into the actionable "try pasting instead" message.
+    expect(r.failed[0].error).toMatch(/scanned document/i)
+    expect(r.failed[0].error).toMatch(/pasting/i)
   })
 })
 

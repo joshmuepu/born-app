@@ -7,15 +7,37 @@ export type {
   SongItem
 } from '../../shared/queueItem'
 
+import type { ParsedSong } from '../../shared/song'
+export type { ParsedSong, ParsedSongSlide } from '../../shared/song'
+
+export interface DisplayEntry {
+  id: number
+  label: string
+  shortLabel: string
+  name: string | null
+  isPrimary: boolean
+  isInternal: boolean
+}
+
+export interface NamedDisplayStatus {
+  name: string
+  connected: boolean
+}
+
 export interface DisplayInfo {
-  displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
+  displays: DisplayEntry[]
+  namedDisplays: NamedDisplayStatus[]
   targetId: number
+  targetName: string | null
   isFallback: boolean
   isOverride: boolean
+  missingOverrideName: string | null
   hasExternal: boolean
   stageTargetId: number | null
+  stageTargetName: string | null
   stageIsWindowed: boolean
   stageIsOverride: boolean
+  stageMissingOverrideName: string | null
   stageClashesProjection: boolean
 }
 
@@ -95,23 +117,42 @@ export interface SongDetail {
   slides: Array<{ label: string | null; text: string }>
 }
 
-export interface HymnaryCandidate {
+export interface OnlineCandidate {
   title: string
   url: string
+  source: 'hymnary' | 'cyberhymnal'
 }
 
-export type HymnaryPreview =
-  | { ok: true; title: string; author?: string; slides: Array<{ label?: string; text: string }>; url: string }
+export type OnlinePreview =
+  | {
+      ok: true
+      song: ParsedSong
+      url: string
+      source: 'hymnary' | 'cyberhymnal'
+      provenanceLabel: string
+      /** Only ever true for a Cyber Hymnal result — see cyberHymnal.ts. */
+      needsConfirmation: boolean
+      confirmationNote?: string
+    }
   | { ok: false; reason: string; copyright?: string }
 
-export type HymnaryImportResult =
+export type OnlineImportResult =
   | { ok: true; id: number; title: string; alreadyImported: boolean }
   | { ok: false; reason: string; copyright?: string }
+
+/** A file whose structure was auto-guessed (plain text, docx, pdf) — parsed
+ *  but not yet written, waiting on the operator's review. */
+export interface ReviewItem {
+  originPath: string
+  displayName: string
+  song: ParsedSong
+}
 
 export interface SongImportResult {
   added: Array<{ id: number; title: string }>
   failed: Array<{ file: string; error: string }>
   skipped: number
+  needsReview: ReviewItem[]
 }
 
 export interface IndexerProgress {

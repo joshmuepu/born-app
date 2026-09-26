@@ -1,12 +1,16 @@
 /**
  * detect.ts — decide which song format a file is, from its name + first bytes.
  */
-export type SongFormat = 'propresenter7' | 'openlyrics' | 'opensong' | 'chordpro' | 'plaintext'
+export type SongFormat = 'propresenter7' | 'openlyrics' | 'opensong' | 'chordpro' | 'docx' | 'pdf' | 'plaintext'
 
 export function detectFormat(filename: string, head: string): SongFormat {
   const ext = (filename.split('.').pop() ?? '').toLowerCase()
   const sample = head.slice(0, 4000)
   const trimmed = sample.trimStart()
+
+  // Binary formats — no point sniffing content, the extension is the signal.
+  if (ext === 'docx') return 'docx'
+  if (ext === 'pdf') return 'pdf'
 
   if (ext === 'pro' || ext === 'pro7') {
     if (trimmed.startsWith('{\\rtf') || /^\{(title|t|artist|c|sov|soc)[:}]/im.test(trimmed))

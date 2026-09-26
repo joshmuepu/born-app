@@ -19,10 +19,13 @@ import {
   importSongs,
   deleteSong,
   updateSongKey,
-  hymnarySearch,
-  hymnaryPreview,
-  hymnaryImport
+  parsePastedText,
+  commitReviewedSong,
+  onlineSongSearch,
+  onlineSongPreview,
+  onlineSongImport
 } from './songs'
+import type { ParsedSong } from '../shared/song'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
   startWebRemote,
@@ -52,7 +55,11 @@ import {
   pickProjectionDisplay,
   pickStageDisplay,
   describeDisplay,
-  type DisplayLike
+  fingerprintAndOrdinal,
+  findNamedEntry,
+  nameForDisplay,
+  type DisplayLike,
+  type NamedDisplay
 } from './displays'
 import {
   checkForUpdate,
@@ -69,7 +76,7 @@ import {
   getLocalLocationTree,
   getOnThisDay
 } from './browseLocal'
-import { getSettings, updateSettings } from './settings'
+import { getSettings, updateSettings, type AppSettings } from './settings'
 import {
   serverSearch,
   fetchAutocompleteSuggestions,
@@ -137,31 +144,15 @@ interface StageState {
 let stageState: StageState = { current: null, next: null }
 let stageReady = false
 
-function getSettingsSafe(): {
-  fontSize: number
-  projectionDisplayId: number | null
-  stageDisplayId: number | null
-  recentServices: string[]
-  theme: 'dark' | 'light'
-  recentSongIds: number[]
-  recentQuotes: Array<{
-    sermonId: number
-    sermonTitle: string
-    dateCode: string
-    paragraphIndex: number
-    paragraphRef: string
-    text: string
-  }>
-  recentBibleRefs: Array<{ reference: string; translation: string }>
-  recentKeys: string[]
-} {
+function getSettingsSafe(): AppSettings {
   try {
     return getSettings()
   } catch {
     return {
+      namedDisplays: [],
+      projectionDisplayName: null,
+      stageDisplayName: null,
       fontSize: 4.5,
-      projectionDisplayId: null,
-      stageDisplayId: null,
       recentServices: [],
       theme: 'dark',
       recentSongIds: [],
@@ -380,38 +371,65 @@ function toDisplayLike(d: Electron.Display): DisplayLike {
 function resolveProjectionTarget() {
   const displays = screen.getAllDisplays().map(toDisplayLike)
   const primary = screen.getPrimaryDisplay()
-  const overrideId = getSettingsSafe().projectionDisplayId
-  return pickProjectionDisplay(displays, primary.id, overrideId)
+  const settings = getSettingsSafe()
+  return pickProjectionDisplay(displays, primary.id, settings.projectionDisplayName, settings.namedDisplays)
 }
 
 function resolveStageTarget() {
   const displays = screen.getAllDisplays().map(toDisplayLike)
   const primary = screen.getPrimaryDisplay()
+  const settings = getSettingsSafe()
   const projectionId = resolveProjectionTarget().display.id
-  const overrideId = getSettingsSafe().stageDisplayId
-  return pickStageDisplay(displays, primary.id, projectionId, overrideId)
+  return pickStageDisplay(
+    displays,
+    primary.id,
+    projectionId,
+    settings.stageDisplayName,
+    settings.namedDisplays
+  )
 }
 
 function displayInfoPayload() {
   const primary = screen.getPrimaryDisplay()
   const displays = screen.getAllDisplays()
+  const displayLikes = displays.map(toDisplayLike)
+  const settings = getSettingsSafe()
   const target = resolveProjectionTarget()
   const stage = resolveStageTarget()
+  const connectedNames = new Set(
+    displayLikes.map((d) => nameForDisplay(displayLikes, d, settings.namedDisplays)).filter((n): n is string => !!n)
+  )
   return {
-    displays: displays.map((d) => ({
-      id: d.id,
-      label: describeDisplay(toDisplayLike(d), primary.id),
-      isPrimary: d.id === primary.id,
-      isInternal: !!d.internal
+    displays: displays.map((d) => {
+      const dl = toDisplayLike(d)
+      const name = nameForDisplay(displayLikes, dl, settings.namedDisplays)
+      return {
+        id: d.id,
+        label: describeDisplay(dl, primary.id, settings.namedDisplays, displayLikes),
+        shortLabel: describeDisplay(dl, primary.id, [], [dl]),
+        name,
+        isPrimary: d.id === primary.id,
+        isInternal: !!d.internal
+      }
+    }),
+    // Every operator-named display, connected or not — lets the picker show
+    // "Sanctuary Projector — not detected" instead of a name just vanishing.
+    namedDisplays: settings.namedDisplays.map((n) => ({
+      name: n.name,
+      connected: connectedNames.has(n.name)
     })),
     targetId: target.display.id,
+    targetName: nameForDisplay(displayLikes, target.display, settings.namedDisplays),
     isFallback: target.isFallback,
     isOverride: target.isOverride,
+    missingOverrideName: target.missingOverrideName,
     hasExternal: displays.length > 1,
     // Stage monitor
     stageTargetId: stage.display?.id ?? null,
+    stageTargetName: stage.display ? nameForDisplay(displayLikes, stage.display, settings.namedDisplays) : null,
     stageIsWindowed: stage.display === null,
     stageIsOverride: stage.isOverride,
+    stageMissingOverrideName: stage.missingOverrideName,
     /** true when the stage would share a screen with the main projection. */
     stageClashesProjection: stage.display != null && stage.display.id === target.display.id
   }
@@ -428,6 +446,57 @@ function broadcastDisplayInfo(): void {
   )
   sendToMain('displays:info', payload)
   sendToProjection('projection:display-info', payload)
+}
+
+/** Plain-text dump an operator can paste to whoever handles tech support —
+ *  the same raw detection facts as the born.log line above, plus named
+ *  displays and what each role currently resolved to, without anyone having
+ *  to go find the log file by hand. */
+function displayDiagnosticsText(): string {
+  const primary = screen.getPrimaryDisplay()
+  const displays = screen.getAllDisplays()
+  const displayLikes = displays.map(toDisplayLike)
+  const settings = getSettingsSafe()
+  const target = resolveProjectionTarget()
+  const stage = resolveStageTarget()
+
+  const lines: string[] = []
+  lines.push(`BORN display diagnostics — ${new Date().toISOString()}`)
+  lines.push(`App ${app.getVersion()} · Electron ${process.versions.electron} · ${process.platform}/${process.arch}`)
+  lines.push('')
+  lines.push(`Displays detected by the OS (${displays.length}):`)
+  if (displays.length === 0) lines.push('  (none)')
+  for (const d of displays) {
+    const dl = toDisplayLike(d)
+    const name = nameForDisplay(displayLikes, dl, settings.namedDisplays)
+    const tags = [d.id === primary.id ? 'primary' : null, d.internal ? 'internal' : null].filter(Boolean)
+    lines.push(
+      `  #${d.id} ${name ? `"${name}" — ` : ''}${d.label || '(no label)'} ` +
+        `${d.bounds.width}×${d.bounds.height}${tags.length ? ` [${tags.join(', ')}]` : ''}`
+    )
+  }
+  lines.push('')
+  lines.push('Named displays:')
+  if (settings.namedDisplays.length === 0) lines.push('  (none named yet)')
+  for (const n of settings.namedDisplays) {
+    const match = displayLikes.find((d) => nameForDisplay(displayLikes, d, settings.namedDisplays) === n.name)
+    lines.push(
+      match
+        ? `  "${n.name}" — connected as #${match.id}`
+        : `  "${n.name}" — NOT CONNECTED (expected ${n.fingerprint.label || 'unlabeled'} ` +
+          `${n.fingerprint.width}×${n.fingerprint.height}${n.fingerprint.internal ? ', internal' : ''})`
+    )
+  }
+  lines.push('')
+  lines.push(
+    `Congregation screen: ${target.isFallback ? 'this computer’s own screen (fallback, no external found)' : `#${target.display.id}`}` +
+      `${target.missingOverrideName ? ` — "${target.missingOverrideName}" was expected but not detected` : ''}`
+  )
+  lines.push(
+    `Stage monitor: ${stage.display ? `#${stage.display.id}` : 'floating window (no spare screen)'}` +
+      `${stage.missingOverrideName ? ` — "${stage.missingOverrideName}" was expected but not detected` : ''}`
+  )
+  return lines.join('\n')
 }
 
 // Toggling fullscreen + setBounds itself emits `display-metrics-changed`, so a
@@ -659,14 +728,124 @@ ipcMain.handle('app:quit', () => app.quit())
 
 // ── Display IPC ───────────────────────────────────────────────────────────────
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+/** The label a display would show before any operator ever named it — the
+ *  same fallback describeDisplay() uses, factored out so the first time a
+ *  display is picked as an override it gets seeded with this as its name. */
+function defaultNameFor(d: DisplayLike): string {
+  return d.label && d.label.trim() ? d.label.trim() : d.internal ? 'Built-in display' : 'Display'
+}
+
+/** Every override is backed by a NamedDisplay entry, even one the operator
+ *  never explicitly named — the first time a display is picked from the
+ *  list, it's auto-named with its raw label so the override persists via
+ *  fingerprint matching (see displays.ts) instead of a bare, fragile id. */
+function ensureNamedDisplay(displayId: number): NamedDisplay | null {
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const target = displays.find((d) => d.id === displayId)
+  if (!target) return null
+  const settings = getSettingsSafe()
+  const existing = findNamedEntry(displays, target, settings.namedDisplays)
+  if (existing) return existing
+
+  const { fingerprint, ordinal } = fingerprintAndOrdinal(displays, target)
+  let name = defaultNameFor(target)
+  if (settings.namedDisplays.some((n) => n.name === name)) name = `${name} #${displayId}`
+  const entry: NamedDisplay = { name, fingerprint, ordinal }
+  updateSettings({ namedDisplays: [...settings.namedDisplays, entry] })
+  return entry
+}
+
+let overlayWindow: BrowserWindow | null = null
+let overlayTimer: ReturnType<typeof setTimeout> | null = null
+
+function closeDisplayOverlay(): void {
+  if (overlayTimer) {
+    clearTimeout(overlayTimer)
+    overlayTimer = null
+  }
+  if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.close()
+  overlayWindow = null
+}
+
+/** A frameless, borderless window sized to exactly cover one physical
+ *  display — used for both Identify and the test pattern. Deliberately not
+ *  a real OS fullscreen transition (setSimpleFullScreen/setFullScreen),
+ *  which is visibly slow on macOS; this just needs to appear and vanish
+ *  instantly. Closes itself on a click (plain window.close(), which needs
+ *  no preload) or after `durationMs`, whichever comes first. */
+function showDisplayOverlay(displayId: number, html: string, durationMs: number): boolean {
+  const target = screen.getAllDisplays().find((d) => d.id === displayId)
+  if (!target) return false
+  closeDisplayOverlay()
+
+  const win = new BrowserWindow({
+    x: target.bounds.x,
+    y: target.bounds.y,
+    width: target.bounds.width,
+    height: target.bounds.height,
+    frame: false,
+    transparent: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    show: false,
+    backgroundColor: '#0d1117',
+    webPreferences: { sandbox: true, contextIsolation: true }
+  })
+  overlayWindow = win
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (overlayWindow === win) overlayWindow = null
+    if (overlayTimer) {
+      clearTimeout(overlayTimer)
+      overlayTimer = null
+    }
+  })
+  win.loadURL('data:text/html,' + encodeURIComponent(html))
+  overlayTimer = setTimeout(() => closeDisplayOverlay(), durationMs)
+  return true
+}
+
+function identifyOverlayHtml(label: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;background:#7c5cff;display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;cursor:pointer;user-select:none}
+.wrap{text-align:center}
+.label{font-size:min(9vw,110px);font-weight:800;line-height:1.15;padding:0 48px}
+.hint{margin-top:18px;font-size:min(2.6vw,22px);opacity:0.85}
+</style></head><body onclick="window.close()">
+<div class="wrap"><div class="label">${escapeHtml(label)}</div><div class="hint">Tap to dismiss</div></div>
+</body></html>`
+}
+
+function testPatternOverlayHtml(label: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;background:#0d1117;display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;cursor:pointer;user-select:none}
+.wrap{text-align:center;max-width:82vw}
+.sample{font-size:min(6vw,64px);font-weight:700;line-height:1.35}
+.hint{margin-top:24px;font-size:min(2.2vw,20px);color:#9aa4b2}
+</style></head><body onclick="window.close()">
+<div class="wrap"><div class="sample">Sample text — this is what a projected line looks like.</div>
+<div class="hint">This is your ${escapeHtml(label)} · tap anywhere to dismiss</div></div>
+</body></html>`
+}
+
 ipcMain.handle('displays:list', () => displayInfoPayload())
 
 ipcMain.handle('projection:set-display', (_event, displayId: number | null) => {
   log.info(`ipc projection:set-display ${displayId}`)
+  const named = displayId != null ? ensureNamedDisplay(displayId) : null
   try {
-    updateSettings({ projectionDisplayId: displayId })
+    updateSettings({ projectionDisplayName: named ? named.name : null })
   } catch (e) {
-    log.error('persist projectionDisplayId failed', e)
+    log.error('persist projectionDisplayName failed', e)
   }
   repositionProjectionWindow(true)
   repositionStageWindow() // the stage auto-pick depends on where the projection is
@@ -676,15 +855,66 @@ ipcMain.handle('projection:set-display', (_event, displayId: number | null) => {
 
 ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
   log.info(`ipc stage:set-display ${displayId}`)
+  const named = displayId != null ? ensureNamedDisplay(displayId) : null
   try {
-    updateSettings({ stageDisplayId: displayId })
+    updateSettings({ stageDisplayName: named ? named.name : null })
   } catch (e) {
-    log.error('persist stageDisplayId failed', e)
+    log.error('persist stageDisplayName failed', e)
   }
   repositionStageWindow(true)
   broadcastDisplayInfo()
   return displayInfoPayload()
 })
+
+ipcMain.handle('displays:rename', (_event, displayId: number, rawName: string) => {
+  const name = rawName.trim()
+  if (!name) return displayInfoPayload()
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const target = displays.find((d) => d.id === displayId)
+  if (!target) return displayInfoPayload()
+
+  const settings = getSettingsSafe()
+  const existing = findNamedEntry(displays, target, settings.namedDisplays)
+  const oldName = existing?.name ?? null
+  const { fingerprint, ordinal } = fingerprintAndOrdinal(displays, target)
+  const others = settings.namedDisplays.filter((n) => n !== existing && n.name !== name)
+  const namedDisplays = [...others, { name, fingerprint, ordinal }]
+
+  // Keep a live override pointed at the same physical display through its
+  // own rename, rather than orphaning it back to "Automatic".
+  const patch: Partial<AppSettings> = { namedDisplays }
+  if (oldName && settings.projectionDisplayName === oldName) patch.projectionDisplayName = name
+  if (oldName && settings.stageDisplayName === oldName) patch.stageDisplayName = name
+
+  log.info(`ipc displays:rename #${displayId} → "${name}"`)
+  try {
+    updateSettings(patch)
+  } catch (e) {
+    log.error('persist displays:rename failed', e)
+  }
+  broadcastDisplayInfo()
+  return displayInfoPayload()
+})
+
+ipcMain.handle('displays:identify', (_event, displayId: number) => {
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const target = displays.find((d) => d.id === displayId)
+  if (!target) return false
+  const settings = getSettingsSafe()
+  const label = nameForDisplay(displays, target, settings.namedDisplays) || defaultNameFor(target)
+  return showDisplayOverlay(displayId, identifyOverlayHtml(label), 2500)
+})
+
+ipcMain.handle('displays:test-pattern', (_event, displayId: number) => {
+  const displays = screen.getAllDisplays().map(toDisplayLike)
+  const target = displays.find((d) => d.id === displayId)
+  if (!target) return false
+  const settings = getSettingsSafe()
+  const label = nameForDisplay(displays, target, settings.namedDisplays) || defaultNameFor(target)
+  return showDisplayOverlay(displayId, testPatternOverlayHtml(label), 8000)
+})
+
+ipcMain.handle('displays:diagnostics', () => displayDiagnosticsText())
 
 // ── Search IPC ────────────────────────────────────────────────────────────────
 
@@ -1322,13 +1552,6 @@ function applyUpdateSongKey(id: number, key: string | null): boolean {
 ipcMain.handle('songs:update-key', (_event, id: number, key: string | null) => applyUpdateSongKey(id, key))
 ipcMain.handle('songs:recent-keys', () => getSettingsSafe().recentKeys ?? [])
 
-// Hymnary.org import — desktop-only (never offered on the remote): a
-// deliberate, occasional lookup, not something to build a live-service
-// dependency on. See songs.ts / hymnary.ts for the actual fetch and the
-// hard Public-Domain gate.
-ipcMain.handle('songs:hymnary-search', (_event, query: string) => hymnarySearch(query))
-ipcMain.handle('songs:hymnary-preview', (_event, url: string) => hymnaryPreview(url))
-ipcMain.handle('songs:hymnary-import', (_event, url: string) => hymnaryImport(url))
 
 /** Called whenever a song is queued or projected, from the desktop app or
  *  the web remote alike — feeds the "Recently Played" shortlist both surfaces
@@ -1369,13 +1592,35 @@ ipcMain.handle('songs:import', async () => {
     filters: [
       {
         name: 'Song files',
-        extensions: ['pro', 'pro7', 'xml', 'cho', 'crd', 'chordpro', 'chopro', 'txt']
+        extensions: ['pro', 'pro7', 'xml', 'cho', 'crd', 'chordpro', 'chopro', 'txt', 'docx', 'pdf']
       }
     ]
   })
   if (result.canceled || result.filePaths.length === 0) return null
   return importSongs(result.filePaths)
 })
+
+ipcMain.handle('songs:parse-pasted-text', (_event, text: string, titleHint?: string) =>
+  parsePastedText(text, titleHint)
+)
+
+ipcMain.handle('songs:commit-reviewed', (_event, song: ParsedSong, originPath?: string) =>
+  commitReviewedSong(song, originPath)
+)
+
+// Online import (Hymnary.org + the Cyber Hymnal) — desktop-only (never
+// offered on the remote): a deliberate, occasional lookup, not something to
+// build a live-service dependency on. See songs.ts / hymnary.ts /
+// cyberHymnal.ts for the actual fetch and each source's PD gate.
+ipcMain.handle('songs:online-search', (_event, query: string) => onlineSongSearch(query))
+ipcMain.handle('songs:online-preview', (_event, url: string, source: 'hymnary' | 'cyberhymnal') =>
+  onlineSongPreview(url, source)
+)
+ipcMain.handle(
+  'songs:online-import',
+  (_event, url: string, source: 'hymnary' | 'cyberhymnal', edited: ParsedSong) =>
+    onlineSongImport(url, source, edited)
+)
 
 // ── Languages IPC ─────────────────────────────────────────────────────────────
 
@@ -1490,6 +1735,10 @@ app.whenReady().then(() => {
         mainWindow.webContents.send('webremote:project', cmd.index)
       } else if (cmd.action === 'project-at' && cmd.index !== undefined) {
         mainWindow.webContents.send('webremote:project-at', { index: cmd.index, slide: cmd.slide ?? 0 })
+      } else if (cmd.action === 'reorder' && cmd.index !== undefined && cmd.to !== undefined) {
+        mainWindow.webContents.send('webremote:reorder', { from: cmd.index, to: cmd.to })
+      } else if (cmd.action === 'remove' && cmd.index !== undefined) {
+        mainWindow.webContents.send('webremote:remove', cmd.index)
       } else if (cmd.action === 'clear-recent-songs') {
         clearRecentSongs()
       } else if (cmd.action === 'update-song-key' && cmd.songId !== undefined) {

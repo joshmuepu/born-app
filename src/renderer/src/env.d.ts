@@ -21,9 +21,10 @@ import type {
   SongSummary,
   SongDetail,
   SongImportResult,
-  HymnaryCandidate,
-  HymnaryPreview,
-  HymnaryImportResult,
+  OnlineCandidate,
+  OnlinePreview,
+  OnlineImportResult,
+  ParsedSong,
   DisplayInfo as DisplayInfoType
 } from './types'
 
@@ -69,6 +70,10 @@ declare global {
       listDisplays: () => Promise<DisplayInfo>
       setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>
       setStageDisplay: (displayId: number | null) => Promise<DisplayInfo>
+      renameDisplay: (displayId: number, name: string) => Promise<DisplayInfo>
+      identifyDisplay: (displayId: number) => Promise<boolean>
+      testPatternDisplay: (displayId: number) => Promise<boolean>
+      getDisplayDiagnostics: () => Promise<string>
       onDisplaysInfo: (callback: (info: DisplayInfo) => void) => () => void
       onProjectionDisplayInfo: (callback: (info: DisplayInfo) => void) => () => void
       // Alert / Ticker
@@ -140,6 +145,9 @@ declare global {
           kind: string
           subtitle: string
           slideCount: number
+          /** Actually projected at least once this run — see App.tsx's
+           *  playedIds for why this isn't just "before the active index." */
+          played: boolean
           slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
         }>
         activeIndex: number | null
@@ -153,10 +161,15 @@ declare global {
           label?: string
           marker?: string
           nextText?: string
+          /** True once Next/Prev flow-through has carried the live slide
+           *  past the queued item's own material. */
+          readingAhead?: boolean
         } | null
       }) => void
       onWebRemoteProject: (callback: (index: number) => void) => () => void
       onWebRemoteProjectAt: (callback: (data: { index: number; slide: number }) => void) => () => void
+      onWebRemoteReorder: (callback: (data: { from: number; to: number }) => void) => () => void
+      onWebRemoteRemove: (callback: (index: number) => void) => () => void
       onWebRemoteQueueSermon: (callback: (quote: Quote) => void) => () => void
       onWebRemoteProjectSermon: (
         callback: (data: { quote: Quote; query: string; slideIndex?: number }) => void
@@ -216,14 +229,23 @@ declare global {
       searchSongs: (query: string) => Promise<SongSummary[]>
       getSong: (id: number) => Promise<SongDetail | null>
       importSongs: () => Promise<SongImportResult | null>
+      parsePastedText: (text: string, titleHint?: string) => Promise<ParsedSong | { error: string }>
+      commitReviewedSong: (
+        song: ParsedSong,
+        originPath?: string
+      ) => Promise<{ id: number; title: string; alreadyImported: boolean }>
       deleteSong: (id: number) => Promise<boolean>
       getRecentSongs: () => Promise<SongSummary[]>
       clearRecentSongs: () => Promise<void>
       updateSongKey: (id: number, key: string | null) => Promise<boolean>
       getRecentKeys: () => Promise<string[]>
-      hymnarySearch: (query: string) => Promise<HymnaryCandidate[]>
-      hymnaryPreview: (url: string) => Promise<HymnaryPreview>
-      hymnaryImport: (url: string) => Promise<HymnaryImportResult>
+      onlineSongSearch: (query: string) => Promise<OnlineCandidate[]>
+      onlineSongPreview: (url: string, source: 'hymnary' | 'cyberhymnal') => Promise<OnlinePreview>
+      onlineSongImport: (
+        url: string,
+        source: 'hymnary' | 'cyberhymnal',
+        edited: ParsedSong
+      ) => Promise<OnlineImportResult>
       // Languages / translation
       getLanguages: () => Promise<Record<string, string>>
       translateQuote: (

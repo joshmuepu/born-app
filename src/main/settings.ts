@@ -7,12 +7,18 @@ import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
+import type { NamedDisplay } from './displays'
 
 export interface AppSettings {
-  /** Electron display id the operator forced the projection onto, if any. */
-  projectionDisplayId: number | null
-  /** Electron display id the operator forced the stage monitor onto, if any. */
-  stageDisplayId: number | null
+  /** Operator-given names for physical displays ("Sanctuary Projector"),
+   *  matched back by model/resolution/internal-flag rather than Electron's
+   *  raw id — see displays.ts for why the id alone isn't durable enough. */
+  namedDisplays: NamedDisplay[]
+  /** Name of the operator-named display forced onto the congregation screen,
+   *  if any — null means automatic. */
+  projectionDisplayName: string | null
+  /** Same, for the stage monitor. */
+  stageDisplayName: string | null
   /** Projection text size in rem. */
   fontSize: number
   /** Absolute paths of recently saved / opened service files, newest first. */
@@ -45,8 +51,9 @@ export interface AppSettings {
 }
 
 const DEFAULTS: AppSettings = {
-  projectionDisplayId: null,
-  stageDisplayId: null,
+  namedDisplays: [],
+  projectionDisplayName: null,
+  stageDisplayName: null,
   // Matches "100%" in the operator's Text control; the projection window scales
   // this by screen size (see ProjectionApp `baseRem`).
   fontSize: 4.5,

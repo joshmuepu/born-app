@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseSong, detectFormat, titleFromFilename } from '../../main/songParsers'
+import { parseSong, detectFormat, titleFromFilename, NO_TEXT_FOUND } from '../../main/songParsers'
 import { rtfToText } from '../../main/songParsers/rtfToText'
 
 const FX = join(__dirname, '../fixtures/songs')
 const read = (f: string) => readFileSync(join(FX, f))
 
 describe('detectFormat', () => {
-  it('classifies by extension + content', () => {
+  it('classifies by extension + content', async () => {
     expect(detectFormat('x.pro', '\n\x08\x01\x12')).toBe('propresenter7')
     expect(detectFormat('x.xml', '<?xml?><song xmlns="http://openlyrics.info/">')).toBe('openlyrics')
     expect(detectFormat('x.xml', '<song><title>a</title><lyrics>[V1]\n hi</lyrics></song>')).toBe('opensong')
@@ -18,7 +18,7 @@ describe('detectFormat', () => {
 })
 
 describe('titleFromFilename', () => {
-  it('drops a trailing key + the extension', () => {
+  it('drops a trailing key + the extension', async () => {
     expect(titleFromFilename('This Little Light Of Mine - G.pro')).toBe('This Little Light Of Mine')
     expect(titleFromFilename('As We Gather - Eb.pro')).toBe('As We Gather')
     expect(titleFromFilename('Doxology.txt')).toBe('Doxology')
@@ -26,19 +26,19 @@ describe('titleFromFilename', () => {
 })
 
 describe('rtfToText', () => {
-  it('strips control words + tables and keeps line breaks', () => {
+  it('strips control words + tables and keeps line breaks', async () => {
     const rtf =
       "{\\rtf1\\ansi{\\fonttbl\\f0\\fswiss Arial;}\\f0\\fs170 \\cf2 This little light of mine,\\\nI'm going to let it shine.\\\n}"
     expect(rtfToText(rtf)).toBe("This little light of mine,\nI'm going to let it shine.")
   })
-  it('decodes \\\x27xx escapes', () => {
+  it('decodes \\\x27xx escapes', async () => {
     expect(rtfToText("{\\rtf1 don\\'92t}")).toBe('don’t')
   })
 })
 
 describe('parseSong — real ProPresenter 7 files', () => {
-  it('little-light.pro → clean lyrics, one slide per verse, labelled', () => {
-    const r = parseSong('This Little Light Of Mine - G.pro', read('little-light.pro'))
+  it('little-light.pro → clean lyrics, one slide per verse, labelled', async () => {
+    const r = await parseSong('This Little Light Of Mine - G.pro', read('little-light.pro'))
     expect('error' in r).toBe(false)
     if ('error' in r) return
     expect(r.format).toBe('propresenter7')
@@ -54,28 +54,28 @@ describe('parseSong — real ProPresenter 7 files', () => {
     expect(all).not.toMatch(/\\rtf|fonttbl|\\cf\d/)
   })
 
-  it('to-god-be-glory.pro → keeps a named "Chorus" section', () => {
-    const r = parseSong('To God Be the Glory - G.pro', read('to-god-be-glory.pro'))
+  it('to-god-be-glory.pro → keeps a named "Chorus" section', async () => {
+    const r = await parseSong('To God Be the Glory - G.pro', read('to-god-be-glory.pro'))
     if ('error' in r) throw new Error(r.error)
     expect(r.song.slides.some((s) => s.label === 'Chorus')).toBe(true)
     expect(r.song.slides[0].label).toBe('Verse 1')
   })
 
-  it('moves the song key out of the lyric text into song.songKey', () => {
+  it('moves the song key out of the lyric text into song.songKey', async () => {
     // fixture filenames carry the key: "This Little Light Of Mine - G.pro"
-    const r = parseSong('This Little Light Of Mine - G.pro', read('little-light.pro'))
+    const r = await parseSong('This Little Light Of Mine - G.pro', read('little-light.pro'))
     if ('error' in r) throw new Error(r.error)
     expect(r.song.songKey).toBe('G')
     for (const s of r.song.slides) {
       expect(s.text.trim()).not.toMatch(/(^|\n)\s*[A-G][#b]?m?\s*$/)
     }
-    const r2 = parseSong('As We Gather - Eb.pro', read('as-we-gather.pro'))
+    const r2 = await parseSong('As We Gather - Eb.pro', read('as-we-gather.pro'))
     if ('error' in r2) throw new Error(r2.error)
     expect(r2.song.songKey).toBe('Eb')
   })
 
-  it('as-we-gather.pro', () => {
-    const r = parseSong('As We Gather - Eb.pro', read('as-we-gather.pro'))
+  it('as-we-gather.pro', async () => {
+    const r = await parseSong('As We Gather - Eb.pro', read('as-we-gather.pro'))
     if ('error' in r) throw new Error(r.error)
     expect(r.song.slides.join?.length ?? r.song.slides.length).toBeGreaterThan(0)
     expect(r.song.slides.map((s) => s.text).join(' ').toLowerCase()).toContain('as we gather')
@@ -83,8 +83,8 @@ describe('parseSong — real ProPresenter 7 files', () => {
 })
 
 describe('parseSong — openLyrics', () => {
-  it('amazing-grace.xml', () => {
-    const r = parseSong('amazing-grace.xml', read('amazing-grace.xml'))
+  it('amazing-grace.xml', async () => {
+    const r = await parseSong('amazing-grace.xml', read('amazing-grace.xml'))
     if ('error' in r) throw new Error(r.error)
     expect(r.format).toBe('openlyrics')
     expect(r.song.title).toBe('Amazing Grace')
@@ -99,8 +99,8 @@ describe('parseSong — openLyrics', () => {
 })
 
 describe('parseSong — openSong', () => {
-  it('blessed-assurance.xml', () => {
-    const r = parseSong('blessed-assurance.xml', read('blessed-assurance.xml'))
+  it('blessed-assurance.xml', async () => {
+    const r = await parseSong('blessed-assurance.xml', read('blessed-assurance.xml'))
     if ('error' in r) throw new Error(r.error)
     expect(r.format).toBe('opensong')
     expect(r.song.title).toBe('Blessed Assurance')
@@ -112,8 +112,8 @@ describe('parseSong — openSong', () => {
 })
 
 describe('parseSong — chordPro', () => {
-  it('how-great.cho — strips chords + reads directives', () => {
-    const r = parseSong('how-great.cho', read('how-great.cho'))
+  it('how-great.cho — strips chords + reads directives', async () => {
+    const r = await parseSong('how-great.cho', read('how-great.cho'))
     if ('error' in r) throw new Error(r.error)
     expect(r.format).toBe('chordpro')
     expect(r.song.title).toBe('How Great Thou Art')
@@ -127,15 +127,15 @@ describe('parseSong — chordPro', () => {
 })
 
 describe('parseSong — plain text', () => {
-  it('doxology.txt — first line is the title', () => {
-    const r = parseSong('Doxology.txt', read('doxology.txt'))
+  it('doxology.txt — first line is the title', async () => {
+    const r = await parseSong('Doxology.txt', read('doxology.txt'))
     if ('error' in r) throw new Error(r.error)
     expect(r.song.title).toBe('Doxology')
     expect(r.song.slides).toHaveLength(1)
     expect(r.song.slides[0].text).toContain('Praise God from whom all blessings flow')
   })
-  it('trust-obey.txt — section labels', () => {
-    const r = parseSong('Trust And Obey.txt', read('trust-obey.txt'))
+  it('trust-obey.txt — section labels', async () => {
+    const r = await parseSong('Trust And Obey.txt', read('trust-obey.txt'))
     if ('error' in r) throw new Error(r.error)
     expect(r.song.title).toBe('Trust And Obey')
     expect(r.song.slides[0].label).toBe('Verse 1')
@@ -143,9 +143,43 @@ describe('parseSong — plain text', () => {
   })
 })
 
+describe('parseSong — real .docx / .pdf files', () => {
+  // Real files, not synthetic fixtures: be-thou-my-vision.docx was produced
+  // with macOS's own `textutil -convert docx`, holy-holy-holy.pdf with
+  // `cupsfilter` (both genuine Word/PDF binaries, not hand-rolled markup) —
+  // exercising the actual mammoth / pdfjs-dist extraction path end to end.
+  it('be-thou-my-vision.docx → extracts text, detects the "Chorus:" label, and queues for review', async () => {
+    const r = await parseSong('be-thou-my-vision.docx', read('be-thou-my-vision.docx'))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.format).toBe('docx')
+    expect(r.song.title).toBe('Be Thou My Vision')
+    expect(r.song.slides.length).toBeGreaterThanOrEqual(2)
+    expect(r.song.slides[0].text).toContain('Be thou my vision')
+    expect(r.song.slides.some((s) => s.label === 'Chorus')).toBe(true)
+  })
+
+  it('holy-holy-holy.pdf → extracts the real text layer', async () => {
+    const r = await parseSong('holy-holy-holy.pdf', read('holy-holy-holy.pdf'))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.format).toBe('pdf')
+    expect(r.song.title).toBe('Holy, Holy, Holy')
+    expect(r.song.slides.length).toBeGreaterThanOrEqual(1)
+    const allText = r.song.slides.map((s) => s.text).join(' ')
+    expect(allText).toContain('Lord God Almighty')
+    expect(allText).toContain('Casting down their golden crowns')
+  })
+
+  it('a text-less (scanned-style) PDF is reported as no-text-found, not a crash or garbage output', async () => {
+    const r = await parseSong('blank-scanned.pdf', read('blank-scanned.pdf'))
+    expect('error' in r).toBe(true)
+    if (!('error' in r)) return
+    expect(r.error).toBe(NO_TEXT_FOUND)
+  })
+})
+
 describe('parseSong — full Songs.zip corpus (if present)', () => {
   const corpus = join(__dirname, '../../../resources/songs-source/Songs')
-  it('parses ≥95% of the bundled library', () => {
+  it('parses ≥95% of the bundled library', async () => {
     let files: string[]
     try {
       files = readdirSync(corpus).filter((f) => f.toLowerCase().endsWith('.pro') && !f.startsWith('._'))
@@ -155,7 +189,7 @@ describe('parseSong — full Songs.zip corpus (if present)', () => {
     if (files.length === 0) return
     let ok = 0
     for (const f of files) {
-      const r = parseSong(f, readFileSync(join(corpus, f)))
+      const r = await parseSong(f, readFileSync(join(corpus, f)))
       if (!('error' in r)) ok++
     }
     expect(ok / files.length).toBeGreaterThan(0.95)

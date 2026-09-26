@@ -10,16 +10,43 @@ export interface Quote {
   language?: string
 }
 
+export interface DisplayEntry {
+  id: number
+  /** Full description — custom name (if any) + raw model + resolution + tags. */
+  label: string
+  /** Same, but always the raw system label, ignoring any operator name —
+   *  used as the seed text when renaming. */
+  shortLabel: string
+  /** Operator-given name ("Sanctuary Projector"), if this display has one. */
+  name: string | null
+  isPrimary: boolean
+  isInternal: boolean
+}
+
+export interface NamedDisplayStatus {
+  name: string
+  /** Whether a currently-connected display matches this saved name right now. */
+  connected: boolean
+}
+
 export interface DisplayInfo {
-  displays: Array<{ id: number; label: string; isPrimary: boolean; isInternal: boolean }>
+  displays: DisplayEntry[]
+  /** Every operator-named display, connected or not. */
+  namedDisplays: NamedDisplayStatus[]
   targetId: number
+  targetName: string | null
   isFallback: boolean
   isOverride: boolean
+  /** Set when the projection override names a display that isn't currently
+   *  connected — the app fell back to auto-pick, but this says why/what. */
+  missingOverrideName: string | null
   hasExternal: boolean
   /** Stage monitor: the display it's on, or null when it stays a normal window. */
   stageTargetId: number | null
+  stageTargetName: string | null
   stageIsWindowed: boolean
   stageIsOverride: boolean
+  stageMissingOverrideName: string | null
   stageClashesProjection: boolean
 }
 
@@ -97,6 +124,12 @@ const api = {
     ipcRenderer.invoke('projection:set-display', displayId),
   setStageDisplay: (displayId: number | null): Promise<DisplayInfo> =>
     ipcRenderer.invoke('stage:set-display', displayId),
+  renameDisplay: (displayId: number, name: string): Promise<DisplayInfo> =>
+    ipcRenderer.invoke('displays:rename', displayId, name),
+  identifyDisplay: (displayId: number): Promise<boolean> => ipcRenderer.invoke('displays:identify', displayId),
+  testPatternDisplay: (displayId: number): Promise<boolean> =>
+    ipcRenderer.invoke('displays:test-pattern', displayId),
+  getDisplayDiagnostics: (): Promise<string> => ipcRenderer.invoke('displays:diagnostics'),
 
   onDisplaysInfo: (callback: (info: DisplayInfo) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, info: DisplayInfo): void => callback(info)
@@ -278,6 +311,7 @@ const api = {
       kind: string
       subtitle: string
       slideCount: number
+      played: boolean
       slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
     }>
     activeIndex: number | null
@@ -291,6 +325,7 @@ const api = {
       label?: string
       marker?: string
       nextText?: string
+      readingAhead?: boolean
     } | null
   }): void => ipcRenderer.send('webremote:sync', state),
 
@@ -306,6 +341,17 @@ const api = {
       callback(data)
     ipcRenderer.on('webremote:project-at', handler)
     return () => ipcRenderer.removeListener('webremote:project-at', handler)
+  },
+
+  onWebRemoteReorder: (callback: (data: { from: number; to: number }) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { from: number; to: number }): void => callback(data)
+    ipcRenderer.on('webremote:reorder', handler)
+    return () => ipcRenderer.removeListener('webremote:reorder', handler)
+  },
+  onWebRemoteRemove: (callback: (index: number) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, index: number): void => callback(index)
+    ipcRenderer.on('webremote:remove', handler)
+    return () => ipcRenderer.removeListener('webremote:remove', handler)
   },
 
   onWebRemoteQueueSermon: (callback: (quote: Quote) => void): (() => void) => {
@@ -423,15 +469,21 @@ const api = {
   searchSongs: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:search', query),
   getSong: (id: number): Promise<unknown> => ipcRenderer.invoke('songs:get', id),
   importSongs: (): Promise<unknown> => ipcRenderer.invoke('songs:import'),
+  parsePastedText: (text: string, titleHint?: string): Promise<unknown> =>
+    ipcRenderer.invoke('songs:parse-pasted-text', text, titleHint),
+  commitReviewedSong: (song: unknown, originPath?: string): Promise<unknown> =>
+    ipcRenderer.invoke('songs:commit-reviewed', song, originPath),
   deleteSong: (id: number): Promise<boolean> => ipcRenderer.invoke('songs:delete', id),
   getRecentSongs: (): Promise<unknown[]> => ipcRenderer.invoke('songs:recent'),
   clearRecentSongs: (): Promise<void> => ipcRenderer.invoke('songs:clear-recent'),
   updateSongKey: (id: number, key: string | null): Promise<boolean> =>
     ipcRenderer.invoke('songs:update-key', id, key),
   getRecentKeys: (): Promise<string[]> => ipcRenderer.invoke('songs:recent-keys'),
-  hymnarySearch: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:hymnary-search', query),
-  hymnaryPreview: (url: string): Promise<unknown> => ipcRenderer.invoke('songs:hymnary-preview', url),
-  hymnaryImport: (url: string): Promise<unknown> => ipcRenderer.invoke('songs:hymnary-import', url),
+  onlineSongSearch: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:online-search', query),
+  onlineSongPreview: (url: string, source: 'hymnary' | 'cyberhymnal'): Promise<unknown> =>
+    ipcRenderer.invoke('songs:online-preview', url, source),
+  onlineSongImport: (url: string, source: 'hymnary' | 'cyberhymnal', edited: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('songs:online-import', url, source, edited),
 
   // Languages / translation
   getLanguages: (): Promise<Record<string, string>> => ipcRenderer.invoke('languages:list'),

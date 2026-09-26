@@ -20,6 +20,9 @@ export interface WebRemoteState {
     kind: string
     subtitle: string
     slideCount: number
+    /** Actually projected at least once this run — App.tsx's playedIds,
+     *  passed straight through so the remote can dim/checkmark it too. */
+    played: boolean
     /** Every slide's full content — lets the remote show "the whole song /
      *  passage / quote, tap any part to project it" without a round trip. */
     slides: WebRemoteSlide[]
@@ -38,6 +41,9 @@ export interface WebRemoteState {
     label?: string
     marker?: string
     nextText?: string
+    /** Next/Prev flow-through has carried the live slide past what was
+     *  actually queued — see App.tsx's `readingAhead`. */
+    readingAhead?: boolean
   } | null
 }
 
@@ -45,6 +51,8 @@ type CommandCallback = (cmd: {
   action: string
   index?: number
   slide?: number
+  /** Reorder target index — only set for action 'reorder'. */
+  to?: number
   quote?: unknown
   reference?: string
   translation?: string

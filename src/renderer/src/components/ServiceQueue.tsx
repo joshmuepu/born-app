@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { Monitor, MonitorPlay, MonitorOff, EyeOff } from 'lucide-react'
+import { Monitor, MonitorPlay, MonitorOff, EyeOff, Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
 import { useAutoFitFontSize } from '../useAutoFitFontSize'
+import './ServiceQueue.css'
 
 /** Ceiling for the confidence-monitor text — auto-fit shrinks below this for
  *  longer passages, so a short verse reads large and a long one still fits
@@ -24,10 +25,18 @@ interface OnScreen {
 
 interface Props {
   queue: QueueItem[]
+  /** Ids actually projected at least once this run — see App.tsx's playedIds
+   *  for why this is tracked by id rather than "everything before the
+   *  current index." */
+  playedIds: Set<string>
   activeIndex: number | null
   activeSlide: number
   /** What's actually on the projector right now (follows Next/Prev flow-through). */
   onScreen?: OnScreen | null
+  /** Next/Prev flow-through has carried the live slide past the active
+   *  item's own queued material — it's still genuinely live, just not what
+   *  was actually queued, and the active row needs to say so plainly. */
+  readingAhead: boolean
   projectionOpen: boolean
   stageOpen: boolean
   blanked: boolean
@@ -35,8 +44,12 @@ interface Props {
   /** Click a row to go to that item in the source panel (does NOT project it). */
   onSelect: (index: number) => void
   onRemove: (index: number) => void
-  onPrev: () => void
-  onNext: () => void
+  /** Resolves to whether it actually moved anything — flow-through means
+   *  these rarely run out, but they can (Revelation 22:21, a sermon
+   *  transcript's last paragraph); false lets the button give feedback
+   *  instead of silently doing nothing. */
+  onPrev: () => Promise<boolean>
+  onNext: () => Promise<boolean>
   onReorder: (from: number, to: number) => void
   /** Service files — a service file is this queue, so they live here. */
   onNewService: () => void
@@ -52,6 +65,16 @@ const KIND_BADGE: Record<QueueItem['kind'], string> = {
   song: 'Song'
 }
 
+/** Sermons/quotes are deliberately left as the app's neutral default
+ *  (see --sermons "Quiet Stone" in App.css) — Bible and Songs get the two
+ *  real accent colors. The icon carries the rest of the at-a-glance
+ *  distinction that a label alone doesn't. */
+const KIND_ICON: Record<QueueItem['kind'], typeof Mic> = {
+  quote: Mic,
+  bible: BookOpen,
+  song: Music
+}
+
 /** Short preview line for a queue row. */
 function itemPreview(item: QueueItem): string {
   if (item.kind === 'quote') return item.quote.text
@@ -60,9 +83,11 @@ function itemPreview(item: QueueItem): string {
 
 export default function ServiceQueue({
   queue,
+  playedIds,
   activeIndex,
   activeSlide,
   onScreen,
+  readingAhead,
   projectionOpen,
   stageOpen,
   blanked,
@@ -83,12 +108,29 @@ export default function ServiceQueue({
   // Which monitor the operator is following: the congregation's screen (current
   // slide only) or the stage monitor (current slide + what Next will show).
   const [monitor, setMonitor] = useState<'screen' | 'stage'>('screen')
+  // Brief feedback when Prev/Next genuinely has nowhere to go (the true start
+  // of the service, or the true end of all available content) — flow-through
+  // means that's rare, so a silent no-op reads as broken rather than "you're
+  // at the edge." Cleared automatically; purely a CSS animation trigger.
+  const [bump, setBump] = useState<'prev' | 'next' | null>(null)
+  const bumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const triggerBump = (dir: 'prev' | 'next'): void => {
+    setBump(dir)
+    if (bumpTimer.current) clearTimeout(bumpTimer.current)
+    bumpTimer.current = setTimeout(() => setBump(null), 260)
+  }
+  const handlePrevClick = async (): Promise<void> => {
+    if (!(await onPrev())) triggerBump('prev')
+  }
+  const handleNextClick = async (): Promise<void> => {
+    if (!(await onNext())) triggerBump('next')
+  }
 
   const liveTextRef = useRef<HTMLDivElement>(null)
   const liveFitRem = useAutoFitFontSize(liveTextRef, onScreen?.text, LIVE_TEXT_BASE_REM, 0.9)
 
   // Next/Prev drive flow-through, so they're live whenever something is (or can
-  // be) on screen; the handlers clamp at the real edges (a song's last slide).
+  // be) on screen; the handlers themselves report back when they hit a real edge.
   const projecting = projectionOpen && !blanked && !!onScreen
   const canPrev = projecting
   const canNext = projecting || (projectionOpen && !blanked && queue.length > 0)
@@ -104,6 +146,14 @@ export default function ServiceQueue({
         ? 'Screen is hidden'
         : 'Nothing on screen yet'
       : null
+
+  // Something is genuinely live, but no row in the queue is tracking it —
+  // either its item was removed from the queue while it was on screen, or it
+  // was projected ad hoc from a source panel without being queued at all.
+  // Either way the queue list correctly shows nothing as active; the live
+  // bar is where an operator would actually notice the mismatch, so it has
+  // to say so there rather than look like a normal tracked "on screen."
+  const orphaned = !status && activeIndex == null && !!onScreen
 
   const StatusIcon = !projectionOpen ? MonitorOff : blanked ? EyeOff : Monitor
 
@@ -136,19 +186,72 @@ export default function ServiceQueue({
         <div className="queue-list">
           {queue.map((item, index) => {
             const active = index === activeIndex
+            const played = !active && playedIds.has(item.id)
+            const isNext = !active && projectionOpen && index === nextItemIndex
+            const Icon = KIND_ICON[item.kind]
+            const dragProps = {
+              draggable: true,
+              onDragStart: () => setDragIndex(index),
+              onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverIndex(index) },
+              onDragLeave: () => setDragOverIndex(null),
+              onDrop: () => {
+                if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
+                setDragIndex(null)
+                setDragOverIndex(null)
+              },
+              onDragEnd: () => { setDragIndex(null); setDragOverIndex(null) }
+            }
+            const rowClass = [
+              'queue-row',
+              `queue-row--${item.kind}`,
+              active ? 'queue-row--active' : 'queue-row--compact',
+              played ? 'queue-row--played' : '',
+              isNext ? 'queue-row--next' : '',
+              index === dragOverIndex && dragIndex !== index ? 'queue-row--drag-over' : ''
+            ].filter(Boolean).join(' ')
+
+            if (!active) {
+              return (
+                <div
+                  key={item.id}
+                  className={rowClass}
+                  role="button"
+                  tabIndex={0}
+                  title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
+                  onClick={() => onSelect(index)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                      e.preventDefault()
+                      onSelect(index)
+                    }
+                  }}
+                  {...dragProps}
+                >
+                  <span className="queue-row-icon" aria-hidden="true">
+                    {played ? <Check width={14} height={14} strokeWidth={2.4} /> : <Icon width={14} height={14} strokeWidth={2} />}
+                  </span>
+                  <span className="queue-row-title">{itemTitle(item)}</span>
+                  {item.slides.length > 1 && <span className="queue-row-count">{item.slides.length}</span>}
+                  {isNext && <span className="queue-row-tag">Up next</span>}
+                  <span className="queue-row-actions">
+                    <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>
+                    <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
+                  </span>
+                </div>
+              )
+            }
+
+            // Active row: expanded, and reflects the real current slide —
+            // not the item's static preview — so reading ahead into
+            // adjacent source content shows up here as it happens.
+            const liveText = onScreen?.text || itemPreview(item)
             return (
               <div
                 key={item.id}
-                className={[
-                  'queue-item',
-                  `queue-item--${item.kind}`,
-                  active ? 'queue-item--active' : '',
-                  !active && projectionOpen && index === nextItemIndex ? 'queue-item--next' : '',
-                  index === dragOverIndex && dragIndex !== index ? 'queue-item--drag-over' : ''
-                ].filter(Boolean).join(' ')}
+                className={rowClass}
                 role="button"
                 tabIndex={0}
-                title="Go to this item to read it — use Project to put it on screen"
+                title="Go to this item to read it — use Restart to project it again from the top"
                 onClick={() => onSelect(index)}
                 onKeyDown={(e) => {
                   if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
@@ -156,44 +259,28 @@ export default function ServiceQueue({
                     onSelect(index)
                   }
                 }}
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index) }}
-                onDragLeave={() => setDragOverIndex(null)}
-                onDrop={() => {
-                  if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
-                  setDragIndex(null)
-                  setDragOverIndex(null)
-                }}
-                onDragEnd={() => { setDragIndex(null); setDragOverIndex(null) }}
+                {...dragProps}
               >
                 <div className="queue-item-meta">
-                  <span className={`queue-badge queue-badge--${item.kind}`}>{KIND_BADGE[item.kind]}</span>
+                  <span className={`queue-badge queue-badge--${item.kind}`}>
+                    <Icon width={11} height={11} strokeWidth={2.2} aria-hidden="true" />
+                    {KIND_BADGE[item.kind]}
+                  </span>
                   <span className="queue-item-title">{itemTitle(item)}</span>
                   {item.slides.length > 1 && (
-                    <span className="queue-item-slides">
-                      {active ? `${activeSlide + 1}/${item.slides.length}` : `${item.slides.length} slides`}
+                    <span className="queue-item-slides">{activeSlide + 1}/{item.slides.length}</span>
+                  )}
+                  <span className="queue-item-live">On screen</span>
+                  {readingAhead && (
+                    <span className="queue-item-ahead" title="Still live, but past what was actually queued">
+                      Reading ahead
                     </span>
                   )}
-                  {active && <span className="queue-item-live">On screen</span>}
-                  {!active && projectionOpen && index === nextItemIndex && (
-                    <span className="queue-item-upnext">Up next</span>
-                  )}
                 </div>
-                <p className="queue-item-text">{itemPreview(item)}</p>
+                <p className="queue-item-text">{liveText}</p>
                 <div className="result-actions">
-                  <button
-                    className="btn-primary btn-sm"
-                    onClick={(e) => { e.stopPropagation(); onProject(index) }}
-                  >
-                    {active ? 'Restart' : 'Project'}
-                  </button>
-                  <button
-                    className="btn-quiet btn-sm"
-                    onClick={(e) => { e.stopPropagation(); onRemove(index) }}
-                  >
-                    Remove
-                  </button>
+                  <button className="btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Restart</button>
+                  <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
                 </div>
               </div>
             )
@@ -254,6 +341,16 @@ export default function ServiceQueue({
                   Hidden from screen
                 </span>
               )}
+              {orphaned && (
+                <span className="live-now-hidden-badge live-now-hidden-badge--warn" title="This isn't tracked by any row in your queue — it was either removed while live, or projected without being queued">
+                  Not in your queue
+                </span>
+              )}
+              {readingAhead && !orphaned && !status && (
+                <span className="live-now-hidden-badge" title="Still live, but past what was actually queued">
+                  Reading ahead
+                </span>
+              )}
               {onScreen?.reference && !status && (
                 <span className="live-now-ref">
                   {onScreen.label ? `${onScreen.label} · ` : ''}
@@ -300,10 +397,20 @@ export default function ServiceQueue({
             </div>
           )}
           <div className="queue-live-nav">
-            <button className="btn-nav" onClick={onPrev} disabled={!canPrev} title="Back — previous slide / verse / paragraph (← or Shift+Space)">
+            <button
+              className={`btn-nav${bump === 'prev' ? ' is-bump' : ''}`}
+              onClick={handlePrevClick}
+              disabled={!canPrev}
+              title="Back — previous slide / verse / paragraph (← or Shift+Space)"
+            >
               ‹ Back
             </button>
-            <button className="btn-nav btn-nav--next" onClick={onNext} disabled={!canNext} title="Next — next slide / verse / paragraph (→ or Space)">
+            <button
+              className={`btn-nav btn-nav--next${bump === 'next' ? ' is-bump' : ''}`}
+              onClick={handleNextClick}
+              disabled={!canNext}
+              title="Next — next slide / verse / paragraph (→ or Space)"
+            >
               Next ›
             </button>
           </div>
