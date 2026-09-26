@@ -138,7 +138,7 @@ async function buildBible(db: Database.Database): Promise<void> {
   }
 }
 
-function buildSongs(db: Database.Database): void {
+async function buildSongs(db: Database.Database): Promise<void> {
   const srcDir = join(OUT_DIR, 'songs-source', 'Songs')
   let files: string[]
   try {
@@ -149,11 +149,16 @@ function buildSongs(db: Database.Database): void {
     console.warn(`songs: ${srcDir} not found — skipping bundled song library`)
     return
   }
+  // parseSong is async (docx/pdf extraction needs it) — resolve every file
+  // up front, then run the actual inserts as one synchronous transaction,
+  // since better-sqlite3 transactions can't await mid-flight.
+  const parsed = await Promise.all(
+    files.map(async (f) => ({ f, r: await parseSong(f, readFileSync(join(srcDir, f))) }))
+  )
   let ok = 0
   let failed = 0
-  const insertMany = db.transaction((rows: Array<{ f: string }>) => {
-    for (const { f } of rows) {
-      const r = parseSong(f, readFileSync(join(srcDir, f)))
+  const insertMany = db.transaction((rows: typeof parsed) => {
+    for (const { f, r } of rows) {
       if ('error' in r) {
         failed++
         continue
@@ -162,7 +167,7 @@ function buildSongs(db: Database.Database): void {
       ok++
     }
   })
-  insertMany(files.map((f) => ({ f })))
+  insertMany(parsed)
   console.log(`songs: bundled ${ok}, skipped ${failed} (of ${files.length})`)
   if (files.length > 0 && failed / files.length > 0.05) {
     throw new Error(`too many song parse failures (${failed}/${files.length})`)
@@ -195,7 +200,7 @@ async function main(): Promise<void> {
 
   console.log('building song library from resources/songs-source …')
   db.exec('DELETE FROM songs')
-  buildSongs(db)
+  await buildSongs(db)
 
   console.log('optimising …')
   db.exec("INSERT INTO bible_verses_fts(bible_verses_fts) VALUES('optimize')")
