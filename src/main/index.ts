@@ -275,6 +275,7 @@ function createProjectionWindow(): void {
     backgroundColor: '#000000',
     title: 'BORN — Output',
     show: false,
+    skipTaskbar: true,
     fullscreen: !onMac,
     simpleFullscreen: onMac,
     webPreferences: {
@@ -341,6 +342,7 @@ function createStageWindow(): void {
       title: 'BORN — Stage View',
       backgroundColor: '#0a0a0a',
       show: false,
+      skipTaskbar: true,
       fullscreen: !onMac,
       simpleFullscreen: onMac,
       webPreferences: {
@@ -362,6 +364,7 @@ function createStageWindow(): void {
       title: 'BORN — Stage View',
       backgroundColor: '#0a0a0a',
       alwaysOnTop: true,
+      skipTaskbar: true,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
