@@ -2,8 +2,15 @@ import { describe, it, expect } from 'vitest'
 import {
   reorder,
   remapActiveIndexAfterReorder,
-  remapActiveIndexAfterRemove
+  remapActiveIndexAfterRemove,
+  replaceContributorItems
 } from '../../renderer/src/queueUtils'
+
+interface Item {
+  id: string
+  source?: { deviceId: string }
+}
+const item = (id: string, deviceId?: string): Item => (deviceId ? { id, source: { deviceId } } : { id })
 
 describe('reorder', () => {
   it('moves an item down', () => {
@@ -45,5 +52,39 @@ describe('remapActiveIndexAfterRemove', () => {
   })
   it('is unchanged when a later row is removed', () => {
     expect(remapActiveIndexAfterRemove(1, 4)).toBe(1)
+  })
+})
+
+describe('replaceContributorItems', () => {
+  it('replaces a contributor\'s not-yet-played items with a fresh batch', () => {
+    const queue = [item('a', 'dev-1'), item('b', 'dev-1'), item('c', 'dev-2')]
+    const next = replaceContributorItems(queue, [item('new1', 'dev-1')], 'dev-1', new Set(), null)
+    expect(next.map((i) => i.id)).toEqual(['c', 'new1'])
+  })
+
+  it('leaves the other contributor and untagged items untouched', () => {
+    const queue = [item('a', 'dev-1'), item('b'), item('c', 'dev-2')]
+    const next = replaceContributorItems(queue, [item('new1', 'dev-1')], 'dev-1', new Set(), null)
+    expect(next.map((i) => i.id)).toEqual(['b', 'c', 'new1'])
+  })
+
+  it('never removes an already-played item from this contributor', () => {
+    const queue = [item('a', 'dev-1'), item('b', 'dev-1')]
+    const next = replaceContributorItems(queue, [item('new1', 'dev-1')], 'dev-1', new Set(['a']), null)
+    // 'a' (played) stays; 'b' (not played) is superseded by the new batch,
+    // inserted right after the last kept item from this same contributor.
+    expect(next.map((i) => i.id)).toEqual(['a', 'new1'])
+  })
+
+  it('never removes the item currently on screen, even if not yet marked played', () => {
+    const queue = [item('a', 'dev-1'), item('b', 'dev-1')]
+    const next = replaceContributorItems(queue, [item('new1', 'dev-1')], 'dev-1', new Set(), 'a')
+    expect(next.map((i) => i.id)).toEqual(['a', 'new1'])
+  })
+
+  it('appends at the end when nothing from this contributor remains', () => {
+    const queue = [item('a', 'dev-2')]
+    const next = replaceContributorItems(queue, [item('new1', 'dev-1')], 'dev-1', new Set(), null)
+    expect(next.map((i) => i.id)).toEqual(['a', 'new1'])
   })
 })

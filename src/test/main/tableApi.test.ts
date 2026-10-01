@@ -132,6 +132,54 @@ describe('fetchSermonContent', () => {
     const result = await fetchSermonContent(1)
     expect(result).toBeNull()
   })
+
+  it('leaves sections untouched by default (isBook not passed)', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({
+        Status: 'Successful',
+        Result: {
+          DateCode: '63-0901M',
+          Title: 'Come Follow Me',
+          TotalSections: 2,
+          Sections: [
+            { Paragraph: 'header', Content: 'A SHORT TITLE' },
+            { Paragraph: 'p1', Content: 'Now, we want to speak upon faith tonight.' }
+          ]
+        }
+      }) as unknown as Response
+    )
+    const result = await fetchSermonContent(1)
+    // Not merged — a regular sermon's own short paragraphs are never
+    // second-guessed by the heading heuristic.
+    expect(result!.sections).toHaveLength(2)
+    expect(result!.sections[0].text).toBe('A SHORT TITLE')
+  })
+
+  it('merges heading-shaped sections when isBook is true', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      mockResponse({
+        Status: 'Successful',
+        Result: {
+          DateCode: '',
+          Title: 'Chapter 3 - The Ephesian Church Age',
+          TotalSections: 1,
+          Sections: [
+            { Paragraph: 'header', Content: 'CHAPTER THREE' },
+            { Paragraph: '', Content: 'THE EPHESIAN CHURCH AGE' },
+            { Paragraph: '', Content: 'Introduction to the Church Ages.' }
+          ]
+        }
+      }) as unknown as Response
+    )
+    const result = await fetchSermonContent(1388, 'en', true)
+    expect(result!.sections).toHaveLength(1)
+    expect(result!.sections[0].text).toBe(
+      'CHAPTER THREE\nTHE EPHESIAN CHURCH AGE\n\nIntroduction to the Church Ages.'
+    )
+    // totalSections reflects the real, post-merge count — not the source's
+    // own (unreliable, for book content) TotalSections field.
+    expect(result!.totalSections).toBe(1)
+  })
 })
 
 // ── serverSearch ──────────────────────────────────────────────────────────────

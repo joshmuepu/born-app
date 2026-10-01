@@ -31,10 +31,23 @@ export interface Slide {
   marker?: string
 }
 
+/** Which remote contributor added an item — absent for anything added
+ *  directly on the desktop. `deviceId` is the durable identity (generated
+ *  once per phone, stored in that phone's own localStorage); `label` is the
+ *  human-facing name shown in the operator's grouped queue view. Grouping
+ *  is by `label` (two phones both called "Song Leader" read as one group),
+ *  but a mid-service re-send only ever replaces items from the same
+ *  `deviceId`, never just a matching label. */
+export interface QueueSource {
+  deviceId: string
+  label: string
+}
+
 interface QueueItemBase {
   /** Stable id for React keys and reorder maths. */
   id: string
   slides: Slide[]
+  source?: QueueSource
 }
 
 export interface QuoteItem extends QueueItemBase {
@@ -69,8 +82,16 @@ export function makeId(prefix = 'item'): string {
 }
 
 /** Inline paragraph numbers sit after a sentence-ish boundary, before a
- *  capital letter or quote — e.g. "…while we pray? 174 Father, bless…". */
-const INLINE_PARAGRAPH_START = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘A-Z])/g
+ *  capital letter, quote, bracketed aside, ellipsis, or another digit (a
+ *  transcript opening with "21st verse…") — e.g. "…while we pray? 174
+ *  Father, bless…", or "…that church. 53 (Got your pencil?) Now…". Confirmed
+ *  against the real database: real transcripts commonly open a paragraph
+ *  with an editorial bracket/parenthetical rather than straight into prose,
+ *  and the original narrower set (quote or capital letter only) silently
+ *  dropped those as boundaries — worse, since matching is strictly
+ *  sequential (see splitSubParagraphs below), missing one boundary cascaded
+ *  into skipping every later one in the same quote too. */
+const INLINE_PARAGRAPH_START = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘(\[…A-Z0-9])/g
 
 /**
  * A Branham "paragraph" row is often a numbered *range* ("173-174") with the
@@ -145,13 +166,22 @@ export function quoteToItem(quote: Quote): QuoteItem {
     [quote.sermonTitle, quote.dateCode, displayRef(ref)].filter(Boolean).join(' · ')
 
   const range = parseParagraphRef(quote.paragraphRef)
-  // Only split when the row's own leading number and its paragraphRef agree
-  // it's a real numbered paragraph — a structural/synthetic ref ("header",
-  // "§123") never has sub-paragraphs to find.
-  const subParagraphs: Array<{ num: number | null; text: string }> =
-    range && leadMarker && /^\d+$/.test(leadMarker)
-      ? splitSubParagraphs(body, range[0], range[1])
-      : [{ num: null, text: body }]
+  // Only split when paragraphRef itself is a real numbered (range), never a
+  // structural/synthetic ref ("header", "§123") — parseParagraphRef already
+  // returns null for both of those, so range alone is the correct, complete
+  // gate. It used to ALSO require quote.text's own leading number to be a
+  // clean, bare digit string (leadMarker) matching /^\d+$/ — but a genuine
+  // range like "91-92" makes leadMarker fall back to the hyphenated ref
+  // itself ("91-92"), which fails that check and silently skipped splitting
+  // real multi-paragraph quotes entirely. Confirmed against the real
+  // database: ~2,300 rows (including the opening paragraph of roughly half
+  // of all sermons, whose "1" is rendered as a decorative glyph instead of
+  // a literal digit) were never being split because of this redundant
+  // check — splitSubParagraphs doesn't need body to start with `lo`'s own
+  // marker anyway, only to find lo+1's.
+  const subParagraphs: Array<{ num: number | null; text: string }> = range
+    ? splitSubParagraphs(body, range[0], range[1])
+    : [{ num: null, text: body }]
 
   const slides: Slide[] = []
   subParagraphs.forEach((sub, subIdx) => {

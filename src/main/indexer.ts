@@ -1,9 +1,23 @@
 import type { BrowserWindow } from 'electron'
 import { getDb } from './db'
-import { fetchSermonList, fetchSermonContent } from './tableApi'
+import { fetchSermonList, fetchSermonContent, type SermonIndexEntry } from './tableApi'
 import { log } from './logger'
 
 const BATCH_SIZE = 5
+
+/** sermon_index row values for one allSermons entry — coalescing every
+ *  NOT-NULL-constrained field defensively, not just the ones already seen
+ *  to go missing. Found live: a brand-new upstream sermon (62-1030X,
+ *  "Vision From The Lord") came back from allSermons with no `m` (duration)
+ *  field at all. INSERT OR IGNORE binding that `undefined` straight through
+ *  doesn't throw — it silently no-ops the whole row (violates duration_min
+ *  NOT NULL), which is indistinguishable from "already present" unless you
+ *  go looking. One missing, cosmetic field from the source was silently
+ *  blocking that sermon from ever being indexed at all, first run or any
+ *  later refresh. */
+export function sermonIndexRow(e: SermonIndexEntry): [number, string, string, number, number, number] {
+  return [e.i, e.p ?? '', e.t ?? '', e.c ?? 0, e.m ?? 0, e.ct === 'B' ? 1 : 0]
+}
 
 export interface IndexerProgress {
   status: 'idle' | 'running' | 'done'
@@ -20,7 +34,9 @@ let shouldStop = false
 
 /**
  * Populates sermon_index from the authoritative allSermons endpoint.
- * Only runs when the table is empty (first run or fresh DB).
+ * Only runs when the table is empty (first run or fresh DB) — the routine,
+ * automatic "index on launch" path uses this, and deliberately stays cheap
+ * (no network call at all once the table has anything in it).
  */
 async function ensureSermonIndex(): Promise<number[]> {
   const db = getDb()
@@ -35,9 +51,7 @@ async function ensureSermonIndex(): Promise<number[]> {
       'INSERT OR IGNORE INTO sermon_index (id, date_code, title, para_count, duration_min, is_book) VALUES (?, ?, ?, ?, ?, ?)'
     )
     const tx = db.transaction(() => {
-      for (const e of entries) {
-        insert.run(e.i, e.p, e.t, e.c, e.m, e.ct === 'B' ? 1 : 0)
-      }
+      for (const e of entries) insert.run(...sermonIndexRow(e))
     })
     tx()
   }
@@ -49,18 +63,73 @@ async function ensureSermonIndex(): Promise<number[]> {
     .map((r) => r.id)
 }
 
+/**
+ * The explicit, user-triggered "Refresh" action — unlike ensureSermonIndex()
+ * above, this always re-fetches allSermons, live, regardless of whether the
+ * table already has entries. The source adds sermons over time (e.g.
+ * "Vision From The Lord", 62-1030X, appeared on table.branham.org after this
+ * app's local index was first built) — without an explicit refresh path,
+ * those never surface locally on an existing install, with nothing telling
+ * the operator anything was even missing. New entries are added via INSERT
+ * OR IGNORE, so nothing already-correct locally gets touched.
+ */
+async function refreshSermonIndex(): Promise<{ added: number; total: number }> {
+  const db = getDb()
+  const entries = await fetchSermonList()
+  if (entries.length === 0) {
+    log.warn('refreshSermonIndex: allSermons returned nothing (offline?) — keeping the existing local index')
+    const total = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermon_index').get()?.n ?? 0
+    return { added: 0, total }
+  }
+  const before = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermon_index').get()?.n ?? 0
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO sermon_index (id, date_code, title, para_count, duration_min, is_book) VALUES (?, ?, ?, ?, ?, ?)'
+  )
+  const tx = db.transaction(() => {
+    for (const e of entries) insert.run(...sermonIndexRow(e))
+  })
+  tx()
+  const after = db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermon_index').get()?.n ?? 0
+  const added = after - before
+  log.info(`refreshSermonIndex: ${added} new entr${added === 1 ? 'y' : 'ies'} (of ${entries.length} in the source's own list)`)
+  return { added, total: entries.length }
+}
+
 // ── Main indexer ──────────────────────────────────────────────────────────────
 
-export async function startIndexer(win: BrowserWindow): Promise<void> {
+export async function startIndexer(win: BrowserWindow, forceRefresh = false): Promise<void> {
   if (running) {
     log.info('startIndexer called but already running — skipping')
     return
   }
   running = true
   shouldStop = false
-  log.info('indexer starting')
+  log.info(`indexer starting${forceRefresh ? ' (forced refresh)' : ''}`)
 
   const db = getDb()
+
+  if (forceRefresh) {
+    const { added } = await refreshSermonIndex()
+    // Book-chapter content specifically is worth re-pulling on every manual
+    // refresh, not just when new sermons show up: it's a fixed set of 11
+    // rows (cheap either way) whose parsing (mergeHeadingSections, see
+    // tableApi.ts) can improve independently of anything changing upstream.
+    // Deleting first makes the normal "not yet indexed" check below re-fetch
+    // them fresh rather than skipping them as already-present.
+    const bookIds = db
+      .prepare<[], { id: number }>('SELECT id FROM sermon_index WHERE is_book = 1')
+      .all()
+      .map((r) => r.id)
+    if (bookIds.length > 0) {
+      const placeholders = bookIds.map(() => '?').join(',')
+      db.transaction(() => {
+        db.prepare(`DELETE FROM paragraphs WHERE sermon_id IN (${placeholders})`).run(...bookIds)
+        db.prepare(`DELETE FROM sermons WHERE id IN (${placeholders})`).run(...bookIds)
+      })()
+      log.info(`indexer: cleared ${bookIds.length} book-chapter entries for re-fetch`)
+    }
+    log.info(`indexer: refresh found ${added} new sermon(s)`)
+  }
 
   const ids = await ensureSermonIndex()
   if (ids.length === 0) {
@@ -93,6 +162,9 @@ export async function startIndexer(win: BrowserWindow): Promise<void> {
   let errors = 0
   let scanned = 0
 
+  const bookIdSet = new Set(
+    db.prepare<[], { id: number }>('SELECT id FROM sermon_index WHERE is_book = 1').all().map((r) => r.id)
+  )
   const stmtHas = db.prepare<[number], { n: number }>(
     'SELECT COUNT(*) as n FROM sermons WHERE id = ?'
   )
@@ -102,6 +174,14 @@ export async function startIndexer(win: BrowserWindow): Promise<void> {
   const stmtInsertParagraph = db.prepare(
     'INSERT INTO paragraphs (sermon_id, paragraph_ref, paragraph_index, text) VALUES (?, ?, ?, ?)'
   )
+  // sermon_index.para_count comes from the source's own allSermons listing,
+  // which is unreliable for book chapters (reports 1 for chapters that
+  // actually have 44-184 real paragraphs once fetched — see tableApi.ts).
+  // Correct it here to the real, fetched count, now that we know it —
+  // nothing currently displays this field, but it should be right at rest
+  // rather than a permanently-wrong cached value waiting to mislead
+  // whatever reads it next.
+  const stmtFixParaCount = db.prepare('UPDATE sermon_index SET para_count = ? WHERE id = ?')
 
   const insertTx = db.transaction(
     (id: number, data: { dateCode: string; title: string; totalSections: number; sections: { ref: string; index: number; text: string }[] }) => {
@@ -109,6 +189,7 @@ export async function startIndexer(win: BrowserWindow): Promise<void> {
       for (const s of data.sections) {
         stmtInsertParagraph.run(id, s.ref, s.index, s.text)
       }
+      stmtFixParaCount.run(data.totalSections, id)
     }
   )
 
@@ -135,7 +216,7 @@ export async function startIndexer(win: BrowserWindow): Promise<void> {
           indexed++
           return
         }
-        const data = await fetchSermonContent(id, 'en')
+        const data = await fetchSermonContent(id, 'en', bookIdSet.has(id))
         if (data) {
           insertTx(id, data)
           indexed++

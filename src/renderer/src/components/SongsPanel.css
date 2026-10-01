@@ -793,6 +793,15 @@
   font-size: var(--text-sm);
   line-height: 1.5;
   resize: vertical;
+  /* rows={} (see SongSlideEditor.tsx) only counts newline-separated lines,
+     not wrapped visual ones — an unusually long line still leaves this box
+     a couple lines short of its own content, needing its own tiny internal
+     scrollbar. That's a real scroll-audit finding: a wheel-scroll gesture
+     over this box then scrolls those few internal pixels instead of the
+     actual slide list around it. field-sizing:content (Chromium 123+, well
+     within Electron 33's bundled 130) grows the box to fit ALL of its
+     content instead, so it never has anything of its own left to scroll. */
+  field-sizing: content;
 }
 .song-editor-add {
   align-self: flex-start;

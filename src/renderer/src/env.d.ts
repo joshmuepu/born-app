@@ -98,7 +98,7 @@ declare global {
       getHitsCountPreview: (text: string, searchType: 'AllWords' | 'ExactPhrase') => Promise<number>
       // Indexer
       getIndexerStatus: () => Promise<IndexerProgress>
-      startIndexer: () => Promise<void>
+      startIndexer: (opts?: { forceRefresh?: boolean }) => Promise<void>
       stopIndexer: () => Promise<void>
       onIndexerProgress: (callback: (progress: IndexerProgress) => void) => () => void
       // Projection controls
@@ -123,6 +123,7 @@ declare global {
       openService: () => Promise<unknown[] | null>
       getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
       openServicePath: (path: string) => Promise<unknown[] | null>
+      importService: () => Promise<Array<{ name: string; items: unknown[] }>>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>
@@ -141,6 +142,10 @@ declare global {
       }>
       syncWebRemote: (state: {
         queue: Array<{
+          /** Stable row id — remote commands address a row by this, never
+           *  by array position, so a stale index from a concurrently-
+           *  changing queue can't hit the wrong row. */
+          id: string
           title: string
           kind: string
           subtitle: string
@@ -148,6 +153,7 @@ declare global {
           /** Actually projected at least once this run — see App.tsx's
            *  playedIds for why this isn't just "before the active index." */
           played: boolean
+          source?: { label: string }
           slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
         }>
         activeIndex: number | null
@@ -166,10 +172,10 @@ declare global {
           readingAhead?: boolean
         } | null
       }) => void
-      onWebRemoteProject: (callback: (index: number) => void) => () => void
-      onWebRemoteProjectAt: (callback: (data: { index: number; slide: number }) => void) => () => void
-      onWebRemoteReorder: (callback: (data: { from: number; to: number }) => void) => () => void
-      onWebRemoteRemove: (callback: (index: number) => void) => () => void
+      onWebRemoteProject: (callback: (id: string) => void) => () => void
+      onWebRemoteProjectAt: (callback: (data: { id: string; slide: number }) => void) => () => void
+      onWebRemoteReorder: (callback: (data: { id: string; toId: string }) => void) => () => void
+      onWebRemoteRemove: (callback: (id: string) => void) => () => void
       onWebRemoteQueueSermon: (callback: (quote: Quote) => void) => () => void
       onWebRemoteProjectSermon: (
         callback: (data: { quote: Quote; query: string; slideIndex?: number }) => void
@@ -185,6 +191,15 @@ declare global {
       onWebRemoteNewService: (callback: () => void) => () => void
       onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void
       onWebRemoteOpenService: (callback: (items: unknown[]) => void) => () => void
+      onWebRemoteImportService: (
+        callback: (data: { items: unknown[]; label: string }) => void
+      ) => () => void
+      onWebRemoteQueueBatch: (
+        callback: (data: {
+          items: unknown[]
+          contributor: { deviceId: string; label: string }
+        }) => void
+      ) => () => void
       saveServiceNamed: (name: string, items: unknown) => Promise<boolean>
       noteSongUsed: (id: number) => void
       noteSermonUsed: (quote: Quote) => void

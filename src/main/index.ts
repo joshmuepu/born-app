@@ -227,6 +227,33 @@ function createMainWindow(): void {
   })
 }
 
+/** Esc/B (blank the congregation screen) and ⌘/Ctrl+Shift+W (close the
+ *  projector) need to work regardless of which window currently has OS
+ *  focus — an operator whose focus landed on the projector or the stage
+ *  monitor (clicked it, dragged it to another display, it's just the
+ *  frontmost window) still expects these to control the actual congregation
+ *  screen, not silently do nothing. Caught here at the native input level,
+ *  not via each renderer's own keydown listener, since a renderer only ever
+ *  sees input while ITS OWN window has focus — exactly the case this needs
+ *  to cover. Attached to every window except the control window, which
+ *  already has its own full shortcut set in App.tsx. */
+function attachOperatorShortcuts(win: BrowserWindow): void {
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    const mod = input.meta || input.control
+    if (input.key === 'Escape') {
+      event.preventDefault()
+      setProjectionBlank(!projectionState.blank)
+    } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
+      event.preventDefault()
+      projectionWindow?.close()
+    } else if (!mod && !input.alt && input.key.toLowerCase() === 'b') {
+      event.preventDefault()
+      setProjectionBlank(!projectionState.blank)
+    }
+  })
+}
+
 function createProjectionWindow(): void {
   log.info('createProjectionWindow')
   projectionReady = false
@@ -260,12 +287,7 @@ function createProjectionWindow(): void {
   if (onMac) projectionWindow.setSimpleFullScreen(true)
   projectionWindow.once('ready-to-show', () => projectionWindow?.show())
 
-  projectionWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape') {
-      event.preventDefault()
-      setProjectionBlank(!projectionState.blank) // Esc toggles the blackout
-    }
-  })
+  attachOperatorShortcuts(projectionWindow)
 
   projectionWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('projectionWindow renderer process gone', details)
@@ -347,6 +369,8 @@ function createStageWindow(): void {
       }
     })
   }
+
+  attachOperatorShortcuts(stageWindow)
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     stageWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/stage.html`)
@@ -1223,6 +1247,28 @@ ipcMain.handle('service:open', async () => {
   return data
 })
 
+/** "Import" — additive alongside "Open" above (which replaces the whole
+ *  queue): lets the operator combine a song leader's and a preacher's
+ *  separately-saved files into one active queue instead of only ever having
+ *  one file open at a time. Multi-select, so combining two files is one
+ *  dialog, not two. Each file's name (minus extension) comes back as a
+ *  fallback label for the renderer to tag onto any item that doesn't
+ *  already carry its own `source` — an old file saved before per-item
+ *  source tags existed. */
+ipcMain.handle('service:import', async () => {
+  log.info('ipc service:import')
+  const result = await dialog.showOpenDialog({
+    filters: [{ name: 'BORN Service', extensions: ['born', 'bpservice'] }],
+    properties: ['openFile', 'multiSelections']
+  })
+  if (result.canceled || result.filePaths.length === 0) return []
+  return result.filePaths.map((path) => {
+    const data = JSON.parse(readFileSync(path, 'utf-8'))
+    rememberService(path)
+    return { name: basename(path).replace(/\.(born|bpservice)$/, ''), items: data }
+  })
+})
+
 ipcMain.handle('service:recents', () => {
   const paths = getSettingsSafe().recentServices ?? []
   return paths
@@ -1674,10 +1720,10 @@ ipcMain.handle('indexer:status', () => {
   }
 })
 
-ipcMain.handle('indexer:start', () => {
-  log.info('ipc indexer:start (manual)')
+ipcMain.handle('indexer:start', (_event, opts?: { forceRefresh?: boolean }) => {
+  log.info(`ipc indexer:start (manual${opts?.forceRefresh ? ', forceRefresh' : ''})`)
   if (mainWindow && !mainWindow.isDestroyed()) {
-    startIndexer(mainWindow)
+    startIndexer(mainWindow, opts?.forceRefresh)
   }
 })
 
@@ -1731,14 +1777,14 @@ app.whenReady().then(() => {
         setProjectionBlank(true)
       } else if (cmd.action === 'unblank') {
         setProjectionBlank(false)
-      } else if (cmd.action === 'project' && cmd.index !== undefined) {
-        mainWindow.webContents.send('webremote:project', cmd.index)
-      } else if (cmd.action === 'project-at' && cmd.index !== undefined) {
-        mainWindow.webContents.send('webremote:project-at', { index: cmd.index, slide: cmd.slide ?? 0 })
-      } else if (cmd.action === 'reorder' && cmd.index !== undefined && cmd.to !== undefined) {
-        mainWindow.webContents.send('webremote:reorder', { from: cmd.index, to: cmd.to })
-      } else if (cmd.action === 'remove' && cmd.index !== undefined) {
-        mainWindow.webContents.send('webremote:remove', cmd.index)
+      } else if (cmd.action === 'project' && cmd.id !== undefined) {
+        mainWindow.webContents.send('webremote:project', cmd.id)
+      } else if (cmd.action === 'project-at' && cmd.id !== undefined) {
+        mainWindow.webContents.send('webremote:project-at', { id: cmd.id, slide: cmd.slide ?? 0 })
+      } else if (cmd.action === 'reorder' && cmd.id !== undefined && cmd.toId !== undefined) {
+        mainWindow.webContents.send('webremote:reorder', { id: cmd.id, toId: cmd.toId })
+      } else if (cmd.action === 'remove' && cmd.id !== undefined) {
+        mainWindow.webContents.send('webremote:remove', cmd.id)
       } else if (cmd.action === 'clear-recent-songs') {
         clearRecentSongs()
       } else if (cmd.action === 'update-song-key' && cmd.songId !== undefined) {
@@ -1774,6 +1820,19 @@ app.whenReady().then(() => {
       } else if (cmd.action === 'open-service' && cmd.path) {
         const data = openServiceFile(cmd.path)
         if (data) mainWindow.webContents.send('webremote:open-service', data)
+      } else if (cmd.action === 'import-service' && cmd.path) {
+        const data = openServiceFile(cmd.path)
+        if (data) {
+          mainWindow.webContents.send('webremote:import-service', {
+            items: data,
+            label: basename(cmd.path).replace(/\.(born|bpservice)$/, '')
+          })
+        }
+      } else if (cmd.action === 'queue-batch' && cmd.items && cmd.contributor) {
+        mainWindow.webContents.send('webremote:queue-batch', {
+          items: cmd.items,
+          contributor: cmd.contributor
+        })
       }
     },
     {

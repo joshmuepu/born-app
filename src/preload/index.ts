@@ -206,7 +206,8 @@ const api = {
 
   // Indexer
   getIndexerStatus: (): Promise<IndexerProgress> => ipcRenderer.invoke('indexer:status'),
-  startIndexer: (): Promise<void> => ipcRenderer.invoke('indexer:start'),
+  startIndexer: (opts?: { forceRefresh?: boolean }): Promise<void> =>
+    ipcRenderer.invoke('indexer:start', opts),
   stopIndexer: (): Promise<void> => ipcRenderer.invoke('indexer:stop'),
 
   onIndexerProgress: (callback: (progress: IndexerProgress) => void): (() => void) => {
@@ -271,6 +272,8 @@ const api = {
     ipcRenderer.invoke('service:recents'),
   openServicePath: (path: string): Promise<Quote[] | null> =>
     ipcRenderer.invoke('service:open-path', path),
+  importService: (): Promise<Array<{ name: string; items: unknown[] }>> =>
+    ipcRenderer.invoke('service:import'),
 
   // Stage view
   openStage: (): Promise<void> => ipcRenderer.invoke('stage:open'),
@@ -307,11 +310,13 @@ const api = {
   }> => ipcRenderer.invoke('webremote:ip'),
   syncWebRemote: (state: {
     queue: Array<{
+      id: string
       title: string
       kind: string
       subtitle: string
       slideCount: number
       played: boolean
+      source?: { label: string }
       slides: Array<{ text: string; label?: string; marker?: string; reference?: string }>
     }>
     activeIndex: number | null
@@ -329,27 +334,27 @@ const api = {
     } | null
   }): void => ipcRenderer.send('webremote:sync', state),
 
-  onWebRemoteProject: (callback: (index: number) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, index: number): void => callback(index)
+  onWebRemoteProject: (callback: (id: string) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, id: string): void => callback(id)
     ipcRenderer.on('webremote:project', handler)
     return () => ipcRenderer.removeListener('webremote:project', handler)
   },
   onWebRemoteProjectAt: (
-    callback: (data: { index: number; slide: number }) => void
+    callback: (data: { id: string; slide: number }) => void
   ): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, data: { index: number; slide: number }): void =>
+    const handler = (_evt: IpcRendererEvent, data: { id: string; slide: number }): void =>
       callback(data)
     ipcRenderer.on('webremote:project-at', handler)
     return () => ipcRenderer.removeListener('webremote:project-at', handler)
   },
 
-  onWebRemoteReorder: (callback: (data: { from: number; to: number }) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, data: { from: number; to: number }): void => callback(data)
+  onWebRemoteReorder: (callback: (data: { id: string; toId: string }) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { id: string; toId: string }): void => callback(data)
     ipcRenderer.on('webremote:reorder', handler)
     return () => ipcRenderer.removeListener('webremote:reorder', handler)
   },
-  onWebRemoteRemove: (callback: (index: number) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, index: number): void => callback(index)
+  onWebRemoteRemove: (callback: (id: string) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, id: string): void => callback(id)
     ipcRenderer.on('webremote:remove', handler)
     return () => ipcRenderer.removeListener('webremote:remove', handler)
   },
@@ -414,6 +419,27 @@ const api = {
     const handler = (_evt: IpcRendererEvent, items: unknown[]): void => callback(items)
     ipcRenderer.on('webremote:open-service', handler)
     return () => ipcRenderer.removeListener('webremote:open-service', handler)
+  },
+  onWebRemoteImportService: (
+    callback: (data: { items: unknown[]; label: string }) => void
+  ): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { items: unknown[]; label: string }): void =>
+      callback(data)
+    ipcRenderer.on('webremote:import-service', handler)
+    return () => ipcRenderer.removeListener('webremote:import-service', handler)
+  },
+  onWebRemoteQueueBatch: (
+    callback: (data: {
+      items: unknown[]
+      contributor: { deviceId: string; label: string }
+    }) => void
+  ): (() => void) => {
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { items: unknown[]; contributor: { deviceId: string; label: string } }
+    ): void => callback(data)
+    ipcRenderer.on('webremote:queue-batch', handler)
+    return () => ipcRenderer.removeListener('webremote:queue-batch', handler)
   },
   saveServiceNamed: (name: string, items: unknown): Promise<boolean> =>
     ipcRenderer.invoke('service:save-named', name, items),

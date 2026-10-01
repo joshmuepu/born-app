@@ -80,9 +80,11 @@ export default function ProjectionApp() {
     // Esc (blackout toggle) is owned by the main process so both windows agree;
     // here we only handle slide navigation. Showing a slide auto-unblanks.
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
+      if (e.key === ' ' && e.shiftKey) {
+        window.electronAPI.navigateQueue('prev')
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         window.electronAPI.navigateQueue('next')
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         window.electronAPI.navigateQueue('prev')
       }
     }

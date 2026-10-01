@@ -93,9 +93,16 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    The song leader reads from this device, so what's on screen now
    dominates the screen; what's next is clearly visible but visually
    muted; everything else collapses into a small horizontal strip. */
-.queue-header-row{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 0}
-.queue-header-row .qh-label{margin:0; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
-.queue-file-actions{display:flex; gap:6px}
+/* flex-wrap, not a shrinking/ellipsized label — same call as desktop's
+ * .queue-header: "SERVICE QUEUE" should always read in full, and an action
+ * button's own label should never be the thing that loses text either, so
+ * if the row is ever tight the button group wraps to its own line instead
+ * of either side being truncated. Role-gating already means most phones
+ * never see a file-actions row at all; this is the fallback for Operator's
+ * own 3-button row on a narrow or zoomed screen. */
+.queue-header-row{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 0; flex-wrap:wrap}
+.queue-header-row .qh-label{margin:0; white-space:nowrap; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
+.queue-file-actions{display:flex; gap:6px; flex-shrink:0}
 .filebtn{
   display:flex; align-items:center; gap:5px; padding:0 12px; height:36px;
   border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--text2);
@@ -103,6 +110,24 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 }
 .filebtn:active{background:var(--surface2)}
 .filebtn--active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+/* This phone's own prepared list — build privately, send as one batch. */
+.draft-pill{
+  display:flex; align-items:center; gap:6px; margin:8px 18px 0; padding:8px 14px;
+  border-radius:11px; background:rgba(139,111,209,0.14); border:1px solid rgba(139,111,209,0.4);
+  color:var(--accent); font-size:13px; font-weight:700; align-self:flex-start;
+}
+.draft-pill:active{background:rgba(139,111,209,0.22)}
+.draft-pill-count{
+  display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
+  padding:0 5px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font-size:11px;
+}
+.btn-draft{
+  width:100%; padding:13px; border-radius:12px; background:var(--surface);
+  border:1px solid var(--accent); color:var(--accent); font-size:14px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-draft:active{background:var(--surface2)}
+.link-btn{background:none; border:none; color:var(--accent); font-size:inherit; font-weight:700; padding:0}
 /* Legacy icon-only button, kept for call sites elsewhere in the sheet UI. */
 .iconbtn{
   display:flex; align-items:center; justify-content:center; width:36px; height:36px;
@@ -169,6 +194,8 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .qstrip-title{font-size:12.5px; font-weight:700; color:var(--text); margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 
 .section-label{padding:18px 18px 8px; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
+.qgroup-header{display:flex; align-items:baseline; gap:6px; padding:14px 18px 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text2)}
+.qgroup-count{margin-left:auto; font-family:ui-monospace,monospace; font-weight:400; opacity:0.75}
 .qlist{padding:0 18px; display:flex; flex-direction:column; gap:8px}
 .qitem{padding:14px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border)}
 .qitem[data-kind="song"]{border-left-color:var(--amber)}
@@ -276,10 +303,18 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .recent-head svg{color:var(--text2)}
 .recent-head span{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
 .recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px}
-.recent-list{padding:8px 18px 0; display:flex; flex-direction:column; gap:6px}
-.recent-item{padding:13px 14px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--amber); text-align:left; width:100%}
+/* A horizontal, single-row strip — not a vertical stack. Vertical cards here
+   used to grow with the recent count (5 items ≈ 200px+) and, on a short
+   landscape-phone viewport, that alone could eat the ENTIRE height budget
+   left for songs-body, collapsing the actual A-Z list to 0px with nothing
+   visibly wrong except "the song list is just gone". A one-row strip is
+   bounded to a single chip's height no matter how many recents exist or how
+   short the screen is. Matches the desktop's own recent-chip treatment
+   (SongsPanel.css .songs-recent-chip) for the same feature. */
+.recent-list{padding:8px 18px 0; display:flex; flex-direction:row; flex-shrink:0; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch}
+.recent-item{padding:9px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--border); text-align:left; white-space:nowrap; flex-shrink:0}
 .recent-item:active{background:var(--surface2)}
-.recent-item span{font-size:14.5px; font-weight:700; color:var(--text)}
+.recent-item span{font-size:13px; font-weight:700; color:var(--text)}
 
 /* The Recent shortlist + section label stay put; only the A-Z list scrolls
    internally, in the space actually left after them. The jump strip is a
@@ -352,16 +387,40 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    the sheet card (never inside it, so it never scrolls with the content) and
    is a sibling of .sheet, not part of any dynamically-rebuilt sheet body. */
 .sheet-close{
-  position:absolute; top:calc(14px + env(safe-area-inset-top,0px)); right:16px;
+  /* Measured every tab's own fixed header live rather than guess a third
+   * time: Queue's header+My-list ends at 161px, Songs' at 178px, Bible's at
+   * 217px, Sermons' (search + filter row) at 225px — the tallest. 236px
+   * clears all four with room to spare, so this never lands on top of any
+   * tab's own controls regardless of which one a sheet happens to open
+   * from. Solid (not translucent) background on top of that so even where
+   * it still passes over plain scrolling content below those headers, it's
+   * a clean cover, not the ghosted-text look the original
+   * rgba(255,255,255,0.12) gave the "Connected" label two fixes ago. */
+  position:absolute; top:calc(236px + env(safe-area-inset-top,0px)); right:16px;
   width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  background:rgba(255,255,255,0.12); border:none; color:#fff; z-index:1;
+  background:var(--surface2); box-shadow:0 2px 10px rgba(0,0,0,0.45); border:1px solid var(--border); color:#fff; z-index:1;
 }
-.sheet-close:active{background:rgba(255,255,255,0.22)}
+.sheet-close:active{background:var(--border)}
 .sheet-title{font-size:17px; font-weight:800; color:var(--text)}
 .sheet-meta{font-size:12px; font-family:ui-monospace,monospace; margin-top:3px}
 .sheet-meta.sermon{color:var(--stone)} .sheet-meta.bible{color:var(--sage)} .sheet-meta.song{color:var(--amber)}
 .sheet-text{font-size:19px; line-height:1.6; color:var(--text)}
-.sheet-actions{display:flex; gap:10px; margin-top:2px}
+/* On phone, .sheet itself is the one scrolling container (title, the whole
+ * slide list, and these actions all scroll together) — for anything longer
+ * than a couple of slides (any real chapter, song, or multi-paragraph
+ * quote) that pushed Add to Queue/Project below the fold, confirmed live:
+ * had to scroll the entire slide list out of the way just to reach them.
+ * Sticking this block to the bottom of the sheet's own scrollport fixes it
+ * without changing anything about how the slide list itself scrolls — the
+ * content scrolls underneath, the actions stay put. Tablet already avoids
+ * this a different way (.preview-sheet-inline gives the slide list its own
+ * bounded scroll area instead, see below), where position:sticky is inert
+ * (no scrolling ancestor to stick within) — same markup, correct on both. */
+.sheet-footer{
+  position:sticky; bottom:0; margin-top:2px; padding-top:10px;
+  background:var(--surface); display:flex; flex-direction:column; gap:10px;
+}
+.sheet-actions{display:flex; gap:10px}
 .sheet-actions .btn-queue{flex:1; padding:16px; border-radius:14px; background:transparent; border:1.5px solid var(--border); color:var(--text2); font-size:14.5px; font-weight:700}
 .sheet-actions .btn-project{flex:1.3; padding:16px; border-radius:14px; background:var(--accent); border:none; color:var(--accent-ink); font-size:15.5px; font-weight:800; box-shadow:0 6px 18px rgba(139,111,209,0.4)}
 .sheet-hint{text-align:center; font-size:11px; color:var(--text2)}
@@ -396,8 +455,34 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .a2hs-step{display:flex; align-items:center; gap:12px}
 .a2hs-num{flex-shrink:0; width:26px; height:26px; border-radius:8px; background:rgba(139,111,209,0.15); display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:12px; font-weight:800}
 .a2hs-step-text{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text)}
-.a2hs .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
-.a2hs .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
+.a2hs .btn-primary,.role-banner-card .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
+.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
+/* Deliberately NOT a full-screen modal like .a2hs-overlay (inset:0 + a
+ * backdrop that captures every click) — this used to hide the entire app
+ * behind it on a device's very first connection until the person noticed
+ * and tapped "Skip for now": confirmed live, elementFromPoint() on the
+ * Sermons tab returned the overlay, not the tab, while it was up. Docked to
+ * the bottom at its own content height instead, so Queue/Sermons/Bible/
+ * Songs stay fully visible and usable underneath the whole time — this is
+ * a one-time nicety, never something that should be able to block the
+ * actual job of building and running a service. */
+/* bottom:70px, not 0 — confirmed live: the phone shell's own bottom tab bar
+ * (.tabbar) sits at the true bottom edge, so a banner docked flush to 0
+ * covers it exactly the same way the old full-screen modal did, just from
+ * underneath instead of on top. 70px clears it with room to spare across
+ * real devices' safe-area insets. The tablet override below (no bottom tab
+ * bar there, but a persistent LEFT sidebar instead) goes back to bottom:0
+ * and clears the sidebar horizontally with left instead. */
+.role-banner{position:fixed; left:0; right:0; bottom:70px; z-index:60; display:none; justify-content:center; padding:0 12px}
+.role-banner.active{display:flex}
+.role-banner-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:0 10px 34px rgba(0,0,0,0.4)}
+.role-banner-card h3{margin:0; font-size:17px; font-weight:800; color:var(--text)}
+.role-banner-card p{margin:0; font-size:13px; color:var(--text2); line-height:1.5}
+.role-grid{display:flex; flex-direction:column; gap:10px}
+.role-chip{padding:15px; border-radius:13px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:15px; font-weight:700; text-align:left}
+.role-chip:active{background:var(--bg)}
+.role-chip--other{color:var(--text2); font-weight:600}
+.role-chip--active{border-color:var(--accent); color:var(--accent); background:rgba(139,111,209,0.14)}
 
 /* ── Tablet / landscape layout ─────────────────────────────────────────
  * 768px, not 860px: a QA pass found every standard iPad in PORTRAIT (iPad
@@ -426,6 +511,12 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .sidebar .blank.active{background:var(--warn); color:var(--warn-ink)}
   .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--live)}
 
+  /* No bottom tab bar on tablet (the sidebar is the nav), so the phone
+   * offset above isn't needed here — but the sidebar itself is a persistent
+   * 96px-wide LEFT column, so left clears that instead of bottom clearing a
+   * tab bar. */
+  .role-banner{bottom:0; left:96px; padding:12px 22px calc(12px + env(safe-area-inset-bottom,0px))}
+
   .tablet-main{flex:1; display:flex; min-width:0}
   .list-pane{width:400px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; padding:26px 22px; overflow:hidden}
   .list-pane h2{margin:0 0 14px; font-size:18px; font-weight:800}
@@ -436,7 +527,16 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .list-pane .transport-inline .btn-next:active{background:var(--accent-hover)}
   .list-pane .scroll{flex:1; padding-bottom:0; overflow-y:auto}
   .list-pane .songs-body{flex:1; min-height:0}
-  .list-pane .searchbar,.list-pane .section-label,.list-pane .results,.list-pane .qlist,.list-pane .now-card,.list-pane .recent-head,.list-pane .recent-list,.list-pane .bible-groups,.list-pane .chapter-grid,.list-pane .verse-list,.list-pane .searchbox,.list-pane .datebar,.list-pane .livebar-slot{padding-left:0 !important; padding-right:0 !important}
+  .list-pane .searchbar,.list-pane .section-label,.list-pane .results,.list-pane .qlist,.list-pane .now-card,.list-pane .recent-head,.list-pane .recent-list,.list-pane .bible-groups,.list-pane .chapter-grid,.list-pane .verse-list,.list-pane .searchbox,.list-pane .datebar,.list-pane .livebar-slot,.list-pane .queue-header-row{padding-left:0 !important; padding-right:0 !important}
+  /* .queue-header-row was missing from the reclaim-width list above, so on
+   * tablet it was paying its own left/right padding on top of .list-pane's —
+   * in the fixed 400px column that left too little room for "SERVICE QUEUE"
+   * plus all 4 file-action buttons on one line, clipping Edit off the right
+   * edge (list-pane has overflow:hidden). Wrapping is a belt-and-braces fix
+   * on top of that: if the label + buttons still don't all fit on one line
+   * at some width, the buttons drop to their own line instead of clipping. */
+  .list-pane .queue-header-row{flex-wrap:wrap; row-gap:8px}
+  .list-pane .queue-file-actions{flex-wrap:wrap}
 
   .preview-pane{flex:1; display:flex; flex-direction:column; padding:30px 34px; min-width:0}
   .preview-empty{flex:1; display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:15px; text-align:center; padding:0 40px}
@@ -463,8 +563,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .preview-sheet-inline{flex:1; display:flex; flex-direction:column; min-height:0}
   .preview-sheet-inline .sheet-title{font-size:20px}
   .preview-sheet-inline .sheet-text{flex:1; padding:24px 26px; border-radius:16px; background:var(--surface); border:1px solid var(--border); font-size:18px; overflow-y:auto}
+  /* Tablet already keeps actions visible a different way — the slide list
+   * gets its own bounded scroll area (below) while title+footer stay fixed
+   * in the flex column, so .sheet-footer's position:sticky is simply inert
+   * here (no scrolling ancestor to stick within); this just undoes the
+   * phone-only background/padding so it reads as a plain flex footer. */
+  .preview-sheet-inline .sheet-footer{background:none; padding-top:0}
   .preview-sheet-inline .sheet-actions{margin-top:18px}
-  .preview-sheet-inline .sheet-actions button{padding:18px; font-size:16px}
+  .preview-sheet-inline .sheet-actions button,.preview-sheet-inline .sheet-footer .btn-draft{padding:18px; font-size:16px}
   .preview-sheet-inline .slide-list{flex:1; overflow-y:auto; padding-right:2px}
   .preview-sheet-inline .slide-row{padding:18px 20px}
   .preview-sheet-inline .slide-text{font-size:19px}
@@ -482,6 +588,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .list-pane h2{margin-bottom:8px}
   .list-pane .transport-inline{gap:10px; margin-bottom:8px}
   .list-pane .transport-inline button{min-height:36px; padding:6px 10px; font-size:13px; border-radius:10px}
+  /* Same reasoning as the recent-list rewrite above: on this little height,
+     every fixed-height header row the Songs tab stacks before its actual
+     list (recent strip, section label, A-Z jump row) has to give back
+     whatever it can, or the list itself is what silently pays for it. */
+  .list-pane .recent-head{padding-top:8px}
+  .list-pane .recent-list{padding-top:6px}
+  .list-pane .section-label{padding:10px 0 6px}
+  .list-pane .azstrip{padding-bottom:6px}
   /* The preview column's own vertical rhythm assumes tablet-height too — on a
      short landscape phone, more of what little height exists should go to
      the actual on-screen text, not the surrounding padding. */
@@ -595,6 +709,16 @@ export function buildAppBody(): string {
       <button class="btn-skip" id="a2hsSkip">Skip for now</button>
     </div>
   </div>
+  <div class="role-banner" id="roleOverlay">
+    <div class="role-banner-card">
+      <h3>Who's this?</h3>
+      <p>So the operator can tell whose items are whose in the queue — no account needed. "Operator" runs the whole live service from this device.</p>
+      <div class="role-grid" id="roleGrid"></div>
+      <input class="name-input" id="roleCustomInput" placeholder="Or type your own name…" autocomplete="off" style="display:none"/>
+      <button class="btn-primary" id="roleSaveBtn" style="display:none">Save</button>
+      <button class="btn-skip" id="roleSkipBtn">Skip for now</button>
+    </div>
+  </div>
   <div class="toast" id="toast"></div>
 </div>
 `
@@ -619,8 +743,108 @@ var state = {
   // desktop's. Explicit Edit mode + Up/Down/Remove buttons per row is
   // slower than a drag, but it's unambiguous and never misfires under
   // thumb pressure, which matters more here than speed.
-  queueEditMode: false
+  queueEditMode: false,
+  // This phone's own prepared list — built up privately here (no network
+  // call per tap) and sent to the operator in one batch when the
+  // contributor is ready. Restored from localStorage so a reload mid-prep
+  // doesn't lose it.
+  draft: loadDraft()
 };
+
+/* ── Contributor identity + prepared-list draft ───────────────────────
+   No accounts: a phone picks its own display label once (Song Leader,
+   Preacher, or anything typed), stored in this phone's own localStorage —
+   the same per-device-only storage pattern already used for the A2HS
+   dismissal flag and recent searches elsewhere in this file. The label can
+   change any time (a phone changing hands); the id never does, since a
+   mid-service re-send needs to reliably mean "replace THIS device's
+   earlier batch," not "replace whoever currently has this label." */
+function ensureDeviceId(){
+  try {
+    var id = localStorage.getItem('born-remote-device-id');
+    if(!id){
+      id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem('born-remote-device-id', id);
+    }
+    return id;
+  } catch(e){ return 'dev-temp'; }
+}
+function getContributorLabel(){
+  try { return localStorage.getItem('born-remote-contributor-label') || ''; } catch(e){ return ''; }
+}
+function setContributorLabel(label){
+  try { localStorage.setItem('born-remote-contributor-label', label); } catch(e){}
+}
+function getContributor(){
+  var label = getContributorLabel();
+  if(!label) return null;
+  return { deviceId: ensureDeviceId(), label: label };
+}
+function loadDraft(){
+  try { return JSON.parse(localStorage.getItem('born-remote-draft') || '[]'); } catch(e){ return []; }
+}
+function saveDraft(items){
+  try { localStorage.setItem('born-remote-draft', JSON.stringify(items)); } catch(e){}
+}
+
+/* First-connect "Who's this?" prompt — same bottom-sheet-once pattern as
+   the Add-to-Home-Screen overlay below (shown once, "Skip for now"
+   persists so it never nags). "Operator" is a reserved label, not just a
+   free-typed name: getContributorLabel() === 'Operator' is what unlocks
+   the grouped queue view in restOfQueueHtml() above, since that's the one
+   role actually running the live service from this device. Project,
+   Next/Prev and Blank were never gated behind any role — every phone can
+   already do all of that — so picking a role here only adds the grouped
+   view, it never takes anything away from Song Leader/Preacher. */
+var ROLE_OPTIONS = ['Song Leader', 'Preacher', 'Operator'];
+function initRoleOverlay(){
+  if(getContributorLabel()) return;
+  var skipped = false;
+  try { skipped = localStorage.getItem('born-remote-role-dismissed') === '1'; } catch(e){}
+  if(skipped) return;
+  var grid = $('roleGrid');
+  if(grid){
+    var html = '';
+    for(var i=0;i<ROLE_OPTIONS.length;i++){
+      html += '<button class="role-chip" onclick="chooseRole(\\'' + ROLE_OPTIONS[i] + '\\')">' + esc(ROLE_OPTIONS[i]) + '</button>';
+    }
+    html += '<button class="role-chip role-chip--other" onclick="showCustomRoleInput()">Other…</button>';
+    grid.innerHTML = html;
+  }
+  var overlay = $('roleOverlay');
+  if(overlay) overlay.classList.add('active');
+  on($('roleSkipBtn'), 'click', function(){
+    try { localStorage.setItem('born-remote-role-dismissed', '1'); } catch(e){}
+    if(overlay) overlay.classList.remove('active');
+  });
+  on($('roleSaveBtn'), 'click', function(){
+    var v = ($('roleCustomInput') || {}).value || '';
+    v = v.trim();
+    if(!v) return;
+    chooseRole(v);
+  });
+}
+function chooseRole(label){
+  setContributorLabel(label);
+  // Edit mode (reorder/remove on the shared queue) is Operator-only — a
+  // phone that was Operator, got left mid-edit, then switched to Song
+  // Leader/Preacher would otherwise be stuck showing editable rows with no
+  // way to reach the toggle that turns it off (that control just disappeared
+  // from its header).
+  if(label !== 'Operator') state.queueEditMode = false;
+  var overlay = $('roleOverlay');
+  if(overlay) overlay.classList.remove('active');
+  toast('Contributing as ' + label);
+  refreshQueueHeader();
+  renderCurrentTab();
+}
+function showCustomRoleInput(){
+  var input = $('roleCustomInput');
+  var btn = $('roleSaveBtn');
+  if(input) input.style.display = 'block';
+  if(btn) btn.style.display = 'block';
+  if(input) input.focus();
+}
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function $(id){ return document.getElementById(id); }
@@ -747,6 +971,7 @@ document.addEventListener('DOMContentLoaded', function(){
   on($('blank-p'), 'click', toggleBlank);
   on($('blank-t'), 'click', toggleBlank);
   on($('sheetOverlay'), 'click', function(e){ if(e.target === $('sheetOverlay')) closeSheet(); });
+  initRoleOverlay();
   initA2HS();
   loadBibleBooks();
   loadSongs();
@@ -838,8 +1063,14 @@ function updateLiveBars(){
 function refreshOpenDetailSheet(){
   var overlay = $('sheetOverlay');
   if(overlay && overlay.classList.contains('active') && overlay.classList.contains('detail-mode') && state.detailIndex != null){
-    var body = $('sheetBody');
-    if(body) body.innerHTML = '<div class="sheet-grip"></div>' + queueDetailInnerHtml(state.detailIndex);
+    // Same poll-vs-scroll problem as renderQueueTab() above: this sheet is
+    // refreshed every second while it's open (so its own "ON SCREEN"/played
+    // state stays live), which used to blow away and recreate #sheetBody on
+    // every tick — scrolling through a long song or quote here would get
+    // silently undone within about a second. viewKey keyed to the item's
+    // index, not just a constant, so tapping a *different* queue item while
+    // one sheet is already open still starts that new one at the top.
+    setHtmlPreservingScroll($('sheetBody'), '<div class="sheet-grip"></div>' + queueDetailInnerHtml(state.detailIndex), 'detail-' + state.detailIndex, null);
   }
 }
 /* Same phrase the desktop app's own confidence monitor already uses for this
@@ -879,17 +1110,55 @@ function transportInlineHtml(){
 }
 
 /* ── Queue tab ─────────────────────────────────────────────────────── */
+/** New/Open/Save/Edit all act on the ENTIRE shared queue regardless of who
+ *  added what — clearing it, replacing it, reordering or deleting anyone's
+ *  items. That's operator-level power a Song Leader or Preacher has no real
+ *  reason to reach for from their own phone; their job is narrower (add
+ *  their own stuff, watch what's live, send their prepared list). Confirmed
+ *  live this was also the direct cause of a real width bug: "SERVICE QUEUE"
+ *  plus 4 buttons doesn't fit a 390px phone without wrapping. Gating these
+ *  to Operator only fixes both at once — everyone else's header shrinks to
+ *  just the label, and Operator's own row only ever has to fit 3 controls
+ *  instead of 4 (New+Open folded into one "File" menu below). */
 function queueHeaderHtml(){
   var editing = state.queueEditMode;
+  var draftCount = (state.draft || []).length;
+  var isOperator = getContributorLabel() === 'Operator';
+  var actions = '';
+  if(isOperator){
+    actions = (editing ? '' :
+        '<button class="filebtn" title="New, or open a saved service" onclick="openFileMenuSheet()">' + ICON_FOLDER + ' File ' + ICON_CHEVRON_DOWN + '</button>'
+      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>')
+      + '<button class="filebtn' + (editing ? ' filebtn--active' : '') + '" title="Reorder or remove queue items" onclick="toggleQueueEdit()">'
+      + (editing ? ICON_CHECK + ' Done' : ICON_PENCIL + ' Edit') + '</button>';
+  }
   return '<div class="queue-header-row">'
     + '<h2 class="qh-label">SERVICE QUEUE</h2>'
-    + '<div class="queue-file-actions">'
-    + (editing ? '' : '<button class="filebtn" title="Start a new service" onclick="newService()">' + ICON_PLUS + ' New</button>'
-      + '<button class="filebtn" title="Open a saved service" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open</button>'
-      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>')
-    + '<button class="filebtn' + (editing ? ' filebtn--active' : '') + '" title="Reorder or remove queue items" onclick="toggleQueueEdit()">'
-    + (editing ? ICON_CHECK + ' Done' : ICON_PENCIL + ' Edit') + '</button>'
-    + '</div></div>';
+    + (actions ? '<div class="queue-file-actions">' + actions + '</div>' : '')
+    + '</div>'
+    + '<button class="draft-pill" onclick="openDraftSheet()">' + ICON_PLUS + ' My list'
+    + (draftCount > 0 ? ' <span class="draft-pill-count">' + draftCount + '</span>' : '') + '</button>';
+}
+/** New + Open folded into one menu (Import stays reachable via Open's own
+ *  "+" per row, already built) — one tap more to reach either, but one
+ *  fewer button competing for width on every load, which is the trade
+ *  worth making on a 390px screen for two actions that are each already a
+ *  multi-step flow (a confirm, or a whole picker sheet) rather than a single
+ *  committed action like Save. */
+function openFileMenuSheet(){
+  openGenericSheet('File', ''
+    + '<button class="role-chip" onclick="newService()">' + ICON_PLUS + ' New service</button>'
+    + '<button class="role-chip" onclick="openSavedSheet()">' + ICON_FOLDER + ' Open a saved service</button>'
+  );
+}
+/** The perf-mode phone view only rebuilds this header once per tab switch
+ *  (see renderQueueTab's viewKey guard) — draft mutations happen from a
+ *  sheet on top of it, not from the poll loop, so they need their own
+ *  explicit refresh of just this slot rather than waiting for the next
+ *  full rebuild. */
+function refreshQueueHeader(){
+  var slot = $('queueHeaderSlot');
+  if(slot) slot.innerHTML = queueHeaderHtml();
 }
 function toggleQueueEdit(){
   state.queueEditMode = !state.queueEditMode;
@@ -904,10 +1173,12 @@ function moveQueueItemRemote(i, dir){
   var to = i + dir;
   var q = state.qs.queue || [];
   if(to < 0 || to >= q.length) return;
-  cmd('reorder', { index: i, to: to });
+  cmd('reorder', { id: q[i].id, toId: q[to].id });
 }
 function removeQueueItemRemote(i){
-  cmd('remove', { index: i });
+  var it = (state.qs.queue || [])[i];
+  if(!it) return;
+  cmd('remove', { id: it.id });
 }
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
@@ -975,38 +1246,117 @@ function compactQueueStripHtml(){
  *  item's own first line of text instead of just its reference, so a real
  *  tablet's extra space goes toward actually reading the plan rather than
  *  sitting empty. */
+/** Same grouping the desktop's own queue view uses (by contributor label,
+ *  untagged items in one "Added on desktop" bucket, that bucket always
+ *  last) — only surfaced here for a phone signed in as Operator, since
+ *  that's the one role actually running the live service from this
+ *  device and needing to see who contributed what at a glance. Everyone
+ *  else still gets the plain flat list, unchanged. */
+function queueGroupsFor(q){
+  var UNTAGGED = ' desktop';
+  var order = [];
+  var map = {};
+  for(var i=0;i<q.length;i++){
+    var key = (q[i].source && q[i].source.label) ? q[i].source.label : UNTAGGED;
+    if(!map[key]){ map[key] = []; order.push(key); }
+    map[key].push(i);
+  }
+  var labels = order.filter(function(k){ return k !== UNTAGGED; });
+  if(map[UNTAGGED]) labels.push(UNTAGGED);
+  return labels.map(function(key){
+    return { label: key === UNTAGGED ? 'Added on desktop' : key, indices: map[key] };
+  });
+}
+function queueRowHtml(q, i, editable, richPreview){
+  var it = q[i];
+  var active = i === state.qs.activeIndex;
+  var played = !active && it.played;
+  var rowClass = 'qitem' + (played ? ' qitem--played' : '') + (editable ? ' qitem--editable' : '');
+  var body = '<div class="qkind">' + (played ? ICON_CHECK + ' ' : '') + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
+    + '<div class="qtitle">' + esc(it.title) + '</div>'
+    + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
+    + (richPreview && it.slides && it.slides[0] ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
+  if(editable){
+    return '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
+      + '<div class="qitem-body">' + body + '</div>'
+      + '<div class="qitem-editbar">'
+      + '<button class="qitem-editbtn" aria-label="Move up" ' + (i === 0 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',-1)">' + ICON_CHEVRON_UP + '</button>'
+      + '<button class="qitem-editbtn" aria-label="Move down" ' + (i === q.length - 1 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',1)">' + ICON_CHEVRON_DOWN + '</button>'
+      + '<button class="qitem-editbtn qitem-editbtn--danger" aria-label="Remove" onclick="removeQueueItemRemote(' + i + ')">' + ICON_TRASH + '</button>'
+      + '</div></div>';
+  }
+  return '<button class="' + rowClass + '" data-kind="' + esc(it.kind) + '" onclick="openQueueItemDetail(' + i + ')">' + body + '</button>';
+}
 function restOfQueueHtml(includeActive, editable, richPreview){
   var q = state.qs.queue || [];
   if(q.length === 0) return includeActive ? '<div class="empty">Queue is empty.</div>' : '';
+  var isOperator = getContributorLabel() === 'Operator';
+  var groups = isOperator ? queueGroupsFor(q) : [{ label: null, indices: q.map(function(_, i){ return i; }) }];
+  var showGroupHeaders = isOperator && groups.length > 1;
   var html = includeActive ? '' : '<div class="section-label">QUEUE' + (editable ? ' — tap ' + ICON_CHEVRON_UP + '/' + ICON_CHEVRON_DOWN + ' to reorder' : '') + '</div>';
-  html += '<div class="qlist">';
-  for(var i=0;i<q.length;i++){
-    var it = q[i];
-    var active = i === state.qs.activeIndex;
-    if(active && !includeActive) continue;
-    var played = !active && it.played;
-    var rowClass = 'qitem' + (played ? ' qitem--played' : '') + (editable ? ' qitem--editable' : '');
-    var body = '<div class="qkind">' + (played ? ICON_CHECK + ' ' : '') + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
-      + '<div class="qtitle">' + esc(it.title) + '</div>'
-      + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
-      + (richPreview && it.slides && it.slides[0] ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
-    if(editable){
-      html += '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
-        + '<div class="qitem-body">' + body + '</div>'
-        + '<div class="qitem-editbar">'
-        + '<button class="qitem-editbtn" aria-label="Move up" ' + (i === 0 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',-1)">' + ICON_CHEVRON_UP + '</button>'
-        + '<button class="qitem-editbtn" aria-label="Move down" ' + (i === q.length - 1 ? 'disabled' : '') + ' onclick="moveQueueItemRemote(' + i + ',1)">' + ICON_CHEVRON_DOWN + '</button>'
-        + '<button class="qitem-editbtn qitem-editbtn--danger" aria-label="Remove" onclick="removeQueueItemRemote(' + i + ')">' + ICON_TRASH + '</button>'
-        + '</div></div>';
-    } else {
-      html += '<button class="' + rowClass + '" data-kind="' + esc(it.kind) + '" onclick="openQueueItemDetail(' + i + ')">' + body + '</button>';
+  for(var g=0; g<groups.length; g++){
+    var group = groups[g];
+    var rows = '';
+    for(var gi=0; gi<group.indices.length; gi++){
+      var i = group.indices[gi];
+      if(i === state.qs.activeIndex && !includeActive) continue;
+      rows += queueRowHtml(q, i, editable, richPreview);
     }
+    if(!rows) continue;
+    if(showGroupHeaders){
+      html += '<div class="qgroup-header">' + esc(group.label) + '<span class="qgroup-count">' + group.indices.length + '</span></div>';
+    }
+    html += '<div class="qlist">' + rows + '</div>';
   }
-  html += '</div>';
   return html;
 }
 function openViewAllQueueSheet(){
   openGenericSheet('Full Queue', restOfQueueHtml(true));
+}
+/** Writes html into container.innerHTML, but ONLY when it actually differs
+ *  from what this exact call site last wrote there — and when it does need
+ *  to change, preserves whatever the user has scrolled scrollSel (or the
+ *  container itself, if scrollSel is falsy) to.
+ *
+ *  Exists because the remote polls the server every second regardless of
+ *  whether anything actually changed (see poll() below), and several
+ *  containers — the queue list, an open item's detail view, the preview
+ *  pane — get unconditionally rebuilt on every one of those ticks. Rebuilding
+ *  means replacing innerHTML, which destroys and recreates any scrollable
+ *  element inside it, snapping its scrollTop back to 0. A real finger-swipe
+ *  rarely finishes inside that ~1s window, so this reads as "doesn't
+ *  scroll" rather than "scrolls, then snaps back" — same root cause in
+ *  every case the callers below use this for.
+ *
+ *  viewKey distinguishes "the same logical view, content updated" (worth
+ *  preserving the CURRENT live scroll position) from "a genuinely different
+ *  view just switched in" (starts fresh — nothing to preserve) — several
+ *  call sites share one container across genuinely different views (e.g.
+ *  #tabletList is Sermons' list one moment, Queue's the next; the preview
+ *  pane is "now playing" one moment, a tapped item's detail the next), so
+ *  comparing html alone isn't enough: two different views can coincidentally
+ *  produce the same markup at some point, or — the common case — the view
+ *  key changes precisely when preserving scroll would be wrong.
+ *
+ *  Returns whether it actually rebuilt (false = nothing to do, scroll is
+ *  already whatever it was). */
+function setHtmlPreservingScroll(container, html, viewKey, scrollSel){
+  if(!container) return false;
+  var sameView = container.dataset.viewKey === viewKey;
+  if(sameView && container.__lastHtml === html) return false;
+  var savedTop = null;
+  if(sameView){
+    var oldEl = scrollSel ? container.querySelector(scrollSel) : container;
+    if(oldEl) savedTop = oldEl.scrollTop;
+  }
+  container.innerHTML = html;
+  container.__lastHtml = html;
+  container.dataset.viewKey = viewKey;
+  if(savedTop != null){
+    var newEl = scrollSel ? container.querySelector(scrollSel) : container;
+    if(newEl) newEl.scrollTop = savedTop;
+  }
+  return true;
 }
 function renderQueueTab(){
   var phone = $('view-queue');
@@ -1016,19 +1366,40 @@ function renderQueueTab(){
       // service live — swapping to the full list (same shape the tablet and
       // the "View all" sheet already use) rather than cramming Up/Down/
       // Remove into the compact performance-mode strip.
-      phone.innerHTML = queueHeaderHtml() + restOfQueueHtml(true, true, false);
+      setHtmlPreservingScroll(phone, queueHeaderHtml() + restOfQueueHtml(true, true, false), 'edit', '.qlist');
     } else {
-      phone.innerHTML = queueHeaderHtml() + nowNextPerfHtml() + compactQueueStripHtml();
+      // The perf-mode view genuinely does have content that must update
+      // every poll — nowNextPerfHtml() shows the live on-screen text, which
+      // can change independently of the queue itself (reading ahead into
+      // the next verse, for instance) — so it can't just be skip-if-
+      // unchanged like the edit list above. Splitting the shell from its
+      // two pieces lets each update (or not) on its own terms: the strip
+      // only rebuilds — and only then loses its horizontal scroll — when
+      // the queue itself actually changed, not on every unrelated tick.
+      if(phone.dataset.viewKey !== 'perf'){
+        phone.innerHTML = '<div id="queueHeaderSlot">' + queueHeaderHtml() + '</div><div id="queuePerfNow"></div><div id="queuePerfStrip"></div>';
+        phone.dataset.viewKey = 'perf';
+      }
+      setHtmlPreservingScroll($('queuePerfNow'), nowNextPerfHtml(), 'now', '.now-card-body');
+      setHtmlPreservingScroll($('queuePerfStrip'), compactQueueStripHtml(), 'strip', '.qstrip');
       fitLiveText(phone.querySelector('.now-card.perf .now-card-body'), 34, 20);
     }
   }
 
   var list = $('tabletList');
   if(list && state.tab === 'queue'){
-    list.innerHTML = transportInlineHtml()
-      + queueHeaderHtml()
-      + '<div class="scroll">' + restOfQueueHtml(true, state.queueEditMode, true) + '</div>';
-    restoreTabletScroll('queue');
+    var wasQueue = list.dataset.viewKey === 'queue';
+    var rebuilt = setHtmlPreservingScroll(
+      list,
+      transportInlineHtml() + queueHeaderHtml() + '<div class="scroll">' + restOfQueueHtml(true, state.queueEditMode, true) + '</div>',
+      'queue', '.scroll'
+    );
+    // Arriving fresh from another tab (Sermons/Bible/Songs all share this
+    // same element) has nothing of its own to preserve — restore whatever
+    // this tab's own scroll position was the last time it was left, same
+    // as before. A same-tab content update already preserved the live
+    // position itself, above.
+    if(rebuilt && !wasQueue) restoreTabletScroll('queue');
   }
   renderTabletPreview();
 }
@@ -1036,24 +1407,33 @@ function renderQueueTab(){
 function renderTabletPreview(){
   var pane = $('tabletPreview');
   if(!pane) return;
+  // Same poll-vs-scroll problem as renderQueueTab()/refreshOpenDetailSheet()
+  // above, a third time: this pane is rebuilt every poll tick regardless of
+  // tab, so scrolling a long passage/quote/song here (or the "now playing"
+  // box, for a long one) used to get silently undone within about a second.
   if(state.tab === 'queue'){
     if(state.detailIndex != null && state.qs.queue && state.qs.queue[state.detailIndex]){
-      pane.innerHTML = '<div class="preview-sheet-inline">' + queueDetailInnerHtml(state.detailIndex) + '</div>';
+      setHtmlPreservingScroll(pane, '<div class="preview-sheet-inline">' + queueDetailInnerHtml(state.detailIndex) + '</div>', 'detail-' + state.detailIndex, '.slide-list, .sheet-text');
       return;
     }
-    pane.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
-      + nowStatusHtml(!!state.qs.blanked)
-      + (state.qs.onScreen && state.qs.onScreen.reference ? '<span class="now-ref" style="margin-left:auto;font-size:13px;color:var(--sage)">' + esc(state.qs.onScreen.reference) + '</span>' : '')
-      + '</div>'
-      + nowNextBigHtml();
+    setHtmlPreservingScroll(
+      pane,
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
+        + nowStatusHtml(!!state.qs.blanked)
+        + (state.qs.onScreen && state.qs.onScreen.reference ? '<span class="now-ref" style="margin-left:auto;font-size:13px;color:var(--sage)">' + esc(state.qs.onScreen.reference) + '</span>' : '')
+        + '</div>'
+        + nowNextBigHtml(),
+      'now', '.preview-now'
+    );
     fitLiveText(pane.querySelector('.preview-now'), 36, 20);
     return;
   }
   if(!state.selected){
-    pane.innerHTML = '<div class="preview-empty">Select a result on the left to preview it here.<br>Nothing goes on screen until you tap Project.</div>';
+    setHtmlPreservingScroll(pane, '<div class="preview-empty">Select a result on the left to preview it here.<br>Nothing goes on screen until you tap Project.</div>', 'empty', null);
     return;
   }
-  pane.innerHTML = '<div class="preview-sheet-inline">' + previewInnerHtml(state.selected) + '</div>';
+  var selectedKey = 'selected-' + state.selected.kind + '|' + (state.selected.title || '') + '|' + (state.selected.meta || '');
+  setHtmlPreservingScroll(pane, '<div class="preview-sheet-inline">' + previewInnerHtml(state.selected) + '</div>', selectedKey, '.slide-list, .sheet-text');
 }
 
 /* ── Item detail view (queue) — tap a queue item to see the whole thing,
@@ -1067,14 +1447,14 @@ function queueDetailInnerHtml(i){
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
     html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{index:' + i + '})">Project ▸</button></div>';
+      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:\\'' + it.id + '\\'})">Project ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
   for(var s=0;s<slides.length;s++){
     var sl = slides[s];
     var isLive = (s === activeSlide);
-    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{index:' + i + ',slide:' + s + '})">';
+    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:\\'' + it.id + '\\',slide:' + s + '})">';
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
@@ -1099,7 +1479,7 @@ function openQueueItemDetail(i){
 
 function newService(){
   if(!confirm('Clear the current queue and start a new service?')) return;
-  cmd('new-service').then(function(){ toast('Started a new service'); });
+  cmd('new-service').then(function(){ toast('Started a new service'); closeSheet(); });
 }
 function saveQueueSheet(){
   openGenericSheet('Save this queue', ''
@@ -1123,10 +1503,13 @@ function openSavedSheet(){
     if(!list || list.length === 0){ body.innerHTML = '<div class="empty">No saved services yet.</div>'; return; }
     var html = '<div style="display:flex;flex-direction:column;gap:8px">';
     for(var i=0;i<list.length;i++){
-      html += '<button class="saved-item" onclick="doOpenSaved(' + i + ')">'
+      html += '<div style="display:flex;gap:6px;align-items:stretch">'
+        + '<button class="saved-item" style="flex:1" onclick="doOpenSaved(' + i + ')">'
         + '<span class="saved-name">' + esc(list[i].name) + '</span>'
         + '<span class="saved-when">' + new Date(list[i].mtimeMs).toLocaleDateString() + '</span>'
-        + '</button>';
+        + '</button>'
+        + '<button class="filebtn" title="Add its items to the current queue, instead of replacing it" onclick="doImportSaved(' + i + ')">' + ICON_PLUS + '</button>'
+        + '</div>';
     }
     html += '</div>';
     body.innerHTML = html;
@@ -1140,6 +1523,136 @@ function doOpenSaved(i){
   cmd('open-service', { path: item.path }).then(function(){
     toast('Loaded “' + item.name + '”');
     closeSheet();
+  });
+}
+/** Additive alongside doOpenSaved (which replaces the whole queue) —
+ *  combines a separately-saved file into the current queue instead, so
+ *  combining the song leader's and the preacher's own saved services
+ *  doesn't require only one to be open at a time. Non-destructive, so no
+ *  confirmation needed. */
+function doImportSaved(i){
+  var item = (window._savedList || [])[i];
+  if(!item) return;
+  cmd('import-service', { path: item.path }).then(function(){
+    toast('Added “' + item.name + '” to the queue');
+    closeSheet();
+  });
+}
+
+/* ── Prepared-list draft: build privately, send as one batch ─────────
+   Distinct from the queue tab's "Save"/"Open" (which act on the one shared
+   live queue) — this is a contributor's own not-yet-shared list, kept only
+   on their device until they explicitly send it. */
+function addToDraft(item){
+  var entry = { kind: item.kind, title: item.title, meta: item.meta || '', payload: item.payload };
+  state.draft = (state.draft || []).concat([entry]);
+  saveDraft(state.draft);
+  refreshQueueHeader();
+}
+function removeDraftItem(i){
+  state.draft = (state.draft || []).slice();
+  state.draft.splice(i, 1);
+  saveDraft(state.draft);
+  renderDraftSheet();
+  refreshQueueHeader();
+}
+function openDraftSheet(){
+  renderDraftSheet();
+}
+function renderDraftSheet(){
+  var draft = state.draft || [];
+  var label = getContributorLabel();
+  var html = '';
+  if(!label){
+    html += '<div class="empty">Set a name first so the operator knows whose list this is.</div>'
+      + '<input class="name-input" id="contributorNameInput" placeholder="e.g. Song Leader, Preacher" autocomplete="off"/>'
+      + '<button class="btn-project" style="padding:12px;border-radius:13px" onclick="doSetContributorName()">Save name</button>';
+  } else {
+    html += '<div class="sheet-meta" style="margin-bottom:2px">Contributing as <strong>' + esc(label) + '</strong> — '
+      + '<button class="link-btn" onclick="promptChangeContributorName()">change</button></div>';
+  }
+  if(draft.length === 0){
+    html += '<div class="empty">Nothing in your list yet — add items from Sermons, Bible or Songs, then come back here to send them.</div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:8px">';
+    for(var i=0;i<draft.length;i++){
+      var it = draft[i];
+      html += '<div class="qitem qitem--editable" data-kind="' + esc(it.kind) + '">'
+        + '<div class="qitem-body"><div class="qkind">' + esc(it.kind).toUpperCase() + '</div>'
+        + '<div class="qtitle">' + esc(it.title) + '</div>'
+        + (it.meta ? '<div class="qsub">' + esc(it.meta) + '</div>' : '') + '</div>'
+        + '<div class="qitem-editbar"><button class="qitem-editbtn qitem-editbtn--danger" aria-label="Remove" onclick="removeDraftItem(' + i + ')">' + ICON_TRASH + '</button></div>'
+        + '</div>';
+    }
+    html += '</div>';
+    if(label){
+      html += '<button class="btn-project" style="padding:15px;border-radius:13px;margin-top:4px" onclick="sendDraftToOperator()">Send '
+        + draft.length + ' item' + (draft.length === 1 ? '' : 's') + ' to operator</button>';
+    }
+  }
+  openGenericSheet('My list', html);
+  if(!label){
+    setTimeout(function(){ var i = $('contributorNameInput'); if(i) i.focus(); }, 150);
+  }
+}
+function doSetContributorName(){
+  var v = ($('contributorNameInput') || {}).value || '';
+  v = v.trim();
+  if(!v){ toast('Type a name first'); return; }
+  setContributorLabel(v);
+  renderDraftSheet();
+  refreshQueueHeader();
+}
+/** "Change" from the My List sheet — the same selectable role grid the
+ *  first-connect prompt uses (chooseRole below), not a free-type box, so
+ *  switching from Operator to Song Leader (say) is a tap, not typing a name
+ *  you have to get exactly right twice. */
+function promptChangeContributorName(){
+  var current = getContributorLabel();
+  var html = '<div class="role-grid">';
+  for(var i=0;i<ROLE_OPTIONS.length;i++){
+    var isCurrent = ROLE_OPTIONS[i] === current;
+    html += '<button class="role-chip' + (isCurrent ? ' role-chip--active' : '') + '" onclick="chooseRoleFromChangeSheet(\\'' + ROLE_OPTIONS[i] + '\\')">'
+      + esc(ROLE_OPTIONS[i]) + (isCurrent ? ' ' + ICON_CHECK : '') + '</button>';
+  }
+  var customCurrent = ROLE_OPTIONS.indexOf(current) === -1 ? current : '';
+  html += '<button class="role-chip role-chip--other' + (customCurrent ? ' role-chip--active' : '') + '" onclick="showChangeRoleCustomInput()">'
+    + (customCurrent ? esc(customCurrent) + ' ' + ICON_CHECK : 'Other…') + '</button>'
+    + '<input class="name-input" id="changeRoleCustomInput" placeholder="Type a name…" autocomplete="off" style="display:none" value="' + esc(customCurrent) + '"/>'
+    + '<button class="btn-primary" id="changeRoleSaveBtn" style="display:none;padding:12px;border-radius:13px" onclick="saveChangeRoleCustom()">Save</button>'
+    + '</div>';
+  openGenericSheet('Change name', html);
+}
+function chooseRoleFromChangeSheet(label){
+  setContributorLabel(label);
+  if(label !== 'Operator') state.queueEditMode = false;
+  renderDraftSheet();
+  refreshQueueHeader();
+}
+function showChangeRoleCustomInput(){
+  var input = $('changeRoleCustomInput');
+  var btn = $('changeRoleSaveBtn');
+  if(input) input.style.display = 'block';
+  if(btn) btn.style.display = 'block';
+  if(input) input.focus();
+}
+function saveChangeRoleCustom(){
+  var v = ($('changeRoleCustomInput') || {}).value || '';
+  v = v.trim();
+  if(!v) return;
+  chooseRoleFromChangeSheet(v);
+}
+function sendDraftToOperator(){
+  var draft = state.draft || [];
+  if(draft.length === 0) return;
+  var contributor = getContributor();
+  if(!contributor){ toast('Set a name first'); return; }
+  cmd('queue-batch', { items: draft, contributor: contributor }).then(function(){
+    toast('Sent ' + draft.length + ' item' + (draft.length === 1 ? '' : 's') + ' as ' + contributor.label);
+    state.draft = [];
+    saveDraft(state.draft);
+    closeSheet();
+    refreshQueueHeader();
   });
 }
 
@@ -1169,6 +1682,7 @@ function renderSermonsTab(){
       + '<div class="datebar" style="margin-bottom:16px"><input id="sermonDateInputT" class="date-input" placeholder="Optional date filter — e.g. 63-0825E" value="' + esc(state.sermonDate) + '" onkeydown="if(event.key===\\'Enter\\')runSermonSearch(true)"/></div>'
       + '<div class="livebar-slot" id="livebar-sermonsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="sermonResultsBoxT">' + sermonResultsHtml() + '</div>';
+    list.dataset.viewKey = 'sermons';
     restoreTabletScroll('sermons');
   }
   renderTabletPreview();
@@ -1419,6 +1933,7 @@ function renderBibleTab(){
       + scopeRow
       + '<div class="livebar-slot" id="livebar-bibleT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div class="scroll" id="bibleBodyT">' + bibleBodyHtml() + '</div>';
+    list.dataset.viewKey = 'bible';
     restoreTabletScroll('bible');
   }
   renderTabletPreview();
@@ -1627,6 +2142,7 @@ function renderSongsTab(){
       + '<div style="display:flex;margin-bottom:10px"><div class="searchbox"><span>' + ICON_SEARCH + '</span><input id="songInputT" placeholder="Search titles &amp; lyrics…" value="' + esc(state.songsQuery) + '" oninput="filterSongs(this.value,true)"/></div></div>'
       + '<div class="livebar-slot" id="livebar-songsT" style="margin-bottom:12px">' + liveBarHtml() + '</div>'
       + '<div id="songsBodyT" class="songs-body songs-body--tablet">' + songsBodyHtml() + '</div>';
+    list.dataset.viewKey = 'songs';
     restoreTabletScroll('songs');
   }
   renderTabletPreview();
@@ -1887,11 +2403,15 @@ function previewInnerHtml(item){
     + (item.meta ? '<div class="sheet-meta ' + item.kind + '">' + esc(item.meta) + '</div>' : '')
     + keyEditHtml
     + bodyHtml
+    + '<div class="sheet-footer">'
     + '<div class="sheet-actions">'
     + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'
     + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Project ▸</button>'
     + '</div>'
-    + '<div class="sheet-hint">' + hint + '</div>';
+    + '<button class="btn-draft" onclick="sheetAction(\\'draft\\')" title="Build up your own list privately, then send it all at once">'
+    + ICON_PLUS + ' Add to My List</button>'
+    + '<div class="sheet-hint">' + hint + '</div>'
+    + '</div>';
 }
 function isTabletLayout(){
   // Must match the @media breakpoint above (768px) exactly, or the CSS layout
@@ -1932,6 +2452,13 @@ function openGenericSheet(title, innerHtml){
 function sheetAction(which){
   var item = state.selected;
   if(!item) return;
+  if(which === 'draft'){
+    addToDraft(item);
+    toast('Added to my list (' + state.draft.length + ')');
+    closeSheet();
+    renderTabletPreview();
+    return;
+  }
   var action =
     item.kind === 'sermon' ? (which === 'queue' ? 'queue-sermon' : 'project-sermon') :
     item.kind === 'bible'  ? (which === 'queue' ? 'queue-bible'  : 'project-bible')  :

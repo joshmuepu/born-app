@@ -21,7 +21,7 @@ import type {
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
-import { reorder } from './queueUtils'
+import { reorder, replaceContributorItems } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
 
@@ -606,11 +606,13 @@ export default function App() {
   useEffect(() => {
     window.electronAPI.syncWebRemote({
       queue: serviceQueue.map((it) => ({
+        id: it.id,
         title: itemTitle(it),
         kind: it.kind,
         subtitle: it.slides[0]?.reference ?? '',
         slideCount: it.slides.length,
         played: playedIds.has(it.id),
+        source: it.source ? { label: it.source.label } : undefined,
         slides: it.slides.map((s) => ({
           text: s.text,
           label: s.label,
@@ -648,16 +650,33 @@ export default function App() {
     readingAhead
   ])
 
+  // Remote commands address a queue row by its stable id, never by array
+  // position (see webRemote.ts's CommandCallback) — resolved against
+  // queueRef.current fresh at the moment the command actually lands, so a
+  // row that moved (another contributor added/removed something in the
+  // meantime) still resolves to the right item, or harmlessly no-ops if it
+  // was removed, instead of silently hitting whatever now sits at a stale
+  // index.
+  const resolveQueueIndex = useCallback(
+    (id: string) => queueRef.current.findIndex((it) => it.id === id),
+    []
+  )
+
   useEffect(
-    () => window.electronAPI.onWebRemoteProject((index) => handleProjectFromQueue(index)),
-    [handleProjectFromQueue]
+    () =>
+      window.electronAPI.onWebRemoteProject((id) => {
+        const index = resolveQueueIndex(id)
+        if (index !== -1) handleProjectFromQueue(index)
+      }),
+    [handleProjectFromQueue, resolveQueueIndex]
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteProjectAt(({ index, slide }) =>
-        handleProjectFromQueue(index, slide)
-      ),
-    [handleProjectFromQueue]
+      window.electronAPI.onWebRemoteProjectAt(({ id, slide }) => {
+        const index = resolveQueueIndex(id)
+        if (index !== -1) handleProjectFromQueue(index, slide)
+      }),
+    [handleProjectFromQueue, resolveQueueIndex]
   )
   // The remote's own touch-friendly Up/Down reorder + Remove — native HTML5
   // drag-and-drop (the desktop interaction) is a mouse-only browser API and
@@ -665,12 +684,21 @@ export default function App() {
   // handleReorder/handleRemoveFromQueue the desktop's own drag drop calls
   // rather than being a separate, parallel implementation.
   useEffect(
-    () => window.electronAPI.onWebRemoteReorder(({ from, to }) => handleReorder(from, to)),
-    [handleReorder]
+    () =>
+      window.electronAPI.onWebRemoteReorder(({ id, toId }) => {
+        const from = resolveQueueIndex(id)
+        const to = resolveQueueIndex(toId)
+        if (from !== -1 && to !== -1) handleReorder(from, to)
+      }),
+    [handleReorder, resolveQueueIndex]
   )
   useEffect(
-    () => window.electronAPI.onWebRemoteRemove((index) => handleRemoveFromQueue(index)),
-    [handleRemoveFromQueue]
+    () =>
+      window.electronAPI.onWebRemoteRemove((id) => {
+        const index = resolveQueueIndex(id)
+        if (index !== -1) handleRemoveFromQueue(index)
+      }),
+    [handleRemoveFromQueue, resolveQueueIndex]
   )
 
   // The mobile remote's search results reuse the exact same add/project
@@ -718,6 +746,42 @@ export default function App() {
         if (s) handleProjectSong(s as SongDetail, slide)
       }),
     [handleProjectSong]
+  )
+
+  // The phone's own "prepared list" workflow: a contributor builds up a
+  // batch privately on their device, then sends it all in one round trip —
+  // tagged with that phone's stored contributor label, so the operator's
+  // grouped queue view can show whose items are whose without accounts. A
+  // re-send (the contributor edits their set mid-service) replaces only
+  // that contributor's own not-yet-shown items — see
+  // replaceContributorItems's own comment for why played/on-screen ones are
+  // deliberately left alone.
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteQueueBatch(async ({ items, contributor }) => {
+        const resolved: QueueItem[] = []
+        for (const raw of items as Array<{ kind: string; payload: Record<string, unknown> }>) {
+          if (raw.kind === 'sermon' && raw.payload?.quote) {
+            resolved.push(quoteToItem(raw.payload.quote as Quote))
+          } else if (raw.kind === 'bible' && typeof raw.payload?.reference === 'string') {
+            const p = await window.electronAPI.lookupPassage(
+              raw.payload.reference as string,
+              (raw.payload.translation as string) ?? bibleTranslation
+            )
+            if (p && !('error' in (p as object))) resolved.push(passageToItem(p as ResolvedPassage))
+          } else if (raw.kind === 'song' && typeof raw.payload?.songId === 'number') {
+            const s = await window.electronAPI.getSong(raw.payload.songId as number)
+            if (s) resolved.push(songToItem(s as SongDetail))
+          }
+        }
+        if (resolved.length === 0) return
+        const tagged = resolved.map((it) => ({ ...it, source: contributor }))
+        mutateQueue((q) => {
+          const protectedId = activeQueueIndex != null ? (q[activeQueueIndex]?.id ?? null) : null
+          return replaceContributorItems(q, tagged, contributor.deviceId, playedIds, protectedId)
+        })
+      }),
+    [mutateQueue, playedIds, activeQueueIndex, bibleTranslation]
   )
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
@@ -890,6 +954,34 @@ export default function App() {
     [loadServiceItems, refreshRecents]
   )
 
+  /** Untagged items from an imported file (saved before per-item source tags
+   *  existed, or just a plain desktop-only save) get that file's own name as
+   *  a fallback group label — never silently folded into "Added on
+   *  desktop," which is reserved for items actually added through this
+   *  app's own Sermons/Bible/Songs panels. Anything that already carries a
+   *  real source tag (a file saved from this feature's own tagged remote
+   *  flow) passes through untouched. */
+  const tagUntaggedItems = useCallback(
+    (items: QueueItem[], fallbackLabel: string): QueueItem[] =>
+      items.map((it) =>
+        it.source
+          ? it
+          : { ...it, source: { deviceId: `import:${fallbackLabel}`, label: fallbackLabel } }
+      ),
+    []
+  )
+
+  /** "Import" — additive alongside Open (which replaces the whole queue):
+   *  combines one or more separately-saved service files into the current
+   *  queue instead of requiring only one file open at a time. */
+  const handleImportService = useCallback(async () => {
+    const files = await window.electronAPI.importService()
+    if (!files || files.length === 0) return
+    const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
+    if (allTagged.length > 0) addToQueue(allTagged)
+    refreshRecents()
+  }, [tagUntaggedItems, addToQueue, refreshRecents])
+
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
   // unattended desktop) would just block on nobody being there to click it.
@@ -911,6 +1003,14 @@ export default function App() {
         refreshRecents()
       }),
     [loadServiceItems, refreshRecents]
+  )
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteImportService(({ items, label }) => {
+        addToQueue(tagUntaggedItems(migrateQueue(items), label))
+        refreshRecents()
+      }),
+    [tagUntaggedItems, addToQueue, refreshRecents]
   )
   useEffect(
     () =>
@@ -1259,6 +1359,7 @@ export default function App() {
             onReorder={handleReorder}
             onNewService={handleNewService}
             onOpenService={handleOpenService}
+            onImportService={handleImportService}
             onSaveService={handleSaveService}
             recents={recents}
             onOpenRecent={handleOpenRecent}
@@ -1359,7 +1460,7 @@ export default function App() {
                   <button
                     className="btn-secondary btn-sm"
                     title="Re-check the sermon library for any additions or corrections"
-                    onClick={() => window.electronAPI.startIndexer()}
+                    onClick={() => window.electronAPI.startIndexer({ forceRefresh: true })}
                   >
                     Refresh
                   </button>

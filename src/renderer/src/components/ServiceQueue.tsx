@@ -54,6 +54,9 @@ interface Props {
   /** Service files — a service file is this queue, so they live here. */
   onNewService: () => void
   onOpenService: () => void
+  /** Additive alongside Open (which replaces the whole queue) — combines
+   *  one or more separately-saved service files into the current queue. */
+  onImportService: () => void
   onSaveService: () => void
   recents: RecentService[]
   onOpenRecent: (path: string) => void
@@ -81,6 +84,24 @@ function itemPreview(item: QueueItem): string {
   return item.slides.map((s) => s.text).join('  ·  ')
 }
 
+/** The one piece of identifying detail itemTitle() can't carry — mainly for
+ *  quotes, where the title is the sermon's title, not the specific
+ *  paragraph. Queue three quotes from the same sermon (a completely normal
+ *  workflow) and they're otherwise indistinguishable at a glance. Reuses
+ *  each slide's own citation string (already built in quoteToItem/songToItem
+ *  for exactly this purpose), trimming its redundant leading "title · "
+ *  since the title's already shown directly above this. Bible items are
+ *  already fully self-identifying via itemTitle() alone (it's the reference
+ *  itself), so there's nothing worth repeating here for them. */
+function itemSubtitle(item: QueueItem): string | undefined {
+  if (item.kind !== 'quote' && item.kind !== 'song') return undefined
+  const ref = item.slides[0]?.reference
+  if (!ref) return undefined
+  const prefix = `${itemTitle(item)} · `
+  const trimmed = ref.startsWith(prefix) ? ref.slice(prefix.length) : ref
+  return trimmed && trimmed !== itemTitle(item) ? trimmed : undefined
+}
+
 export default function ServiceQueue({
   queue,
   playedIds,
@@ -99,6 +120,7 @@ export default function ServiceQueue({
   onReorder,
   onNewService,
   onOpenService,
+  onImportService,
   onSaveService,
   recents,
   onOpenRecent
@@ -169,6 +191,149 @@ export default function ServiceQueue({
   const activeItem = activeIndex != null ? queue[activeIndex] : null
   const showSlideJump = !status && activeItem?.kind === 'song' && activeItem.slides.length > 1
 
+  // Grouped by contributor label — a remote-side "Song Leader"/"Preacher"
+  // tag on an item (see shared/queueItem.ts's QueueSource), falling back to
+  // one quiet "Added on desktop" bucket for anything with no tag at all.
+  // Deliberately grouped by *label*, not by device — two phones both
+  // labeled "Song Leader" read as one section, matching how the operator
+  // actually thinks about who's contributing, not how many devices they're
+  // using. Position within the underlying flat array (which is what Next/
+  // Prev and drag-reorder actually operate on) is untouched by this — it's
+  // a display grouping laid over the same one queue, not a second data
+  // model, so dragging a row into a different section's slot still just
+  // reorders the real array and the row settles back into its own group on
+  // the next render. Headers only appear once there's genuinely more than
+  // one contributor — a single-operator service looks exactly like it
+  // always did.
+  const UNTAGGED = ' desktop'
+  const groupOrder: string[] = []
+  const groupIndices = new Map<string, number[]>()
+  queue.forEach((item, index) => {
+    const key = item.source?.label ?? UNTAGGED
+    if (!groupIndices.has(key)) {
+      groupIndices.set(key, [])
+      groupOrder.push(key)
+    }
+    groupIndices.get(key)!.push(index)
+  })
+  const orderedKeys = groupOrder.filter((k) => k !== UNTAGGED)
+  if (groupIndices.has(UNTAGGED)) orderedKeys.push(UNTAGGED)
+  const groups = orderedKeys.map((key) => ({
+    label: key === UNTAGGED ? 'Added on desktop' : key,
+    indices: groupIndices.get(key)!
+  }))
+  const showGroupHeaders = groups.length > 1
+
+  const renderRow = (item: QueueItem, index: number): JSX.Element => {
+    const active = index === activeIndex
+    const played = !active && playedIds.has(item.id)
+    const isNext = !active && projectionOpen && index === nextItemIndex
+    const Icon = KIND_ICON[item.kind]
+    const dragProps = {
+      draggable: true,
+      onDragStart: () => setDragIndex(index),
+      onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverIndex(index) },
+      onDragLeave: () => setDragOverIndex(null),
+      onDrop: () => {
+        if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
+        setDragIndex(null)
+        setDragOverIndex(null)
+      },
+      onDragEnd: () => { setDragIndex(null); setDragOverIndex(null) }
+    }
+    const rowClass = [
+      'queue-row',
+      `queue-row--${item.kind}`,
+      active ? 'queue-row--active' : 'queue-row--compact',
+      played ? 'queue-row--played' : '',
+      isNext ? 'queue-row--next' : '',
+      index === dragOverIndex && dragIndex !== index ? 'queue-row--drag-over' : ''
+    ].filter(Boolean).join(' ')
+
+    if (!active) {
+      const subtitle = itemSubtitle(item)
+      const preview = item.slides[0]?.text
+      const detail = [subtitle, preview].filter(Boolean).join('  —  ')
+      return (
+        <div
+          key={item.id}
+          className={rowClass}
+          role="button"
+          tabIndex={0}
+          title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
+          onClick={() => onSelect(index)}
+          onKeyDown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+              e.preventDefault()
+              onSelect(index)
+            }
+          }}
+          {...dragProps}
+        >
+          <span className="queue-row-icon" aria-hidden="true">
+            {played ? <Check width={14} height={14} strokeWidth={2.4} /> : <Icon width={14} height={14} strokeWidth={2} />}
+          </span>
+          <div className="queue-row-main">
+            <div className="queue-row-line">
+              <span className="queue-row-title">{itemTitle(item)}</span>
+              {item.slides.length > 1 && <span className="queue-row-count">{item.slides.length}</span>}
+              {isNext && <span className="queue-row-tag">Up next</span>}
+            </div>
+            {detail && <div className="queue-row-detail">{detail}</div>}
+          </div>
+          <span className="queue-row-actions">
+            <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>
+            <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
+          </span>
+        </div>
+      )
+    }
+
+    // Active row: expanded, and reflects the real current slide —
+    // not the item's static preview — so reading ahead into
+    // adjacent source content shows up here as it happens.
+    const liveText = onScreen?.text || itemPreview(item)
+    return (
+      <div
+        key={item.id}
+        className={rowClass}
+        role="button"
+        tabIndex={0}
+        title="Go to this item to read it — use Restart to project it again from the top"
+        onClick={() => onSelect(index)}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+            e.preventDefault()
+            onSelect(index)
+          }
+        }}
+        {...dragProps}
+      >
+        <div className="queue-item-meta">
+          <span className={`queue-badge queue-badge--${item.kind}`}>
+            <Icon width={11} height={11} strokeWidth={2.2} aria-hidden="true" />
+            {KIND_BADGE[item.kind]}
+          </span>
+          <span className="queue-item-title">{itemTitle(item)}</span>
+          {item.slides.length > 1 && (
+            <span className="queue-item-slides">{activeSlide + 1}/{item.slides.length}</span>
+          )}
+          <span className="queue-item-live">On screen</span>
+          {readingAhead && (
+            <span className="queue-item-ahead" title="Still live, but past what was actually queued">
+              Reading ahead
+            </span>
+          )}
+        </div>
+        <p className="queue-item-text">{liveText}</p>
+        <div className="result-actions">
+          <button className="btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Restart</button>
+          <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="service-queue">
       <div className="queue-header">
@@ -176,6 +341,7 @@ export default function ServiceQueue({
         <div className="queue-file-actions">
           <button className="btn-quiet btn-sm" onClick={onNewService} title="Start a new, empty service (clears the queue)">New</button>
           <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
+          <button className="btn-quiet btn-sm" onClick={onImportService} title="Combine one or more saved service files into the current queue">Import</button>
           <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
         </div>
       </div>
@@ -184,107 +350,19 @@ export default function ServiceQueue({
         <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
       ) : (
         <div className="queue-list">
-          {queue.map((item, index) => {
-            const active = index === activeIndex
-            const played = !active && playedIds.has(item.id)
-            const isNext = !active && projectionOpen && index === nextItemIndex
-            const Icon = KIND_ICON[item.kind]
-            const dragProps = {
-              draggable: true,
-              onDragStart: () => setDragIndex(index),
-              onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverIndex(index) },
-              onDragLeave: () => setDragOverIndex(null),
-              onDrop: () => {
-                if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
-                setDragIndex(null)
-                setDragOverIndex(null)
-              },
-              onDragEnd: () => { setDragIndex(null); setDragOverIndex(null) }
-            }
-            const rowClass = [
-              'queue-row',
-              `queue-row--${item.kind}`,
-              active ? 'queue-row--active' : 'queue-row--compact',
-              played ? 'queue-row--played' : '',
-              isNext ? 'queue-row--next' : '',
-              index === dragOverIndex && dragIndex !== index ? 'queue-row--drag-over' : ''
-            ].filter(Boolean).join(' ')
-
-            if (!active) {
-              return (
-                <div
-                  key={item.id}
-                  className={rowClass}
-                  role="button"
-                  tabIndex={0}
-                  title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
-                  onClick={() => onSelect(index)}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-                      e.preventDefault()
-                      onSelect(index)
-                    }
-                  }}
-                  {...dragProps}
-                >
-                  <span className="queue-row-icon" aria-hidden="true">
-                    {played ? <Check width={14} height={14} strokeWidth={2.4} /> : <Icon width={14} height={14} strokeWidth={2} />}
-                  </span>
-                  <span className="queue-row-title">{itemTitle(item)}</span>
-                  {item.slides.length > 1 && <span className="queue-row-count">{item.slides.length}</span>}
-                  {isNext && <span className="queue-row-tag">Up next</span>}
-                  <span className="queue-row-actions">
-                    <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>
-                    <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
-                  </span>
+          {groups.map((group) => (
+            <div className="queue-section" key={group.label}>
+              {showGroupHeaders && (
+                <div className="queue-section-header">
+                  <span className="queue-section-label">{group.label}</span>
+                  <span className="queue-section-count">{group.indices.length}</span>
                 </div>
-              )
-            }
-
-            // Active row: expanded, and reflects the real current slide —
-            // not the item's static preview — so reading ahead into
-            // adjacent source content shows up here as it happens.
-            const liveText = onScreen?.text || itemPreview(item)
-            return (
-              <div
-                key={item.id}
-                className={rowClass}
-                role="button"
-                tabIndex={0}
-                title="Go to this item to read it — use Restart to project it again from the top"
-                onClick={() => onSelect(index)}
-                onKeyDown={(e) => {
-                  if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-                    e.preventDefault()
-                    onSelect(index)
-                  }
-                }}
-                {...dragProps}
-              >
-                <div className="queue-item-meta">
-                  <span className={`queue-badge queue-badge--${item.kind}`}>
-                    <Icon width={11} height={11} strokeWidth={2.2} aria-hidden="true" />
-                    {KIND_BADGE[item.kind]}
-                  </span>
-                  <span className="queue-item-title">{itemTitle(item)}</span>
-                  {item.slides.length > 1 && (
-                    <span className="queue-item-slides">{activeSlide + 1}/{item.slides.length}</span>
-                  )}
-                  <span className="queue-item-live">On screen</span>
-                  {readingAhead && (
-                    <span className="queue-item-ahead" title="Still live, but past what was actually queued">
-                      Reading ahead
-                    </span>
-                  )}
-                </div>
-                <p className="queue-item-text">{liveText}</p>
-                <div className="result-actions">
-                  <button className="btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Restart</button>
-                  <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
-                </div>
+              )}
+              <div className="queue-section-items">
+                {group.indices.map((index) => renderRow(queue[index], index))}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 

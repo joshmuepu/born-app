@@ -26,6 +26,11 @@ describe('migrateQueue', () => {
     expect(migrateQueue([item])[0]).toBe(item)
   })
 
+  it('preserves a per-item source tag on an already-shaped item (an imported/saved file)', () => {
+    const item = { ...quoteToItem(quote), source: { deviceId: 'dev-1', label: 'Song Leader' } }
+    expect(migrateQueue([item])[0].source).toEqual({ deviceId: 'dev-1', label: 'Song Leader' })
+  })
+
   it('drops junk entries and handles non-arrays', () => {
     expect(migrateQueue([null, 42, {}, quote])).toHaveLength(1)
     expect(migrateQueue('nope' as unknown)).toEqual([])
@@ -84,6 +89,66 @@ describe('quoteToItem', () => {
     // the same slide.
     const p5Slide = item.slides.find((s) => s.text.includes('Paragraph five is short'))
     expect(p5Slide?.text.includes('Paragraph six')).toBe(false)
+  })
+
+  // Real cases found live in the actual sermon database — a range quote
+  // whose own text doesn't literally start with its first paragraph's
+  // number was previously never split at all (the stale leadMarker gate
+  // rejected the hyphenated fallback ref before splitSubParagraphs ever
+  // ran), even though every one of these genuinely spans multiple
+  // paragraphs and splitSubParagraphs only ever needs to find lo+1's inline
+  // marker, never lo's own.
+  it('splits a range even when paragraph 1 is rendered as a decorative glyph instead of a literal "1"', () => {
+    // Real case: sermon_id=2, paragraph_ref='1-4' — the source renders the
+    // sermon's very first paragraph number as a private-use-area glyph
+    // instead of the digit, affecting roughly half of all sermons' openings.
+    const text = ' We’re getting some new gadgets for recording. 2 We hardly know each night what all is going to happen.'
+    const item = quoteToItem({ ...quote, text, paragraphRef: '1-4' })
+    const refs = item.slides.map((s) => s.reference)
+    expect(refs.some((r) => r.endsWith('· 1'))).toBe(true)
+    expect(refs.some((r) => /· 2[a-z]?$/.test(r))).toBe(true)
+    const p1Slide = item.slides.find((s) => s.text.includes('new gadgets'))
+    expect(p1Slide?.text.includes('We hardly know')).toBe(false)
+  })
+
+  it('splits a range whose stored text opens with trailing dialogue from before the first paragraph', () => {
+    // Real case: sermon_id=48, paragraph_ref='91-92' — the stored text
+    // starts with a bit of congregational back-and-forth before paragraph
+    // 91 itself begins; this used to make leadMarker fall back to the
+    // hyphenated ref ("91-92"), fail the old /^\d+$/ gate, and skip
+    // splitting 91 from 92 entirely.
+    const text = 'Shall we bow our heads. 91 Dear Heavenly Father, I am very thankful tonight. 92 Lord, bless this service.'
+    const item = quoteToItem({ ...quote, text, paragraphRef: '91-92' })
+    const refs = item.slides.map((s) => s.reference)
+    expect(refs.some((r) => r.endsWith('· 91'))).toBe(true)
+    expect(refs.some((r) => /· 92[a-z]?$/.test(r))).toBe(true)
+    const p91Slide = item.slides.find((s) => s.text.includes('very thankful'))
+    expect(p91Slide?.text.includes('bless this service')).toBe(false)
+  })
+
+  it('recognizes a paragraph that opens with a bracketed/parenthetical aside, not straight into prose', () => {
+    // Real case: sermon_id=106, paragraph_ref='52-54' — "53 (Got your…)"
+    // wasn't followed by a quote char or capital letter, so the old inline
+    // regex missed it as a boundary — and because matching is strictly
+    // sequential, that one miss also silently swallowed 54.
+    const text =
+      '52 And Jesus said unto them, believe. 53 (Got your pencil ready? How many missing?) Ninety-one. 54 Look on the back of the card now.'
+    const item = quoteToItem({ ...quote, text, paragraphRef: '52-54' })
+    const refs = item.slides.map((s) => s.reference)
+    expect(refs.some((r) => r.endsWith('· 52'))).toBe(true)
+    expect(refs.some((r) => /· 53[a-z]?$/.test(r))).toBe(true)
+    expect(refs.some((r) => /· 54[a-z]?$/.test(r))).toBe(true)
+  })
+
+  it('recognizes a paragraph boundary immediately followed by another digit ("21st verse…")', () => {
+    // Real case: sermon_id=211, paragraph_ref='210-211' — "211 21st verse of
+    // the 3rd chapter" — the number after the paragraph marker, not a
+    // capital letter or quote, so the old lookahead missed it.
+    const text = '210 And prophets since the world began. 211 21st verse of the 3rd chapter of Saint Luke.'
+    const item = quoteToItem({ ...quote, text, paragraphRef: '210-211' })
+    const refs = item.slides.map((s) => s.reference)
+    expect(refs.some((r) => r.endsWith('· 210'))).toBe(true)
+    expect(refs.some((r) => /· 211[a-z]?$/.test(r))).toBe(true)
   })
 })
 

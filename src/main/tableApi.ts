@@ -3,7 +3,7 @@
  * Called from the main process only (Node.js fetch available in Electron 21+).
  */
 
-import { stripHtml, parseParagraphIndex } from './utils'
+import { stripHtml, parseParagraphIndex, mergeHeadingSections } from './utils'
 
 const BASE = 'https://table.branham.org/rest'
 
@@ -20,13 +20,13 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
 // ── Sermon Index (allSermons) ─────────────────────────────────────────────────
 
 export interface SermonIndexEntry {
-  i: number     // SermonProductIdentityId
-  p: string     // date code (e.g. "63-0901M")
-  t: string     // title
-  c: number     // paragraph count
-  m: number     // duration in minutes
-  cab: boolean  // church age book chapter
-  ct: string    // "S" = sermon, "B" = book chapter
+  i: number      // SermonProductIdentityId
+  p?: string     // date code (e.g. "63-0901M") — seen missing for a brand-new sermon live
+  t?: string     // title
+  c?: number     // paragraph count
+  m?: number     // duration in minutes — seen missing for a brand-new sermon live
+  cab: boolean   // church age book chapter
+  ct: string     // "S" = sermon, "B" = book chapter
 }
 
 export async function fetchSermonList(): Promise<SermonIndexEntry[]> {
@@ -53,7 +53,17 @@ export interface SermonContent {
 
 export async function fetchSermonContent(
   id: number,
-  language = 'en'
+  language = 'en',
+  /** True for book-chapter content (ct 'B' in allSermons) — e.g. "An
+   *  Exposition of the Seven Church Ages". Unlike a dated sermon, the
+   *  source stores a book chapter's own section/subsection headings
+   *  ("CHAPTER THREE", "THE MESSENGER") as standalone "paragraphs",
+   *  indistinguishable in shape from real content — queueing or projecting
+   *  one puts a bare heading on screen with nothing under it. Folding them
+   *  into the paragraph that follows (mergeHeadingSections) fixes that at
+   *  the source, so every consumer downstream — search, browse, queue,
+   *  projection — sees the same, already-correct content. */
+  isBook = false
 ): Promise<SermonContent | null> {
   try {
     const data = await post<{
@@ -71,13 +81,18 @@ export async function fetchSermonContent(
       HighlightQuery: null
     })
     if (data.Status !== 'Successful' || !data.Result) return null
-    const { DateCode, Title, TotalSections, Sections } = data.Result
-    const sections = Sections.map((s) => ({
+    const { DateCode, Title, Sections } = data.Result
+    const rawSections = Sections.map((s) => ({
       ref: s.Paragraph,
       index: parseParagraphIndex(s.Paragraph),
       text: stripHtml(s.Content)
     })).filter((s) => s.text.length > 0)
-    return { dateCode: DateCode, title: Title, totalSections: TotalSections, sections }
+    // The source's own TotalSections/para_count for book content is itself
+    // unreliable (it reports 1 for chapters that actually have 44-184 real
+    // sections) — sections.length, computed from what we actually fetched
+    // and stored, is always accurate instead.
+    const sections = isBook ? mergeHeadingSections(rawSections) : rawSections
+    return { dateCode: DateCode, title: Title, totalSections: sections.length, sections }
   } catch {
     return null
   }

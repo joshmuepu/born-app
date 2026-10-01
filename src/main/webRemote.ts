@@ -16,6 +16,12 @@ export interface WebRemoteSlide {
 
 export interface WebRemoteState {
   queue: Array<{
+    /** Stable row id — commands address a queue row by this, never by its
+     *  array position, so a tap that lands after the queue has changed
+     *  underneath it (another contributor added/removed something) still
+     *  hits the row the operator actually meant, or harmlessly misses
+     *  instead of hitting the wrong one. */
+    id: string
     title: string
     kind: string
     subtitle: string
@@ -26,6 +32,10 @@ export interface WebRemoteState {
     /** Every slide's full content — lets the remote show "the whole song /
      *  passage / quote, tap any part to project it" without a round trip. */
     slides: WebRemoteSlide[]
+    /** Which contributor added this item, if any — a phone signed in as
+     *  "Operator" groups the queue by this the same way the desktop does;
+     *  every other role's phone just ignores the field. */
+    source?: { label: string }
   }>
   activeIndex: number | null
   activeSlide: number
@@ -49,10 +59,14 @@ export interface WebRemoteState {
 
 type CommandCallback = (cmd: {
   action: string
-  index?: number
+  /** Target row id — 'project', 'project-at', 'remove', and 'reorder'
+   *  (the item being moved) all address a queue row by its stable id,
+   *  resolved against the live queue at the moment the command actually
+   *  runs, never by an array index a phone captured possibly-stale. */
+  id?: string
+  /** Reorder target row id — only set for action 'reorder'. */
+  toId?: string
   slide?: number
-  /** Reorder target index — only set for action 'reorder'. */
-  to?: number
   quote?: unknown
   reference?: string
   translation?: string
@@ -61,6 +75,10 @@ type CommandCallback = (cmd: {
   name?: string
   path?: string
   key?: string | null
+  /** 'queue-batch' only — a contributor's whole prepared list, sent in one
+   *  round trip instead of one command per item. */
+  items?: unknown[]
+  contributor?: { deviceId: string; label: string }
 }) => void
 
 /** Everything the remote's HTTP server needs from the rest of the app, all
