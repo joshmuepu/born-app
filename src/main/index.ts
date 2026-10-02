@@ -99,6 +99,17 @@ import {
 } from '../shared/channels'
 
 /**
+ * Dev-only escape hatch: if set, use a separate userData directory instead of
+ * the real one. Lets a second local checkout of BORN (e.g. a hotfix worktree
+ * on main, running alongside this v2 branch) run fully independently —
+ * separate settings/queue/single-instance-lock — without the two colliding.
+ * Never set for a real install; inert unless something explicitly exports it.
+ */
+if (process.env.BORN_USER_DATA_DIR) {
+  app.setPath('userData', process.env.BORN_USER_DATA_DIR)
+}
+
+/**
  * Single-instance lock — must run before anything else touches `app`. Without
  * this, launching BORN a second time (or a first instance left running with
  * its windows closed, forgotten about) starts a fully separate process. Both
@@ -108,7 +119,8 @@ import {
  * operator had no way to know a stale background copy was still holding the
  * port, and rebooting the computer was the only thing that occurred to them.
  * This closes the whole class of bug: a second launch attempt just quits
- * itself and brings the existing window forward instead.
+ * itself and brings the existing window forward instead. (Two independently
+ * userData-separated copies, as above, are a deliberate exception to this.)
  */
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
