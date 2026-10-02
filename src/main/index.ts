@@ -180,6 +180,14 @@ interface DestinationEntry {
    *  size is fixed by CSS, not this setting. Lives on the destination, not
    *  the channel, because it's presentation (how), not content (what). */
   fontSize?: number
+  /** Independent show/clear for this one destination — e.g. clear Graphics
+   *  while congregation keeps showing content, or vice versa — layered on
+   *  top of the channel's own current/blanked without touching either.
+   *  Deliberately NOT persisted: like channel.blanked, this is "what's on
+   *  screen right now," not configuration — every destination starts
+   *  un-suppressed on a fresh launch. Toggling it never changes
+   *  channel.current, so Main's actual navigation position is untouched. */
+  suppressed: boolean
   send: (channel: string, ...args: unknown[]) => void
 }
 
@@ -281,7 +289,7 @@ destinations = new Map<string, DestinationEntry>(
       // browser destination to the same thing it always looked like.
       profileId: route.kind === 'browser' ? route.profileId ?? 'fullscreen' : undefined
     }
-    const entry: DestinationEntry = { config, ready: route.kind === 'browser', send }
+    const entry: DestinationEntry = { config, ready: route.kind === 'browser', suppressed: false, send }
     if (route.destinationId === 'congregation') entry.fontSize = getSettingsSafe().fontSize
     return [[route.destinationId, entry]]
   })
@@ -321,6 +329,7 @@ export interface OutputInfo {
   kind: DestinationConfig['kind']
   url: string | null
   profileId: PresentationProfileId | null
+  suppressed: boolean
 }
 
 function outputsSnapshot(): OutputInfo[] {
@@ -331,7 +340,8 @@ function outputsSnapshot(): OutputInfo[] {
       id: d.config.id,
       kind: d.config.kind,
       url: base ? `${base}/output/graphics` : null,
-      profileId: d.config.profileId ?? null
+      profileId: d.config.profileId ?? null,
+      suppressed: d.suppressed
     }))
 }
 
@@ -344,7 +354,7 @@ function addGraphicsDestination(): void {
   if ([...destinations.values()].some((d) => d.config.kind === 'browser')) return
   const id = `graphics-${Date.now().toString(36)}`
   const config: DestinationConfig = { id, channelId: 'main', kind: 'browser', profileId: 'fullscreen' }
-  destinations.set(id, { config, ready: true, send: graphicsSend })
+  destinations.set(id, { config, ready: true, suppressed: false, send: graphicsSend })
   setGraphicsActive(true)
   setGraphicsProfile('fullscreen')
   pushGraphicsForChannel(config.channelId) // so a browser opened right after adding isn't stuck on the SSE default
@@ -832,17 +842,59 @@ function toGraphicsSlide(
 }
 
 /** Every browser-kind destination bound to this channel gets the same
- *  current/blanked snapshot — unlike congregation/stage, there's no
- *  per-destination event shape to special-case here, so this one loop
- *  generically covers any number of them (today: zero or one). */
+ *  current/blanked snapshot (each gated by its own `suppressed`, independent
+ *  of the channel's and of each other's) — unlike congregation/stage,
+ *  there's no per-destination event shape to special-case here, so this one
+ *  loop generically covers any number of them (today: zero or one). */
 function pushGraphicsForChannel(channelId: ChannelId): void {
   const channel = channels.get(channelId)
   if (!channel) return
   for (const dest of destinationsFor(channelId)) {
     if (dest.config.kind === 'browser') {
-      dest.send('graphics:update', { slide: toGraphicsSlide(channel.current), blanked: channel.blanked })
+      dest.send('graphics:update', {
+        slide: dest.suppressed ? null : toGraphicsSlide(channel.current),
+        blanked: channel.blanked || dest.suppressed
+      })
     }
   }
+}
+
+/** Full resync of one destination to its channel's current state, respecting
+ *  that destination's own suppression — used when suppression itself is
+ *  toggled, where (unlike show-slide/clear/blank, each a specific state
+ *  transition) a full resync of "what should this destination show right
+ *  now" is exactly what's needed. */
+function syncDestination(dest: DestinationEntry): void {
+  const channel = channels.get(dest.config.channelId)
+  if (!channel) return
+  const hidden = channel.blanked || dest.suppressed
+  if (dest.config.id === 'congregation') {
+    if (channel.current && !dest.suppressed) dest.send('projection:show-slide', channel.current)
+    else dest.send('projection:clear')
+    dest.send('projection:set-blank', hidden)
+  } else if (dest.config.id === 'stage') {
+    dest.send('stage:update', {
+      current: dest.suppressed ? null : channel.current,
+      next: dest.suppressed ? null : channel.next
+    })
+    dest.send('stage:set-blank', hidden)
+  } else if (dest.config.kind === 'browser') {
+    dest.send('graphics:update', {
+      slide: dest.suppressed ? null : toGraphicsSlide(channel.current),
+      blanked: hidden
+    })
+  }
+}
+
+/** The internal command the "Clear"/"Show" control on a destination's row
+ *  calls — independent of the channel's own content, and never touches
+ *  channel.current, so Main's actual navigation position is untouched. */
+function setDestinationSuppressed(id: string, suppressed: boolean): void {
+  const dest = destinations.get(id)
+  if (!dest) return
+  dest.suppressed = suppressed
+  syncDestination(dest)
+  sendToMain('outputs:changed', outputsSnapshot())
 }
 
 function setChannelBlank(channelId: ChannelId, blank: boolean): void {
@@ -851,10 +903,12 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   channels.set(channelId, patchChannel(channel, { blanked: blank }))
   const congregation = destinations.get('congregation')
   if (congregation && congregation.config.channelId === channelId) {
-    congregation.send('projection:set-blank', blank)
+    congregation.send('projection:set-blank', blank || congregation.suppressed)
   }
   const stage = destinations.get('stage')
-  if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', blank)
+  if (stage && stage.config.channelId === channelId) {
+    stage.send('stage:set-blank', blank || stage.suppressed)
+  }
   pushGraphicsForChannel(channelId)
   // Keep the operator console's blank state in sync (e.g. when the command came
   // from the projection window's Esc key or the phone web remote). Only 'main'
@@ -871,7 +925,7 @@ function clearChannel(channelId: ChannelId): void {
   const stage = destinations.get('stage')
   if (stage && stage.config.channelId === channelId) {
     stage.send('stage:update', { current: null, next: null })
-    stage.send('stage:set-blank', false)
+    stage.send('stage:set-blank', stage.suppressed)
   }
   pushGraphicsForChannel(channelId)
 }
@@ -881,13 +935,14 @@ function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   if (!channel) return
   channels.set(channelId, patchChannel(channel, { current: slide, blanked: false }))
   const congregation = destinations.get('congregation')
-  if (congregation && congregation.config.channelId === channelId) {
+  if (congregation && congregation.config.channelId === channelId && !congregation.suppressed) {
     congregation.send('projection:show-slide', slide)
   }
   // A fresh slide always un-blanks — keep the stage screen in step so it
-  // doesn't stay stuck on the clock after an Esc blackout.
+  // doesn't stay stuck on the clock after an Esc blackout (unless it's
+  // independently suppressed, which stays in effect through a new slide).
   const stage = destinations.get('stage')
-  if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', false)
+  if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', stage.suppressed)
   pushGraphicsForChannel(channelId)
 }
 
@@ -1436,8 +1491,12 @@ ipcMain.on('stage:ready', () => {
   const stage = destinations.get('stage')
   if (stage) stage.ready = true
   const channel = channels.get(stage?.config.channelId ?? 'main')
-  sendToStage('stage:update', { current: channel?.current ?? null, next: channel?.next ?? null })
-  sendToStage('stage:set-blank', channel?.blanked ?? false)
+  const suppressed = stage?.suppressed ?? false
+  sendToStage('stage:update', {
+    current: suppressed ? null : channel?.current ?? null,
+    next: suppressed ? null : channel?.next ?? null
+  })
+  sendToStage('stage:set-blank', (channel?.blanked ?? false) || suppressed)
   sendToStage('stage:display-info', displayInfoPayload())
 })
 
@@ -1448,12 +1507,16 @@ ipcMain.handle('stage:close', () => {
 ipcMain.on(
   'stage:update',
   (_event, data: { current: SlidePayload | null; next: SlidePayload | null }) => {
-    const channelId = destinations.get('stage')?.config.channelId ?? 'main'
+    const stage = destinations.get('stage')
+    const channelId = stage?.config.channelId ?? 'main'
     const channel = channels.get(channelId)
     if (!channel) return
-    const next = data ?? { current: null, next: null }
-    channels.set(channelId, patchChannel(channel, { current: next.current, next: next.next }))
-    sendToStage('stage:update', next)
+    const incoming = data ?? { current: null, next: null }
+    // Main's own navigation data (channel.current/next) always reflects the
+    // real position, even while stage is suppressed — suppression only gates
+    // what actually gets sent to the stage window below.
+    channels.set(channelId, patchChannel(channel, { current: incoming.current, next: incoming.next }))
+    sendToStage('stage:update', stage?.suppressed ? { current: null, next: null } : incoming)
   }
 )
 
@@ -1491,6 +1554,14 @@ ipcMain.handle('outputs:remove', (_event, id: string) => {
 
 ipcMain.handle('outputs:set-profile', (_event, id: string, profileId: PresentationProfileId) => {
   setOutputProfile(id, profileId)
+  return outputsSnapshot()
+})
+
+// Generic (works for congregation/stage/any output), not under 'outputs:*' —
+// only the UI exposes it for Graphics today, but the capability itself isn't
+// Graphics-specific.
+ipcMain.handle('destination:set-suppressed', (_event, id: string, suppressed: boolean) => {
+  setDestinationSuppressed(id, suppressed)
   return outputsSnapshot()
 })
 

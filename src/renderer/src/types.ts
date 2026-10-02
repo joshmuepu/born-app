@@ -65,6 +65,7 @@ export interface OutputInfo {
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
+  suppressed: boolean
 }
 
 export interface BibleTranslation {

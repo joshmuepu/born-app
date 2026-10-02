@@ -1149,6 +1149,9 @@ export default function App() {
             onSetOutputProfile={(id, profileId) =>
               window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
             }
+            onSetOutputSuppressed={(id, suppressed) =>
+              window.electronAPI.setDestinationSuppressed(id, suppressed).then(setOutputs)
+            }
           />
 
           <RemotePanel />

@@ -147,6 +147,7 @@ declare global {
       addGraphicsOutput: () => Promise<OutputInfo[]>
       removeOutput: (id: string) => Promise<OutputInfo[]>
       setOutputProfile: (id: string, profileId: PresentationProfileId) => Promise<OutputInfo[]>
+      setDestinationSuppressed: (id: string, suppressed: boolean) => Promise<OutputInfo[]>
       onOutputsChanged: (callback: (outputs: OutputInfo[]) => void) => () => void
       syncWebRemote: (state: {
         queue: Array<{

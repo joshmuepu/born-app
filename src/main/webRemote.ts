@@ -4,6 +4,15 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAssets'
+// Unlike the small shape-only types duplicated across main/preload/renderer
+// elsewhere in this file (WebRemoteSlide etc.), presentation profiles are
+// real content/config data, not a trivial shape — they have to live in
+// exactly one place to mean anything, so this one import is deliberate.
+import {
+  getPresentationProfile,
+  type PresentationProfile,
+  type PresentationProfileId
+} from '../shared/presentationProfiles'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
@@ -131,21 +140,17 @@ export interface GraphicsPayload {
   blanked: boolean
 }
 
-/** Keep this file decoupled from shared/channels.ts the same way everything
- *  else here is — a local copy of the two values, not an import. */
-export type GraphicsProfileId = 'fullscreen' | 'lower-third'
-
 let lastGraphicsPayload: GraphicsPayload = { slide: null, blanked: true }
 const graphicsClients = new Set<ServerResponse>()
 let graphicsActive = false
-let graphicsProfile: GraphicsProfileId = 'fullscreen'
+let graphicsProfileId: PresentationProfileId = 'fullscreen'
 
 /** main/index.ts owns which profile the Graphics destination is set to;
  *  this file just renders it. Takes effect on the next page load (OBS
  *  Browser Source refresh) — the two layouts are different DOM, not a
  *  style tweak an already-open SSE connection can hot-swap. */
-export function setGraphicsProfile(profileId: GraphicsProfileId): void {
-  graphicsProfile = profileId
+export function setGraphicsProfile(profileId: PresentationProfileId): void {
+  graphicsProfileId = profileId
 }
 
 /** main/index.ts owns whether a Graphics destination actually exists; this
@@ -229,39 +234,15 @@ ${buildAppBody()}
 </html>`
 }
 
-const FULLSCREEN_GRAPHICS_CSS = `
-  html, body { background: #000; color: #fff; height: 100%; overflow: hidden; }
-  #stage { position: relative; height: 100vh; }
-  #label { position: absolute; top: 6vh; left: 60px; right: 60px; text-align: center;
-    font-size: clamp(0.9rem, 1.8vw, 1.5rem); font-weight: 600; letter-spacing: 0.14em;
-    text-transform: uppercase; color: #948d7c; }
-  #text { position: absolute; top: 12vh; bottom: 13vh; left: 0; right: 0; padding: 0 60px;
-    overflow: hidden; line-height: 1.5; display: flex; align-items: center; justify-content: center;
-    text-align: center; font-size: clamp(1.4rem, 5vw, 4rem); }
-  #text-inner { width: 100%; }
-  #reference { position: absolute; bottom: 5vh; left: 60px; right: 60px; text-align: center;
-    font-size: clamp(1rem, 3.2vh, 2.2rem); color: #c8c8c8; letter-spacing: 0.02em; }
-`
-
-/** Transparent page so OBS Browser Source (and any other CEF/Chromium-based
- *  compositor) shows camera video through everywhere but the band itself —
- *  this is plain CSS, not a rendering feature BORN has to build; OBS already
- *  composites a transparent browser source natively. Only this profile needs
- *  that; full-screen's whole point is replacing the frame, not sitting over
- *  it, so it stays solid. */
-const LOWER_THIRD_GRAPHICS_CSS = `
-  html, body { background: transparent; color: #fff; height: 100%; overflow: hidden; }
-  #stage { position: relative; height: 100vh; }
-  #label { position: absolute; left: 7%; right: 7%; bottom: 17%; text-align: left;
-    font-size: clamp(0.7rem, 1.3vw, 1rem); font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: #c9a86a; }
-  #text { position: absolute; left: 5%; right: 5%; bottom: 6%;
-    background: rgba(10, 8, 6, 0.78); border-radius: 10px; padding: 16px 28px;
-    overflow: hidden; line-height: 1.35; text-align: left; font-size: clamp(1rem, 2.1vw, 1.7rem); }
-  #text-inner { width: 100%; }
-  #reference { position: absolute; left: 7%; right: 7%; bottom: 2%; text-align: left;
-    font-size: clamp(0.65rem, 1.1vw, 0.9rem); color: #d8cdb8; letter-spacing: 0.02em; }
-`
+/** Turns a profile region's {property: value} record into a literal CSS
+ *  declaration block. The only place that reads 'fullscreen'/'lower-third'
+ *  as names is shared/presentationProfiles.ts — this function doesn't know
+ *  or care which profile it was handed. */
+function cssDecl(rec: Record<string, string>): string {
+  return Object.entries(rec)
+    .map(([prop, value]) => `${prop}:${value}`)
+    .join(';')
+}
 
 const GRAPHICS_SCRIPT = `
 (function(){
@@ -300,10 +281,9 @@ const GRAPHICS_SCRIPT = `
  *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
  *  window. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
  *  rendered by React in an Electron renderer process. The markup and the
- *  live-update script are identical for every profile — only the CSS (and so
- *  the layout it produces) differs; `GraphicsProfileId` picks which. */
-function buildGraphicsHTML(profileId: GraphicsProfileId): string {
-  const css = profileId === 'lower-third' ? LOWER_THIRD_GRAPHICS_CSS : FULLSCREEN_GRAPHICS_CSS
+ *  live-update script are identical for every profile — this function reads
+ *  `profile.regions` generically; it has no idea "lower-third" exists. */
+function buildGraphicsHTML(profile: PresentationProfile): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -312,19 +292,27 @@ function buildGraphicsHTML(profileId: GraphicsProfileId): string {
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: ${profile.pageBackground}; color: #fff; height: 100%; overflow: hidden; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #stage { position: relative; height: 100vh; }
+  #panel { ${cssDecl(profile.regions.panel)} }
+  #label { ${cssDecl(profile.regions.label)} }
+  #text { ${cssDecl(profile.regions.text)} }
+  #text-inner { width: 100%; }
   #marker { font-size: 0.45em; font-weight: 700; color: #b8b8b8; vertical-align: super;
     line-height: 0; margin-right: 0.3em; }
+  #reference { ${cssDecl(profile.regions.reference)} }
   #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
     font-weight: 600; letter-spacing: 0.05em; display: none; }
-${css}
 </style>
 </head>
 <body>
 <div id="stage">
-  <div id="label"></div>
-  <div id="text"><div id="text-inner"></div></div>
-  <div id="reference"></div>
+  <div id="panel">
+    <div id="label"></div>
+    <div id="text"><div id="text-inner"></div></div>
+    <div id="reference"></div>
+  </div>
 </div>
 <div id="disconnected">RECONNECTING…</div>
 <script>${GRAPHICS_SCRIPT}</script>
@@ -536,7 +524,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // refresh of this exact URL actually reaching the server, not getting
     // served a stale copy of the previous profile's HTML from cache.
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
-    res.end(buildGraphicsHTML(graphicsProfile))
+    res.end(buildGraphicsHTML(getPresentationProfile(graphicsProfileId)))
     return
   }
 

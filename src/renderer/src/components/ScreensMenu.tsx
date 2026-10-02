@@ -4,6 +4,7 @@ import {
   TriangleAlert,
   RefreshCw,
   Eye,
+  EyeOff,
   Play,
   Pencil,
   Check,
@@ -38,6 +39,10 @@ interface Props {
   onAddGraphicsOutput: () => void
   onRemoveOutput: (id: string) => void
   onSetOutputProfile: (id: string, profileId: PresentationProfileId) => void
+  /** Independent of what Main is actually showing — clearing Graphics here
+   *  doesn't touch the congregation screen, the stage monitor, or Main's own
+   *  navigation position, and vice versa. */
+  onSetOutputSuppressed: (id: string, suppressed: boolean) => void
 }
 
 /** "PA278QV (2) (2560×1440)" → "PA278QV (2)". */
@@ -266,7 +271,8 @@ export default function ScreensMenu({
   outputs,
   onAddGraphicsOutput,
   onRemoveOutput,
-  onSetOutputProfile
+  onSetOutputProfile,
+  onSetOutputSuppressed
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -498,6 +504,22 @@ export default function ScreensMenu({
                         )}
                         <button
                           className="display-row-btn"
+                          title={
+                            o.suppressed
+                              ? 'Show again — independent of what Main is doing'
+                              : 'Clear just this output — Main keeps showing what it has, this just stops reflecting it'
+                          }
+                          aria-label={o.suppressed ? 'Show Graphics output' : 'Clear Graphics output'}
+                          onClick={() => onSetOutputSuppressed(o.id, !o.suppressed)}
+                        >
+                          {o.suppressed ? (
+                            <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                          ) : (
+                            <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                          )}
+                        </button>
+                        <button
+                          className="display-row-btn"
                           title="Remove this output"
                           aria-label="Remove Graphics output"
                           onClick={() => onRemoveOutput(o.id)}
@@ -506,6 +528,12 @@ export default function ScreensMenu({
                         </button>
                       </span>
                     </div>
+                    {o.suppressed && (
+                      <p className="screens-note screens-note--warn">
+                        <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+                        Cleared — Main keeps playing, this output just isn't showing it right now.
+                      </p>
+                    )}
                     <div className="screens-output-profile" role="group" aria-label="Graphics look">
                       <button
                         className={`btn-sm ${o.profileId !== 'lower-third' ? 'btn-primary' : 'btn-secondary'}`}

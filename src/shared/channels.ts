@@ -10,10 +10,15 @@
  *
  * `profileId` on DestinationConfig picks how a destination visually renders a
  * channel's content — same content, different treatment (e.g. large centered
- * text on the congregation screen vs. a lower-third on a stream). Real as of
- * Phase 3, though still just a style switch between two fixed layouts, not a
- * real template/asset-authoring system — that's still future work.
+ * text on the congregation screen vs. a lower-third on a stream). Backed by
+ * real, referenced profile data (see shared/presentationProfiles.ts), not a
+ * hardcoded special case — though still just a style switch between two
+ * fixed layouts, not a real template/asset-authoring system, which is still
+ * future work.
  */
+
+import type { PresentationProfileId } from './presentationProfiles'
+export type { PresentationProfileId }
 
 export type ChannelId = string
 
@@ -43,14 +48,6 @@ export interface ChannelState<TSlide> {
  *  naming it after one of them would bake in a redesign later. Not used
  *  until the destination that needs it is actually built. */
 export type DestinationKind = 'window' | 'browser'
-
-/** How a destination visually renders a channel's content — same content,
- *  different treatment. Only meaningful for 'browser'-kind destinations
- *  today: congregation is always full-screen (it's the sanctuary screen,
- *  a lower-third there would be strange) and stage isn't a styling variant
- *  of a slide at all (it's current+next+clock, a structurally different
- *  view), so neither exposes a choice here. */
-export type PresentationProfileId = 'fullscreen' | 'lower-third'
 
 export interface DestinationConfig {
   id: string

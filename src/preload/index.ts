@@ -73,6 +73,7 @@ export interface OutputInfo {
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
+  suppressed: boolean
 }
 
 export interface UpdateInfo {
@@ -324,6 +325,8 @@ const api = {
   removeOutput: (id: string): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:remove', id),
   setOutputProfile: (id: string, profileId: PresentationProfileId): Promise<OutputInfo[]> =>
     ipcRenderer.invoke('outputs:set-profile', id, profileId),
+  setDestinationSuppressed: (id: string, suppressed: boolean): Promise<OutputInfo[]> =>
+    ipcRenderer.invoke('destination:set-suppressed', id, suppressed),
   onOutputsChanged: (callback: (outputs: OutputInfo[]) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, outputs: OutputInfo[]): void => callback(outputs)
     ipcRenderer.on('outputs:changed', handler)
