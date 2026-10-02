@@ -26,7 +26,8 @@ import type {
   OnlineImportResult,
   ParsedSong,
   DisplayInfo as DisplayInfoType,
-  OutputInfo
+  OutputInfo,
+  PresentationProfileId
 } from './types'
 
 declare global {
@@ -145,6 +146,7 @@ declare global {
       listOutputs: () => Promise<OutputInfo[]>
       addGraphicsOutput: () => Promise<OutputInfo[]>
       removeOutput: (id: string) => Promise<OutputInfo[]>
+      setOutputProfile: (id: string, profileId: PresentationProfileId) => Promise<OutputInfo[]>
       onOutputsChanged: (callback: (outputs: OutputInfo[]) => void) => () => void
       syncWebRemote: (state: {
         queue: Array<{

@@ -131,9 +131,22 @@ export interface GraphicsPayload {
   blanked: boolean
 }
 
+/** Keep this file decoupled from shared/channels.ts the same way everything
+ *  else here is — a local copy of the two values, not an import. */
+export type GraphicsProfileId = 'fullscreen' | 'lower-third'
+
 let lastGraphicsPayload: GraphicsPayload = { slide: null, blanked: true }
 const graphicsClients = new Set<ServerResponse>()
 let graphicsActive = false
+let graphicsProfile: GraphicsProfileId = 'fullscreen'
+
+/** main/index.ts owns which profile the Graphics destination is set to;
+ *  this file just renders it. Takes effect on the next page load (OBS
+ *  Browser Source refresh) — the two layouts are different DOM, not a
+ *  style tweak an already-open SSE connection can hot-swap. */
+export function setGraphicsProfile(profileId: GraphicsProfileId): void {
+  graphicsProfile = profileId
+}
 
 /** main/index.ts owns whether a Graphics destination actually exists; this
  *  file just serves it. Toggled on add/remove so the route 404s once removed
@@ -216,25 +229,8 @@ ${buildAppBody()}
 </html>`
 }
 
-/** The Graphics output page — a plain browser-servable page (OBS Browser
- *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
- *  window. Deliberately a close visual match to ProjectionApp's full-screen
- *  look rather than a lower-third or any other treatment — there's no real
- *  profile/template system yet (that's later work), so for now this destination
- *  just shows the same thing the congregation screen does, reached a
- *  different way. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
- *  rendered by React in an Electron renderer process. */
-function buildGraphicsHTML(): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<title>BORN — Graphics</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #000; color: #fff; height: 100%; overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+const FULLSCREEN_GRAPHICS_CSS = `
+  html, body { background: #000; color: #fff; height: 100%; overflow: hidden; }
   #stage { position: relative; height: 100vh; }
   #label { position: absolute; top: 6vh; left: 60px; right: 60px; text-align: center;
     font-size: clamp(0.9rem, 1.8vw, 1.5rem); font-weight: 600; letter-spacing: 0.14em;
@@ -243,22 +239,31 @@ function buildGraphicsHTML(): string {
     overflow: hidden; line-height: 1.5; display: flex; align-items: center; justify-content: center;
     text-align: center; font-size: clamp(1.4rem, 5vw, 4rem); }
   #text-inner { width: 100%; }
-  #marker { font-size: 0.45em; font-weight: 700; color: #b8b8b8; vertical-align: super;
-    line-height: 0; margin-right: 0.3em; }
   #reference { position: absolute; bottom: 5vh; left: 60px; right: 60px; text-align: center;
     font-size: clamp(1rem, 3.2vh, 2.2rem); color: #c8c8c8; letter-spacing: 0.02em; }
-  #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
-    font-weight: 600; letter-spacing: 0.05em; display: none; }
-</style>
-</head>
-<body>
-<div id="stage">
-  <div id="label"></div>
-  <div id="text"><div id="text-inner"></div></div>
-  <div id="reference"></div>
-</div>
-<div id="disconnected">RECONNECTING…</div>
-<script>
+`
+
+/** Transparent page so OBS Browser Source (and any other CEF/Chromium-based
+ *  compositor) shows camera video through everywhere but the band itself —
+ *  this is plain CSS, not a rendering feature BORN has to build; OBS already
+ *  composites a transparent browser source natively. Only this profile needs
+ *  that; full-screen's whole point is replacing the frame, not sitting over
+ *  it, so it stays solid. */
+const LOWER_THIRD_GRAPHICS_CSS = `
+  html, body { background: transparent; color: #fff; height: 100%; overflow: hidden; }
+  #stage { position: relative; height: 100vh; }
+  #label { position: absolute; left: 7%; right: 7%; bottom: 17%; text-align: left;
+    font-size: clamp(0.7rem, 1.3vw, 1rem); font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #c9a86a; }
+  #text { position: absolute; left: 5%; right: 5%; bottom: 6%;
+    background: rgba(10, 8, 6, 0.78); border-radius: 10px; padding: 16px 28px;
+    overflow: hidden; line-height: 1.35; text-align: left; font-size: clamp(1rem, 2.1vw, 1.7rem); }
+  #text-inner { width: 100%; }
+  #reference { position: absolute; left: 7%; right: 7%; bottom: 2%; text-align: left;
+    font-size: clamp(0.65rem, 1.1vw, 0.9rem); color: #d8cdb8; letter-spacing: 0.02em; }
+`
+
+const GRAPHICS_SCRIPT = `
 (function(){
   var labelEl = document.getElementById('label');
   var textInnerEl = document.getElementById('text-inner');
@@ -289,7 +294,40 @@ function buildGraphicsHTML(): string {
   }
   connect();
 })();
-</script>
+`
+
+/** The Graphics output page — a plain browser-servable page (OBS Browser
+ *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
+ *  window. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
+ *  rendered by React in an Electron renderer process. The markup and the
+ *  live-update script are identical for every profile — only the CSS (and so
+ *  the layout it produces) differs; `GraphicsProfileId` picks which. */
+function buildGraphicsHTML(profileId: GraphicsProfileId): string {
+  const css = profileId === 'lower-third' ? LOWER_THIRD_GRAPHICS_CSS : FULLSCREEN_GRAPHICS_CSS
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>BORN — Graphics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #marker { font-size: 0.45em; font-weight: 700; color: #b8b8b8; vertical-align: super;
+    line-height: 0; margin-right: 0.3em; }
+  #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
+    font-weight: 600; letter-spacing: 0.05em; display: none; }
+${css}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="label"></div>
+  <div id="text"><div id="text-inner"></div></div>
+  <div id="reference"></div>
+</div>
+<div id="disconnected">RECONNECTING…</div>
+<script>${GRAPHICS_SCRIPT}</script>
 </body>
 </html>`
 }
@@ -494,7 +532,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end()
       return
     }
-    sendText(res, 200, 'text/html; charset=utf-8', buildGraphicsHTML())
+    // Must never be cached: switching profiles relies on the next load/
+    // refresh of this exact URL actually reaching the server, not getting
+    // served a stale copy of the previous profile's HTML from cache.
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
+    res.end(buildGraphicsHTML(graphicsProfile))
     return
   }
 

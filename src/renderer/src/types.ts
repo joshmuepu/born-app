@@ -56,12 +56,15 @@ export interface SlidePayload {
   marker?: string
 }
 
+export type PresentationProfileId = 'fullscreen' | 'lower-third'
+
 /** One configured output destination beyond the built-in congregation/stage
  *  pair — today, only ever the single Graphics destination. */
 export interface OutputInfo {
   id: string
   kind: 'window' | 'browser'
   url: string | null
+  profileId: PresentationProfileId | null
 }
 
 export interface BibleTranslation {

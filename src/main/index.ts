@@ -35,6 +35,7 @@ import {
   getWebRemoteTranslation,
   pushGraphicsUpdate,
   setGraphicsActive,
+  setGraphicsProfile,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
@@ -97,7 +98,8 @@ import {
   patchChannel,
   type ChannelId,
   type ChannelState,
-  type DestinationConfig
+  type DestinationConfig,
+  type PresentationProfileId
 } from '../shared/channels'
 
 /**
@@ -274,7 +276,10 @@ destinations = new Map<string, DestinationEntry>(
     const config: DestinationConfig = {
       id: route.destinationId,
       channelId: route.channelId,
-      kind: route.kind
+      kind: route.kind,
+      // Settings from before Phase 3 won't have this — default a restored
+      // browser destination to the same thing it always looked like.
+      profileId: route.kind === 'browser' ? route.profileId ?? 'fullscreen' : undefined
     }
     const entry: DestinationEntry = { config, ready: route.kind === 'browser', send }
     if (route.destinationId === 'congregation') entry.fontSize = getSettingsSafe().fontSize
@@ -283,15 +288,18 @@ destinations = new Map<string, DestinationEntry>(
 )
 
 // A persisted Graphics destination (surviving a restart) needs webRemote.ts
-// told it's active again — the registry above already restored it, but that
-// Map is private to this file.
-setGraphicsActive([...destinations.values()].some((d) => d.config.kind === 'browser'))
+// told it's active (and which profile it's using) again — the registry above
+// already restored it, but that Map is private to this file.
+const restoredGraphics = [...destinations.values()].find((d) => d.config.kind === 'browser')
+setGraphicsActive(!!restoredGraphics)
+if (restoredGraphics) setGraphicsProfile(restoredGraphics.config.profileId ?? 'fullscreen')
 
 function persistDestinationRouting(): void {
   const routing = [...destinations.values()].map((d) => ({
     destinationId: d.config.id,
     channelId: d.config.channelId,
-    kind: d.config.kind
+    kind: d.config.kind,
+    profileId: d.config.profileId
   }))
   try {
     updateSettings({ destinationRouting: routing })
@@ -312,23 +320,33 @@ export interface OutputInfo {
   id: string
   kind: DestinationConfig['kind']
   url: string | null
+  profileId: PresentationProfileId | null
 }
 
 function outputsSnapshot(): OutputInfo[] {
   const base = graphicsBaseUrl()
   return [...destinations.values()]
     .filter((d) => d.config.kind === 'browser')
-    .map((d) => ({ id: d.config.id, kind: d.config.kind, url: base ? `${base}/output/graphics` : null }))
+    .map((d) => ({
+      id: d.config.id,
+      kind: d.config.kind,
+      url: base ? `${base}/output/graphics` : null,
+      profileId: d.config.profileId ?? null
+    }))
 }
 
 /** Adds one Graphics destination bound to 'main'. Multiple would work fine
  *  (destinationsFor/pushGraphicsForChannel already loop generically), but the
- *  UI only ever offers adding one at a time for now — see ScreensMenu. */
+ *  UI only ever offers adding one at a time — enforced here too, not just by
+ *  the "+ Add Graphics" button disappearing, since that's a client-side
+ *  guard an IPC call can bypass (caught by exactly that during testing). */
 function addGraphicsDestination(): void {
+  if ([...destinations.values()].some((d) => d.config.kind === 'browser')) return
   const id = `graphics-${Date.now().toString(36)}`
-  const config: DestinationConfig = { id, channelId: 'main', kind: 'browser' }
+  const config: DestinationConfig = { id, channelId: 'main', kind: 'browser', profileId: 'fullscreen' }
   destinations.set(id, { config, ready: true, send: graphicsSend })
   setGraphicsActive(true)
+  setGraphicsProfile('fullscreen')
   pushGraphicsForChannel(config.channelId) // so a browser opened right after adding isn't stuck on the SSE default
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
@@ -338,6 +356,15 @@ function removeDestination(id: string): void {
   if (!destinations.has(id)) return
   destinations.delete(id)
   setGraphicsActive([...destinations.values()].some((d) => d.config.kind === 'browser'))
+  persistDestinationRouting()
+  sendToMain('outputs:changed', outputsSnapshot())
+}
+
+function setOutputProfile(id: string, profileId: PresentationProfileId): void {
+  const dest = destinations.get(id)
+  if (!dest || dest.config.kind !== 'browser') return
+  dest.config.profileId = profileId
+  setGraphicsProfile(profileId)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
 }
@@ -1459,6 +1486,11 @@ ipcMain.handle('outputs:add-graphics', () => {
 
 ipcMain.handle('outputs:remove', (_event, id: string) => {
   removeDestination(id)
+  return outputsSnapshot()
+})
+
+ipcMain.handle('outputs:set-profile', (_event, id: string, profileId: PresentationProfileId) => {
+  setOutputProfile(id, profileId)
   return outputsSnapshot()
 })
 

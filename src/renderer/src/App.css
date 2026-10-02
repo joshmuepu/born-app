@@ -1186,6 +1186,14 @@ mark.hl {
   flex-shrink: 0;
   margin-top: 2px;
 }
+.screens-output-profile {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.screens-output-profile .btn-sm {
+  flex: 1;
+}
 .screens-textsize {
   display: flex;
   align-items: center;

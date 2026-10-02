@@ -8,11 +8,11 @@
  * shape (TSlide) — channels are content-agnostic plumbing, not aware of
  * SlidePayload.
  *
- * `profileId` on DestinationConfig is a reserved, currently-inert seam for a
- * future presentation/profile system (same channel, different visual
- * treatment per destination — e.g. large centered text on the congregation
- * screen vs. a lower-third on a stream). Nothing reads it yet; it exists so
- * adding that system later doesn't require reshaping this type.
+ * `profileId` on DestinationConfig picks how a destination visually renders a
+ * channel's content — same content, different treatment (e.g. large centered
+ * text on the congregation screen vs. a lower-third on a stream). Real as of
+ * Phase 3, though still just a style switch between two fixed layouts, not a
+ * real template/asset-authoring system — that's still future work.
  */
 
 export type ChannelId = string
@@ -44,12 +44,20 @@ export interface ChannelState<TSlide> {
  *  until the destination that needs it is actually built. */
 export type DestinationKind = 'window' | 'browser'
 
+/** How a destination visually renders a channel's content — same content,
+ *  different treatment. Only meaningful for 'browser'-kind destinations
+ *  today: congregation is always full-screen (it's the sanctuary screen,
+ *  a lower-third there would be strange) and stage isn't a styling variant
+ *  of a slide at all (it's current+next+clock, a structurally different
+ *  view), so neither exposes a choice here. */
+export type PresentationProfileId = 'fullscreen' | 'lower-third'
+
 export interface DestinationConfig {
   id: string
   channelId: ChannelId
   kind: DestinationKind
-  /** Reserved for a future presentation/profile system. Unused today. */
-  profileId?: string
+  /** Only set (and only meaningful) for 'browser'-kind destinations. */
+  profileId?: PresentationProfileId
   /** Stable display name (see displays.ts / NamedDisplay) — never a raw
    *  Electron display id, which doesn't survive a reboot or cable swap.
    *  Unused in Phase 1: the congregation/stage destinations still resolve
@@ -82,6 +90,8 @@ export interface DestinationRoutingEntry {
   destinationId: string
   channelId: ChannelId
   kind: DestinationKind
+  /** Only meaningful for 'browser' kind; absent for congregation/stage. */
+  profileId?: PresentationProfileId
 }
 
 export function createChannel<TSlide>(id: ChannelId, label: string): ChannelState<TSlide> {

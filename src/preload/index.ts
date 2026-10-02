@@ -66,10 +66,13 @@ export interface SlidePayload {
   marker?: string
 }
 
+export type PresentationProfileId = 'fullscreen' | 'lower-third'
+
 export interface OutputInfo {
   id: string
   kind: 'window' | 'browser'
   url: string | null
+  profileId: PresentationProfileId | null
 }
 
 export interface UpdateInfo {
@@ -319,6 +322,8 @@ const api = {
   listOutputs: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:list'),
   addGraphicsOutput: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:add-graphics'),
   removeOutput: (id: string): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:remove', id),
+  setOutputProfile: (id: string, profileId: PresentationProfileId): Promise<OutputInfo[]> =>
+    ipcRenderer.invoke('outputs:set-profile', id, profileId),
   onOutputsChanged: (callback: (outputs: OutputInfo[]) => void): (() => void) => {
     const handler = (_evt: IpcRendererEvent, outputs: OutputInfo[]): void => callback(outputs)
     ipcRenderer.on('outputs:changed', handler)

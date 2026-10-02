@@ -13,7 +13,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
-import type { DisplayInfo, DisplayEntry, OutputInfo } from '../types'
+import type { DisplayInfo, DisplayEntry, OutputInfo, PresentationProfileId } from '../types'
 
 interface Props {
   displayInfo: DisplayInfo | null
@@ -37,6 +37,7 @@ interface Props {
   outputs: OutputInfo[]
   onAddGraphicsOutput: () => void
   onRemoveOutput: (id: string) => void
+  onSetOutputProfile: (id: string, profileId: PresentationProfileId) => void
 }
 
 /** "PA278QV (2) (2560×1440)" → "PA278QV (2)". */
@@ -264,7 +265,8 @@ export default function ScreensMenu({
   onDisplayInfoChange,
   outputs,
   onAddGraphicsOutput,
-  onRemoveOutput
+  onRemoveOutput,
+  onSetOutputProfile
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -473,35 +475,56 @@ export default function ScreensMenu({
             ) : (
               <div className="display-rows">
                 {outputs.map((o) => (
-                  <div key={o.id} className="display-row">
-                    <span className="display-row-main">
-                      <span className="display-row-name">Graphics</span>
-                      <span className="display-row-sub">{o.url ?? 'Remote unavailable right now'}</span>
-                    </span>
-                    <span className="display-row-actions">
-                      {o.url && (
+                  <div key={o.id}>
+                    <div className="display-row">
+                      <span className="display-row-main">
+                        <span className="display-row-name">Graphics</span>
+                        <span className="display-row-sub">{o.url ?? 'Remote unavailable right now'}</span>
+                      </span>
+                      <span className="display-row-actions">
+                        {o.url && (
+                          <button
+                            className="display-row-btn"
+                            title="Copy URL"
+                            aria-label="Copy Graphics output URL"
+                            onClick={() => copyOutputUrl(o.id, o.url!)}
+                          >
+                            {urlCopiedId === o.id ? (
+                              <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                            ) : (
+                              <Copy width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                            )}
+                          </button>
+                        )}
                         <button
                           className="display-row-btn"
-                          title="Copy URL"
-                          aria-label="Copy Graphics output URL"
-                          onClick={() => copyOutputUrl(o.id, o.url!)}
+                          title="Remove this output"
+                          aria-label="Remove Graphics output"
+                          onClick={() => onRemoveOutput(o.id)}
                         >
-                          {urlCopiedId === o.id ? (
-                            <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
-                          ) : (
-                            <Copy width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                          )}
+                          <Trash2 width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
                         </button>
-                      )}
+                      </span>
+                    </div>
+                    <div className="screens-output-profile" role="group" aria-label="Graphics look">
                       <button
-                        className="display-row-btn"
-                        title="Remove this output"
-                        aria-label="Remove Graphics output"
-                        onClick={() => onRemoveOutput(o.id)}
+                        className={`btn-sm ${o.profileId !== 'lower-third' ? 'btn-primary' : 'btn-secondary'}`}
+                        title="Replace the whole frame — a lobby TV or a dedicated slide"
+                        onClick={() => onSetOutputProfile(o.id, 'fullscreen')}
                       >
-                        <Trash2 width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                        Full-screen
                       </button>
-                    </span>
+                      <button
+                        className={`btn-sm ${o.profileId === 'lower-third' ? 'btn-primary' : 'btn-secondary'}`}
+                        title="A small overlay band near the bottom, transparent otherwise — for OBS over camera video"
+                        onClick={() => onSetOutputProfile(o.id, 'lower-third')}
+                      >
+                        Lower third
+                      </button>
+                    </div>
+                    <p className="screens-note">
+                      Changing this updates the next time the output is opened or refreshed, not an already-open one.
+                    </p>
                   </div>
                 ))}
               </div>

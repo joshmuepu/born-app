@@ -1146,6 +1146,9 @@ export default function App() {
             outputs={outputs}
             onAddGraphicsOutput={() => window.electronAPI.addGraphicsOutput().then(setOutputs)}
             onRemoveOutput={(id) => window.electronAPI.removeOutput(id).then(setOutputs)}
+            onSetOutputProfile={(id, profileId) =>
+              window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
+            }
           />
 
           <RemotePanel />
