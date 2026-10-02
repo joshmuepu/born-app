@@ -66,6 +66,12 @@ export interface SlidePayload {
   marker?: string
 }
 
+export interface OutputInfo {
+  id: string
+  kind: 'window' | 'browser'
+  url: string | null
+}
+
 export interface UpdateInfo {
   current: string
   latest: string | null
@@ -308,6 +314,16 @@ const api = {
     ipUrl: string
     hostnameUrl: string | null
   }> => ipcRenderer.invoke('webremote:ip'),
+
+  // Outputs (Phase 2: the Graphics destination)
+  listOutputs: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:list'),
+  addGraphicsOutput: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:add-graphics'),
+  removeOutput: (id: string): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:remove', id),
+  onOutputsChanged: (callback: (outputs: OutputInfo[]) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, outputs: OutputInfo[]): void => callback(outputs)
+    ipcRenderer.on('outputs:changed', handler)
+    return () => ipcRenderer.removeListener('outputs:changed', handler)
+  },
   syncWebRemote: (state: {
     queue: Array<{
       id: string

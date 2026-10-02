@@ -16,7 +16,8 @@ import type {
   SlidePayload,
   ResolvedPassage,
   SongDetail,
-  RecentService
+  RecentService,
+  OutputInfo
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
@@ -104,6 +105,7 @@ export default function App() {
     verse: number
   } | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
+  const [outputs, setOutputs] = useState<OutputInfo[]>([])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
   const { theme, toggle: toggleTheme } = useTheme()
@@ -214,6 +216,11 @@ export default function App() {
   useEffect(() => {
     window.electronAPI.listDisplays().then(setDisplayInfo)
     return window.electronAPI.onDisplaysInfo(setDisplayInfo)
+  }, [])
+
+  useEffect(() => {
+    window.electronAPI.listOutputs().then(setOutputs)
+    return window.electronAPI.onOutputsChanged(setOutputs)
   }, [])
 
   useEffect(() => {
@@ -1136,6 +1143,9 @@ export default function App() {
             onFontSize={handleFontSizeChange}
             onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
             onDisplayInfoChange={setDisplayInfo}
+            outputs={outputs}
+            onAddGraphicsOutput={() => window.electronAPI.addGraphicsOutput().then(setOutputs)}
+            onRemoveOutput={(id) => window.electronAPI.removeOutput(id).then(setOutputs)}
           />
 
           <RemotePanel />

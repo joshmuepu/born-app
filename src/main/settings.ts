@@ -77,8 +77,8 @@ const DEFAULTS: AppSettings = {
   recentKeys: [],
   channelDefinitions: [{ id: 'main', label: 'Main' }],
   destinationRouting: [
-    { destinationId: 'congregation', channelId: 'main' },
-    { destinationId: 'stage', channelId: 'main' }
+    { destinationId: 'congregation', channelId: 'main', kind: 'window' },
+    { destinationId: 'stage', channelId: 'main', kind: 'window' }
   ]
 }
 

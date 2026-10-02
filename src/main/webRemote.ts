@@ -121,6 +121,58 @@ let currentState: WebRemoteState = {
 let commandCallback: CommandCallback | null = null
 let searchHandlers: WebRemoteSearchHandlers | null = null
 
+/** What a Graphics output (OBS Browser Source, a lobby display, etc.) shows —
+ *  deliberately smaller than WebRemoteState: just enough to render a slide,
+ *  nothing about the queue or controls. Reuses WebRemoteSlide rather than
+ *  SlidePayload directly since this file already has no dependency on
+ *  main/index.ts's types — same shape, kept decoupled. */
+export interface GraphicsPayload {
+  slide: WebRemoteSlide | null
+  blanked: boolean
+}
+
+let lastGraphicsPayload: GraphicsPayload = { slide: null, blanked: true }
+const graphicsClients = new Set<ServerResponse>()
+let graphicsActive = false
+
+/** main/index.ts owns whether a Graphics destination actually exists; this
+ *  file just serves it. Toggled on add/remove so the route 404s once removed
+ *  instead of silently going stale — a URL left open in OBS after someone
+ *  removes the output should say so, not sit there looking connected. */
+export function setGraphicsActive(active: boolean): void {
+  graphicsActive = active
+  if (!active) {
+    for (const res of graphicsClients) {
+      try {
+        res.end()
+      } catch {
+        /* already closing */
+      }
+    }
+    graphicsClients.clear()
+    lastGraphicsPayload = { slide: null, blanked: true }
+  }
+}
+
+export function isGraphicsActive(): boolean {
+  return graphicsActive
+}
+
+/** Push a Graphics update to every currently-connected client (SSE — push,
+ *  not poll, since a lagging live-presentation feed is actively bad, unlike
+ *  the phone remote's state which tolerates a second of staleness fine). */
+export function pushGraphicsUpdate(payload: GraphicsPayload): void {
+  lastGraphicsPayload = payload
+  const data = `data: ${JSON.stringify(payload)}\n\n`
+  for (const res of graphicsClients) {
+    try {
+      res.write(data)
+    } catch {
+      graphicsClients.delete(res)
+    }
+  }
+}
+
 function isPrivate(addr: string): boolean {
   return (
     addr.startsWith('192.168.') ||
@@ -160,6 +212,84 @@ function buildHTML(): string {
 ${buildAppBody()}
 <script src="/app.js"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}</script>
+</body>
+</html>`
+}
+
+/** The Graphics output page — a plain browser-servable page (OBS Browser
+ *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
+ *  window. Deliberately a close visual match to ProjectionApp's full-screen
+ *  look rather than a lower-third or any other treatment — there's no real
+ *  profile/template system yet (that's later work), so for now this destination
+ *  just shows the same thing the congregation screen does, reached a
+ *  different way. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
+ *  rendered by React in an Electron renderer process. */
+function buildGraphicsHTML(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>BORN — Graphics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; color: #fff; height: 100%; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #stage { position: relative; height: 100vh; }
+  #label { position: absolute; top: 6vh; left: 60px; right: 60px; text-align: center;
+    font-size: clamp(0.9rem, 1.8vw, 1.5rem); font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #948d7c; }
+  #text { position: absolute; top: 12vh; bottom: 13vh; left: 0; right: 0; padding: 0 60px;
+    overflow: hidden; line-height: 1.5; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: clamp(1.4rem, 5vw, 4rem); }
+  #text-inner { width: 100%; }
+  #marker { font-size: 0.45em; font-weight: 700; color: #b8b8b8; vertical-align: super;
+    line-height: 0; margin-right: 0.3em; }
+  #reference { position: absolute; bottom: 5vh; left: 60px; right: 60px; text-align: center;
+    font-size: clamp(1rem, 3.2vh, 2.2rem); color: #c8c8c8; letter-spacing: 0.02em; }
+  #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
+    font-weight: 600; letter-spacing: 0.05em; display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="label"></div>
+  <div id="text"><div id="text-inner"></div></div>
+  <div id="reference"></div>
+</div>
+<div id="disconnected">RECONNECTING…</div>
+<script>
+(function(){
+  var labelEl = document.getElementById('label');
+  var textInnerEl = document.getElementById('text-inner');
+  var refEl = document.getElementById('reference');
+  var discEl = document.getElementById('disconnected');
+
+  function render(payload){
+    if (!payload || !payload.slide || payload.blanked) {
+      labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = '';
+      return;
+    }
+    var s = payload.slide;
+    labelEl.textContent = s.label || '';
+    textInnerEl.innerHTML = (s.marker ? '<span id="marker">' + s.marker + '</span>' : '')
+      + (s.text || '').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; });
+    refEl.textContent = s.reference || '';
+  }
+
+  function connect(){
+    var es = new EventSource('/output/graphics/events');
+    es.onmessage = function(ev){
+      discEl.style.display = 'none';
+      try { render(JSON.parse(ev.data)); } catch (e) {}
+    };
+    es.onerror = function(){
+      discEl.style.display = 'block';
+    };
+  }
+  connect();
+})();
+</script>
 </body>
 </html>`
 }
@@ -355,6 +485,33 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
     res.writeHead(204)
     res.end()
+    return
+  }
+
+  if (path === '/output/graphics' && req.method === 'GET') {
+    if (!graphicsActive) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    sendText(res, 200, 'text/html; charset=utf-8', buildGraphicsHTML())
+    return
+  }
+
+  if (path === '/output/graphics/events' && req.method === 'GET') {
+    if (!graphicsActive) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive'
+    })
+    res.write(`data: ${JSON.stringify(lastGraphicsPayload)}\n\n`)
+    graphicsClients.add(res)
+    req.on('close', () => graphicsClients.delete(res))
     return
   }
 

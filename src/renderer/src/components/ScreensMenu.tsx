@@ -9,9 +9,11 @@ import {
   Check,
   X,
   Copy,
-  HelpCircle
+  HelpCircle,
+  Plus,
+  Trash2
 } from 'lucide-react'
-import type { DisplayInfo, DisplayEntry } from '../types'
+import type { DisplayInfo, DisplayEntry, OutputInfo } from '../types'
 
 interface Props {
   displayInfo: DisplayInfo | null
@@ -30,6 +32,11 @@ interface Props {
   /** Pushes a fresh DisplayInfo (from rename) back up to App's state, the
    *  same way onSetProjectionDisplay's own return value does. */
   onDisplayInfoChange: (info: DisplayInfo) => void
+  /** Destinations beyond the built-in congregation/stage pair — today, at
+   *  most one (Graphics). Empty for every user who hasn't asked for one. */
+  outputs: OutputInfo[]
+  onAddGraphicsOutput: () => void
+  onRemoveOutput: (id: string) => void
 }
 
 /** "PA278QV (2) (2560×1440)" → "PA278QV (2)". */
@@ -254,7 +261,10 @@ export default function ScreensMenu({
   onSetStageDisplay,
   onFontSize,
   onRefreshDisplays,
-  onDisplayInfoChange
+  onDisplayInfoChange,
+  outputs,
+  onAddGraphicsOutput,
+  onRemoveOutput
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -262,6 +272,13 @@ export default function ScreensMenu({
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [checklistFor, setChecklistFor] = useState<string | null>(null)
   const [diagCopied, setDiagCopied] = useState(false)
+  const [urlCopiedId, setUrlCopiedId] = useState<string | null>(null)
+
+  const copyOutputUrl = (id: string, url: string): void => {
+    navigator.clipboard?.writeText(url)
+    setUrlCopiedId(id)
+    setTimeout(() => setUrlCopiedId((cur) => (cur === id ? null : cur)), 1500)
+  }
 
   // How many consecutive display-info updates a given named display has been
   // missing — the checklist link only appears once this crosses 2, so a
@@ -435,6 +452,61 @@ export default function ScreensMenu({
             missingStreak={missingStreak}
             onOpenChecklist={setChecklistFor}
           />
+
+          {/* Outputs — same progressive-disclosure shape as the two groups
+              above: nothing here for the typical single-screen user beyond
+              one quiet entry point, until they actually add something. */}
+          <div className="screens-group">
+            <div className="screens-group-head">
+              <span className="screens-group-title">Outputs</span>
+              {outputs.length === 0 && (
+                <button className="btn-quiet btn-sm" onClick={onAddGraphicsOutput}>
+                  <Plus width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                  Add Graphics
+                </button>
+              )}
+            </div>
+            {outputs.length === 0 ? (
+              <p className="screens-note">
+                A browser-reachable feed of what's live — for OBS, a lobby display, or a second computer.
+              </p>
+            ) : (
+              <div className="display-rows">
+                {outputs.map((o) => (
+                  <div key={o.id} className="display-row">
+                    <span className="display-row-main">
+                      <span className="display-row-name">Graphics</span>
+                      <span className="display-row-sub">{o.url ?? 'Remote unavailable right now'}</span>
+                    </span>
+                    <span className="display-row-actions">
+                      {o.url && (
+                        <button
+                          className="display-row-btn"
+                          title="Copy URL"
+                          aria-label="Copy Graphics output URL"
+                          onClick={() => copyOutputUrl(o.id, o.url!)}
+                        >
+                          {urlCopiedId === o.id ? (
+                            <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                          ) : (
+                            <Copy width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                          )}
+                        </button>
+                      )}
+                      <button
+                        className="display-row-btn"
+                        title="Remove this output"
+                        aria-label="Remove Graphics output"
+                        onClick={() => onRemoveOutput(o.id)}
+                      >
+                        <Trash2 width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {checklistFor && (
             <div className="screens-group display-checklist">

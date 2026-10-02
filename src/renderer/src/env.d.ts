@@ -25,7 +25,8 @@ import type {
   OnlinePreview,
   OnlineImportResult,
   ParsedSong,
-  DisplayInfo as DisplayInfoType
+  DisplayInfo as DisplayInfoType,
+  OutputInfo
 } from './types'
 
 declare global {
@@ -140,6 +141,11 @@ declare global {
         ipUrl: string
         hostnameUrl: string | null
       }>
+      // Outputs (Phase 2: the Graphics destination)
+      listOutputs: () => Promise<OutputInfo[]>
+      addGraphicsOutput: () => Promise<OutputInfo[]>
+      removeOutput: (id: string) => Promise<OutputInfo[]>
+      onOutputsChanged: (callback: (outputs: OutputInfo[]) => void) => () => void
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never

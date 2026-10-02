@@ -33,6 +33,8 @@ import {
   getLocalIP,
   isWebRemoteAvailable,
   getWebRemoteTranslation,
+  pushGraphicsUpdate,
+  setGraphicsActive,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
@@ -219,8 +221,8 @@ function getSettingsSafe(): AppSettings {
       recentKeys: [],
       channelDefinitions: [{ id: 'main', label: 'Main' }],
       destinationRouting: [
-        { destinationId: 'congregation', channelId: 'main' },
-        { destinationId: 'stage', channelId: 'main' }
+        { destinationId: 'congregation', channelId: 'main', kind: 'window' },
+        { destinationId: 'stage', channelId: 'main', kind: 'window' }
       ]
     }
   }
@@ -244,30 +246,101 @@ function sendToStage(channel: string, ...args: unknown[]): void {
   if (stageWindow && !stageWindow.isDestroyed()) stageWindow.webContents.send(channel, ...args)
 }
 
-// The destinations themselves (congregation, stage) aren't user-addable yet —
-// that's Phase 2 — so which ones exist, their kind, and their send function
-// are still known here in code. What IS data-driven and persisted is which
-// channel each one routes to (destinationRouting in settings.ts), so adding
-// real destination management later is a registry change, not a routing one.
-const DESTINATION_SEND: Record<string, (channel: string, ...args: unknown[]) => void> = {
+// congregation/stage are built-in, code-known destinations (their kind, and
+// their send function, never vary) — a user-addable one like Graphics has no
+// such fixed identity, so it builds its send function from its persisted
+// kind instead. Either way, which CHANNEL a destination routes to is always
+// data (destinationRouting in settings.ts), never hardcoded.
+const BUILTIN_DESTINATION_SEND: Record<string, (channel: string, ...args: unknown[]) => void> = {
   congregation: sendToProjection,
   stage: sendToStage
 }
 
+function graphicsSend(channel: string, ...args: unknown[]): void {
+  if (channel !== 'graphics:update') return
+  pushGraphicsUpdate(args[0] as Parameters<typeof pushGraphicsUpdate>[0])
+}
+
+function sendFnFor(route: { destinationId: string; kind: DestinationConfig['kind'] }) {
+  if (BUILTIN_DESTINATION_SEND[route.destinationId]) return BUILTIN_DESTINATION_SEND[route.destinationId]
+  if (route.kind === 'browser') return graphicsSend
+  return null
+}
+
 destinations = new Map<string, DestinationEntry>(
   getSettingsSafe().destinationRouting.flatMap((route) => {
-    const send = DESTINATION_SEND[route.destinationId]
-    if (!send) return [] // unknown destination id in settings — ignore rather than crash
+    const send = sendFnFor(route)
+    if (!send) return [] // unknown destination id/kind in settings — ignore rather than crash
     const config: DestinationConfig = {
       id: route.destinationId,
       channelId: route.channelId,
-      kind: 'window'
+      kind: route.kind
     }
-    const entry: DestinationEntry = { config, ready: false, send }
+    const entry: DestinationEntry = { config, ready: route.kind === 'browser', send }
     if (route.destinationId === 'congregation') entry.fontSize = getSettingsSafe().fontSize
     return [[route.destinationId, entry]]
   })
 )
+
+// A persisted Graphics destination (surviving a restart) needs webRemote.ts
+// told it's active again — the registry above already restored it, but that
+// Map is private to this file.
+setGraphicsActive([...destinations.values()].some((d) => d.config.kind === 'browser'))
+
+function persistDestinationRouting(): void {
+  const routing = [...destinations.values()].map((d) => ({
+    destinationId: d.config.id,
+    channelId: d.config.channelId,
+    kind: d.config.kind
+  }))
+  try {
+    updateSettings({ destinationRouting: routing })
+  } catch (e) {
+    log.error('persist destinationRouting failed', e)
+  }
+}
+
+/** Same URL-preference logic as the remote's own pairing link (webremote:ip
+ *  below) — the mDNS name when it's resolved, the LAN IP until/unless it is. */
+function graphicsBaseUrl(): string | null {
+  if (!isWebRemoteAvailable()) return null
+  const host = getMdnsHostname()
+  return `http://${host ?? getLocalIP()}:${REMOTE_PORT}`
+}
+
+export interface OutputInfo {
+  id: string
+  kind: DestinationConfig['kind']
+  url: string | null
+}
+
+function outputsSnapshot(): OutputInfo[] {
+  const base = graphicsBaseUrl()
+  return [...destinations.values()]
+    .filter((d) => d.config.kind === 'browser')
+    .map((d) => ({ id: d.config.id, kind: d.config.kind, url: base ? `${base}/output/graphics` : null }))
+}
+
+/** Adds one Graphics destination bound to 'main'. Multiple would work fine
+ *  (destinationsFor/pushGraphicsForChannel already loop generically), but the
+ *  UI only ever offers adding one at a time for now — see ScreensMenu. */
+function addGraphicsDestination(): void {
+  const id = `graphics-${Date.now().toString(36)}`
+  const config: DestinationConfig = { id, channelId: 'main', kind: 'browser' }
+  destinations.set(id, { config, ready: true, send: graphicsSend })
+  setGraphicsActive(true)
+  pushGraphicsForChannel(config.channelId) // so a browser opened right after adding isn't stuck on the SSE default
+  persistDestinationRouting()
+  sendToMain('outputs:changed', outputsSnapshot())
+}
+
+function removeDestination(id: string): void {
+  if (!destinations.has(id)) return
+  destinations.delete(id)
+  setGraphicsActive([...destinations.values()].some((d) => d.config.kind === 'browser'))
+  persistDestinationRouting()
+  sendToMain('outputs:changed', outputsSnapshot())
+}
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
@@ -724,6 +797,27 @@ function onDisplayLayoutChanged(reason: string): void {
 // attachOperatorShortcuts and the remote's command dispatch use below instead
 // of reaching into a window directly.
 
+function toGraphicsSlide(
+  slide: SlidePayload | null
+): { text: string; label?: string; marker?: string; reference?: string } | null {
+  if (!slide) return null
+  return { text: slide.text, label: slide.label, marker: slide.marker, reference: slide.reference }
+}
+
+/** Every browser-kind destination bound to this channel gets the same
+ *  current/blanked snapshot — unlike congregation/stage, there's no
+ *  per-destination event shape to special-case here, so this one loop
+ *  generically covers any number of them (today: zero or one). */
+function pushGraphicsForChannel(channelId: ChannelId): void {
+  const channel = channels.get(channelId)
+  if (!channel) return
+  for (const dest of destinationsFor(channelId)) {
+    if (dest.config.kind === 'browser') {
+      dest.send('graphics:update', { slide: toGraphicsSlide(channel.current), blanked: channel.blanked })
+    }
+  }
+}
+
 function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   const channel = channels.get(channelId)
   if (!channel) return
@@ -734,6 +828,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   }
   const stage = destinations.get('stage')
   if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', blank)
+  pushGraphicsForChannel(channelId)
   // Keep the operator console's blank state in sync (e.g. when the command came
   // from the projection window's Esc key or the phone web remote). Only 'main'
   // has an operator console concept today.
@@ -751,6 +846,7 @@ function clearChannel(channelId: ChannelId): void {
     stage.send('stage:update', { current: null, next: null })
     stage.send('stage:set-blank', false)
   }
+  pushGraphicsForChannel(channelId)
 }
 
 function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
@@ -765,6 +861,7 @@ function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   // doesn't stay stuck on the clock after an Esc blackout.
   const stage = destinations.get('stage')
   if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', false)
+  pushGraphicsForChannel(channelId)
 }
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
@@ -1349,6 +1446,20 @@ ipcMain.handle('webremote:ip', () => {
   // Prefer the name — it survives a DHCP lease change; the IP is the fallback
   // shown only until (or unless) mDNS finishes probing.
   return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
+})
+
+// ── Outputs (Phase 2: the Graphics destination) ───────────────────────────────
+
+ipcMain.handle('outputs:list', () => outputsSnapshot())
+
+ipcMain.handle('outputs:add-graphics', () => {
+  addGraphicsDestination()
+  return outputsSnapshot()
+})
+
+ipcMain.handle('outputs:remove', (_event, id: string) => {
+  removeDestination(id)
+  return outputsSnapshot()
 })
 
 // ── Service file IPC ──────────────────────────────────────────────────────────

@@ -71,10 +71,17 @@ export interface ChannelDefinition {
  *  restart/crash, same as ChannelDefinition. Live content (current/next
  *  slide) is deliberately NOT part of either persisted shape; only "what
  *  exists and how it's wired" needs to survive a restart, not "what's on
- *  screen right now." */
+ *  screen right now."
+ *
+ *  `kind` is only here (duplicated from DestinationConfig) because
+ *  congregation/stage are still built-in, code-known destinations whose kind
+ *  never varies — but a user-addable one (Graphics, Phase 2) has no other
+ *  source of truth for its kind after a restart, so it has to be persisted
+ *  alongside the routing itself. */
 export interface DestinationRoutingEntry {
   destinationId: string
   channelId: ChannelId
+  kind: DestinationKind
 }
 
 export function createChannel<TSlide>(id: ChannelId, label: string): ChannelState<TSlide> {
