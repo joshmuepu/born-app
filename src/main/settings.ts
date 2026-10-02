@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
 import type { NamedDisplay } from './displays'
+import type { ChannelDefinition, DestinationRoutingEntry } from '../shared/channels'
 
 export interface AppSettings {
   /** Operator-given names for physical displays ("Sanctuary Projector"),
@@ -48,6 +49,17 @@ export interface AppSettings {
    *  the key picker turns the common case into one tap instead of a search
    *  through all 24. */
   recentKeys: string[]
+  /** Which channels exist — just id/label, not their live content. Only
+   *  'main' today; a future second channel (e.g. a translated feed) would
+   *  add an entry here so it survives a restart like everything else on
+   *  this page. */
+  channelDefinitions: ChannelDefinition[]
+  /** Which destination routes to which channel. Only one valid shape exists
+   *  today (congregation + stage both to 'main'), but this is read at
+   *  startup rather than hardcoded so a future destination or channel is a
+   *  data change, not a code change — and so routing survives a crash or
+   *  restart the same way display assignments already do. */
+  destinationRouting: DestinationRoutingEntry[]
 }
 
 const DEFAULTS: AppSettings = {
@@ -62,7 +74,12 @@ const DEFAULTS: AppSettings = {
   recentSongIds: [],
   recentQuotes: [],
   recentBibleRefs: [],
-  recentKeys: []
+  recentKeys: [],
+  channelDefinitions: [{ id: 'main', label: 'Main' }],
+  destinationRouting: [
+    { destinationId: 'congregation', channelId: 'main' },
+    { destinationId: 'stage', channelId: 'main' }
+  ]
 }
 
 let cache: AppSettings | null = null

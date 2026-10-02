@@ -90,6 +90,13 @@ import {
   fetchSubtitles,
   fetchLanguages
 } from './tableApi'
+import {
+  createChannel,
+  patchChannel,
+  type ChannelId,
+  type ChannelState,
+  type DestinationConfig
+} from '../shared/channels'
 
 /**
  * Single-instance lock — must run before anything else touches `app`. Without
@@ -114,7 +121,21 @@ let stageWindow: BrowserWindow | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// ── Projection state (replayed to the projection window when it (re)connects) ──
+// ── Channel / destination state (replayed to a destination when it (re)connects) ──
+//
+// A channel is "what's currently live, for one audience" — content and
+// navigation, independent of where it's rendered. A destination is a place
+// that content can be sent (congregation window, stage window; a 'browser'
+// kind is reserved for a future Graphics destination — see shared/channels.ts).
+//
+// Both the set of channels and the destination→channel routing are seeded
+// from persisted settings (not hardcoded), so this registry is structurally
+// fine with multiple channels coexisting even though only 'main' exists
+// today, and so routing survives a restart or crash the same way display
+// assignments already do. Only 'main' is ever instantiated right now because
+// nothing upstream (the renderer, the remote) has a channel concept yet —
+// the IPC handlers below are the one place allowed to say 'main' by name;
+// the registry itself never hardcodes it.
 
 /** One slide on the projector: quote text, a Bible verse, or a song section. */
 export interface SlidePayload {
@@ -125,23 +146,48 @@ export interface SlidePayload {
   marker?: string
 }
 
-interface ProjectionState {
-  slide: SlidePayload | null
-  blank: boolean
-  fontSize: number
-}
-let projectionState: ProjectionState = {
-  slide: null,
-  blank: false,
-  fontSize: getSettingsSafe().fontSize
-}
-let projectionReady = false
+const channels = new Map<ChannelId, ChannelState<SlidePayload>>(
+  getSettingsSafe().channelDefinitions.map((def) => [
+    def.id,
+    createChannel<SlidePayload>(def.id, def.label)
+  ])
+)
 
-interface StageState {
-  current: SlidePayload | null
-  next: SlidePayload | null
+interface DestinationEntry {
+  config: DestinationConfig
+  /** Window-connected flag, mirroring projectionReady/stageReady below —
+   *  kept here too (not instead of) so a future status/observability view
+   *  has one place to read "is this destination actually connected" for
+   *  every destination generically, not just the two that exist today. */
+  ready: boolean
+  /** Only meaningful for the congregation destination today — stage's text
+   *  size is fixed by CSS, not this setting. Lives on the destination, not
+   *  the channel, because it's presentation (how), not content (what). */
+  fontSize?: number
+  send: (channel: string, ...args: unknown[]) => void
 }
-let stageState: StageState = { current: null, next: null }
+
+/** Built once sendToProjection/sendToStage exist — see below. */
+let destinations: Map<string, DestinationEntry>
+
+function destinationsFor(channelId: ChannelId): DestinationEntry[] {
+  return [...destinations.values()].filter((d) => d.config.channelId === channelId)
+}
+
+/** Plain, serializable snapshot of the whole registry — not wired to any UI
+ *  or IPC yet, but exists so a future "what's live and where is it actually
+ *  routed" view doesn't require re-architecting this registry to build. */
+export function channelRoutingSnapshot(): Array<{
+  channel: ChannelState<SlidePayload>
+  destinations: Array<{ id: string; ready: boolean }>
+}> {
+  return [...channels.values()].map((channel) => ({
+    channel,
+    destinations: destinationsFor(channel.id).map((d) => ({ id: d.config.id, ready: d.ready }))
+  }))
+}
+
+let projectionReady = false
 let stageReady = false
 
 function getSettingsSafe(): AppSettings {
@@ -158,7 +204,12 @@ function getSettingsSafe(): AppSettings {
       recentSongIds: [],
       recentQuotes: [],
       recentBibleRefs: [],
-      recentKeys: []
+      recentKeys: [],
+      channelDefinitions: [{ id: 'main', label: 'Main' }],
+      destinationRouting: [
+        { destinationId: 'congregation', channelId: 'main' },
+        { destinationId: 'stage', channelId: 'main' }
+      ]
     }
   }
 }
@@ -180,6 +231,31 @@ function sendToProjection(channel: string, ...args: unknown[]): void {
 function sendToStage(channel: string, ...args: unknown[]): void {
   if (stageWindow && !stageWindow.isDestroyed()) stageWindow.webContents.send(channel, ...args)
 }
+
+// The destinations themselves (congregation, stage) aren't user-addable yet —
+// that's Phase 2 — so which ones exist, their kind, and their send function
+// are still known here in code. What IS data-driven and persisted is which
+// channel each one routes to (destinationRouting in settings.ts), so adding
+// real destination management later is a registry change, not a routing one.
+const DESTINATION_SEND: Record<string, (channel: string, ...args: unknown[]) => void> = {
+  congregation: sendToProjection,
+  stage: sendToStage
+}
+
+destinations = new Map<string, DestinationEntry>(
+  getSettingsSafe().destinationRouting.flatMap((route) => {
+    const send = DESTINATION_SEND[route.destinationId]
+    if (!send) return [] // unknown destination id in settings — ignore rather than crash
+    const config: DestinationConfig = {
+      id: route.destinationId,
+      channelId: route.channelId,
+      kind: 'window'
+    }
+    const entry: DestinationEntry = { config, ready: false, send }
+    if (route.destinationId === 'congregation') entry.fontSize = getSettingsSafe().fontSize
+    return [[route.destinationId, entry]]
+  })
+)
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
@@ -243,13 +319,13 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
     const mod = input.meta || input.control
     if (input.key === 'Escape') {
       event.preventDefault()
-      setProjectionBlank(!projectionState.blank)
+      setChannelBlank('main', !channels.get('main')!.blanked)
     } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
       event.preventDefault()
       projectionWindow?.close()
     } else if (!mod && !input.alt && input.key.toLowerCase() === 'b') {
       event.preventDefault()
-      setProjectionBlank(!projectionState.blank)
+      setChannelBlank('main', !channels.get('main')!.blanked)
     }
   })
 }
@@ -308,11 +384,15 @@ function createProjectionWindow(): void {
     log.info('projectionWindow closed')
     projectionWindow = null
     projectionReady = false
-    projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
+    const dest = destinations.get('congregation')
+    if (dest) dest.ready = false
+    channels.set(
+      'main',
+      patchChannel(channels.get('main')!, { current: null, next: null, blanked: false })
+    )
     // Nothing is being projected any more — the stage monitor falls back to the
     // clock rather than freezing on the last slide.
-    stageState = { current: null, next: null }
-    sendToStage('stage:update', stageState)
+    sendToStage('stage:update', { current: null, next: null })
     sendToStage('stage:set-blank', false)
     sendToMain('projection:closed')
   })
@@ -385,6 +465,8 @@ function createStageWindow(): void {
     log.info('stageWindow closed')
     stageWindow = null
     stageReady = false
+    const dest = destinations.get('stage')
+    if (dest) dest.ready = false
     sendToMain('stage:closed')
   })
 }
@@ -623,16 +705,54 @@ function onDisplayLayoutChanged(reason: string): void {
   }, 400)
 }
 
-// ── Projection control helpers ────────────────────────────────────────────────
+// ── Channel control (internal command surface) ────────────────────────────────
+//
+// Plain functions, not an IPC handler each — the one place a future HTTP/WS
+// API layer (deferred; see the roadmap) would call into, and already what
+// attachOperatorShortcuts and the remote's command dispatch use below instead
+// of reaching into a window directly.
 
-function setProjectionBlank(blank: boolean): void {
-  projectionState.blank = blank
-  sendToProjection('projection:set-blank', blank)
-  // The stage monitor's "Congregation" view mirrors the projector, blackout included.
-  sendToStage('stage:set-blank', blank)
+function setChannelBlank(channelId: ChannelId, blank: boolean): void {
+  const channel = channels.get(channelId)
+  if (!channel) return
+  channels.set(channelId, patchChannel(channel, { blanked: blank }))
+  const congregation = destinations.get('congregation')
+  if (congregation && congregation.config.channelId === channelId) {
+    congregation.send('projection:set-blank', blank)
+  }
+  const stage = destinations.get('stage')
+  if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', blank)
   // Keep the operator console's blank state in sync (e.g. when the command came
-  // from the projection window's Esc key or the phone web remote).
-  sendToMain('operator:blank-changed', blank)
+  // from the projection window's Esc key or the phone web remote). Only 'main'
+  // has an operator console concept today.
+  if (channelId === 'main') sendToMain('operator:blank-changed', blank)
+}
+
+function clearChannel(channelId: ChannelId): void {
+  const channel = channels.get(channelId)
+  if (!channel) return
+  channels.set(channelId, patchChannel(channel, { current: null, next: null, blanked: false }))
+  const congregation = destinations.get('congregation')
+  if (congregation && congregation.config.channelId === channelId) congregation.send('projection:clear')
+  const stage = destinations.get('stage')
+  if (stage && stage.config.channelId === channelId) {
+    stage.send('stage:update', { current: null, next: null })
+    stage.send('stage:set-blank', false)
+  }
+}
+
+function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
+  const channel = channels.get(channelId)
+  if (!channel) return
+  channels.set(channelId, patchChannel(channel, { current: slide, blanked: false }))
+  const congregation = destinations.get('congregation')
+  if (congregation && congregation.config.channelId === channelId) {
+    congregation.send('projection:show-slide', slide)
+  }
+  // A fresh slide always un-blanks — keep the stage screen in step so it
+  // doesn't stay stuck on the clock after an Esc blackout.
+  const stage = destinations.get('stage')
+  if (stage && stage.config.channelId === channelId) stage.send('stage:set-blank', false)
 }
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
@@ -665,10 +785,13 @@ ipcMain.handle('projection:open', () => {
 ipcMain.on('projection:ready', () => {
   log.info('ipc projection:ready — replaying state')
   projectionReady = true
+  const congregation = destinations.get('congregation')
+  if (congregation) congregation.ready = true
   broadcastDisplayInfo()
-  if (projectionState.slide) sendToProjection('projection:show-slide', projectionState.slide)
-  sendToProjection('projection:set-font-size', projectionState.fontSize)
-  sendToProjection('projection:set-blank', projectionState.blank)
+  const channel = channels.get(congregation?.config.channelId ?? 'main')
+  if (channel?.current) sendToProjection('projection:show-slide', channel.current)
+  sendToProjection('projection:set-font-size', congregation?.fontSize ?? getSettingsSafe().fontSize)
+  sendToProjection('projection:set-blank', channel?.blanked ?? false)
 })
 
 ipcMain.handle('projection:close', () => {
@@ -677,19 +800,11 @@ ipcMain.handle('projection:close', () => {
 })
 
 ipcMain.on('projection:show-slide', (_event, slide: SlidePayload) => {
-  projectionState = { ...projectionState, slide, blank: false }
-  sendToProjection('projection:show-slide', slide)
-  // A fresh slide always un-blanks — keep the stage screen in step so it doesn't
-  // stay stuck on the clock after an Esc blackout.
-  sendToStage('stage:set-blank', false)
+  showChannelSlide(destinations.get('congregation')?.config.channelId ?? 'main', slide)
 })
 
 ipcMain.on('projection:clear', () => {
-  projectionState = { ...projectionState, slide: null, blank: false }
-  sendToProjection('projection:clear')
-  stageState = { current: null, next: null }
-  sendToStage('stage:update', stageState)
-  sendToStage('stage:set-blank', false)
+  clearChannel(destinations.get('congregation')?.config.channelId ?? 'main')
 })
 
 ipcMain.on(
@@ -704,11 +819,12 @@ ipcMain.on(
 )
 
 ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
-  setProjectionBlank(blank)
+  setChannelBlank(destinations.get('congregation')?.config.channelId ?? 'main', blank)
 })
 
 ipcMain.on('projection:set-font-size', (_event, size: number) => {
-  projectionState.fontSize = size
+  const congregation = destinations.get('congregation')
+  if (congregation) congregation.fontSize = size
   try {
     updateSettings({ fontSize: size })
   } catch (e) {
@@ -719,7 +835,10 @@ ipcMain.on('projection:set-font-size', (_event, size: number) => {
 
 /** The persisted projection text size, so the operator console's Text control
  *  shows the real value (not a hard-coded 100%). */
-ipcMain.handle('projection:get-font-size', () => projectionState.fontSize)
+ipcMain.handle(
+  'projection:get-font-size',
+  () => destinations.get('congregation')?.fontSize ?? getSettingsSafe().fontSize
+)
 
 // ── Theme (control window only) ───────────────────────────────────────────────
 
@@ -1178,8 +1297,11 @@ ipcMain.handle('stage:open', () => {
 
 ipcMain.on('stage:ready', () => {
   stageReady = true
-  sendToStage('stage:update', stageState)
-  sendToStage('stage:set-blank', projectionState.blank)
+  const stage = destinations.get('stage')
+  if (stage) stage.ready = true
+  const channel = channels.get(stage?.config.channelId ?? 'main')
+  sendToStage('stage:update', { current: channel?.current ?? null, next: channel?.next ?? null })
+  sendToStage('stage:set-blank', channel?.blanked ?? false)
   sendToStage('stage:display-info', displayInfoPayload())
 })
 
@@ -1187,10 +1309,17 @@ ipcMain.handle('stage:close', () => {
   if (stageWindow && !stageWindow.isDestroyed()) stageWindow.close()
 })
 
-ipcMain.on('stage:update', (_event, data: StageState) => {
-  stageState = data ?? { current: null, next: null }
-  sendToStage('stage:update', stageState)
-})
+ipcMain.on(
+  'stage:update',
+  (_event, data: { current: SlidePayload | null; next: SlidePayload | null }) => {
+    const channelId = destinations.get('stage')?.config.channelId ?? 'main'
+    const channel = channels.get(channelId)
+    if (!channel) return
+    const next = data ?? { current: null, next: null }
+    channels.set(channelId, patchChannel(channel, { current: next.current, next: next.next }))
+    sendToStage('stage:update', next)
+  }
+)
 
 // ── Web Remote IPC ────────────────────────────────────────────────────────────
 
@@ -1746,7 +1875,8 @@ app.whenReady().then(() => {
     const devIconPath = join(app.getAppPath(), 'build/icons/icon.png')
     if (existsSync(devIconPath)) app.dock?.setIcon(devIconPath)
   }
-  projectionState.fontSize = getSettingsSafe().fontSize
+  const congregation = destinations.get('congregation')
+  if (congregation) congregation.fontSize = getSettingsSafe().fontSize
   nativeTheme.themeSource = getSettingsSafe().theme
   createMainWindow()
 
@@ -1777,9 +1907,9 @@ app.whenReady().then(() => {
       if (cmd.action === 'prev' || cmd.action === 'next') {
         mainWindow.webContents.send('queue:navigate', cmd.action)
       } else if (cmd.action === 'blank') {
-        setProjectionBlank(true)
+        setChannelBlank('main', true)
       } else if (cmd.action === 'unblank') {
-        setProjectionBlank(false)
+        setChannelBlank('main', false)
       } else if (cmd.action === 'project' && cmd.id !== undefined) {
         mainWindow.webContents.send('webremote:project', cmd.id)
       } else if (cmd.action === 'project-at' && cmd.id !== undefined) {

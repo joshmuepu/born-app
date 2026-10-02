@@ -40,6 +40,11 @@ export interface WebRemoteState {
   activeIndex: number | null
   activeSlide: number
   blanked: boolean
+  /** Which channel this state describes. Optional and unused today — the
+   *  remote only ever drives 'main', implicitly, the same as everything
+   *  else in this file. Reserved so reporting it later (once a second
+   *  channel exists) isn't a breaking change to this type. */
+  channelId?: string
   /** Whatever translation the desktop app currently has selected for Bible —
    *  the remote has no translation picker of its own, it just reflects this,
    *  so it never shows different wording than what's actually on screen. */
