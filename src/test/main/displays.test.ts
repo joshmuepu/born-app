@@ -86,6 +86,31 @@ describe('pickProjectionDisplay', () => {
     expect(t.display.id).toBe(3)
     expect(t.isOverride).toBe(true)
   })
+
+  it('flags an override match as ambiguous when it resolved among two identical monitors', () => {
+    const internal = mk(1, { internal: true })
+    const twinA = mk(2, { internal: false, label: 'PA278QV', bounds: { x: 1000, y: 0, width: 2560, height: 1440 } })
+    const twinB = mk(3, { internal: false, label: 'PA278QV', bounds: { x: 2000, y: 0, width: 2560, height: 1440 } })
+    const displays = [internal, twinA, twinB]
+    const namedB = nameIt(displays, twinB, 'Stage Monitor')
+    const t = pickProjectionDisplay(displays, 1, 'Stage Monitor', [namedB])
+    expect(t.ambiguous).toBe(true)
+  })
+
+  it('does not flag an override match as ambiguous when its display is unique', () => {
+    const internal = mk(1, { internal: true })
+    const projector = mk(2, { internal: false, label: 'ViewSonic' })
+    const named = nameIt([internal, projector], projector, 'Sanctuary Projector')
+    const t = pickProjectionDisplay([internal, projector], 1, 'Sanctuary Projector', [named])
+    expect(t.ambiguous).toBe(false)
+  })
+
+  it('is not ambiguous when there is no override at all', () => {
+    const internal = mk(1, { internal: true })
+    const projector = mk(2, { internal: false })
+    const t = pickProjectionDisplay([internal, projector], 1)
+    expect(t.ambiguous).toBe(false)
+  })
 })
 
 describe('pickStageDisplay', () => {
@@ -118,6 +143,36 @@ describe('pickStageDisplay', () => {
     expect(t.display?.id).toBe(3)
     expect(t.isOverride).toBe(false)
     expect(t.missingOverrideName).toBe('Stage Monitor')
+  })
+
+  it('flags an override match as ambiguous when two identical monitors are connected', () => {
+    const twinA = mk(2, { internal: false, label: 'PA278QV', bounds: { x: 1000, y: 0, width: 2560, height: 1440 } })
+    const twinB = mk(3, { internal: false, label: 'PA278QV', bounds: { x: 2000, y: 0, width: 2560, height: 1440 } })
+    const displays = [internal, twinA, twinB]
+    const named = nameIt(displays, twinA, 'Stage Monitor')
+    const t = pickStageDisplay(displays, 1, 99, 'Stage Monitor', [named])
+    expect(t.display?.id).toBe(2)
+    expect(t.ambiguous).toBe(true)
+  })
+
+  it('reproduces the real failure mode: identical twins reconnecting in a flipped left-right order silently attach the name to the other physical screen', () => {
+    // Operator names the LEFT-hand twin "Stage Monitor" (x=1000, ordinal 0).
+    const before = [internal, mk(2, { internal: false, label: 'PA278QV', bounds: { x: 1000, y: 0, width: 2560, height: 1440 } }), mk(3, { internal: false, label: 'PA278QV', bounds: { x: 2000, y: 0, width: 2560, height: 1440 } })]
+    const named = nameIt(before, before[1], 'Stage Monitor')
+    expect(matchNamedDisplay(before, named)?.id).toBe(2)
+
+    // Reconnect: same two physical monitors, same ids even, but the OS now
+    // reports their x-positions swapped (e.g. a driver reinit after reboot)
+    // — nothing about this is a cable swap or a configuration change an
+    // operator made, just enumeration order drifting.
+    const after = [internal, mk(2, { internal: false, label: 'PA278QV', bounds: { x: 2000, y: 0, width: 2560, height: 1440 } }), mk(3, { internal: false, label: 'PA278QV', bounds: { x: 1000, y: 0, width: 2560, height: 1440 } })]
+    const match = matchNamedDisplay(after, named)
+    // The name has silently attached to the other physical display (id 3,
+    // now at the remembered ordinal-0 x-position) — this is the real,
+    // unfixable-in-software limit the ambiguous flag exists to surface.
+    expect(match?.id).toBe(3)
+    const t = pickStageDisplay(after, 1, 99, 'Stage Monitor', [named])
+    expect(t.ambiguous).toBe(true)
   })
 
   it('never picks the operator or projection screen automatically', () => {

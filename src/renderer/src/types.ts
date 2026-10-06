@@ -32,12 +32,17 @@ export interface DisplayInfo {
   isFallback: boolean
   isOverride: boolean
   missingOverrideName: string | null
+  /** The named override matched one of two-or-more currently-connected
+   *  identical-model displays — a best-effort guess among twins, not a
+   *  confirmed match (see main/displays.ts's ProjectionTarget.ambiguous). */
+  ambiguous: boolean
   hasExternal: boolean
   stageTargetId: number | null
   stageTargetName: string | null
   stageIsWindowed: boolean
   stageIsOverride: boolean
   stageMissingOverrideName: string | null
+  stageAmbiguous: boolean
   stageClashesProjection: boolean
 }
 

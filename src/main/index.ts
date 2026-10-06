@@ -866,6 +866,11 @@ function displayInfoPayload() {
     isFallback: target.isFallback,
     isOverride: target.isOverride,
     missingOverrideName: target.missingOverrideName,
+    // True when the override matched one of two-or-more currently-connected
+    // identical-model displays — the pick is a best-effort guess among
+    // twins, not a confirmed match, so the UI says so instead of presenting
+    // it exactly like a confident one.
+    ambiguous: target.ambiguous,
     hasExternal: displays.length > 1,
     // Stage monitor
     stageTargetId: stage.display?.id ?? null,
@@ -873,6 +878,7 @@ function displayInfoPayload() {
     stageIsWindowed: stage.display === null,
     stageIsOverride: stage.isOverride,
     stageMissingOverrideName: stage.missingOverrideName,
+    stageAmbiguous: stage.ambiguous,
     /** true when the stage would share a screen with the main projection. */
     stageClashesProjection: stage.display != null && stage.display.id === target.display.id
   }

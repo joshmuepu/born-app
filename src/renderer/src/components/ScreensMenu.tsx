@@ -91,6 +91,7 @@ interface RoleProps {
   targetName: string | null
   isOverride: boolean
   missingOverrideName: string | null
+  ambiguous?: boolean
   isWindowed?: boolean
   clash?: boolean
   onSelect: (id: number | null) => void
@@ -265,6 +266,13 @@ function ScreenRoleGroup(p: RoleProps) {
         <p className="screens-note screens-note--warn">
           <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
           The stage monitor is on the same screen as the projection — pick a different one.
+        </p>
+      )}
+      {p.isOverride && p.ambiguous && (
+        <p className="screens-note screens-note--warn">
+          <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+          Two identical displays are connected — can't tell them apart with certainty, so this
+          might be the wrong one. Confirm it's showing on the right screen.
         </p>
       )}
       {p.role === 'stage' && !p.isOpen && (
@@ -737,6 +745,7 @@ export default function ScreensMenu({
             targetName={displayInfo?.targetName ?? null}
             isOverride={!!displayInfo?.isOverride}
             missingOverrideName={displayInfo?.missingOverrideName ?? null}
+            ambiguous={!!displayInfo?.ambiguous}
             onSelect={onSetProjectionDisplay}
             renamingId={renamingId}
             onStartRename={setRenamingId}
@@ -760,6 +769,7 @@ export default function ScreensMenu({
             targetName={displayInfo?.stageTargetName ?? null}
             isOverride={!!displayInfo?.stageIsOverride}
             missingOverrideName={displayInfo?.stageMissingOverrideName ?? null}
+            ambiguous={!!displayInfo?.stageAmbiguous}
             isWindowed={!!displayInfo?.stageIsWindowed}
             clash={clash}
             onSelect={onSetStageDisplay}

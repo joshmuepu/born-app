@@ -112,11 +112,27 @@ export interface ProjectionTarget {
    *  say "Sanctuary Projector — not detected" instead of quietly switching to
    *  a different screen with no explanation. */
   missingOverrideName: string | null
+  /** true when the match came from an override AND more than one currently-
+   *  connected display shares its fingerprint (two identical monitors) — the
+   *  ordinal tiebreak picked one, but nothing software-visible can actually
+   *  tell them apart, so a reconnect/reboot that reports them in a different
+   *  left-to-right order silently attaches the name to the wrong physical
+   *  screen. There's no fix for that within what Electron exposes (no EDID/
+   *  serial access) — this just makes the guess visible instead of silent,
+   *  the same way missingOverrideName does for "not found at all". */
+  ambiguous: boolean
 }
 
 function autoPickExternal(displays: DisplayLike[], primaryId: number): DisplayLike | undefined {
   const externals = displays.filter((d) => d.id !== primaryId)
   return externals.find((d) => !d.internal) ?? externals[0]
+}
+
+/** True when more than one currently-connected display shares `named`'s
+ *  fingerprint — the ordinal tiebreak still resolves to exactly one of them,
+ *  but which one is a guess that can silently flip between sessions. */
+function isAmbiguousMatch(displays: DisplayLike[], named: NamedDisplay): boolean {
+  return siblingsOf(displays, named.fingerprint).length > 1
 }
 
 /**
@@ -137,19 +153,27 @@ export function pickProjectionDisplay(
   if (overrideName) {
     const named = namedDisplays.find((n) => n.name === overrideName)
     const forced = named ? matchNamedDisplay(displays, named) : null
-    if (forced) {
-      return { display: forced, isFallback: forced.id === primaryId, isOverride: true, missingOverrideName: null }
+    if (forced && named) {
+      return {
+        display: forced,
+        isFallback: forced.id === primaryId,
+        isOverride: true,
+        missingOverrideName: null,
+        ambiguous: isAmbiguousMatch(displays, named)
+      }
     }
     const target = autoPickExternal(displays, primaryId)
-    if (target) return { display: target, isFallback: false, isOverride: false, missingOverrideName: overrideName }
+    if (target) {
+      return { display: target, isFallback: false, isOverride: false, missingOverrideName: overrideName, ambiguous: false }
+    }
     const primary = displays.find((d) => d.id === primaryId) ?? displays[0]
-    return { display: primary, isFallback: true, isOverride: false, missingOverrideName: overrideName }
+    return { display: primary, isFallback: true, isOverride: false, missingOverrideName: overrideName, ambiguous: false }
   }
 
   const target = autoPickExternal(displays, primaryId)
-  if (target) return { display: target, isFallback: false, isOverride: false, missingOverrideName: null }
+  if (target) return { display: target, isFallback: false, isOverride: false, missingOverrideName: null, ambiguous: false }
   const primary = displays.find((d) => d.id === primaryId) ?? displays[0]
-  return { display: primary, isFallback: true, isOverride: false, missingOverrideName: null }
+  return { display: primary, isFallback: true, isOverride: false, missingOverrideName: null, ambiguous: false }
 }
 
 export interface StageTarget {
@@ -161,6 +185,8 @@ export interface StageTarget {
   isOverride: boolean
   /** Same meaning as ProjectionTarget.missingOverrideName. */
   missingOverrideName: string | null
+  /** Same meaning as ProjectionTarget.ambiguous. */
+  ambiguous: boolean
 }
 
 /**
@@ -182,17 +208,25 @@ export function pickStageDisplay(
   if (overrideName) {
     const named = namedDisplays.find((n) => n.name === overrideName)
     const forced = named ? matchNamedDisplay(displays, named) : null
-    if (forced) return { display: forced, isFallback: false, isOverride: true, missingOverrideName: null }
+    if (forced && named) {
+      return {
+        display: forced,
+        isFallback: false,
+        isOverride: true,
+        missingOverrideName: null,
+        ambiguous: isAmbiguousMatch(displays, named)
+      }
+    }
     const spare = spareOf()
     return spare
-      ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: overrideName }
-      : { display: null, isFallback: true, isOverride: false, missingOverrideName: overrideName }
+      ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: overrideName, ambiguous: false }
+      : { display: null, isFallback: true, isOverride: false, missingOverrideName: overrideName, ambiguous: false }
   }
 
   const spare = spareOf()
   return spare
-    ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: null }
-    : { display: null, isFallback: true, isOverride: false, missingOverrideName: null }
+    ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: null, ambiguous: false }
+    : { display: null, isFallback: true, isOverride: false, missingOverrideName: null, ambiguous: false }
 }
 
 /** A short human label for a display, for the operator's picker + logs.
