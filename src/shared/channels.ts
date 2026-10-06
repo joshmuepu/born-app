@@ -70,6 +70,22 @@ export interface DestinationConfig {
 export interface ChannelDefinition {
   id: ChannelId
   label: string
+  /** Bible translation code this channel is set to (e.g. 'KJV', 'FRLSG').
+   *  Persisted per channel — unlike Main's own translation picker, which is
+   *  deliberately session-only (see App.tsx's bibleTranslation state) — so an
+   *  operator driving a non-English channel doesn't have to re-pick its
+   *  translation every launch. Optional for backward compatibility with
+   *  definitions saved before this field existed; callers default a missing
+   *  value to 'KJV'. */
+  translation?: string
+  /** Songbook (see main/songs.ts) this channel's Songs panel defaults to —
+   *  same reasoning as `translation`: persisted per channel, defaults to
+   *  'default' (the pre-existing flat library) when absent. */
+  songbookId?: string
+  /** This channel's sync relationship to another — see SyncMode above.
+   *  Persisted so a 'follow' channel stays linked across a restart. Absent
+   *  defaults to independent, same as a freshly created channel. */
+  sync?: ChannelSyncConfig
 }
 
 /** Persisted shape of which destination routes to which channel — survives

@@ -23,7 +23,10 @@ import {
   commitReviewedSong,
   onlineSongSearch,
   onlineSongPreview,
-  onlineSongImport
+  onlineSongImport,
+  listSongbooks,
+  addSongbook,
+  removeSongbook
 } from './songs'
 import type { ParsedSong } from '../shared/song'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
@@ -34,12 +37,14 @@ import {
   isWebRemoteAvailable,
   getWebRemoteTranslation,
   pushGraphicsUpdate,
-  setGraphicsActive,
+  registerGraphicsDestination,
+  unregisterGraphicsDestination,
   setGraphicsProfile,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
+import { formatVerse } from '../shared/bibleRef'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -98,6 +103,8 @@ import {
   patchChannel,
   type ChannelId,
   type ChannelState,
+  type ChannelDefinition,
+  type ChannelSyncConfig,
   type DestinationConfig,
   type PresentationProfileId
 } from '../shared/channels'
@@ -145,13 +152,11 @@ const isDev = process.env.NODE_ENV === 'development'
 // kind is reserved for a future Graphics destination — see shared/channels.ts).
 //
 // Both the set of channels and the destination→channel routing are seeded
-// from persisted settings (not hardcoded), so this registry is structurally
-// fine with multiple channels coexisting even though only 'main' exists
-// today, and so routing survives a restart or crash the same way display
-// assignments already do. Only 'main' is ever instantiated right now because
-// nothing upstream (the renderer, the remote) has a channel concept yet —
-// the IPC handlers below are the one place allowed to say 'main' by name;
-// the registry itself never hardcodes it.
+// from persisted settings (not hardcoded) — 'main' is still the one
+// built-in, code-known channel (the operator console and congregation/stage
+// destinations assume it always exists), but any number of others can
+// coexist alongside it (see Phase 5's channel CRUD below), each with its own
+// destinations, translation, songbook, and sync mode.
 
 /** One slide on the projector: quote text, a Bible verse, or a song section. */
 export interface SlidePayload {
@@ -160,13 +165,40 @@ export interface SlidePayload {
   label?: string
   reference?: string
   marker?: string
+  /** Structured source identity, for a channel configured to 'follow' this
+   *  one — lets the follow channel re-resolve the same content in its own
+   *  language instead of just mirroring this exact text. Absent for a song
+   *  slide (no translated-lyric source exists) and for anything built before
+   *  this existed — a follow channel simply doesn't update for those. */
+  source?: SlideSource
 }
+
+export type SlideSource =
+  | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string }
 
 const channels = new Map<ChannelId, ChannelState<SlidePayload>>(
   getSettingsSafe().channelDefinitions.map((def) => [
     def.id,
-    createChannel<SlidePayload>(def.id, def.label)
+    { ...createChannel<SlidePayload>(def.id, def.label), sync: def.sync ?? { syncMode: 'independent' } }
   ])
+)
+
+/** Bible translation code each channel is set to — kept out of ChannelState
+ *  itself (content-agnostic by design) but still per-channel and persisted,
+ *  unlike Main's own translation picker (App.tsx's bibleTranslation), which
+ *  is deliberately session-only. Seeded from the same persisted definitions
+ *  as `channels` above; defaults a missing/older value to 'KJV'. */
+const channelTranslations = new Map<ChannelId, string>(
+  getSettingsSafe().channelDefinitions.map((def) => [def.id, def.translation ?? 'KJV'])
+)
+
+/** Default songbook (see main/songs.ts) each channel's Songs panel opens to —
+ *  same persisted-per-channel treatment as channelTranslations above.
+ *  Defaults to 'default', the pre-existing flat library, so a channel that
+ *  never picked one behaves exactly like today. */
+const channelSongbooks = new Map<ChannelId, string>(
+  getSettingsSafe().channelDefinitions.map((def) => [def.id, def.songbookId ?? 'default'])
 )
 
 interface DestinationEntry {
@@ -209,6 +241,100 @@ export function channelRoutingSnapshot(): Array<{
     channel,
     destinations: destinationsFor(channel.id).map((d) => ({ id: d.config.id, ready: d.ready }))
   }))
+}
+
+export interface ChannelInfo {
+  id: ChannelId
+  label: string
+  translation: string
+  songbookId: string
+  sync: ChannelSyncConfig
+}
+
+function channelsSnapshot(): ChannelInfo[] {
+  return [...channels.values()].map((c) => ({
+    id: c.id,
+    label: c.label,
+    translation: channelTranslations.get(c.id) ?? 'KJV',
+    songbookId: channelSongbooks.get(c.id) ?? 'default',
+    sync: c.sync
+  }))
+}
+
+function persistChannelDefinitions(): void {
+  const defs: ChannelDefinition[] = [...channels.values()].map((c) => ({
+    id: c.id,
+    label: c.label,
+    translation: channelTranslations.get(c.id) ?? 'KJV',
+    songbookId: channelSongbooks.get(c.id) ?? 'default',
+    sync: c.sync
+  }))
+  try {
+    updateSettings({ channelDefinitions: defs })
+  } catch (e) {
+    log.error('persist channelDefinitions failed', e)
+  }
+}
+
+/** A freshly added channel inherits whatever translation the caller says is
+ *  currently live (Main's, in practice — the operator UI passes its own
+ *  current bibleTranslation) and then owns that choice independently from
+ *  then on; defaults to 'KJV' if the caller doesn't say. Always starts on the
+ *  'default' songbook — picking a different one is a separate, later step. */
+function addChannel(label: string, inheritTranslation?: string): ChannelId {
+  const id = `channel-${Date.now().toString(36)}`
+  channels.set(id, createChannel<SlidePayload>(id, label))
+  channelTranslations.set(id, inheritTranslation ?? 'KJV')
+  channelSongbooks.set(id, 'default')
+  persistChannelDefinitions()
+  sendToMain('channels:changed', channelsSnapshot())
+  return id
+}
+
+/** 'main' can never be removed — the operator console and the built-in
+ *  congregation/stage destinations all assume it always exists. Cascades:
+ *  any destination bound to this channel is removed too (removeDestination
+ *  itself tears down a Graphics destination's webRemote.ts registration), so
+ *  nothing is left routing to a channel that no longer exists. */
+function removeChannel(id: ChannelId): void {
+  if (id === 'main' || !channels.has(id)) return
+  for (const dest of [...destinations.values()]) {
+    if (dest.config.channelId === id) removeDestination(dest.config.id)
+  }
+  channels.delete(id)
+  channelTranslations.delete(id)
+  channelSongbooks.delete(id)
+  persistChannelDefinitions()
+  sendToMain('channels:changed', channelsSnapshot())
+}
+
+function setChannelTranslation(id: ChannelId, translation: string): void {
+  if (!channels.has(id)) return
+  channelTranslations.set(id, translation)
+  persistChannelDefinitions()
+  sendToMain('channels:changed', channelsSnapshot())
+}
+
+function setChannelSongbook(id: ChannelId, songbookId: string): void {
+  if (!channels.has(id)) return
+  channelSongbooks.set(id, songbookId)
+  persistChannelDefinitions()
+  sendToMain('channels:changed', channelsSnapshot())
+}
+
+/** A channel can't follow itself — the trivial cycle case; multi-hop chains
+ *  (A follows B follows A) aren't possible today since the operator UI only
+ *  ever offers 'main' as a follow target, but this guard costs nothing and
+ *  holds even if that changes. showChannelSlide's cascade (below) is also
+ *  deliberately one-hop by construction: a follow channel's own derived
+ *  slide is applied directly, never re-entering the cascade itself. */
+function setChannelSync(id: ChannelId, sync: ChannelSyncConfig): void {
+  const channel = channels.get(id)
+  if (!channel) return
+  if (sync.syncMode !== 'independent' && sync.linkedTo === id) return
+  channels.set(id, patchChannel(channel, { sync }))
+  persistChannelDefinitions()
+  sendToMain('channels:changed', channelsSnapshot())
 }
 
 let projectionReady = false
@@ -266,14 +392,19 @@ const BUILTIN_DESTINATION_SEND: Record<string, (channel: string, ...args: unknow
   stage: sendToStage
 }
 
-function graphicsSend(channel: string, ...args: unknown[]): void {
-  if (channel !== 'graphics:update') return
-  pushGraphicsUpdate(args[0] as Parameters<typeof pushGraphicsUpdate>[0])
+/** Closes over this one destination's id so its graphics:update calls only
+ *  ever reach that destination's own SSE clients — two Graphics destinations
+ *  (one per channel) never see each other's pushes. */
+function graphicsSendFor(id: string): (channel: string, ...args: unknown[]) => void {
+  return (channel, ...args) => {
+    if (channel !== 'graphics:update') return
+    pushGraphicsUpdate(id, args[0] as Parameters<typeof pushGraphicsUpdate>[1])
+  }
 }
 
 function sendFnFor(route: { destinationId: string; kind: DestinationConfig['kind'] }) {
   if (BUILTIN_DESTINATION_SEND[route.destinationId]) return BUILTIN_DESTINATION_SEND[route.destinationId]
-  if (route.kind === 'browser') return graphicsSend
+  if (route.kind === 'browser') return graphicsSendFor(route.destinationId)
   return null
 }
 
@@ -295,12 +426,16 @@ destinations = new Map<string, DestinationEntry>(
   })
 )
 
-// A persisted Graphics destination (surviving a restart) needs webRemote.ts
-// told it's active (and which profile it's using) again — the registry above
-// already restored it, but that Map is private to this file.
-const restoredGraphics = [...destinations.values()].find((d) => d.config.kind === 'browser')
-setGraphicsActive(!!restoredGraphics)
-if (restoredGraphics) setGraphicsProfile(restoredGraphics.config.profileId ?? 'fullscreen')
+// Every persisted Graphics destination (surviving a restart) needs
+// webRemote.ts told it exists (and which profile it's using) again — the
+// registry above already restored it, but that Map is private to this file.
+// Loops over all of them, not just one, since more than one channel can each
+// have its own.
+for (const dest of destinations.values()) {
+  if (dest.config.kind === 'browser') {
+    registerGraphicsDestination(dest.config.id, dest.config.profileId ?? 'fullscreen')
+  }
+}
 
 function persistDestinationRouting(): void {
   const routing = [...destinations.values()].map((d) => ({
@@ -326,6 +461,7 @@ function graphicsBaseUrl(): string | null {
 
 export interface OutputInfo {
   id: string
+  channelId: ChannelId
   kind: DestinationConfig['kind']
   url: string | null
   profileId: PresentationProfileId | null
@@ -338,34 +474,38 @@ function outputsSnapshot(): OutputInfo[] {
     .filter((d) => d.config.kind === 'browser')
     .map((d) => ({
       id: d.config.id,
+      channelId: d.config.channelId,
       kind: d.config.kind,
-      url: base ? `${base}/output/graphics` : null,
+      url: base ? `${base}/output/graphics/${d.config.id}` : null,
       profileId: d.config.profileId ?? null,
       suppressed: d.suppressed
     }))
 }
 
-/** Adds one Graphics destination bound to 'main'. Multiple would work fine
- *  (destinationsFor/pushGraphicsForChannel already loop generically), but the
- *  UI only ever offers adding one at a time — enforced here too, not just by
- *  the "+ Add Graphics" button disappearing, since that's a client-side
- *  guard an IPC call can bypass (caught by exactly that during testing). */
-function addGraphicsDestination(): void {
-  if ([...destinations.values()].some((d) => d.config.kind === 'browser')) return
+/** Adds one Graphics destination bound to the given channel. At most one per
+ *  channel — enforced here too, not just by the "+ Add Graphics" button
+ *  disappearing, since that's a client-side guard an IPC call can bypass
+ *  (caught by exactly that during testing). Different channels can each have
+ *  their own, independently (see webRemote.ts's per-destination registry). */
+function addGraphicsDestination(channelId: ChannelId): void {
+  if (!channels.has(channelId)) return
+  if ([...destinations.values()].some((d) => d.config.kind === 'browser' && d.config.channelId === channelId)) {
+    return
+  }
   const id = `graphics-${Date.now().toString(36)}`
-  const config: DestinationConfig = { id, channelId: 'main', kind: 'browser', profileId: 'fullscreen' }
-  destinations.set(id, { config, ready: true, suppressed: false, send: graphicsSend })
-  setGraphicsActive(true)
-  setGraphicsProfile('fullscreen')
-  pushGraphicsForChannel(config.channelId) // so a browser opened right after adding isn't stuck on the SSE default
+  const config: DestinationConfig = { id, channelId, kind: 'browser', profileId: 'fullscreen' }
+  destinations.set(id, { config, ready: true, suppressed: false, send: graphicsSendFor(id) })
+  registerGraphicsDestination(id, 'fullscreen')
+  pushGraphicsForChannel(channelId) // so a browser opened right after adding isn't stuck on the SSE default
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
 }
 
 function removeDestination(id: string): void {
-  if (!destinations.has(id)) return
+  const dest = destinations.get(id)
+  if (!dest) return
   destinations.delete(id)
-  setGraphicsActive([...destinations.values()].some((d) => d.config.kind === 'browser'))
+  if (dest.config.kind === 'browser') unregisterGraphicsDestination(id)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
 }
@@ -374,7 +514,7 @@ function setOutputProfile(id: string, profileId: PresentationProfileId): void {
   const dest = destinations.get(id)
   if (!dest || dest.config.kind !== 'browser') return
   dest.config.profileId = profileId
-  setGraphicsProfile(profileId)
+  setGraphicsProfile(id, profileId)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
 }
@@ -930,7 +1070,96 @@ function clearChannel(channelId: ChannelId): void {
   pushGraphicsForChannel(channelId)
 }
 
+/** Which table.branham.org sermon-language code corresponds to each bundled
+ *  Bible translation — lets a channel's one translation choice (FRLSG, say)
+ *  double as its sermon-quote language (fr) too, rather than making the
+ *  operator pick and keep in sync a second, separate language setting.
+ *  Extend this when a new non-English Bible translation is bundled (see
+ *  scripts/build-library-db.ts's TRANSLATIONS). */
+const TRANSLATION_SERMON_LANGUAGE: Record<string, string> = {
+  KJV: 'en',
+  WEB: 'en',
+  ASV: 'en',
+  FRLSG: 'fr'
+}
+
+/** Re-resolves one slide's content in `followChannelId`'s own translation/
+ *  language — never just mirrors the source text verbatim. Falls back to
+ *  English when the follow channel's language doesn't have this specific
+ *  content (common for sermon quotes — only ~32% of sermons are translated
+ *  at all), per the explicit "default to English" decision. Returns null
+ *  when there's nothing to follow — a song slide (no translated-lyric
+ *  source exists) or a slide built before `source` metadata existed — in
+ *  which case the follow channel is left exactly as it was. */
+async function deriveFollowSlide(
+  slide: SlidePayload,
+  followChannelId: ChannelId
+): Promise<SlidePayload | null> {
+  if (!slide.source) return null
+
+  if (slide.source.kind === 'bible') {
+    const { bookNum, chapter, verse } = slide.source
+    const ref = formatVerse(bookNum, chapter, verse)
+    const translation = channelTranslations.get(followChannelId) ?? 'KJV'
+    let resolved = lookupPassage(ref, translation)
+    if ('error' in resolved) resolved = lookupPassage(ref, 'KJV')
+    if ('error' in resolved) return null
+    const first = resolved.slides[0]
+    if (!first) return null
+    return {
+      kind: 'bible',
+      text: first.text,
+      label: first.label,
+      reference: first.reference,
+      marker: first.marker,
+      source: slide.source
+    }
+  }
+
+  const { sermonId, paragraphRef } = slide.source
+  const language = TRANSLATION_SERMON_LANGUAGE[channelTranslations.get(followChannelId) ?? 'KJV'] ?? 'en'
+  let text = await translateQuoteParagraph(sermonId, paragraphRef, language)
+  if (text === null && language !== 'en') {
+    text = await translateQuoteParagraph(sermonId, paragraphRef, 'en')
+  }
+  if (text === null) return null
+  // Label/reference/marker stay the source's own (still the English
+  // citation/title) — table.branham.org's translated content is paragraph
+  // text only, not a translated title, so there's nothing truer to show here.
+  return {
+    kind: 'quote',
+    text,
+    label: slide.label,
+    reference: slide.reference,
+    marker: slide.marker,
+    source: slide.source
+  }
+}
+
+/** Every channel 'follow'-ing `sourceChannelId` gets its own re-resolved
+ *  version of this slide pushed to it. Fire-and-forget: showChannelSlide
+ *  itself must stay synchronous (called from a plain ipcMain.on handler),
+ *  and a follow channel updating a beat after its source is unnoticeable —
+ *  unlike making every slide change on Main wait on a network round-trip for
+ *  a channel nobody may even be watching. */
+function cascadeFollowSlide(sourceChannelId: ChannelId, slide: SlidePayload): void {
+  for (const follower of channels.values()) {
+    if (follower.sync.syncMode !== 'follow' || follower.sync.linkedTo !== sourceChannelId) continue
+    const followerId = follower.id
+    deriveFollowSlide(slide, followerId)
+      .then((derived) => {
+        if (derived) applyChannelSlide(followerId, derived)
+      })
+      .catch((e) => log.error('cascadeFollowSlide error', e))
+  }
+}
+
 function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
+  applyChannelSlide(channelId, slide)
+  cascadeFollowSlide(channelId, slide)
+}
+
+function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   const channel = channels.get(channelId)
   if (!channel) return
   channels.set(channelId, patchChannel(channel, { current: slide, blanked: false }))
@@ -1542,8 +1771,8 @@ ipcMain.handle('webremote:ip', () => {
 
 ipcMain.handle('outputs:list', () => outputsSnapshot())
 
-ipcMain.handle('outputs:add-graphics', () => {
-  addGraphicsDestination()
+ipcMain.handle('outputs:add-graphics', (_event, channelId: ChannelId) => {
+  addGraphicsDestination(channelId)
   return outputsSnapshot()
 })
 
@@ -1563,6 +1792,46 @@ ipcMain.handle('outputs:set-profile', (_event, id: string, profileId: Presentati
 ipcMain.handle('destination:set-suppressed', (_event, id: string, suppressed: boolean) => {
   setDestinationSuppressed(id, suppressed)
   return outputsSnapshot()
+})
+
+// ── Channels (Phase 5: a second independent channel) ──────────────────────────
+
+ipcMain.handle('channels:list', () => channelsSnapshot())
+
+ipcMain.handle('channels:add', (_event, label: string, inheritTranslation?: string) => {
+  addChannel(label, inheritTranslation)
+  return channelsSnapshot()
+})
+
+ipcMain.handle('channels:remove', (_event, id: ChannelId) => {
+  removeChannel(id)
+  return channelsSnapshot()
+})
+
+ipcMain.handle('channels:set-translation', (_event, id: ChannelId, translation: string) => {
+  setChannelTranslation(id, translation)
+  return channelsSnapshot()
+})
+
+ipcMain.handle('channels:set-songbook', (_event, id: ChannelId, songbookId: string) => {
+  setChannelSongbook(id, songbookId)
+  return channelsSnapshot()
+})
+
+ipcMain.handle('channels:set-sync', (_event, id: ChannelId, sync: ChannelSyncConfig) => {
+  setChannelSync(id, sync)
+  return channelsSnapshot()
+})
+
+// Explicit-channel content path, purely additive alongside 'projection:show-
+// slide'/'projection:clear' (which remain hardcoded to congregation's own
+// channel, untouched) — lets the operator UI drive any channel by id.
+ipcMain.on('channel:show-slide', (_event, channelId: ChannelId, slide: SlidePayload) => {
+  showChannelSlide(channelId, slide)
+})
+
+ipcMain.on('channel:clear', (_event, channelId: ChannelId) => {
+  clearChannel(channelId)
 })
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
@@ -1930,7 +2199,9 @@ ipcMain.handle('bible:clear-recent', () => updateSettings({ recentBibleRefs: [] 
 
 // ── Songs IPC ─────────────────────────────────────────────────────────────────
 
-ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
+ipcMain.handle('songs:search', (_event, query: string, songbookId?: string) =>
+  searchSongs(query, undefined, songbookId)
+)
 ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
 ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
 
@@ -1989,7 +2260,7 @@ function clearRecentSongs(): void {
 ipcMain.handle('songs:recent', () => recentSongSummaries())
 ipcMain.handle('songs:clear-recent', () => clearRecentSongs())
 
-ipcMain.handle('songs:import', async () => {
+ipcMain.handle('songs:import', async (_event, songbookId?: string) => {
   const result = await dialog.showOpenDialog({
     title: 'Import songs',
     properties: ['openFile', 'multiSelections', 'openDirectory'],
@@ -2001,15 +2272,17 @@ ipcMain.handle('songs:import', async () => {
     ]
   })
   if (result.canceled || result.filePaths.length === 0) return null
-  return importSongs(result.filePaths)
+  return importSongs(result.filePaths, songbookId)
 })
 
 ipcMain.handle('songs:parse-pasted-text', (_event, text: string, titleHint?: string) =>
   parsePastedText(text, titleHint)
 )
 
-ipcMain.handle('songs:commit-reviewed', (_event, song: ParsedSong, originPath?: string) =>
-  commitReviewedSong(song, originPath)
+ipcMain.handle(
+  'songs:commit-reviewed',
+  (_event, song: ParsedSong, originPath?: string, songbookId?: string) =>
+    commitReviewedSong(song, originPath, songbookId)
 )
 
 // Online import (Hymnary.org + the Cyber Hymnal) — desktop-only (never
@@ -2022,49 +2295,78 @@ ipcMain.handle('songs:online-preview', (_event, url: string, source: 'hymnary' |
 )
 ipcMain.handle(
   'songs:online-import',
-  (_event, url: string, source: 'hymnary' | 'cyberhymnal', edited: ParsedSong) =>
-    onlineSongImport(url, source, edited)
+  (_event, url: string, source: 'hymnary' | 'cyberhymnal', edited: ParsedSong, songbookId?: string) =>
+    onlineSongImport(url, source, edited, songbookId)
 )
+
+// ── Songbooks (labeled song collections) ────────────────────────────────────
+
+ipcMain.handle('songbooks:list', () => listSongbooks())
+ipcMain.handle('songbooks:add', (_event, label: string) => {
+  addSongbook(label)
+  return listSongbooks()
+})
+ipcMain.handle('songbooks:remove', (_event, id: string) => {
+  removeSongbook(id)
+  return listSongbooks()
+})
 
 // ── Languages IPC ─────────────────────────────────────────────────────────────
 
 ipcMain.handle('languages:list', () => fetchLanguages())
 
+/** One paragraph's text in another language — cached in translated_paragraphs
+ *  after the first fetch (a whole-sermon fetch, since that's the unit the
+ *  source API actually serves) so a second lookup into the same sermon never
+ *  re-hits the network. Shared by the 'languages:translate-quote' IPC
+ *  handler (BrowsePanel's language picker) and follow-mode's quote-channel
+ *  cascade below — same cache, same correctness, one implementation. Returns
+ *  null on anything from "not translated into this language at all" to "this
+ *  specific paragraph isn't in that sermon" — callers decide what null means
+ *  for them (BrowsePanel shows nothing changed; follow-mode falls back to
+ *  English). */
+async function translateQuoteParagraph(
+  sermonId: number,
+  paragraphRef: string,
+  language: string
+): Promise<string | null> {
+  try {
+    const db = getDb()
+    const cached = db
+      .prepare<[number, string, string], { text: string }>(
+        'SELECT text FROM translated_paragraphs WHERE sermon_id = ? AND language = ? AND paragraph_ref = ?'
+      )
+      .get(sermonId, language, paragraphRef)
+    if (cached) return cached.text
+
+    const content = await fetchSermonContent(sermonId, language)
+    if (!content) return null
+
+    const insertSermon = db.prepare(
+      'INSERT OR IGNORE INTO translated_sermons (sermon_id, language, title) VALUES (?, ?, ?)'
+    )
+    const insertPara = db.prepare(
+      'INSERT OR IGNORE INTO translated_paragraphs (sermon_id, language, paragraph_ref, paragraph_index, text) VALUES (?, ?, ?, ?, ?)'
+    )
+    db.transaction(() => {
+      insertSermon.run(sermonId, language, content.title)
+      for (const s of content.sections) {
+        insertPara.run(sermonId, language, s.ref, s.index, s.text)
+      }
+    })()
+
+    const match = content.sections.find((s) => s.ref === paragraphRef)
+    return match?.text ?? null
+  } catch (e) {
+    log.error('translateQuoteParagraph error', e)
+    return null
+  }
+}
+
 ipcMain.handle(
   'languages:translate-quote',
-  async (_event, sermonId: number, paragraphRef: string, language: string) => {
-    try {
-      const db = getDb()
-      const cached = db
-        .prepare<[number, string, string], { text: string }>(
-          'SELECT text FROM translated_paragraphs WHERE sermon_id = ? AND language = ? AND paragraph_ref = ?'
-        )
-        .get(sermonId, language, paragraphRef)
-      if (cached) return cached.text
-
-      const content = await fetchSermonContent(sermonId, language)
-      if (!content) return null
-
-      const insertSermon = db.prepare(
-        'INSERT OR IGNORE INTO translated_sermons (sermon_id, language, title) VALUES (?, ?, ?)'
-      )
-      const insertPara = db.prepare(
-        'INSERT OR IGNORE INTO translated_paragraphs (sermon_id, language, paragraph_ref, paragraph_index, text) VALUES (?, ?, ?, ?, ?)'
-      )
-      db.transaction(() => {
-        insertSermon.run(sermonId, language, content.title)
-        for (const s of content.sections) {
-          insertPara.run(sermonId, language, s.ref, s.index, s.text)
-        }
-      })()
-
-      const match = content.sections.find((s) => s.ref === paragraphRef)
-      return match?.text ?? null
-    } catch (e) {
-      log.error('languages:translate-quote error', e)
-      return null
-    }
-  }
+  (_event, sermonId: number, paragraphRef: string, language: string) =>
+    translateQuoteParagraph(sermonId, paragraphRef, language)
 )
 
 // ── Indexer IPC ───────────────────────────────────────────────────────────────

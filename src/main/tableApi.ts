@@ -4,6 +4,7 @@
  */
 
 import { stripHtml, parseParagraphIndex, mergeHeadingSections } from './utils'
+import { SERMON_LANGUAGES } from '../shared/sermonLanguages'
 
 const BASE = 'https://table.branham.org/rest'
 
@@ -398,17 +399,10 @@ export async function fetchSubtitles(
 
 // ── Languages ─────────────────────────────────────────────────────────────────
 
-export async function fetchLanguages(): Promise<Record<string, string>> {
-  try {
-    const res = await fetch(`${BASE}/resources/localization/en`)
-    if (!res.ok) return {}
-    const json = await res.json() as {
-      Status: string
-      Result: { Resources: { Languages: { Names: Record<string, string> } } }
-    }
-    if (json.Status !== 'Successful') return {}
-    return json.Result?.Resources?.Languages?.Names ?? {}
-  } catch {
-    return {}
-  }
+/** The languages a sermon's actual TEXT content can be fetched in — see
+ *  shared/sermonLanguages.ts for why this isn't sourced from
+ *  /resources/localization (that endpoint's codes are a different,
+ *  UI-chrome-only namespace that the content endpoints silently reject). */
+export function fetchLanguages(): Promise<Record<string, string>> {
+  return Promise.resolve(Object.fromEntries(SERMON_LANGUAGES.map((l) => [l.code, l.name])))
 }

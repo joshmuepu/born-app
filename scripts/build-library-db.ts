@@ -52,7 +52,8 @@ const OUT_GZ = join(OUT_DIR, 'library.db.gz')
 const TRANSLATIONS = [
   { code: 'KJV', bolls: 'KJV', name: 'King James Version', order: 1 },
   { code: 'WEB', bolls: 'WEB', name: 'World English Bible', order: 2 },
-  { code: 'ASV', bolls: 'ASV', name: 'American Standard Version', order: 3 }
+  { code: 'ASV', bolls: 'ASV', name: 'American Standard Version', order: 3 },
+  { code: 'FRLSG', bolls: 'FRLSG', name: 'Louis Segond', order: 4 }
 ]
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))

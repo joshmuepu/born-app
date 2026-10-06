@@ -7,6 +7,9 @@ import './SongsPanel.css'
 interface Props {
   onClose: () => void
   onSaved: (songId: number) => void
+  /** Which songbook this gets filed under — defaults to 'default' (the flat
+   *  library) when not given. */
+  songbookId?: string
 }
 
 const PLACEHOLDER = `Amazing Grace
@@ -24,7 +27,7 @@ My chains are gone, I've been set free...`
  *  left as you type until you touch a slide yourself, at which point your
  *  edits win and re-typing on the left just offers to re-detect rather than
  *  silently overwriting what you just fixed. */
-export default function PasteSongScreen({ onClose, onSaved }: Props) {
+export default function PasteSongScreen({ onClose, onSaved, songbookId }: Props) {
   const [raw, setRaw] = useState('')
   const [song, setSong] = useState<ParsedSong | null>(null)
   const [touched, setTouched] = useState(false)
@@ -66,7 +69,7 @@ export default function PasteSongScreen({ onClose, onSaved }: Props) {
     setSaving(true)
     setError(null)
     try {
-      const r = await window.electronAPI.commitReviewedSong(song)
+      const r = await window.electronAPI.commitReviewedSong(song, undefined, songbookId)
       onSaved(r.id)
     } catch {
       setError("Couldn't save — try again.")

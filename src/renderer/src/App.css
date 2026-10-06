@@ -896,6 +896,35 @@ mark.hl {
   justify-content: flex-end;
 }
 
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.channel-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Wide enough for BiblePanel's own search/browse grids to render normally,
+ * unlike the narrow 400px default tuned for a single input + two buttons. */
+.channel-operator-modal {
+  width: 720px;
+  max-width: 92vw;
+  max-height: 86vh;
+}
+.channel-operator-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
 /* ── Panel tab bar (Search / Browse switcher) ────────────── */
 
 .panel-tab-bar {
@@ -1186,14 +1215,166 @@ mark.hl {
   flex-shrink: 0;
   margin-top: 2px;
 }
-.screens-output-profile {
+/* A two-way (or more) choice that reads as one switch, not several separate
+ * buttons — Graphics look, a channel's sync mode. Reused wherever the app
+ * needs "pick exactly one of a small fixed set," so every such picker looks
+ * and behaves the same way regardless of which screen it's on. */
+.screens-seg {
   display: flex;
-  gap: 6px;
+  gap: 2px;
   margin-top: 8px;
+  padding: 2px;
+  background: var(--bg-hover);
+  border-radius: var(--r-sm);
 }
-.screens-output-profile .btn-sm {
+.screens-seg button {
   flex: 1;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
+.screens-seg button.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Collapsed channel row — same scannable, single-line shape as a Display
+ * row, so Channels reads as part of the same system instead of a separate
+ * bolted-on section. Chips carry just enough state (language, sync, output)
+ * to answer "is this channel set up right?" without opening anything. */
+.screens-channel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 8px;
+  margin-top: 2px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.screens-channel-row:hover {
+  background: var(--bg-hover);
+}
+.screens-channel-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.screens-channel-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.screens-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.screens-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--bg-active);
+}
+.screens-chip-lang {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+.screens-chip-follow {
+  background: rgba(139, 111, 209, 0.18);
+  color: #c3b2f0;
+}
+.screens-chip-live {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--live);
+}
+/* Independent / No output share the base chip's neutral look on purpose —
+ * named classes kept so the JSX states its intent, not because the look
+ * differs from .screens-chip itself. */
+.screens-chip-indep,
+.screens-chip-off {
+  background: var(--bg-active);
+  color: var(--text-secondary);
+}
+.screens-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.screens-channel-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+/* The detail panel a channel row expands into — every control that used to
+ * sit permanently in the row, still here, just shown only while actually
+ * being changed. */
+.screens-channel-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 10px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.screens-detail-cols {
+  display: flex;
+  gap: 10px;
+}
+.screens-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.screens-field-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.screens-channel-detail .screens-select {
+  margin-top: 0;
+}
+.screens-compact-output-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.screens-compact-output-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
 .screens-textsize {
   display: flex;
   align-items: center;

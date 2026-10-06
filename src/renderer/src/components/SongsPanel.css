@@ -602,10 +602,42 @@
   cursor: default;
 }
 
+/* ── Songbook picker ──────────────────────────────────────────────────── */
+.songs-songbook-menu {
+  position: relative;
+  margin-left: auto;
+}
+.songs-songbook-menu .songs-import-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.songs-import-popover button.is-selected {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+.songs-songbook-add-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+.songs-songbook-add-row .display-rename-input {
+  flex: 1;
+  min-width: 0;
+}
+.songs-import-popover button.songs-songbook-remove {
+  color: var(--warn);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
 /* ── Import menu (File / Paste) ──────────────────────────────────────── */
 .songs-import-menu {
   position: relative;
-  margin-left: auto;
 }
 .songs-import-menu .songs-import-btn {
   margin-left: 0;

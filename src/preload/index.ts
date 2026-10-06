@@ -58,22 +58,50 @@ export interface IndexerProgress {
   errors: number
 }
 
+export type SlideSource =
+  | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string }
+
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song'
   text: string
   label?: string
   reference?: string
   marker?: string
+  /** Structured source identity, for a channel configured to 'follow' this
+   *  one. Absent for a song slide, or anything built before this existed. */
+  source?: SlideSource
 }
 
 export type PresentationProfileId = 'fullscreen' | 'lower-third'
 
 export interface OutputInfo {
   id: string
+  channelId: string
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
   suppressed: boolean
+}
+
+export type SyncMode = 'independent' | 'follow' | 'linked'
+
+export interface ChannelSyncConfig {
+  syncMode: SyncMode
+  linkedTo?: string
+}
+
+export interface ChannelInfo {
+  id: string
+  label: string
+  translation: string
+  songbookId: string
+  sync: ChannelSyncConfig
+}
+
+export interface Songbook {
+  id: string
+  label: string
 }
 
 export interface UpdateInfo {
@@ -321,7 +349,8 @@ const api = {
 
   // Outputs (Phase 2: the Graphics destination)
   listOutputs: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:list'),
-  addGraphicsOutput: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:add-graphics'),
+  addGraphicsOutput: (channelId: string): Promise<OutputInfo[]> =>
+    ipcRenderer.invoke('outputs:add-graphics', channelId),
   removeOutput: (id: string): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:remove', id),
   setOutputProfile: (id: string, profileId: PresentationProfileId): Promise<OutputInfo[]> =>
     ipcRenderer.invoke('outputs:set-profile', id, profileId),
@@ -332,6 +361,26 @@ const api = {
     ipcRenderer.on('outputs:changed', handler)
     return () => ipcRenderer.removeListener('outputs:changed', handler)
   },
+
+  // Channels (Phase 5: a second independent channel)
+  listChannels: (): Promise<ChannelInfo[]> => ipcRenderer.invoke('channels:list'),
+  addChannel: (label: string, inheritTranslation?: string): Promise<ChannelInfo[]> =>
+    ipcRenderer.invoke('channels:add', label, inheritTranslation),
+  removeChannel: (id: string): Promise<ChannelInfo[]> => ipcRenderer.invoke('channels:remove', id),
+  setChannelTranslation: (id: string, translation: string): Promise<ChannelInfo[]> =>
+    ipcRenderer.invoke('channels:set-translation', id, translation),
+  setChannelSongbook: (id: string, songbookId: string): Promise<ChannelInfo[]> =>
+    ipcRenderer.invoke('channels:set-songbook', id, songbookId),
+  setChannelSync: (id: string, sync: ChannelSyncConfig): Promise<ChannelInfo[]> =>
+    ipcRenderer.invoke('channels:set-sync', id, sync),
+  onChannelsChanged: (callback: (channels: ChannelInfo[]) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, channels: ChannelInfo[]): void => callback(channels)
+    ipcRenderer.on('channels:changed', handler)
+    return () => ipcRenderer.removeListener('channels:changed', handler)
+  },
+  showSlideOnChannel: (channelId: string, slide: SlidePayload): void =>
+    ipcRenderer.send('channel:show-slide', channelId, slide),
+  clearChannel: (channelId: string): void => ipcRenderer.send('channel:clear', channelId),
   syncWebRemote: (state: {
     queue: Array<{
       id: string
@@ -516,13 +565,14 @@ const api = {
   clearRecentBibleRefs: (): Promise<void> => ipcRenderer.invoke('bible:clear-recent'),
 
   // Songs
-  searchSongs: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:search', query),
+  searchSongs: (query: string, songbookId?: string): Promise<unknown[]> =>
+    ipcRenderer.invoke('songs:search', query, songbookId),
   getSong: (id: number): Promise<unknown> => ipcRenderer.invoke('songs:get', id),
-  importSongs: (): Promise<unknown> => ipcRenderer.invoke('songs:import'),
+  importSongs: (songbookId?: string): Promise<unknown> => ipcRenderer.invoke('songs:import', songbookId),
   parsePastedText: (text: string, titleHint?: string): Promise<unknown> =>
     ipcRenderer.invoke('songs:parse-pasted-text', text, titleHint),
-  commitReviewedSong: (song: unknown, originPath?: string): Promise<unknown> =>
-    ipcRenderer.invoke('songs:commit-reviewed', song, originPath),
+  commitReviewedSong: (song: unknown, originPath?: string, songbookId?: string): Promise<unknown> =>
+    ipcRenderer.invoke('songs:commit-reviewed', song, originPath, songbookId),
   deleteSong: (id: number): Promise<boolean> => ipcRenderer.invoke('songs:delete', id),
   getRecentSongs: (): Promise<unknown[]> => ipcRenderer.invoke('songs:recent'),
   clearRecentSongs: (): Promise<void> => ipcRenderer.invoke('songs:clear-recent'),
@@ -532,8 +582,17 @@ const api = {
   onlineSongSearch: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:online-search', query),
   onlineSongPreview: (url: string, source: 'hymnary' | 'cyberhymnal'): Promise<unknown> =>
     ipcRenderer.invoke('songs:online-preview', url, source),
-  onlineSongImport: (url: string, source: 'hymnary' | 'cyberhymnal', edited: unknown): Promise<unknown> =>
-    ipcRenderer.invoke('songs:online-import', url, source, edited),
+  onlineSongImport: (
+    url: string,
+    source: 'hymnary' | 'cyberhymnal',
+    edited: unknown,
+    songbookId?: string
+  ): Promise<unknown> => ipcRenderer.invoke('songs:online-import', url, source, edited, songbookId),
+
+  // Songbooks
+  listSongbooks: (): Promise<Songbook[]> => ipcRenderer.invoke('songbooks:list'),
+  addSongbook: (label: string): Promise<Songbook[]> => ipcRenderer.invoke('songbooks:add', label),
+  removeSongbook: (id: string): Promise<Songbook[]> => ipcRenderer.invoke('songbooks:remove', id),
 
   // Languages / translation
   getLanguages: (): Promise<Record<string, string>> => ipcRenderer.invoke('languages:list'),

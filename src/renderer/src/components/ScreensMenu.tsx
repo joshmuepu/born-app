@@ -14,7 +14,15 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
-import type { DisplayInfo, DisplayEntry, OutputInfo, PresentationProfileId } from '../types'
+import type {
+  DisplayInfo,
+  DisplayEntry,
+  OutputInfo,
+  ChannelInfo,
+  ChannelSyncConfig,
+  Songbook,
+  PresentationProfileId
+} from '../types'
 
 interface Props {
   displayInfo: DisplayInfo | null
@@ -33,16 +41,31 @@ interface Props {
   /** Pushes a fresh DisplayInfo (from rename) back up to App's state, the
    *  same way onSetProjectionDisplay's own return value does. */
   onDisplayInfoChange: (info: DisplayInfo) => void
-  /** Destinations beyond the built-in congregation/stage pair — today, at
-   *  most one (Graphics). Empty for every user who hasn't asked for one. */
+  /** Destinations beyond the built-in congregation/stage pair — today, a
+   *  Graphics output, at most one per channel. Empty for every user who
+   *  hasn't asked for one. Covers every channel's outputs, not just Main's —
+   *  this component filters by channelId itself. */
   outputs: OutputInfo[]
-  onAddGraphicsOutput: () => void
+  onAddGraphicsOutput: (channelId: string) => void
   onRemoveOutput: (id: string) => void
   onSetOutputProfile: (id: string, profileId: PresentationProfileId) => void
   /** Independent of what Main is actually showing — clearing Graphics here
    *  doesn't touch the congregation screen, the stage monitor, or Main's own
    *  navigation position, and vice versa. */
   onSetOutputSuppressed: (id: string, suppressed: boolean) => void
+  /** Every channel beyond the built-in 'main' — empty for every user who
+   *  hasn't added one. Label is operator-chosen; nothing here assumes what a
+   *  second channel is "for". */
+  channels: ChannelInfo[]
+  availableTranslations: { code: string; name: string }[]
+  songbooks: Songbook[]
+  onAddChannel: (label: string) => void
+  onRemoveChannel: (id: string) => void
+  onSetChannelTranslation: (id: string, translation: string) => void
+  onSetChannelSongbook: (id: string, songbookId: string) => void
+  onSetChannelSync: (id: string, sync: ChannelSyncConfig) => void
+  /** Opens the scaled-down operator view for driving this channel's content. */
+  onOpenChannel: (id: string) => void
 }
 
 /** "PA278QV (2) (2560×1440)" → "PA278QV (2)". */
@@ -272,7 +295,16 @@ export default function ScreensMenu({
   onAddGraphicsOutput,
   onRemoveOutput,
   onSetOutputProfile,
-  onSetOutputSuppressed
+  onSetOutputSuppressed,
+  channels,
+  availableTranslations,
+  songbooks,
+  onAddChannel,
+  onRemoveChannel,
+  onSetChannelTranslation,
+  onSetChannelSongbook,
+  onSetChannelSync,
+  onOpenChannel
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -281,6 +313,200 @@ export default function ScreensMenu({
   const [checklistFor, setChecklistFor] = useState<string | null>(null)
   const [diagCopied, setDiagCopied] = useState(false)
   const [urlCopiedId, setUrlCopiedId] = useState<string | null>(null)
+  const [addingChannel, setAddingChannel] = useState(false)
+  const [channelDraft, setChannelDraft] = useState('')
+  /** Which channel's detail panel is open, if any — collapsed rows are the
+   *  default so a multi-channel setup still reads as a short list, same as
+   *  the Displays section above it. Only one open at a time: there's rarely
+   *  a reason to compare two channels' settings side by side, and keeping
+   *  it singular keeps the popover from growing unboundedly tall again. */
+  const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
+
+  const submitAddChannel = (): void => {
+    const label = channelDraft.trim()
+    if (label) onAddChannel(label)
+    setAddingChannel(false)
+    setChannelDraft('')
+  }
+
+  /** Same Graphics add/remove/profile/suppress controls Main's own Outputs
+   *  section uses below, scoped to one channel — kept as one function instead
+   *  of a second component so both call sites share copyOutputUrl/
+   *  urlCopiedId without threading them through props. */
+  const renderOutputsFor = (channelId: string): JSX.Element => {
+    const channelOutputs = outputs.filter((o) => o.channelId === channelId)
+    return (
+      <div className="screens-group">
+        <div className="screens-group-head">
+          <span className="screens-group-title">Outputs</span>
+          {channelOutputs.length === 0 && (
+            <button className="btn-quiet btn-sm" onClick={() => onAddGraphicsOutput(channelId)}>
+              <Plus width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+              Add Graphics
+            </button>
+          )}
+        </div>
+        {channelOutputs.length === 0 ? (
+          <p className="screens-note">
+            A browser-reachable feed of what's live — for OBS, a lobby display, or a second computer.
+          </p>
+        ) : (
+          <div className="display-rows">
+            {channelOutputs.map((o) => (
+              <div key={o.id}>
+                <div className="display-row">
+                  <span className="display-row-main">
+                    <span className="display-row-name">Graphics</span>
+                    <span className="display-row-sub">{o.url ?? 'Remote unavailable right now'}</span>
+                  </span>
+                  <span className="display-row-actions">
+                    {o.url && (
+                      <button
+                        className="display-row-btn"
+                        title="Copy URL"
+                        aria-label="Copy Graphics output URL"
+                        onClick={() => copyOutputUrl(o.id, o.url!)}
+                      >
+                        {urlCopiedId === o.id ? (
+                          <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                        ) : (
+                          <Copy width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      className="display-row-btn"
+                      title={
+                        o.suppressed
+                          ? 'Show again — independent of what Main is doing'
+                          : 'Clear just this output — Main keeps showing what it has, this just stops reflecting it'
+                      }
+                      aria-label={o.suppressed ? 'Show Graphics output' : 'Clear Graphics output'}
+                      onClick={() => onSetOutputSuppressed(o.id, !o.suppressed)}
+                    >
+                      {o.suppressed ? (
+                        <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                      ) : (
+                        <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                      )}
+                    </button>
+                    <button
+                      className="display-row-btn"
+                      title="Remove this output"
+                      aria-label="Remove Graphics output"
+                      onClick={() => onRemoveOutput(o.id)}
+                    >
+                      <Trash2 width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                    </button>
+                  </span>
+                </div>
+                {o.suppressed && (
+                  <p className="screens-note screens-note--warn">
+                    <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+                    Cleared — Main keeps playing, this output just isn't showing it right now.
+                  </p>
+                )}
+                <div className="screens-seg" role="group" aria-label="Graphics look">
+                  <button
+                    className={o.profileId !== 'lower-third' ? 'on' : ''}
+                    title="Replace the whole frame — a lobby TV or a dedicated slide"
+                    onClick={() => onSetOutputProfile(o.id, 'fullscreen')}
+                  >
+                    Full-screen
+                  </button>
+                  <button
+                    className={o.profileId === 'lower-third' ? 'on' : ''}
+                    title="A small overlay band near the bottom, transparent otherwise — for OBS over camera video"
+                    onClick={() => onSetOutputProfile(o.id, 'lower-third')}
+                  >
+                    Lower third
+                  </button>
+                </div>
+                <p className="screens-note">
+                  Changing this updates the next time the output is opened or refreshed, not an already-open one.
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  /** A channel's Output, inside its expanded detail panel — one compact row
+   *  plus an inline profile switch, not a repeated copy of Main's whole
+   *  Outputs section (own header, own help sentence). The concept is
+   *  explained once, for Main, above; a channel just needs the controls. */
+  const renderCompactOutputFor = (channelId: string): JSX.Element => {
+    const out = outputs.find((o) => o.channelId === channelId)
+    if (!out) {
+      return (
+        <button className="btn-quiet btn-sm" onClick={() => onAddGraphicsOutput(channelId)}>
+          <Plus width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+          Add Graphics output
+        </button>
+      )
+    }
+    return (
+      <>
+        <div className="screens-compact-output-row">
+          <span className="screens-compact-output-url">{out.url ?? 'Remote unavailable right now'}</span>
+          {out.url && (
+            <button
+              className="display-row-btn"
+              title="Copy URL"
+              aria-label="Copy Graphics output URL"
+              onClick={() => copyOutputUrl(out.id, out.url!)}
+            >
+              {urlCopiedId === out.id ? (
+                <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+              ) : (
+                <Copy width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+              )}
+            </button>
+          )}
+          <button
+            className="display-row-btn"
+            title={
+              out.suppressed
+                ? 'Show again — independent of what Main is doing'
+                : 'Clear just this output — Main keeps showing what it has, this just stops reflecting it'
+            }
+            aria-label={out.suppressed ? 'Show Graphics output' : 'Clear Graphics output'}
+            onClick={() => onSetOutputSuppressed(out.id, !out.suppressed)}
+          >
+            {out.suppressed ? (
+              <EyeOff width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            ) : (
+              <Eye width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            )}
+          </button>
+          <button
+            className="display-row-btn"
+            title="Remove this output"
+            aria-label="Remove Graphics output"
+            onClick={() => onRemoveOutput(out.id)}
+          >
+            <Trash2 width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+        </div>
+        {out.suppressed && (
+          <p className="screens-note screens-note--warn">
+            <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            Cleared — Main keeps playing, this output just isn't showing it right now.
+          </p>
+        )}
+        <div className="screens-seg" role="group" aria-label="Graphics look">
+          <button className={out.profileId !== 'lower-third' ? 'on' : ''} onClick={() => onSetOutputProfile(out.id, 'fullscreen')}>
+            Full-screen
+          </button>
+          <button className={out.profileId === 'lower-third' ? 'on' : ''} onClick={() => onSetOutputProfile(out.id, 'lower-third')}>
+            Lower third
+          </button>
+        </div>
+      </>
+    )
+  }
 
   const copyOutputUrl = (id: string, url: string): void => {
     navigator.clipboard?.writeText(url)
@@ -464,98 +690,190 @@ export default function ScreensMenu({
           {/* Outputs — same progressive-disclosure shape as the two groups
               above: nothing here for the typical single-screen user beyond
               one quiet entry point, until they actually add something. */}
+          {renderOutputsFor('main')}
+
+          {/* Channels — a second (or third, etc.) independent content/
+              navigation feed, each operator-labelled, each with its own
+              translation and its own Outputs. Always-visible "+ Add channel"
+              since, unlike Graphics, there's no cap on how many. */}
           <div className="screens-group">
             <div className="screens-group-head">
-              <span className="screens-group-title">Outputs</span>
-              {outputs.length === 0 && (
-                <button className="btn-quiet btn-sm" onClick={onAddGraphicsOutput}>
+              <span className="screens-group-title">Channels</span>
+              {!addingChannel && (
+                <button className="btn-quiet btn-sm" onClick={() => setAddingChannel(true)}>
                   <Plus width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
-                  Add Graphics
+                  Add channel
                 </button>
               )}
             </div>
-            {outputs.length === 0 ? (
+            {addingChannel && (
+              <div className="display-row is-renaming">
+                <input
+                  className="display-rename-input"
+                  value={channelDraft}
+                  onChange={(e) => setChannelDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitAddChannel()
+                    if (e.key === 'Escape') {
+                      setAddingChannel(false)
+                      setChannelDraft('')
+                    }
+                  }}
+                  placeholder="Channel name (e.g. Spanish)"
+                  maxLength={40}
+                  autoFocus
+                />
+                <button className="display-row-btn" title="Add channel" aria-label="Add channel" onClick={submitAddChannel}>
+                  <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                </button>
+                <button
+                  className="display-row-btn"
+                  title="Cancel"
+                  aria-label="Cancel"
+                  onClick={() => {
+                    setAddingChannel(false)
+                    setChannelDraft('')
+                  }}
+                >
+                  <X width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            {channels.length === 0 && !addingChannel ? (
               <p className="screens-note">
-                A browser-reachable feed of what's live — for OBS, a lobby display, or a second computer.
+                An independent content feed for another audience or language — its own navigation, its own
+                translation, its own outputs.
               </p>
             ) : (
-              <div className="display-rows">
-                {outputs.map((o) => (
-                  <div key={o.id}>
-                    <div className="display-row">
-                      <span className="display-row-main">
-                        <span className="display-row-name">Graphics</span>
-                        <span className="display-row-sub">{o.url ?? 'Remote unavailable right now'}</span>
-                      </span>
-                      <span className="display-row-actions">
-                        {o.url && (
-                          <button
-                            className="display-row-btn"
-                            title="Copy URL"
-                            aria-label="Copy Graphics output URL"
-                            onClick={() => copyOutputUrl(o.id, o.url!)}
-                          >
-                            {urlCopiedId === o.id ? (
-                              <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
-                            ) : (
-                              <Copy width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                            )}
-                          </button>
-                        )}
+              channels.map((c) => {
+                const isExpanded = expandedChannelId === c.id
+                const hasOutput = outputs.some((o) => o.channelId === c.id)
+                const isFollowing = c.sync.syncMode === 'follow'
+                return (
+                  <div key={c.id}>
+                    <div
+                      className="screens-channel-row"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpandedChannelId(isExpanded ? null : c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setExpandedChannelId(isExpanded ? null : c.id)
+                        }
+                      }}
+                    >
+                      <div className="screens-channel-top">
+                        <span className="screens-channel-name">{c.label}</span>
                         <button
                           className="display-row-btn"
-                          title={
-                            o.suppressed
-                              ? 'Show again — independent of what Main is doing'
-                              : 'Clear just this output — Main keeps showing what it has, this just stops reflecting it'
-                          }
-                          aria-label={o.suppressed ? 'Show Graphics output' : 'Clear Graphics output'}
-                          onClick={() => onSetOutputSuppressed(o.id, !o.suppressed)}
+                          title={`Open ${c.label}`}
+                          aria-label={`Open ${c.label}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenChannel(c.id)
+                          }}
                         >
-                          {o.suppressed ? (
-                            <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                          ) : (
-                            <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                          )}
+                          <Play width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
                         </button>
                         <button
                           className="display-row-btn"
-                          title="Remove this output"
-                          aria-label="Remove Graphics output"
-                          onClick={() => onRemoveOutput(o.id)}
+                          title="Remove this channel"
+                          aria-label={`Remove ${c.label}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveChannel(c.id)
+                          }}
                         >
                           <Trash2 width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
                         </button>
+                        <ChevronDown
+                          className="screens-channel-chevron"
+                          style={{ transform: isExpanded ? 'rotate(180deg)' : undefined }}
+                          width={14}
+                          height={14}
+                          strokeWidth={2.2}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <span className="screens-chips">
+                        <span className="screens-chip screens-chip-lang">{c.translation}</span>
+                        <span className={`screens-chip ${isFollowing ? 'screens-chip-follow' : 'screens-chip-indep'}`}>
+                          <span className="screens-chip-dot" aria-hidden="true" />
+                          {isFollowing ? 'Following' : 'Independent'}
+                        </span>
+                        <span className={`screens-chip ${hasOutput ? 'screens-chip-live' : 'screens-chip-off'}`}>
+                          <span className="screens-chip-dot" aria-hidden="true" />
+                          {hasOutput ? 'Graphics' : 'Off'}
+                        </span>
                       </span>
                     </div>
-                    {o.suppressed && (
-                      <p className="screens-note screens-note--warn">
-                        <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
-                        Cleared — Main keeps playing, this output just isn't showing it right now.
-                      </p>
+                    {isExpanded && (
+                      <div className="screens-channel-detail">
+                        <div className="screens-detail-cols">
+                          <div className="screens-field">
+                            <span className="screens-field-label">Translation</span>
+                            <select
+                              className="screens-select"
+                              value={c.translation}
+                              onChange={(e) => onSetChannelTranslation(c.id, e.target.value)}
+                            >
+                              {availableTranslations.map((t) => (
+                                <option key={t.code} value={t.code}>
+                                  {t.code}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="screens-field">
+                            <span className="screens-field-label">Songbook</span>
+                            <select
+                              className="screens-select"
+                              value={c.songbookId}
+                              onChange={(e) => onSetChannelSongbook(c.id, e.target.value)}
+                            >
+                              {songbooks.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="screens-field">
+                          <span className="screens-field-label">Sync</span>
+                          <div className="screens-seg" role="group" aria-label={`${c.label} sync`}>
+                            <button
+                              className={!isFollowing ? 'on' : ''}
+                              title="Driven on its own, by whoever opens it"
+                              onClick={() => onSetChannelSync(c.id, { syncMode: 'independent' })}
+                            >
+                              Independent
+                            </button>
+                            <button
+                              className={isFollowing ? 'on' : ''}
+                              title="Automatically shows whatever Main shows — the same Bible verse or sermon quote, re-resolved in this channel's own translation/language"
+                              onClick={() => onSetChannelSync(c.id, { syncMode: 'follow', linkedTo: 'main' })}
+                            >
+                              Follow Main
+                            </button>
+                          </div>
+                          {isFollowing && (
+                            <p className="screens-note">
+                              A sermon quote not yet translated shows in English instead. Songs never follow — drive
+                              this channel's own Songs panel directly for those.
+                            </p>
+                          )}
+                        </div>
+                        <div className="screens-field">
+                          <span className="screens-field-label">Output</span>
+                          {renderCompactOutputFor(c.id)}
+                        </div>
+                      </div>
                     )}
-                    <div className="screens-output-profile" role="group" aria-label="Graphics look">
-                      <button
-                        className={`btn-sm ${o.profileId !== 'lower-third' ? 'btn-primary' : 'btn-secondary'}`}
-                        title="Replace the whole frame — a lobby TV or a dedicated slide"
-                        onClick={() => onSetOutputProfile(o.id, 'fullscreen')}
-                      >
-                        Full-screen
-                      </button>
-                      <button
-                        className={`btn-sm ${o.profileId === 'lower-third' ? 'btn-primary' : 'btn-secondary'}`}
-                        title="A small overlay band near the bottom, transparent otherwise — for OBS over camera video"
-                        onClick={() => onSetOutputProfile(o.id, 'lower-third')}
-                      >
-                        Lower third
-                      </button>
-                    </div>
-                    <p className="screens-note">
-                      Changing this updates the next time the output is opened or refreshed, not an already-open one.
-                    </p>
                   </div>
-                ))}
-              </div>
+                )
+              })
             )}
           </div>
 

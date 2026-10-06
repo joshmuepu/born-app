@@ -47,6 +47,13 @@ export interface RecentService {
   mtimeMs: number
 }
 
+/** Which specific content a slide came from — lets a 'follow' channel
+ *  re-resolve the same content in its own language instead of mirroring the
+ *  exact text. Absent for a song slide (no translated-lyric source exists). */
+export type SlideSource =
+  | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string }
+
 /** One slide as pushed to the projection / stage windows. */
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song'
@@ -54,18 +61,47 @@ export interface SlidePayload {
   label?: string
   reference?: string
   marker?: string
+  source?: SlideSource
 }
 
 export type PresentationProfileId = 'fullscreen' | 'lower-third'
 
 /** One configured output destination beyond the built-in congregation/stage
- *  pair — today, only ever the single Graphics destination. */
+ *  pair — today, a Graphics destination, one per channel at most. */
 export interface OutputInfo {
   id: string
+  channelId: string
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
   suppressed: boolean
+}
+
+export type SyncMode = 'independent' | 'follow' | 'linked'
+
+/** A channel's navigation relationship to another — 'follow' means it
+ *  automatically re-resolves whatever `linkedTo` shows, in its own
+ *  translation/language, instead of needing its own operator driving it. */
+export interface ChannelSyncConfig {
+  syncMode: SyncMode
+  linkedTo?: string
+}
+
+/** One channel's existence + its own persisted Bible translation choice,
+ *  default songbook, and sync relationship to another channel. */
+export interface ChannelInfo {
+  id: string
+  label: string
+  translation: string
+  songbookId: string
+  sync: ChannelSyncConfig
+}
+
+/** A labeled collection songs belong to — 'default' is the pre-existing flat
+ *  library every song started in before songbooks existed. */
+export interface Songbook {
+  id: string
+  label: string
 }
 
 export interface BibleTranslation {
@@ -110,6 +146,7 @@ export interface SongSummary {
   songKey: string | null
   slideCount: number
   source: string
+  songbookId: string
   /** Set on a search hit: false means the query matched only the lyrics,
    *  not the title, so the UI shows the matching slide below. */
   matchedInTitle?: boolean
@@ -122,6 +159,7 @@ export interface SongDetail {
   author: string | null
   songKey: string | null
   source: string
+  songbookId: string
   /** Set only for a song imported from an online source — shown as a small
    *  provenance line so "are we allowed to use this" has a visible answer,
    *  not just a value sitting in the database. */
@@ -158,6 +196,7 @@ export interface ReviewItem {
   originPath: string
   displayName: string
   song: ParsedSong
+  songbookId: string
 }
 
 export interface SongImportResult {

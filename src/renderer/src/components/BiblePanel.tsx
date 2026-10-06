@@ -26,6 +26,14 @@ interface Props {
    *  tell the remote which translation is actually live — the remote has no
    *  picker of its own, it just reflects this. */
   onTranslationChange?: (code: string) => void
+  /** Seeds translation from this instead of the shared 'born.bibleTranslation'
+   *  localStorage key, and skips that key entirely (read and write) for this
+   *  instance. Used by a second channel's BiblePanel so it never inherits
+   *  Main's last-used translation, and so changing one instance's translation
+   *  can't silently change what another instance defaults to on next mount.
+   *  Main's own instance doesn't pass this — its existing localStorage-backed
+   *  behavior is untouched. */
+  initialTranslation?: string
 }
 
 /** Search scope: the whole Bible (default), a testament, or one book —
@@ -48,13 +56,14 @@ export default function BiblePanel({
   preview,
   onAddPassage,
   onProjectPassage,
-  onTranslationChange
+  onTranslationChange,
+  initialTranslation
 }: Props) {
   const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
   const [translation, setTranslation] = useState(
-    () => localStorage.getItem('born.bibleTranslation') || 'KJV'
+    () => initialTranslation ?? (localStorage.getItem('born.bibleTranslation') || 'KJV')
   )
   useEffect(() => {
     onTranslationChange?.(translation)
@@ -260,10 +269,12 @@ export default function BiblePanel({
 
   const changeTranslation = (code: string): void => {
     setTranslation(code)
-    try {
-      localStorage.setItem('born.bibleTranslation', code)
-    } catch {
-      /* ignore */
+    if (initialTranslation === undefined) {
+      try {
+        localStorage.setItem('born.bibleTranslation', code)
+      } catch {
+        /* ignore */
+      }
     }
     const q = query.trim()
     if (!q) return

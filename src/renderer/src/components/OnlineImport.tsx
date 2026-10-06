@@ -8,6 +8,9 @@ interface Props {
   query: string
   onClose: () => void
   onImported: (songId: number) => void
+  /** Which songbook this gets filed under — defaults to 'default' (the flat
+   *  library) when not given. */
+  songbookId?: string
 }
 
 type Stage = 'searching' | 'results' | 'preview' | 'error'
@@ -36,7 +39,7 @@ function reasonMessage(reason: string, copyright?: string): string {
  *  either found, review the exact text (and correct it, same as any other
  *  import) before committing. Only ever reachable from Songs search; never
  *  automatic, never required. */
-export default function OnlineImport({ query, onClose, onImported }: Props) {
+export default function OnlineImport({ query, onClose, onImported, songbookId }: Props) {
   const [stage, setStage] = useState<Stage>('searching')
   const [candidates, setCandidates] = useState<OnlineCandidate[]>([])
   const [preview, setPreview] = useState<OnlinePreview | null>(null)
@@ -81,7 +84,7 @@ export default function OnlineImport({ query, onClose, onImported }: Props) {
 
   const doImport = async (edited: ParsedSong): Promise<void> => {
     if (!preview?.ok) return
-    const r = await window.electronAPI.onlineSongImport(preview.url, preview.source, edited)
+    const r = await window.electronAPI.onlineSongImport(preview.url, preview.source, edited, songbookId)
     if (r.ok) {
       onImported(r.id)
       return

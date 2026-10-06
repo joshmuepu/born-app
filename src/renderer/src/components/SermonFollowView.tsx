@@ -25,6 +25,10 @@ interface Props {
    *  and clicking the card for 157 specifically must not fall back to 156. */
   onProject: (quote: Quote, slideIndex?: number) => void
   onAddToQueue: (quote: Quote) => void
+  /** Which language to fetch this sermon's paragraphs in — defaults to 'en'
+   *  (Main's own usage, unchanged). A channel following another language
+   *  passes its own here instead. */
+  language?: string
 }
 
 /** One card per *paragraph*, not per source row — a row can legitimately
@@ -58,7 +62,8 @@ export default function SermonFollowView({
   matchType,
   onBack,
   onProject,
-  onAddToQueue
+  onAddToQueue,
+  language = 'en'
 }: Props) {
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,7 +93,7 @@ export default function SermonFollowView({
   useEffect(() => {
     let alive = true
     setLoading(true)
-    window.electronAPI.getSermonParagraphs(sermonId, 'en').then((p) => {
+    window.electronAPI.getSermonParagraphs(sermonId, language).then((p) => {
       if (alive) {
         setParas(p)
         setLoading(false)
@@ -97,7 +102,7 @@ export default function SermonFollowView({
     return () => {
       alive = false
     }
-  }, [sermonId])
+  }, [sermonId, language])
 
   useEffect(() => {
     if (!focusEl.current) return

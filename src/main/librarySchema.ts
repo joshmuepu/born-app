@@ -45,6 +45,20 @@ export const LIBRARY_SCHEMA_SQL = `
     INSERT INTO bible_verses_fts(bible_verses_fts, rowid, text) VALUES('delete', old.id, old.text);
   END;
 
+  -- ── Songbooks ──────────────────────────────────────────────────────────────
+  -- A labeled collection a song belongs to ("Songs" — the pre-existing flat
+  -- library, kept as the default so nothing already imported moves or loses
+  -- its place — "Crois Seulement", "Hosanna", or any other operator-named
+  -- set manually imported via the same file/paste/online pipeline every
+  -- songbook shares). Deliberately just {id, label}: no language field here
+  -- — a songbook's language is implicit in its content, not declared, same
+  -- as the flat list never declared one.
+  CREATE TABLE IF NOT EXISTS songbooks (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   -- ── Songs ──────────────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS songs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +69,7 @@ export const LIBRARY_SCHEMA_SQL = `
     source TEXT NOT NULL DEFAULT 'import',  -- 'bundled' | 'import'
     origin_path TEXT,                       -- import file path, for dedupe
     search_body TEXT NOT NULL DEFAULT '',   -- title + all lyrics, for FTS
+    songbook_id TEXT NOT NULL DEFAULT 'default' REFERENCES songbooks(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -88,4 +103,24 @@ export const LIBRARY_SCHEMA_SQL = `
 
 export function initLibrarySchema(database: Database): void {
   database.exec(LIBRARY_SCHEMA_SQL)
+
+  // An existing library.db (any install from before songbooks existed)
+  // already has a 'songs' table — CREATE TABLE IF NOT EXISTS above is a
+  // no-op for it, so the new column needs adding explicitly. Every existing
+  // song implicitly belongs to the 'default' songbook, the same flat list
+  // it was always part of — this migration is what makes that true in the
+  // data, not just in the application's fallback logic.
+  const songColumns = database.prepare('PRAGMA table_info(songs)').all() as Array<{ name: string }>
+  if (!songColumns.some((c) => c.name === 'songbook_id')) {
+    database.exec("ALTER TABLE songs ADD COLUMN songbook_id TEXT NOT NULL DEFAULT 'default'")
+  }
+
+  // Only safe to create after the column above is guaranteed to exist — a
+  // fresh install already has it (from the CREATE TABLE above), an existing
+  // one only just got it from the ALTER TABLE.
+  database.exec('CREATE INDEX IF NOT EXISTS idx_songs_songbook ON songs(songbook_id)')
+
+  database
+    .prepare('INSERT OR IGNORE INTO songbooks (id, label) VALUES (?, ?)')
+    .run('default', 'Songs')
 }

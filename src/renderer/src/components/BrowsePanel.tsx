@@ -21,6 +21,13 @@ interface Props {
    *  can span several numbered paragraphs ("156-157"), so which flattened
    *  row was clicked has to reach the projector as that specific paragraph. */
   onSendToProjection: (quote: Quote, slideIndex?: number) => void
+  /** Seeds the paragraph-drill-down language from this instead of the shared
+   *  'born.browseLanguage' localStorage key, and skips that key entirely
+   *  (read and write) for this instance — same reasoning as BiblePanel's
+   *  `initialTranslation`: a second channel's BrowsePanel must never inherit
+   *  Main's last-used language, or silently change what Main defaults to
+   *  next launch. Main's own instance doesn't pass this. */
+  initialLanguage?: string
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
@@ -44,13 +51,19 @@ function monthGrid(year: number, month: number): Array<Array<number | null>> {
   return weeks
 }
 
-export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToProjection }: Props) {
+export default function BrowsePanel({
+  visible,
+  onScreen,
+  onAddToQueue,
+  onSendToProjection,
+  initialLanguage
+}: Props) {
   // "Pull up last Sunday" is the most common live-service need, so Date leads.
   const [tab, setTab] = useState<BrowseTab>('date')
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
   const [language, setLanguage] = useState<string>(
-    () => localStorage.getItem('born.browseLanguage') || 'en'
+    () => initialLanguage ?? (localStorage.getItem('born.browseLanguage') || 'en')
   )
   const [languages, setLanguages] = useState<Record<string, string>>({})
 
@@ -166,14 +179,16 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
   const changeLanguage = useCallback(
     (lang: string) => {
       setLanguage(lang)
-      try {
-        localStorage.setItem('born.browseLanguage', lang)
-      } catch {
-        /* ignore */
+      if (initialLanguage === undefined) {
+        try {
+          localStorage.setItem('born.browseLanguage', lang)
+        } catch {
+          /* ignore */
+        }
       }
       if (selectedSermon) loadParagraphs(selectedSermon, lang)
     },
-    [selectedSermon, loadParagraphs]
+    [selectedSermon, loadParagraphs, initialLanguage]
   )
 
   // ── Render helpers ────────────────────────────────────────────────────────────

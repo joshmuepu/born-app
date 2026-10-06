@@ -8,16 +8,22 @@ import ScreensMenu from './components/ScreensMenu'
 import RemotePanel from './components/RemotePanel'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
+import ChannelSermonsPanel from './components/ChannelSermonsPanel'
 import SongsPanel from './components/SongsPanel'
 import type {
   Quote,
   IndexerProgress,
   QueueItem,
+  Slide,
   SlidePayload,
+  SlideSource,
   ResolvedPassage,
   SongDetail,
   RecentService,
-  OutputInfo
+  OutputInfo,
+  ChannelInfo,
+  BibleTranslation,
+  Songbook
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
@@ -46,10 +52,54 @@ interface Projected {
   tail?: FlowCursors['tail']
 }
 
+/** This slide's structured source identity, for a channel 'follow'-ing
+ *  wherever this gets projected — lets main/index.ts re-resolve the same
+ *  content in another language instead of just mirroring this exact text.
+ *  Bible: re-parses this specific slide's own citation (same technique
+ *  onScreenLoc below already uses for the same reason — an item can span
+ *  several verses, one per slide, each needing its own). Quote: sermonId +
+ *  paragraphRef are already right on the item — every slide built from one
+ *  quote shares the same source sermon/paragraph-range. Song: no translated-
+ *  lyric source exists, so there's nothing to attach. */
+function slideSource(item: QueueItem, s: Slide): SlideSource | undefined {
+  if (item.kind === 'bible') {
+    const tail = (s.reference || '').split(' · ')
+    const ref = tail[0]?.replace(/([0-9]+)[a-z]$/, '$1')
+    const p = ref ? parseReference(ref) : null
+    if (p && !isRefError(p) && p.verseStart !== null) {
+      return { kind: 'bible', bookNum: p.bookNum, chapter: p.chapter, verse: p.verseStart }
+    }
+    return undefined
+  }
+  if (item.kind === 'quote') {
+    return { kind: 'quote', sermonId: item.quote.sermonId, paragraphRef: item.quote.paragraphRef }
+  }
+  return undefined
+}
+
 function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
   const s = item.slides[slide]
   if (!s) return null
-  return { kind: item.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker }
+  return {
+    kind: item.kind,
+    text: s.text,
+    label: s.label,
+    reference: s.reference,
+    marker: s.marker,
+    source: slideSource(item, s)
+  }
+}
+
+/** Which table.branham.org sermon-language code a channel's Bible translation
+ *  implies — same map (and same reasoning: one language choice, not two to
+ *  keep in sync) as main/index.ts's TRANSLATION_SERMON_LANGUAGE, duplicated
+ *  here since it's small, shape-only reference data, not authoritative state.
+ *  Extend alongside that one when a new non-English Bible translation ships. */
+const TRANSLATION_SERMON_LANGUAGE: Record<string, string> = {
+  KJV: 'en',
+  WEB: 'en',
+  ASV: 'en',
+  FRLSG: 'fr'
 }
 
 export default function App() {
@@ -109,6 +159,104 @@ export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
   const { theme, toggle: toggleTheme } = useTheme()
+
+  // Channels beyond Main (Phase 5) — each with its own label, persisted
+  // translation, and outputs. Empty for every user who hasn't added one.
+  const [channels, setChannels] = useState<ChannelInfo[]>([])
+  const [availableTranslations, setAvailableTranslations] = useState<BibleTranslation[]>([])
+  const [songbooks, setSongbooks] = useState<Songbook[]>([])
+  /** Which extra channel's scaled-down operator view is open, if any — a
+   *  modal, not a topTab, so it stays fully decoupled from Main's own
+   *  sermons/bible/songs navigation and queue. */
+  const [openChannelId, setOpenChannelId] = useState<string | null>(null)
+  /** Per-channel "what's on screen" for that channel's own BiblePanel
+   *  instance to highlight — independent of Main's onScreenLoc, and of every
+   *  other channel's, since there's no shared queue to derive it from. */
+  const [channelOnScreen, setChannelOnScreen] = useState<
+    Record<string, { bookNum: number; chapter: number; verse: number } | null>
+  >({})
+  /** Same idea as channelOnScreen, for a channel's ChannelSermonsPanel. */
+  const [channelSermonOnScreen, setChannelSermonOnScreen] = useState<
+    Record<string, { sermonId: number; paragraphRef: string } | null>
+  >({})
+  /** Which section of a channel's scaled-down operator view is open — reset
+   *  to Bible whenever a (possibly different) channel's modal opens. */
+  const [channelModalTab, setChannelModalTab] = useState<'bible' | 'sermons'>('bible')
+
+  useEffect(() => {
+    window.electronAPI.listChannels().then(setChannels)
+    return window.electronAPI.onChannelsChanged(setChannels)
+  }, [])
+
+  useEffect(() => {
+    window.electronAPI.getBibleTranslations().then(setAvailableTranslations)
+  }, [])
+
+  // Only needs a periodic-ish refresh (on mount, and whenever ScreensMenu's
+  // Channels section is open and a songbook might have changed in Songs) —
+  // no live-push channel for songbooks, same reasoning as every other
+  // library-content list (Bible translations, etc.) which is also just
+  // fetched once rather than kept hot.
+  useEffect(() => {
+    window.electronAPI.listSongbooks().then(setSongbooks)
+  }, [])
+
+  const handleAddChannel = useCallback(
+    (label: string) => {
+      window.electronAPI.addChannel(label, bibleTranslation).then(setChannels)
+    },
+    [bibleTranslation]
+  )
+  const handleRemoveChannel = useCallback((id: string) => {
+    window.electronAPI.removeChannel(id).then(setChannels)
+    setOpenChannelId((cur) => (cur === id ? null : cur))
+    setChannelOnScreen((cur) => {
+      const { [id]: _removed, ...rest } = cur
+      return rest
+    })
+  }, [])
+  const handleSetChannelTranslation = useCallback((id: string, translation: string) => {
+    window.electronAPI.setChannelTranslation(id, translation).then(setChannels)
+  }, [])
+
+  /** Both "Queue" and "Project" do the same thing for a channel's scaled-down
+   *  panel — there's no second queue to add to, so Add just projects too. */
+  const handleChannelPassage = useCallback((channelId: string, p: ResolvedPassage, slide = 0): void => {
+    const s = p.slides[slide] ?? p.slides[0]
+    if (!s) return
+    const verse = p.slideStarts[slide] ?? p.verseStart
+    window.electronAPI.showSlideOnChannel(channelId, {
+      kind: 'bible',
+      text: s.text,
+      label: s.label,
+      reference: s.reference,
+      marker: s.marker,
+      source: { kind: 'bible', bookNum: p.bookNum, chapter: p.chapter, verse }
+    })
+    setChannelOnScreen((cur) => ({
+      ...cur,
+      [channelId]: { bookNum: p.bookNum, chapter: p.chapter, verse }
+    }))
+    window.electronAPI.noteBibleUsed(p.reference, p.translation)
+  }, [])
+
+  /** Same precedent as handleChannelPassage: projects a sermon quote straight
+   *  to a channel, no queue involved. The quote's own text is used verbatim
+   *  (always English — ChannelSermonsPanel's Search tab has no translated
+   *  index to search against; Browse already hands back language-native text
+   *  via its own initialLanguage prop, so this needs no extra translation
+   *  step either way). */
+  const handleChannelQuote = useCallback((channelId: string, quote: Quote, slideIndex = 0): void => {
+    const item = quoteToItem(quote)
+    const payload = slidePayload(item, slideIndex)
+    if (!payload) return
+    window.electronAPI.showSlideOnChannel(channelId, payload)
+    setChannelSermonOnScreen((cur) => ({
+      ...cur,
+      [channelId]: { sermonId: quote.sermonId, paragraphRef: quote.paragraphRef }
+    }))
+    window.electronAPI.noteSermonUsed(quote)
+  }, [])
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
@@ -1144,7 +1292,9 @@ export default function App() {
             onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
             onDisplayInfoChange={setDisplayInfo}
             outputs={outputs}
-            onAddGraphicsOutput={() => window.electronAPI.addGraphicsOutput().then(setOutputs)}
+            onAddGraphicsOutput={(channelId) =>
+              window.electronAPI.addGraphicsOutput(channelId).then(setOutputs)
+            }
             onRemoveOutput={(id) => window.electronAPI.removeOutput(id).then(setOutputs)}
             onSetOutputProfile={(id, profileId) =>
               window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
@@ -1152,6 +1302,20 @@ export default function App() {
             onSetOutputSuppressed={(id, suppressed) =>
               window.electronAPI.setDestinationSuppressed(id, suppressed).then(setOutputs)
             }
+            channels={channels.filter((c) => c.id !== 'main')}
+            availableTranslations={availableTranslations}
+            songbooks={songbooks}
+            onAddChannel={handleAddChannel}
+            onRemoveChannel={handleRemoveChannel}
+            onSetChannelTranslation={handleSetChannelTranslation}
+            onSetChannelSongbook={(id, songbookId) =>
+              window.electronAPI.setChannelSongbook(id, songbookId).then(setChannels)
+            }
+            onSetChannelSync={(id, sync) => window.electronAPI.setChannelSync(id, sync).then(setChannels)}
+            onOpenChannel={(id) => {
+              setChannelModalTab('bible')
+              setOpenChannelId(id)
+            }}
           />
 
           <RemotePanel />
@@ -1438,6 +1602,83 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {openChannelId &&
+        (() => {
+          const ch = channels.find((c) => c.id === openChannelId)
+          if (!ch) return null
+          return (
+            <div className="modal-overlay" onClick={() => setOpenChannelId(null)}>
+              <div className="modal channel-operator-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-title-row">
+                  <div className="channel-modal-title-wrap">
+                    <h3 className="modal-title">{ch.label}</h3>
+                    <span className="screens-chip screens-chip-lang">{ch.translation}</span>
+                    <span
+                      className={`screens-chip ${ch.sync.syncMode === 'follow' ? 'screens-chip-follow' : 'screens-chip-indep'}`}
+                    >
+                      <span className="screens-chip-dot" aria-hidden="true" />
+                      {ch.sync.syncMode === 'follow' ? 'Following Main' : 'Independent'}
+                    </span>
+                  </div>
+                  <button className="btn-icon btn-sm" onClick={() => setOpenChannelId(null)} aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <div className="panel-subtab-bar">
+                  <button
+                    className={`panel-subtab${channelModalTab === 'bible' ? ' active' : ''}`}
+                    onClick={() => setChannelModalTab('bible')}
+                  >
+                    Bible
+                  </button>
+                  <button
+                    className={`panel-subtab${channelModalTab === 'sermons' ? ' active' : ''}`}
+                    onClick={() => setChannelModalTab('sermons')}
+                  >
+                    Sermons
+                  </button>
+                </div>
+                <div className="channel-operator-body">
+                  <div className="panel-view" hidden={channelModalTab !== 'bible'}>
+                    <BiblePanel
+                      key={ch.id}
+                      visible={channelModalTab === 'bible'}
+                      onScreen={channelOnScreen[ch.id] ?? null}
+                      preview={null}
+                      onAddPassage={(p) => handleChannelPassage(ch.id, p)}
+                      onProjectPassage={(p, slide) => handleChannelPassage(ch.id, p, slide)}
+                      onTranslationChange={(code) => handleSetChannelTranslation(ch.id, code)}
+                      initialTranslation={ch.translation}
+                    />
+                  </div>
+                  <div className="panel-view" hidden={channelModalTab !== 'sermons'}>
+                    <ChannelSermonsPanel
+                      key={ch.id}
+                      visible={channelModalTab === 'sermons'}
+                      language={TRANSLATION_SERMON_LANGUAGE[ch.translation] ?? 'en'}
+                      onScreen={channelSermonOnScreen[ch.id] ?? null}
+                      onProject={(quote, slide) => handleChannelQuote(ch.id, quote, slide)}
+                    />
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      window.electronAPI.clearChannel(ch.id)
+                      setChannelOnScreen((cur) => ({ ...cur, [ch.id]: null }))
+                      setChannelSermonOnScreen((cur) => ({ ...cur, [ch.id]: null }))
+                    }}
+                  >
+                    Clear
+                  </button>
+                  <button className="btn-primary" onClick={() => setOpenChannelId(null)}>Done</button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

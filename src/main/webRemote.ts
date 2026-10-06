@@ -140,53 +140,73 @@ export interface GraphicsPayload {
   blanked: boolean
 }
 
-let lastGraphicsPayload: GraphicsPayload = { slide: null, blanked: true }
-const graphicsClients = new Set<ServerResponse>()
-let graphicsActive = false
-let graphicsProfileId: PresentationProfileId = 'fullscreen'
+/** One entry per Graphics-kind destination — keyed by destination id, not a
+ *  single global, so two independent channels can each drive their own OBS
+ *  Browser Source (or any other consumer) without seeing each other's
+ *  updates. main/index.ts's destinations Map still owns *whether* one of
+ *  these exists and which channel it's bound to; this map only tracks what
+ *  this file itself needs to serve it over HTTP/SSE. */
+interface GraphicsEntry {
+  profileId: PresentationProfileId
+  clients: Set<ServerResponse>
+  lastPayload: GraphicsPayload
+}
+const graphicsDestinations = new Map<string, GraphicsEntry>()
 
-/** main/index.ts owns which profile the Graphics destination is set to;
- *  this file just renders it. Takes effect on the next page load (OBS
- *  Browser Source refresh) — the two layouts are different DOM, not a
- *  style tweak an already-open SSE connection can hot-swap. */
-export function setGraphicsProfile(profileId: PresentationProfileId): void {
-  graphicsProfileId = profileId
+/** main/index.ts calls this once, when a Graphics destination is added (or
+ *  restored at boot) — creates the entry the routes below serve. */
+export function registerGraphicsDestination(id: string, profileId: PresentationProfileId): void {
+  graphicsDestinations.set(id, {
+    profileId,
+    clients: new Set(),
+    lastPayload: { slide: null, blanked: true }
+  })
 }
 
-/** main/index.ts owns whether a Graphics destination actually exists; this
- *  file just serves it. Toggled on add/remove so the route 404s once removed
- *  instead of silently going stale — a URL left open in OBS after someone
- *  removes the output should say so, not sit there looking connected. */
-export function setGraphicsActive(active: boolean): void {
-  graphicsActive = active
-  if (!active) {
-    for (const res of graphicsClients) {
-      try {
-        res.end()
-      } catch {
-        /* already closing */
-      }
+/** Closes this destination's own SSE connections and drops its entry — the
+ *  route then 404s instead of silently going stale, so a URL left open in
+ *  OBS after someone removes the output says so, not sits there looking
+ *  connected. Other destinations' entries are untouched. */
+export function unregisterGraphicsDestination(id: string): void {
+  const entry = graphicsDestinations.get(id)
+  if (!entry) return
+  for (const res of entry.clients) {
+    try {
+      res.end()
+    } catch {
+      /* already closing */
     }
-    graphicsClients.clear()
-    lastGraphicsPayload = { slide: null, blanked: true }
   }
+  graphicsDestinations.delete(id)
 }
 
-export function isGraphicsActive(): boolean {
-  return graphicsActive
+/** main/index.ts owns which profile a Graphics destination is set to; this
+ *  file just renders it. Takes effect on the next page load (OBS Browser
+ *  Source refresh) — the two layouts are different DOM, not a style tweak an
+ *  already-open SSE connection can hot-swap. */
+export function setGraphicsProfile(id: string, profileId: PresentationProfileId): void {
+  const entry = graphicsDestinations.get(id)
+  if (entry) entry.profileId = profileId
 }
 
-/** Push a Graphics update to every currently-connected client (SSE — push,
- *  not poll, since a lagging live-presentation feed is actively bad, unlike
- *  the phone remote's state which tolerates a second of staleness fine). */
-export function pushGraphicsUpdate(payload: GraphicsPayload): void {
-  lastGraphicsPayload = payload
+export function isGraphicsActive(id: string): boolean {
+  return graphicsDestinations.has(id)
+}
+
+/** Push a Graphics update to every client currently connected to this one
+ *  destination (SSE — push, not poll, since a lagging live-presentation feed
+ *  is actively bad, unlike the phone remote's state which tolerates a second
+ *  of staleness fine). A no-op if `id` isn't a registered destination. */
+export function pushGraphicsUpdate(id: string, payload: GraphicsPayload): void {
+  const entry = graphicsDestinations.get(id)
+  if (!entry) return
+  entry.lastPayload = payload
   const data = `data: ${JSON.stringify(payload)}\n\n`
-  for (const res of graphicsClients) {
+  for (const res of entry.clients) {
     try {
       res.write(data)
     } catch {
-      graphicsClients.delete(res)
+      entry.clients.delete(res)
     }
   }
 }
@@ -244,7 +264,12 @@ function cssDecl(rec: Record<string, string>): string {
     .join(';')
 }
 
-const GRAPHICS_SCRIPT = `
+/** Takes the destination id so each rendered page's SSE connection points at
+ *  its own events endpoint — two Graphics destinations open in two browser
+ *  tabs (or two OBS sources) never read each other's feed. */
+function buildGraphicsScript(id: string): string {
+  const eventsPath = `/output/graphics/${encodeURIComponent(id)}/events`
+  return `
 (function(){
   var labelEl = document.getElementById('label');
   var textInnerEl = document.getElementById('text-inner');
@@ -264,7 +289,7 @@ const GRAPHICS_SCRIPT = `
   }
 
   function connect(){
-    var es = new EventSource('/output/graphics/events');
+    var es = new EventSource(${JSON.stringify(eventsPath)});
     es.onmessage = function(ev){
       discEl.style.display = 'none';
       try { render(JSON.parse(ev.data)); } catch (e) {}
@@ -276,14 +301,16 @@ const GRAPHICS_SCRIPT = `
   connect();
 })();
 `
+}
 
 /** The Graphics output page — a plain browser-servable page (OBS Browser
  *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
  *  window. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
  *  rendered by React in an Electron renderer process. The markup and the
  *  live-update script are identical for every profile — this function reads
- *  `profile.regions` generically; it has no idea "lower-third" exists. */
-function buildGraphicsHTML(profile: PresentationProfile): string {
+ *  `profile.regions` generically; it has no idea "lower-third" exists. `id`
+ *  is this destination's own id, baked into its generated SSE script. */
+function buildGraphicsHTML(profile: PresentationProfile, id: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -315,7 +342,7 @@ function buildGraphicsHTML(profile: PresentationProfile): string {
   </div>
 </div>
 <div id="disconnected">RECONNECTING…</div>
-<script>${GRAPHICS_SCRIPT}</script>
+<script>${buildGraphicsScript(id)}</script>
 </body>
 </html>`
 }
@@ -514,22 +541,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
 
-  if (path === '/output/graphics' && req.method === 'GET') {
-    if (!graphicsActive) {
-      res.writeHead(404)
-      res.end()
-      return
-    }
-    // Must never be cached: switching profiles relies on the next load/
-    // refresh of this exact URL actually reaching the server, not getting
-    // served a stale copy of the previous profile's HTML from cache.
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
-    res.end(buildGraphicsHTML(getPresentationProfile(graphicsProfileId)))
-    return
-  }
-
-  if (path === '/output/graphics/events' && req.method === 'GET') {
-    if (!graphicsActive) {
+  const graphicsEventsMatch = /^\/output\/graphics\/([^/]+)\/events$/.exec(path)
+  if (graphicsEventsMatch && req.method === 'GET') {
+    const entry = graphicsDestinations.get(decodeURIComponent(graphicsEventsMatch[1]))
+    if (!entry) {
       res.writeHead(404)
       res.end()
       return
@@ -539,9 +554,26 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive'
     })
-    res.write(`data: ${JSON.stringify(lastGraphicsPayload)}\n\n`)
-    graphicsClients.add(res)
-    req.on('close', () => graphicsClients.delete(res))
+    res.write(`data: ${JSON.stringify(entry.lastPayload)}\n\n`)
+    entry.clients.add(res)
+    req.on('close', () => entry.clients.delete(res))
+    return
+  }
+
+  const graphicsPageMatch = /^\/output\/graphics\/([^/]+)$/.exec(path)
+  if (graphicsPageMatch && req.method === 'GET') {
+    const id = decodeURIComponent(graphicsPageMatch[1])
+    const entry = graphicsDestinations.get(id)
+    if (!entry) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    // Must never be cached: switching profiles relies on the next load/
+    // refresh of this exact URL actually reaching the server, not getting
+    // served a stale copy of the previous profile's HTML from cache.
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
+    res.end(buildGraphicsHTML(getPresentationProfile(entry.profileId), id))
     return
   }
 

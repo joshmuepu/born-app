@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
-import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown } from 'lucide-react'
-import type { SongSummary, SongDetail, ReviewItem, ParsedSong } from '../types'
+import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown, Check, Plus } from 'lucide-react'
+import type { SongSummary, SongDetail, ReviewItem, ParsedSong, Songbook } from '../types'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import { highlight } from '../highlight'
 import SongKeyPicker from './SongKeyPicker'
@@ -69,6 +69,23 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const importMenuRef = useRef<HTMLDivElement>(null)
 
+  // Songbooks — which labeled collection search/browse/import are scoped to.
+  // null means "every songbook" (today's exact behavior, unchanged) — a
+  // specific id narrows both what's shown and where a new import lands.
+  const [songbooks, setSongbooks] = useState<Songbook[]>([])
+  const [songbookFilter, setSongbookFilter] = useState<string | null>(null)
+  const [songbookMenuOpen, setSongbookMenuOpen] = useState(false)
+  const [addingSongbook, setAddingSongbook] = useState(false)
+  const [songbookDraft, setSongbookDraft] = useState('')
+  const songbookMenuRef = useRef<HTMLDivElement>(null)
+
+  const loadSongbooks = useCallback(() => {
+    window.electronAPI.listSongbooks().then(setSongbooks)
+  }, [])
+  useEffect(() => {
+    if (visible) loadSongbooks()
+  }, [visible, loadSongbooks])
+
   useEffect(() => {
     if (!importMenuOpen) return
     const onDown = (e: MouseEvent): void => {
@@ -78,6 +95,36 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     return () => document.removeEventListener('mousedown', onDown)
   }, [importMenuOpen])
 
+  useEffect(() => {
+    if (!songbookMenuOpen) return
+    const onDown = (e: MouseEvent): void => {
+      if (songbookMenuRef.current && !songbookMenuRef.current.contains(e.target as Node)) {
+        setSongbookMenuOpen(false)
+        setAddingSongbook(false)
+        setSongbookDraft('')
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [songbookMenuOpen])
+
+  const submitAddSongbook = (): void => {
+    const label = songbookDraft.trim()
+    if (label) {
+      window.electronAPI.addSongbook(label).then((list) => {
+        setSongbooks(list)
+        const created = list.find((b) => b.label === label)
+        if (created) setSongbookFilter(created.id)
+      })
+    }
+    setAddingSongbook(false)
+    setSongbookDraft('')
+    setSongbookMenuOpen(false)
+  }
+
+  const songbookLabel = (id: string | null): string =>
+    id === null ? 'All songbooks' : songbooks.find((b) => b.id === id)?.label ?? 'Songs'
+
   const loadRecent = useCallback(() => {
     window.electronAPI.getRecentSongs().then((r) => {
       setRecentSongs(r)
@@ -86,18 +133,19 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   }, [])
   const loadAllSongs = useCallback(() => {
     setAllLoading(true)
-    window.electronAPI.searchSongs('').then((r) => {
+    window.electronAPI.searchSongs('', songbookFilter ?? undefined).then((r) => {
       setAllSongs(r)
       setAllLoading(false)
     })
-  }, [])
+  }, [songbookFilter])
 
   useEffect(() => {
     if (visible) loadRecent()
   }, [visible, loadRecent])
   useEffect(() => {
-    if (visible && tab === 'browse' && browseSection === 'all' && allSongs === null) loadAllSongs()
-  }, [visible, tab, browseSection, allSongs, loadAllSongs])
+    if (visible && tab === 'browse' && browseSection === 'all') loadAllSongs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, tab, browseSection, songbookFilter])
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
@@ -108,7 +156,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       return
     }
     timer.current = setTimeout(() => {
-      window.electronAPI.searchSongs(q).then((r) => {
+      window.electronAPI.searchSongs(q, songbookFilter ?? undefined).then((r) => {
         setResults(r)
         setSearched(true)
       })
@@ -116,7 +164,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [query])
+  }, [query, songbookFilter])
 
   const openSong = useCallback((id: number) => {
     window.electronAPI.getSong(id).then(setSelected)
@@ -165,15 +213,17 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   )
 
   const refreshAfterChange = useCallback(() => {
-    if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
+    if (query.trim().length >= MIN_QUERY_LEN) {
+      window.electronAPI.searchSongs(query, songbookFilter ?? undefined).then(setResults)
+    }
     setAllSongs(null)
-  }, [query])
+  }, [query, songbookFilter])
 
   const handleImportFile = useCallback(async () => {
     setImportMenuOpen(false)
     setImportMsg('Importing…')
     setImportFailures([])
-    const r = await window.electronAPI.importSongs()
+    const r = await window.electronAPI.importSongs(songbookFilter ?? undefined)
     if (!r) {
       setImportMsg(null)
       return
@@ -191,7 +241,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       setReviewIndex(0)
     }
     setTimeout(() => setImportMsg(null), 6000)
-  }, [refreshAfterChange])
+  }, [refreshAfterChange, songbookFilter])
 
   const currentReview = reviewQueue[reviewIndex] ?? null
   const advanceReviewQueue = useCallback(() => {
@@ -206,7 +256,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const handleSaveReview = useCallback(
     async (song: ParsedSong) => {
       if (!currentReview) return
-      await window.electronAPI.commitReviewedSong(song, currentReview.originPath)
+      await window.electronAPI.commitReviewedSong(song, currentReview.originPath, currentReview.songbookId)
       refreshAfterChange()
       advanceReviewQueue()
     },
@@ -225,10 +275,12 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       if (await window.electronAPI.deleteSong(id)) {
         setSelected(null)
         setAllSongs(null)
-        if (query.trim().length >= MIN_QUERY_LEN) window.electronAPI.searchSongs(query).then(setResults)
+        if (query.trim().length >= MIN_QUERY_LEN) {
+          window.electronAPI.searchSongs(query, songbookFilter ?? undefined).then(setResults)
+        }
       }
     },
-    [query]
+    [query, songbookFilter]
   )
 
   /** Refresh every place this song's key could already be showing — the
@@ -337,6 +389,92 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
         <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => setTab('browse')}>
           Browse
         </button>
+        <div className="songs-songbook-menu" ref={songbookMenuRef}>
+          <button
+            className="btn-quiet btn-sm songs-import-btn"
+            onClick={() => setSongbookMenuOpen((v) => !v)}
+            aria-expanded={songbookMenuOpen}
+            title="Which songbook to search/browse/import into"
+          >
+            {songbookLabel(songbookFilter)} <ChevronDown width={12} height={12} strokeWidth={2.4} aria-hidden="true" />
+          </button>
+          {songbookMenuOpen && (
+            <div className="songs-import-popover" role="menu">
+              <button
+                role="menuitem"
+                className={songbookFilter === null ? 'is-selected' : undefined}
+                onClick={() => {
+                  setSongbookFilter(null)
+                  setSongbookMenuOpen(false)
+                }}
+              >
+                {songbookFilter === null && <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />}
+                All songbooks
+              </button>
+              {songbooks.map((b) => (
+                <button
+                  key={b.id}
+                  role="menuitem"
+                  className={songbookFilter === b.id ? 'is-selected' : undefined}
+                  onClick={() => {
+                    setSongbookFilter(b.id)
+                    setSongbookMenuOpen(false)
+                  }}
+                >
+                  {songbookFilter === b.id && <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />}
+                  {b.label}
+                </button>
+              ))}
+              {addingSongbook ? (
+                <div className="songs-songbook-add-row">
+                  <input
+                    className="display-rename-input"
+                    value={songbookDraft}
+                    onChange={(e) => setSongbookDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitAddSongbook()
+                      if (e.key === 'Escape') {
+                        setAddingSongbook(false)
+                        setSongbookDraft('')
+                      }
+                    }}
+                    placeholder="Songbook name"
+                    maxLength={40}
+                    autoFocus
+                  />
+                  <button
+                    className="display-row-btn"
+                    title="Add songbook"
+                    aria-label="Add songbook"
+                    onClick={submitAddSongbook}
+                  >
+                    <Check width={14} height={14} strokeWidth={2.4} aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <button role="menuitem" onClick={() => setAddingSongbook(true)}>
+                  <Plus width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                  New songbook…
+                </button>
+              )}
+              {songbookFilter && (
+                <button
+                  role="menuitem"
+                  className="songs-songbook-remove"
+                  onClick={() => {
+                    window.electronAPI.removeSongbook(songbookFilter).then((list) => {
+                      setSongbooks(list)
+                      setSongbookFilter(null)
+                    })
+                    setSongbookMenuOpen(false)
+                  }}
+                >
+                  Remove "{songbookLabel(songbookFilter)}" (songs move to All)
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="songs-import-menu" ref={importMenuRef}>
           <button
             className="btn-secondary btn-sm songs-import-btn"
@@ -376,6 +514,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
 
       {showPaste ? (
         <PasteSongScreen
+          songbookId={songbookFilter ?? undefined}
           onClose={() => setShowPaste(false)}
           onSaved={(songId) => {
             setShowPaste(false)
@@ -386,6 +525,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       ) : onlineQuery !== null ? (
         <OnlineImport
           query={onlineQuery}
+          songbookId={songbookFilter ?? undefined}
           onClose={() => setOnlineQuery(null)}
           onImported={(songId) => {
             setOnlineQuery(null)

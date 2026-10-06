@@ -18,7 +18,8 @@ export function insertSong(
   db: Database,
   song: ParsedSong,
   source: 'bundled' | 'import',
-  originPath?: string
+  originPath?: string,
+  songbookId = 'default'
 ): InsertedSong {
   const body = [song.title, song.author ?? '', ...song.slides.map((s) => s.text)]
     .filter(Boolean)
@@ -26,8 +27,8 @@ export function insertSong(
 
   const info = db
     .prepare(
-      `INSERT INTO songs (title, author, song_key, ccli, source, origin_path, search_body)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO songs (title, author, song_key, ccli, source, origin_path, search_body, songbook_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       song.title.trim(),
@@ -36,7 +37,8 @@ export function insertSong(
       song.ccli?.trim() || null,
       source,
       originPath ?? null,
-      body
+      body,
+      songbookId
     )
   const id = Number(info.lastInsertRowid)
 

@@ -27,6 +27,9 @@ import type {
   ParsedSong,
   DisplayInfo as DisplayInfoType,
   OutputInfo,
+  ChannelInfo,
+  ChannelSyncConfig,
+  Songbook,
   PresentationProfileId
 } from './types'
 
@@ -144,11 +147,20 @@ declare global {
       }>
       // Outputs (Phase 2: the Graphics destination)
       listOutputs: () => Promise<OutputInfo[]>
-      addGraphicsOutput: () => Promise<OutputInfo[]>
+      addGraphicsOutput: (channelId: string) => Promise<OutputInfo[]>
       removeOutput: (id: string) => Promise<OutputInfo[]>
       setOutputProfile: (id: string, profileId: PresentationProfileId) => Promise<OutputInfo[]>
       setDestinationSuppressed: (id: string, suppressed: boolean) => Promise<OutputInfo[]>
       onOutputsChanged: (callback: (outputs: OutputInfo[]) => void) => () => void
+      listChannels: () => Promise<ChannelInfo[]>
+      addChannel: (label: string, inheritTranslation?: string) => Promise<ChannelInfo[]>
+      removeChannel: (id: string) => Promise<ChannelInfo[]>
+      setChannelTranslation: (id: string, translation: string) => Promise<ChannelInfo[]>
+      setChannelSongbook: (id: string, songbookId: string) => Promise<ChannelInfo[]>
+      setChannelSync: (id: string, sync: ChannelSyncConfig) => Promise<ChannelInfo[]>
+      onChannelsChanged: (callback: (channels: ChannelInfo[]) => void) => () => void
+      showSlideOnChannel: (channelId: string, slide: SlidePayload) => void
+      clearChannel: (channelId: string) => void
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never
@@ -250,13 +262,14 @@ declare global {
       getRecentBibleRefs: () => Promise<Array<{ reference: string; translation: string }>>
       clearRecentBibleRefs: () => Promise<void>
       // Songs
-      searchSongs: (query: string) => Promise<SongSummary[]>
+      searchSongs: (query: string, songbookId?: string) => Promise<SongSummary[]>
       getSong: (id: number) => Promise<SongDetail | null>
-      importSongs: () => Promise<SongImportResult | null>
+      importSongs: (songbookId?: string) => Promise<SongImportResult | null>
       parsePastedText: (text: string, titleHint?: string) => Promise<ParsedSong | { error: string }>
       commitReviewedSong: (
         song: ParsedSong,
-        originPath?: string
+        originPath?: string,
+        songbookId?: string
       ) => Promise<{ id: number; title: string; alreadyImported: boolean }>
       deleteSong: (id: number) => Promise<boolean>
       getRecentSongs: () => Promise<SongSummary[]>
@@ -268,8 +281,13 @@ declare global {
       onlineSongImport: (
         url: string,
         source: 'hymnary' | 'cyberhymnal',
-        edited: ParsedSong
+        edited: ParsedSong,
+        songbookId?: string
       ) => Promise<OnlineImportResult>
+      // Songbooks
+      listSongbooks: () => Promise<Songbook[]>
+      addSongbook: (label: string) => Promise<Songbook[]>
+      removeSongbook: (id: string) => Promise<Songbook[]>
       // Languages / translation
       getLanguages: () => Promise<Record<string, string>>
       translateQuote: (

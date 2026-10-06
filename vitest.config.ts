@@ -12,6 +12,14 @@ export default defineConfig({
       ['src/test/renderer/**', 'jsdom']
     ],
     setupFiles: ['src/test/setup.ts'],
+    // songs.test.ts parses real .docx/.pdf fixtures via pdfjs-dist/mammoth;
+    // under full-suite fork-pool CPU contention, that parsing's fork can
+    // occasionally outlast the default 10s teardownTimeout, which kills the
+    // worker and discards the whole file's results even though every test
+    // in it already passed. Confirmed via isolated runs + an active-handle
+    // check that nothing actually leaks — this is scheduling pressure under
+    // concurrent forks, not a real hang.
+    teardownTimeout: 30000,
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/main/**', 'src/renderer/src/**']

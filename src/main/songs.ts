@@ -21,6 +21,7 @@ export interface SongSummary {
   songKey: string | null
   slideCount: number
   source: string
+  songbookId: string
   /** Set on a search hit (not a plain browse row): false means the query
    *  wasn't in the title, so the UI should show where it *was* found. */
   matchedInTitle?: boolean
@@ -34,8 +35,14 @@ export interface SongDetail {
   author: string | null
   songKey: string | null
   source: string
+  songbookId: string
   provenance: { label: string; url?: string } | null
   slides: Array<{ label: string | null; text: string }>
+}
+
+export interface Songbook {
+  id: string
+  label: string
 }
 
 const ONLINE_HYMNARY_PREFIX = 'online:hymnary:'
@@ -55,28 +62,30 @@ function provenanceFromOriginPath(originPath: string | null): { label: string; u
  *  constant with Sermon/Bible search for one number to reason about. */
 const NO_PRACTICAL_LIMIT = MAX_SEARCH_RESULTS
 
-export function searchSongs(query: string, limit = NO_PRACTICAL_LIMIT): SongSummary[] {
+export function searchSongs(query: string, limit = NO_PRACTICAL_LIMIT, songbookId?: string): SongSummary[] {
   try {
     const db = getLibraryDb()
     const q = (query ?? '').trim()
+    const bookFilter = songbookId ? 'WHERE s.songbook_id = @songbookId' : ''
     if (q.length < 2) {
       return db
-        .prepare<[number], SongSummary>(
-          `SELECT s.id, s.title, s.author, s.song_key AS songKey, s.source,
+        .prepare(
+          `SELECT s.id, s.title, s.author, s.song_key AS songKey, s.source, s.songbook_id AS songbookId,
                   (SELECT COUNT(*) FROM song_slides WHERE song_id = s.id) AS slideCount
-           FROM songs s ORDER BY s.title LIMIT ?`
+           FROM songs s ${bookFilter} ORDER BY s.title LIMIT @limit`
         )
-        .all(limit)
+        .all({ songbookId: songbookId ?? null, limit }) as SongSummary[]
     }
 
+    const bookClause = songbookId ? 'AND s.songbook_id = @songbookId' : ''
     const rows = db
-      .prepare<[string, number], SongSummary>(
-        `SELECT s.id, s.title, s.author, s.song_key AS songKey, s.source,
+      .prepare(
+        `SELECT s.id, s.title, s.author, s.song_key AS songKey, s.source, s.songbook_id AS songbookId,
                 (SELECT COUNT(*) FROM song_slides WHERE song_id = s.id) AS slideCount
          FROM songs_fts f JOIN songs s ON s.id = f.rowid
-         WHERE songs_fts MATCH ? ORDER BY rank LIMIT ?`
+         WHERE songs_fts MATCH @q ${bookClause} ORDER BY rank LIMIT @limit`
       )
-      .all('"' + q.replace(/"/g, '""') + '"', limit)
+      .all({ q: '"' + q.replace(/"/g, '""') + '"', songbookId: songbookId ?? null, limit }) as SongSummary[]
 
     // The FTS index matches title + lyrics as one blob, so a hit doesn't say
     // *where* it landed — a song leader searching a half-remembered lyric
@@ -138,9 +147,17 @@ export function getSong(id: number): SongDetail | null {
     const song = db
       .prepare<
         [number],
-        { id: number; title: string; author: string | null; song_key: string | null; source: string; origin_path: string | null }
+        {
+          id: number
+          title: string
+          author: string | null
+          song_key: string | null
+          source: string
+          origin_path: string | null
+          songbook_id: string
+        }
       >(
-        'SELECT id, title, author, song_key, source, origin_path FROM songs WHERE id = ?'
+        'SELECT id, title, author, song_key, source, origin_path, songbook_id FROM songs WHERE id = ?'
       )
       .get(id)
     if (!song) return null
@@ -155,6 +172,7 @@ export function getSong(id: number): SongDetail | null {
       author: song.author,
       songKey: song.song_key,
       source: song.source,
+      songbookId: song.songbook_id,
       provenance: provenanceFromOriginPath(song.origin_path),
       slides: normalizeSlideLabels(slides)
     }
@@ -194,6 +212,11 @@ export interface ReviewItem {
   originPath: string
   displayName: string
   song: ParsedSong
+  /** Which songbook this came in under — carried through review the same
+   *  way originPath is, so the choice made when the import started is what
+   *  actually gets written, not whatever the default happened to be by the
+   *  time the operator finishes reviewing. */
+  songbookId: string
 }
 
 export interface ImportResult {
@@ -218,7 +241,7 @@ function friendlyParseError(error: string): string {
  *  touches the database — parsing happens up front (it's async: docx/pdf
  *  extraction needs it) so only the actual writes need the sync db
  *  transaction better-sqlite3 requires. */
-export async function importSongs(paths: string[]): Promise<ImportResult> {
+export async function importSongs(paths: string[], songbookId = 'default'): Promise<ImportResult> {
   const result: ImportResult = { added: [], failed: [], skipped: 0, needsReview: [] }
   try {
     const db = getLibraryDb()
@@ -238,7 +261,7 @@ export async function importSongs(paths: string[]): Promise<ImportResult> {
           continue
         }
         if (needsReview(r.format)) {
-          result.needsReview.push({ originPath, displayName: basename(file), song: r.song })
+          result.needsReview.push({ originPath, displayName: basename(file), song: r.song, songbookId })
         } else {
           toCommit.push({ song: r.song, originPath })
         }
@@ -249,7 +272,7 @@ export async function importSongs(paths: string[]): Promise<ImportResult> {
 
     const tx = db.transaction(() => {
       for (const { song, originPath } of toCommit) {
-        result.added.push(insertSong(db, song, 'import', originPath))
+        result.added.push(insertSong(db, song, 'import', originPath, songbookId))
       }
     })
     tx()
@@ -277,7 +300,8 @@ export function parsePastedText(text: string, titleHint?: string): ParsedSong | 
  *  own re-check right before its write. */
 export function commitReviewedSong(
   song: ParsedSong,
-  originPath?: string
+  originPath?: string,
+  songbookId = 'default'
 ): { id: number; title: string; alreadyImported: boolean } {
   const db = getLibraryDb()
   if (originPath) {
@@ -286,7 +310,7 @@ export function commitReviewedSong(
       .get(originPath)
     if (existing) return { ...existing, alreadyImported: true }
   }
-  const ins = insertSong(db, song, 'import', originPath)
+  const ins = insertSong(db, song, 'import', originPath, songbookId)
   return { ...ins, alreadyImported: false }
 }
 
@@ -395,7 +419,8 @@ export type OnlineImportResult =
 export async function onlineSongImport(
   url: string,
   source: 'hymnary' | 'cyberhymnal',
-  edited: ParsedSong
+  edited: ParsedSong,
+  songbookId = 'default'
 ): Promise<OnlineImportResult> {
   const originPath = `online:${source}:${url}`
   const db = getLibraryDb()
@@ -406,6 +431,54 @@ export async function onlineSongImport(
 
   const r = source === 'hymnary' ? await fetchHymnaryHymn(url) : await fetchCyberHymnalHymn(url)
   if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
-  const ins = insertSong(db, edited, 'import', originPath)
+  const ins = insertSong(db, edited, 'import', originPath, songbookId)
   return { ok: true, id: ins.id, title: ins.title, alreadyImported: false }
+}
+
+// ── Songbooks (labeled song collections) ────────────────────────────────────
+
+export function listSongbooks(): Songbook[] {
+  try {
+    const db = getLibraryDb()
+    return db
+      .prepare("SELECT id, label FROM songbooks ORDER BY (id = 'default') DESC, label")
+      .all() as Songbook[]
+  } catch (e) {
+    log.error('listSongbooks error', e)
+    return []
+  }
+}
+
+export function addSongbook(label: string): Songbook | null {
+  const trimmed = label.trim()
+  if (!trimmed) return null
+  try {
+    const db = getLibraryDb()
+    const id = `songbook-${Date.now().toString(36)}`
+    db.prepare('INSERT INTO songbooks (id, label) VALUES (?, ?)').run(id, trimmed)
+    return { id, label: trimmed }
+  } catch (e) {
+    log.error('addSongbook error', e)
+    return null
+  }
+}
+
+/** 'default' can never be removed — every song always belongs to *some*
+ *  songbook, and it's the one nothing else needs to exist first. Removing
+ *  any other songbook re-labels its songs back to 'default' rather than
+ *  deleting them — a songbook is a label on songs, not an owner of them. */
+export function removeSongbook(id: string): boolean {
+  if (id === 'default') return false
+  try {
+    const db = getLibraryDb()
+    const tx = db.transaction(() => {
+      db.prepare("UPDATE songs SET songbook_id = 'default' WHERE songbook_id = ?").run(id)
+      db.prepare('DELETE FROM songbooks WHERE id = ?').run(id)
+    })
+    tx()
+    return true
+  } catch (e) {
+    log.error('removeSongbook error', e)
+    return false
+  }
 }
