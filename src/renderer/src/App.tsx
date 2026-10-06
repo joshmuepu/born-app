@@ -1299,6 +1299,9 @@ export default function App() {
             onSetOutputProfile={(id, profileId) =>
               window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
             }
+            onSetOutputAutoProfile={(id, autoProfile) =>
+              window.electronAPI.setOutputAutoProfile(id, autoProfile).then(setOutputs)
+            }
             onSetOutputSuppressed={(id, suppressed) =>
               window.electronAPI.setDestinationSuppressed(id, suppressed).then(setOutputs)
             }

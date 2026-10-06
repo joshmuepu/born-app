@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { paginateText, MAX_SLIDE_CHARS } from '../../shared/paginate'
+import { paginateText, MAX_SLIDE_CHARS, chunkLines } from '../../shared/paginate'
 
 const wordCount = (s: string): number => s.split(/\s+/).filter(Boolean).length
 
@@ -61,5 +61,28 @@ describe('paginateText', () => {
     const pages = paginateText(para)
     expect(pages.length).toBeGreaterThan(1)
     expect(wordCount(pages.join(' '))).toBe(wordCount(para))
+  })
+})
+
+describe('chunkLines', () => {
+  it('returns text at or under the page size as a single page', () => {
+    expect(chunkLines('Line one\nLine two', 2)).toEqual(['Line one\nLine two'])
+    expect(chunkLines('Just one line', 2)).toEqual(['Just one line'])
+  })
+
+  it('returns [] for empty/whitespace-only input', () => {
+    expect(chunkLines('', 2)).toEqual([])
+    expect(chunkLines('   ', 2)).toEqual([])
+  })
+
+  it('splits a long song into groups of linesPerPage, dropping nothing', () => {
+    const lyrics = ['Amazing grace', 'how sweet the sound', 'that saved a wretch', 'like me'].join('\n')
+    const pages = chunkLines(lyrics, 2)
+    expect(pages).toEqual(['Amazing grace\nhow sweet the sound', 'that saved a wretch\nlike me'])
+  })
+
+  it('leaves a short final page rather than padding or dropping it', () => {
+    const lyrics = ['one', 'two', 'three'].join('\n')
+    expect(chunkLines(lyrics, 2)).toEqual(['one\ntwo', 'three'])
   })
 })

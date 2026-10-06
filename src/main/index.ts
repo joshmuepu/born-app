@@ -40,6 +40,7 @@ import {
   registerGraphicsDestination,
   unregisterGraphicsDestination,
   setGraphicsProfile,
+  setGraphicsAutoProfile,
   graphicsClientCount,
   REMOTE_PORT
 } from './webRemote'
@@ -466,7 +467,11 @@ destinations = new Map<string, DestinationEntry>(
       kind: route.kind,
       // Settings from before Phase 3 won't have this — default a restored
       // browser destination to the same thing it always looked like.
-      profileId: route.kind === 'browser' ? route.profileId ?? 'fullscreen' : undefined
+      profileId: route.kind === 'browser' ? route.profileId ?? 'fullscreen' : undefined,
+      // Settings from before Phase 3b won't have this either — default to
+      // manual (off), so a destination someone already configured keeps
+      // rendering exactly the profile they picked, not a surprise switch.
+      autoProfile: route.kind === 'browser' ? route.autoProfile ?? false : undefined
     }
     const entry: DestinationEntry = { config, ready: route.kind === 'browser', suppressed: false, send }
     if (route.destinationId === 'congregation') entry.fontSize = getSettingsSafe().fontSize
@@ -481,7 +486,7 @@ destinations = new Map<string, DestinationEntry>(
 // have its own.
 for (const dest of destinations.values()) {
   if (dest.config.kind === 'browser') {
-    registerGraphicsDestination(dest.config.id, dest.config.profileId ?? 'fullscreen')
+    registerGraphicsDestination(dest.config.id, dest.config.profileId ?? 'fullscreen', dest.config.autoProfile ?? false)
   }
 }
 
@@ -490,7 +495,8 @@ function persistDestinationRouting(): void {
     destinationId: d.config.id,
     channelId: d.config.channelId,
     kind: d.config.kind,
-    profileId: d.config.profileId
+    profileId: d.config.profileId,
+    autoProfile: d.config.autoProfile
   }))
   try {
     updateSettings({ destinationRouting: routing })
@@ -513,6 +519,7 @@ export interface OutputInfo {
   kind: DestinationConfig['kind']
   url: string | null
   profileId: PresentationProfileId | null
+  autoProfile: boolean
   suppressed: boolean
 }
 
@@ -526,6 +533,7 @@ function outputsSnapshot(): OutputInfo[] {
       kind: d.config.kind,
       url: base ? `${base}/output/graphics/${d.config.id}` : null,
       profileId: d.config.profileId ?? null,
+      autoProfile: d.config.autoProfile ?? false,
       suppressed: d.suppressed
     }))
 }
@@ -534,16 +542,19 @@ function outputsSnapshot(): OutputInfo[] {
  *  channel — enforced here too, not just by the "+ Add Graphics" button
  *  disappearing, since that's a client-side guard an IPC call can bypass
  *  (caught by exactly that during testing). Different channels can each have
- *  their own, independently (see webRemote.ts's per-destination registry). */
+ *  their own, independently (see webRemote.ts's per-destination registry).
+ *  Starts in auto-profile mode — the whole point of content-type-aware
+ *  profiles is that a newly added output doesn't need an operator to pick
+ *  one by hand; `profileId` stays set as the fallback auto falls back to. */
 function addGraphicsDestination(channelId: ChannelId): void {
   if (!channels.has(channelId)) return
   if ([...destinations.values()].some((d) => d.config.kind === 'browser' && d.config.channelId === channelId)) {
     return
   }
   const id = `graphics-${Date.now().toString(36)}`
-  const config: DestinationConfig = { id, channelId, kind: 'browser', profileId: 'fullscreen' }
+  const config: DestinationConfig = { id, channelId, kind: 'browser', profileId: 'fullscreen', autoProfile: true }
   destinations.set(id, { config, ready: true, suppressed: false, send: graphicsSendFor(id) })
-  registerGraphicsDestination(id, 'fullscreen')
+  registerGraphicsDestination(id, 'fullscreen', true)
   pushGraphicsForChannel(channelId) // so a browser opened right after adding isn't stuck on the SSE default
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
@@ -563,6 +574,15 @@ function setOutputProfile(id: string, profileId: PresentationProfileId): void {
   if (!dest || dest.config.kind !== 'browser') return
   dest.config.profileId = profileId
   setGraphicsProfile(id, profileId)
+  persistDestinationRouting()
+  sendToMain('outputs:changed', outputsSnapshot())
+}
+
+function setOutputAutoProfile(id: string, autoProfile: boolean): void {
+  const dest = destinations.get(id)
+  if (!dest || dest.config.kind !== 'browser') return
+  dest.config.autoProfile = autoProfile
+  setGraphicsAutoProfile(id, autoProfile)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
 }
@@ -1024,9 +1044,15 @@ function onDisplayLayoutChanged(reason: string): void {
 
 function toGraphicsSlide(
   slide: SlidePayload | null
-): { text: string; label?: string; marker?: string; reference?: string } | null {
+): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind'] } | null {
   if (!slide) return null
-  return { text: slide.text, label: slide.label, marker: slide.marker, reference: slide.reference }
+  return {
+    text: slide.text,
+    label: slide.label,
+    marker: slide.marker,
+    reference: slide.reference,
+    kind: slide.kind
+  }
 }
 
 /** Every browser-kind destination bound to this channel gets the same
@@ -1831,6 +1857,11 @@ ipcMain.handle('outputs:remove', (_event, id: string) => {
 
 ipcMain.handle('outputs:set-profile', (_event, id: string, profileId: PresentationProfileId) => {
   setOutputProfile(id, profileId)
+  return outputsSnapshot()
+})
+
+ipcMain.handle('outputs:set-auto-profile', (_event, id: string, autoProfile: boolean) => {
+  setOutputAutoProfile(id, autoProfile)
   return outputsSnapshot()
 })
 

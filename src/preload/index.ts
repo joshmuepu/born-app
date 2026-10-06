@@ -81,6 +81,7 @@ export interface OutputInfo {
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
+  autoProfile: boolean
   suppressed: boolean
 }
 
@@ -370,6 +371,8 @@ const api = {
   removeOutput: (id: string): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:remove', id),
   setOutputProfile: (id: string, profileId: PresentationProfileId): Promise<OutputInfo[]> =>
     ipcRenderer.invoke('outputs:set-profile', id, profileId),
+  setOutputAutoProfile: (id: string, autoProfile: boolean): Promise<OutputInfo[]> =>
+    ipcRenderer.invoke('outputs:set-auto-profile', id, autoProfile),
   setDestinationSuppressed: (id: string, suppressed: boolean): Promise<OutputInfo[]> =>
     ipcRenderer.invoke('destination:set-suppressed', id, suppressed),
   onOutputsChanged: (callback: (outputs: OutputInfo[]) => void): (() => void) => {

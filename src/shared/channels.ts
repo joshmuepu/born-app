@@ -53,8 +53,16 @@ export interface DestinationConfig {
   id: string
   channelId: ChannelId
   kind: DestinationKind
-  /** Only set (and only meaningful) for 'browser'-kind destinations. */
+  /** Only set (and only meaningful) for 'browser'-kind destinations. The
+   *  profile actually rendered when `autoProfile` is off, and the fallback
+   *  for any content kind DEFAULT_CONTENT_PROFILES doesn't cover when it's
+   *  on. */
   profileId?: PresentationProfileId
+  /** When true, this Graphics destination picks its treatment per slide
+   *  from DEFAULT_CONTENT_PROFILES (song/bible/quote) instead of always
+   *  using `profileId` — see shared/presentationProfiles.ts. Only
+   *  meaningful for 'browser'-kind destinations, same as profileId. */
+  autoProfile?: boolean
   /** Stable display name (see displays.ts / NamedDisplay) — never a raw
    *  Electron display id, which doesn't survive a reboot or cable swap.
    *  Unused in Phase 1: the congregation/stage destinations still resolve
@@ -105,6 +113,8 @@ export interface DestinationRoutingEntry {
   kind: DestinationKind
   /** Only meaningful for 'browser' kind; absent for congregation/stage. */
   profileId?: PresentationProfileId
+  /** Only meaningful for 'browser' kind; absent for congregation/stage. */
+  autoProfile?: boolean
 }
 
 export function createChannel<TSlide>(id: ChannelId, label: string): ChannelState<TSlide> {

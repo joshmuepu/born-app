@@ -3,7 +3,8 @@ import {
   PRESENTATION_PROFILES,
   getPresentationProfile,
   GRAPHICS_CANVAS,
-  SAFE_AREA_PERCENT
+  SAFE_AREA_PERCENT,
+  DEFAULT_CONTENT_PROFILES
 } from '../../shared/presentationProfiles'
 
 describe('PRESENTATION_PROFILES', () => {
@@ -11,12 +12,35 @@ describe('PRESENTATION_PROFILES', () => {
     expect(Object.keys(PRESENTATION_PROFILES).sort()).toEqual(['fullscreen', 'lower-third'])
   })
 
-  it('every profile has all four regions', () => {
+  it('every profile has all six regions', () => {
     for (const profile of Object.values(PRESENTATION_PROFILES)) {
       expect(profile.regions.panel).toBeTruthy()
       expect(profile.regions.label).toBeTruthy()
       expect(profile.regions.text).toBeTruthy()
       expect(profile.regions.reference).toBeTruthy()
+      expect(profile.regions.referenceDetail).toBeTruthy()
+      expect(profile.regions.marker).toBeTruthy()
+    }
+  })
+
+  it('every profile declares a transition and a broadcast pagination policy', () => {
+    for (const profile of Object.values(PRESENTATION_PROFILES)) {
+      expect(['cut', 'fade']).toContain(profile.transition.type)
+      expect(profile.transition.durationMs).toBeGreaterThanOrEqual(0)
+      expect(profile.broadcastPagination.linesPerPage).toBeGreaterThan(0)
+      expect(profile.broadcastPagination.intervalMs).toBeGreaterThan(0)
+    }
+  })
+
+  it('a cut transition has no duration — nothing to animate', () => {
+    expect(getPresentationProfile('fullscreen').transition).toEqual({ type: 'cut', durationMs: 0 })
+  })
+})
+
+describe('DEFAULT_CONTENT_PROFILES', () => {
+  it('covers every content kind with a real, existing profile', () => {
+    for (const [kind, profileId] of Object.entries(DEFAULT_CONTENT_PROFILES)) {
+      expect(PRESENTATION_PROFILES[profileId], `${kind} → ${profileId}`).toBeTruthy()
     }
   })
 })

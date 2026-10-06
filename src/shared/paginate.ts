@@ -52,3 +52,22 @@ export function paginateText(text: string, maxChars: number = MAX_SLIDE_CHARS): 
   if (rest) pages.push(rest)
   return pages
 }
+
+/** Splits newline-joined text into groups of `perPage` lines — the Graphics
+ *  output's own, separate pagination for a broadcast/stream frame, which
+ *  has far less room than the congregation wall and so needs a shorter page
+ *  than whatever paginateText already produced for that slide. A single
+ *  page (no further splitting needed) still comes back as a one-element
+ *  array, never an empty one, for text that isn't just whitespace. */
+export function chunkLines(text: string, perPage: number): string[] {
+  const lines = (text ?? '').split('\n')
+  if (lines.length <= perPage) {
+    const joined = lines.join('\n').trim()
+    return joined ? [joined] : []
+  }
+  const pages: string[] = []
+  for (let i = 0; i < lines.length; i += perPage) {
+    pages.push(lines.slice(i, i + perPage).join('\n'))
+  }
+  return pages
+}

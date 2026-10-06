@@ -74,6 +74,7 @@ export interface OutputInfo {
   kind: 'window' | 'browser'
   url: string | null
   profileId: PresentationProfileId | null
+  autoProfile: boolean
   suppressed: boolean
 }
 

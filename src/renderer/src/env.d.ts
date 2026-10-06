@@ -151,6 +151,7 @@ declare global {
       addGraphicsOutput: (channelId: string) => Promise<OutputInfo[]>
       removeOutput: (id: string) => Promise<OutputInfo[]>
       setOutputProfile: (id: string, profileId: PresentationProfileId) => Promise<OutputInfo[]>
+      setOutputAutoProfile: (id: string, autoProfile: boolean) => Promise<OutputInfo[]>
       setDestinationSuppressed: (id: string, suppressed: boolean) => Promise<OutputInfo[]>
       onOutputsChanged: (callback: (outputs: OutputInfo[]) => void) => () => void
       listChannels: () => Promise<ChannelInfo[]>

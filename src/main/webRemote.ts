@@ -10,9 +10,11 @@ import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAss
 // exactly one place to mean anything, so this one import is deliberate.
 import {
   getPresentationProfile,
-  type PresentationProfile,
+  PRESENTATION_PROFILES,
+  DEFAULT_CONTENT_PROFILES,
   type PresentationProfileId
 } from '../shared/presentationProfiles'
+import { chunkLines } from '../shared/paginate'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
@@ -24,6 +26,10 @@ export interface WebRemoteSlide {
   label?: string
   marker?: string
   reference?: string
+  /** Drives a Graphics destination's auto-profile treatment — absent for a
+   *  slide built before this existed, which just falls back to whatever
+   *  profile the destination had fixed. */
+  kind?: 'quote' | 'bible' | 'song'
 }
 
 export interface WebRemoteState {
@@ -138,6 +144,12 @@ let searchHandlers: WebRemoteSearchHandlers | null = null
 export interface GraphicsPayload {
   slide: WebRemoteSlide | null
   blanked: boolean
+  /** The profile this exact frame was rendered for — resolved server-side
+   *  (auto-by-kind or the destination's fixed choice, either way) so the
+   *  page never has to duplicate that decision client-side. Optional only
+   *  for backward shape-compatibility with a payload built before this
+   *  existed; every payload pushGraphicsUpdate actually sends sets it. */
+  profileId?: PresentationProfileId
 }
 
 /** One entry per Graphics-kind destination — keyed by destination id, not a
@@ -147,19 +159,36 @@ export interface GraphicsPayload {
  *  these exists and which channel it's bound to; this map only tracks what
  *  this file itself needs to serve it over HTTP/SSE. */
 interface GraphicsEntry {
+  /** The fixed profile — always rendered when autoProfile is off, and the
+   *  fallback for a content kind DEFAULT_CONTENT_PROFILES doesn't cover
+   *  when it's on. */
   profileId: PresentationProfileId
+  autoProfile: boolean
   clients: Set<ServerResponse>
+  /** The actual last frame sent — already resolved to one profile and, for
+   *  a paginated lyric slide, already sliced to whichever page is currently
+   *  showing. A client connecting mid-cycle sees exactly what every other
+   *  connected client sees right now, not a reset back to page one. */
   lastPayload: GraphicsPayload
+  /** Broadcast-pagination cycling state for the slide currently live on
+   *  this destination — see pushGraphicsUpdate. */
+  cycleTimer: ReturnType<typeof setInterval> | null
+  cyclePages: string[]
+  cycleIndex: number
 }
 const graphicsDestinations = new Map<string, GraphicsEntry>()
 
 /** main/index.ts calls this once, when a Graphics destination is added (or
  *  restored at boot) — creates the entry the routes below serve. */
-export function registerGraphicsDestination(id: string, profileId: PresentationProfileId): void {
+export function registerGraphicsDestination(id: string, profileId: PresentationProfileId, autoProfile: boolean): void {
   graphicsDestinations.set(id, {
     profileId,
+    autoProfile,
     clients: new Set(),
-    lastPayload: { slide: null, blanked: true }
+    lastPayload: { slide: null, blanked: true, profileId },
+    cycleTimer: null,
+    cyclePages: [],
+    cycleIndex: 0
   })
 }
 
@@ -170,6 +199,7 @@ export function registerGraphicsDestination(id: string, profileId: PresentationP
 export function unregisterGraphicsDestination(id: string): void {
   const entry = graphicsDestinations.get(id)
   if (!entry) return
+  if (entry.cycleTimer) clearInterval(entry.cycleTimer)
   for (const res of entry.clients) {
     try {
       res.end()
@@ -180,13 +210,22 @@ export function unregisterGraphicsDestination(id: string): void {
   graphicsDestinations.delete(id)
 }
 
-/** main/index.ts owns which profile a Graphics destination is set to; this
- *  file just renders it. Takes effect on the next page load (OBS Browser
- *  Source refresh) — the two layouts are different DOM, not a style tweak an
- *  already-open SSE connection can hot-swap. */
+/** The fixed profile a manual (non-auto) destination always renders, and an
+ *  auto one falls back to for a content kind DEFAULT_CONTENT_PROFILES
+ *  doesn't cover. Takes effect on the next push — unlike the single-profile
+ *  page this used to be, the live page now ships every profile's CSS and
+ *  switches between them by attribute, so this is a live change, not
+ *  something that waits for a reload. */
 export function setGraphicsProfile(id: string, profileId: PresentationProfileId): void {
   const entry = graphicsDestinations.get(id)
   if (entry) entry.profileId = profileId
+}
+
+/** Toggles automatic, content-type-driven profile selection for one
+ *  Graphics destination — see DEFAULT_CONTENT_PROFILES. */
+export function setGraphicsAutoProfile(id: string, autoProfile: boolean): void {
+  const entry = graphicsDestinations.get(id)
+  if (entry) entry.autoProfile = autoProfile
 }
 
 export function isGraphicsActive(id: string): boolean {
@@ -203,21 +242,62 @@ export function graphicsClientCount(id: string): number {
   return graphicsDestinations.get(id)?.clients.size ?? 0
 }
 
-/** Push a Graphics update to every client currently connected to this one
+/** Writes one frame to every client currently connected to this one
  *  destination (SSE — push, not poll, since a lagging live-presentation feed
  *  is actively bad, unlike the phone remote's state which tolerates a second
- *  of staleness fine). A no-op if `id` isn't a registered destination. */
-export function pushGraphicsUpdate(id: string, payload: GraphicsPayload): void {
-  const entry = graphicsDestinations.get(id)
-  if (!entry) return
-  entry.lastPayload = payload
-  const data = `data: ${JSON.stringify(payload)}\n\n`
+ *  of staleness fine) and records it as `lastPayload` for the next client
+ *  that connects. */
+function sendGraphicsFrame(
+  entry: GraphicsEntry,
+  slide: WebRemoteSlide | null,
+  blanked: boolean,
+  profileId: PresentationProfileId
+): void {
+  entry.lastPayload = { slide, blanked, profileId }
+  const data = `data: ${JSON.stringify(entry.lastPayload)}\n\n`
   for (const res of entry.clients) {
     try {
       res.write(data)
     } catch {
       entry.clients.delete(res)
     }
+  }
+}
+
+/** Push a Graphics update for one destination — resolves which profile this
+ *  slide actually renders with (auto-by-kind or the destination's fixed
+ *  choice), and starts/stops that profile's own broadcast-pagination cycle
+ *  for it. A no-op if `id` isn't a registered destination. */
+export function pushGraphicsUpdate(id: string, payload: GraphicsPayload): void {
+  const entry = graphicsDestinations.get(id)
+  if (!entry) return
+
+  if (entry.cycleTimer) {
+    clearInterval(entry.cycleTimer)
+    entry.cycleTimer = null
+  }
+
+  const slide = payload.slide
+  if (!slide || payload.blanked) {
+    entry.cyclePages = []
+    entry.cycleIndex = 0
+    sendGraphicsFrame(entry, slide, payload.blanked, entry.profileId)
+    return
+  }
+
+  const activeProfileId =
+    entry.autoProfile && slide.kind ? DEFAULT_CONTENT_PROFILES[slide.kind] ?? entry.profileId : entry.profileId
+  const profile = getPresentationProfile(activeProfileId)
+  const pages = chunkLines(slide.text, profile.broadcastPagination.linesPerPage)
+  entry.cyclePages = pages
+  entry.cycleIndex = 0
+  sendGraphicsFrame(entry, { ...slide, text: pages[0] ?? slide.text }, false, activeProfileId)
+
+  if (pages.length > 1) {
+    entry.cycleTimer = setInterval(() => {
+      entry.cycleIndex = (entry.cycleIndex + 1) % pages.length
+      sendGraphicsFrame(entry, { ...slide, text: pages[entry.cycleIndex] }, false, activeProfileId)
+    }, profile.broadcastPagination.intervalMs)
   }
 }
 
@@ -276,26 +356,70 @@ function cssDecl(rec: Record<string, string>): string {
 
 /** Takes the destination id so each rendered page's SSE connection points at
  *  its own events endpoint — two Graphics destinations open in two browser
- *  tabs (or two OBS sources) never read each other's feed. */
+ *  tabs (or two OBS sources) never read each other's feed. Which profile is
+ *  actually showing is decided server-side (pushGraphicsUpdate resolves
+ *  auto-by-kind or the fixed choice and stamps the result on every frame as
+ *  `profileId`) — this script just applies whatever it's told, by setting
+ *  that id as a `data-profile` attribute every profile's CSS is scoped
+ *  under, so switching treatment is one attribute write, never a reload. */
 function buildGraphicsScript(id: string): string {
   const eventsPath = `/output/graphics/${encodeURIComponent(id)}/events`
+  const transitions = Object.fromEntries(
+    Object.values(PRESENTATION_PROFILES).map((p) => [p.id, p.transition])
+  )
   return `
 (function(){
+  var stageEl = document.getElementById('stage');
+  var panelEl = document.getElementById('panel');
   var labelEl = document.getElementById('label');
   var textInnerEl = document.getElementById('text-inner');
   var refEl = document.getElementById('reference');
+  var refDetailEl = document.getElementById('reference-detail');
   var discEl = document.getElementById('disconnected');
+  var TRANSITIONS = ${JSON.stringify(transitions)};
+  var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
 
-  function render(payload){
+  function esc(s){
+    return (s || '').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; });
+  }
+  // The app-wide convention for a multi-part reference is "main · detail"
+  // ("John 3:16 · KJV", "The Patmos Vision · 60-1204E · 15") — split on the
+  // first one so each half can be styled independently instead of being
+  // stuck inside one opaque string.
+  function splitReference(ref){
+    var i = (ref || '').indexOf(' · ');
+    if (i < 0) return { main: ref || '', detail: '' };
+    return { main: ref.slice(0, i), detail: ref.slice(i + 3) };
+  }
+
+  function applyFrame(payload){
+    stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
     if (!payload || !payload.slide || payload.blanked) {
-      labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = '';
+      labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       return;
     }
     var s = payload.slide;
     labelEl.textContent = s.label || '';
-    textInnerEl.innerHTML = (s.marker ? '<span id="marker">' + s.marker + '</span>' : '')
-      + (s.text || '').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; });
-    refEl.textContent = s.reference || '';
+    textInnerEl.innerHTML = (s.marker ? '<span id="marker">' + esc(s.marker) + '</span>' : '') + esc(s.text);
+    var ref = splitReference(s.reference);
+    refEl.textContent = ref.main;
+    refDetailEl.textContent = ref.detail;
+  }
+
+  function render(payload){
+    var profileId = (payload && payload.profileId) || DEFAULT_PROFILE;
+    var t = TRANSITIONS[profileId] || { type: 'cut', durationMs: 0 };
+    if (t.type === 'fade' && t.durationMs > 0) {
+      panelEl.style.transition = 'opacity ' + t.durationMs + 'ms ease';
+      panelEl.style.opacity = '0';
+      setTimeout(function(){
+        applyFrame(payload);
+        panelEl.style.opacity = '1';
+      }, t.durationMs);
+    } else {
+      panelEl.style.transition = '';
+      applyFrame(payload);
+    }
   }
 
   function connect(){
@@ -316,11 +440,30 @@ function buildGraphicsScript(id: string): string {
 /** The Graphics output page — a plain browser-servable page (OBS Browser
  *  Source, vMix, a lobby display, a second computer, etc.), not an Electron
  *  window. Vanilla HTML/CSS/JS since it's served over plain HTTP, not
- *  rendered by React in an Electron renderer process. The markup and the
- *  live-update script are identical for every profile — this function reads
- *  `profile.regions` generically; it has no idea "lower-third" exists. `id`
- *  is this destination's own id, baked into its generated SSE script. */
-function buildGraphicsHTML(profile: PresentationProfile, id: string): string {
+ *  rendered by React in an Electron renderer process.
+ *
+ *  Ships EVERY profile's CSS at once, each scoped under
+ *  `#stage[data-profile="<id>"]`, rather than baking one fixed profile into
+ *  the page — that's what lets a destination switch treatment live as
+ *  content moves from a song to a verse (data-profile is just an attribute
+ *  write the SSE script does per frame) instead of needing a page reload
+ *  the way a single-profile page would. This function still reads each
+ *  profile's `regions` generically; it has no idea "lower-third" exists —
+ *  adding a third profile to shared/presentationProfiles.ts is picked up
+ *  here with no changes needed. `id` is this destination's own id, baked
+ *  into its generated SSE script. */
+function buildGraphicsHTML(id: string): string {
+  const profileCSS = Object.values(PRESENTATION_PROFILES)
+    .map(
+      (profile) => `
+  #stage[data-profile="${profile.id}"] #panel { ${cssDecl(profile.regions.panel)} }
+  #stage[data-profile="${profile.id}"] #label { ${cssDecl(profile.regions.label)} }
+  #stage[data-profile="${profile.id}"] #text { ${cssDecl(profile.regions.text)} }
+  #stage[data-profile="${profile.id}"] #reference { ${cssDecl(profile.regions.reference)} }
+  #stage[data-profile="${profile.id}"] #reference-detail { ${cssDecl(profile.regions.referenceDetail)} }
+  #stage[data-profile="${profile.id}"] #marker { ${cssDecl(profile.regions.marker)} }`
+    )
+    .join('\n')
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -329,16 +472,15 @@ function buildGraphicsHTML(profile: PresentationProfile, id: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: ${profile.pageBackground}; color: #fff; height: 100%; overflow: hidden; }
+  /* Always transparent at the page level, even for a profile whose own
+     panel supplies an opaque backdrop (Full-Screen) — see the note on
+     PresentationProfile.pageBackground. A page that ships every profile at
+     once can't pick a single page-level background up front. */
+  html, body { background: transparent; color: #fff; height: 100%; overflow: hidden; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   #stage { position: relative; height: 100vh; }
-  #panel { ${cssDecl(profile.regions.panel)} }
-  #label { ${cssDecl(profile.regions.label)} }
-  #text { ${cssDecl(profile.regions.text)} }
   #text-inner { width: 100%; }
-  #marker { font-size: 0.45em; font-weight: 700; color: #b8b8b8; vertical-align: super;
-    line-height: 0; margin-right: 0.3em; }
-  #reference { ${cssDecl(profile.regions.reference)} }
+${profileCSS}
   #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
     font-weight: 600; letter-spacing: 0.05em; display: none; }
 </style>
@@ -349,6 +491,7 @@ function buildGraphicsHTML(profile: PresentationProfile, id: string): string {
     <div id="label"></div>
     <div id="text"><div id="text-inner"></div></div>
     <div id="reference"></div>
+    <div id="reference-detail"></div>
   </div>
 </div>
 <div id="disconnected">RECONNECTING…</div>
@@ -579,11 +722,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end()
       return
     }
-    // Must never be cached: switching profiles relies on the next load/
-    // refresh of this exact URL actually reaching the server, not getting
-    // served a stale copy of the previous profile's HTML from cache.
+    // Must never be cached — a stale copy would be missing whatever profile
+    // CSS or marker/pagination data a newer release of this file added.
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
-    res.end(buildGraphicsHTML(getPresentationProfile(entry.profileId), id))
+    res.end(buildGraphicsHTML(id))
     return
   }
 

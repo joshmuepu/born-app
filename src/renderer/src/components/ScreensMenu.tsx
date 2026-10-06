@@ -12,7 +12,8 @@ import {
   Copy,
   HelpCircle,
   Plus,
-  Trash2
+  Trash2,
+  Monitor
 } from 'lucide-react'
 import type {
   DisplayInfo,
@@ -51,6 +52,9 @@ interface Props {
   onAddGraphicsOutput: (channelId: string) => void
   onRemoveOutput: (id: string) => void
   onSetOutputProfile: (id: string, profileId: PresentationProfileId) => void
+  /** Auto picks Full-screen/Lower third per live content kind instead of a
+   *  fixed choice — see shared/presentationProfiles.ts's DEFAULT_CONTENT_PROFILES. */
+  onSetOutputAutoProfile: (id: string, autoProfile: boolean) => void
   /** Independent of what Main is actually showing — clearing Graphics here
    *  doesn't touch the congregation screen, the stage monitor, or Main's own
    *  navigation position, and vice versa. */
@@ -304,6 +308,7 @@ export default function ScreensMenu({
   onAddGraphicsOutput,
   onRemoveOutput,
   onSetOutputProfile,
+  onSetOutputAutoProfile,
   onSetOutputSuppressed,
   channels,
   availableTranslations,
@@ -354,11 +359,64 @@ export default function ScreensMenu({
     }
   }, [open, statusOpen])
 
+  /** At most one Graphics output's preview open at a time — same reasoning
+   *  as expandedChannelId: nothing needs two side by side, and keeping it
+   *  singular keeps the popover from growing tall for no reason. */
+  const [previewId, setPreviewId] = useState<string | null>(null)
+
   const submitAddChannel = (): void => {
     const label = channelDraft.trim()
     if (label) onAddChannel(label)
     setAddingChannel(false)
     setChannelDraft('')
+  }
+
+  /** Auto/Full-screen/Lower third — picking a fixed option also turns Auto
+   *  off, since choosing one by hand is explicitly opting out of "picks it
+   *  automatically." Shared between Main's own Outputs row and a channel's
+   *  compact one so the two never drift apart. */
+  const renderProfilePicker = (out: OutputInfo): JSX.Element => (
+    <div className="screens-seg" role="group" aria-label="Graphics look">
+      <button
+        className={out.autoProfile ? 'on' : ''}
+        title="Picks Full-screen or Lower third automatically from what's live — song, Bible verse, or sermon quote"
+        onClick={() => onSetOutputAutoProfile(out.id, true)}
+      >
+        Auto
+      </button>
+      <button
+        className={!out.autoProfile && out.profileId !== 'lower-third' ? 'on' : ''}
+        title="Replace the whole frame — a lobby TV or a dedicated slide"
+        onClick={() => {
+          onSetOutputAutoProfile(out.id, false)
+          onSetOutputProfile(out.id, 'fullscreen')
+        }}
+      >
+        Full-screen
+      </button>
+      <button
+        className={!out.autoProfile && out.profileId === 'lower-third' ? 'on' : ''}
+        title="A small overlay band near the bottom, transparent otherwise — for OBS over camera video"
+        onClick={() => {
+          onSetOutputAutoProfile(out.id, false)
+          onSetOutputProfile(out.id, 'lower-third')
+        }}
+      >
+        Lower third
+      </button>
+    </div>
+  )
+
+  /** Reuses the exact URL/page a real OBS Browser Source would load — an
+   *  operator sees precisely what it looks like, not a React approximation
+   *  of it that could quietly drift from the real renderer. */
+  const renderPreview = (out: OutputInfo): JSX.Element | null => {
+    if (previewId !== out.id || !out.url) return null
+    return (
+      <div className="screens-preview">
+        <iframe src={out.url} title="Graphics output preview" />
+      </div>
+    )
   }
 
   /** Same Graphics add/remove/profile/suppress controls Main's own Outputs
@@ -406,6 +464,16 @@ export default function ScreensMenu({
                         )}
                       </button>
                     )}
+                    {o.url && (
+                      <button
+                        className={`display-row-btn${previewId === o.id ? ' is-active' : ''}`}
+                        title="Preview what this output actually looks like"
+                        aria-label="Preview Graphics output"
+                        onClick={() => setPreviewId((cur) => (cur === o.id ? null : o.id))}
+                      >
+                        <Monitor width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       className="display-row-btn"
                       title={
@@ -438,25 +506,8 @@ export default function ScreensMenu({
                     Cleared — Main keeps playing, this output just isn't showing it right now.
                   </p>
                 )}
-                <div className="screens-seg" role="group" aria-label="Graphics look">
-                  <button
-                    className={o.profileId !== 'lower-third' ? 'on' : ''}
-                    title="Replace the whole frame — a lobby TV or a dedicated slide"
-                    onClick={() => onSetOutputProfile(o.id, 'fullscreen')}
-                  >
-                    Full-screen
-                  </button>
-                  <button
-                    className={o.profileId === 'lower-third' ? 'on' : ''}
-                    title="A small overlay band near the bottom, transparent otherwise — for OBS over camera video"
-                    onClick={() => onSetOutputProfile(o.id, 'lower-third')}
-                  >
-                    Lower third
-                  </button>
-                </div>
-                <p className="screens-note">
-                  Changing this updates the next time the output is opened or refreshed, not an already-open one.
-                </p>
+                {renderPreview(o)}
+                {renderProfilePicker(o)}
               </div>
             ))}
           </div>
@@ -497,6 +548,16 @@ export default function ScreensMenu({
               )}
             </button>
           )}
+          {out.url && (
+            <button
+              className={`display-row-btn${previewId === out.id ? ' is-active' : ''}`}
+              title="Preview what this output actually looks like"
+              aria-label="Preview Graphics output"
+              onClick={() => setPreviewId((cur) => (cur === out.id ? null : out.id))}
+            >
+              <Monitor width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          )}
           <button
             className="display-row-btn"
             title={
@@ -528,14 +589,8 @@ export default function ScreensMenu({
             Cleared — Main keeps playing, this output just isn't showing it right now.
           </p>
         )}
-        <div className="screens-seg" role="group" aria-label="Graphics look">
-          <button className={out.profileId !== 'lower-third' ? 'on' : ''} onClick={() => onSetOutputProfile(out.id, 'fullscreen')}>
-            Full-screen
-          </button>
-          <button className={out.profileId === 'lower-third' ? 'on' : ''} onClick={() => onSetOutputProfile(out.id, 'lower-third')}>
-            Lower third
-          </button>
-        </div>
+        {renderPreview(out)}
+        {renderProfilePicker(out)}
       </>
     )
   }

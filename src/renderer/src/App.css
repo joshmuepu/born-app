@@ -1244,6 +1244,33 @@ mark.hl {
   color: var(--on-accent);
 }
 
+/* Graphics preview — the exact page a real OBS Browser Source would load,
+ * scaled to fit via the iframe's own box rather than a fixed pixel size,
+ * since the output's own CSS is already viewport-relative. A checkerboard
+ * backdrop makes a genuinely transparent (Lower Third) profile legible
+ * against the popover's own dark background, the same reason image editors
+ * use one for alpha. */
+.screens-preview {
+  margin-top: 8px;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background-image:
+    linear-gradient(45deg, #3a3a3a 25%, transparent 25%),
+    linear-gradient(-45deg, #3a3a3a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #3a3a3a 75%),
+    linear-gradient(-45deg, transparent 75%, #3a3a3a 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #222;
+}
+.screens-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* Collapsed channel row — same scannable, single-line shape as a Display
  * row, so Channels reads as part of the same system instead of a separate
  * bolted-on section. Chips carry just enough state (language, sync, output)
@@ -1599,6 +1626,10 @@ button.display-row:hover {
 .display-row-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.display-row-btn.is-active {
+  background: var(--bg-active);
+  color: var(--accent);
 }
 .display-row--missing {
   cursor: default;
