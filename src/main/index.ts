@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
+import { randomUUID } from 'crypto'
 import { log } from './logger'
 import { getDb, closeDb } from './db'
 import { closeLibraryDb } from './libraryDb'
@@ -42,7 +43,9 @@ import {
   setGraphicsProfile,
   setGraphicsAutoProfile,
   graphicsClientCount,
-  REMOTE_PORT
+  setAutomationToken,
+  REMOTE_PORT,
+  type AutomationChannelState
 } from './webRemote'
 import { getPresentationProfile } from '../shared/presentationProfiles'
 import {
@@ -408,7 +411,8 @@ function getSettingsSafe(): AppSettings {
       destinationRouting: [
         { destinationId: 'congregation', channelId: 'main', kind: 'window' },
         { destinationId: 'stage', channelId: 'main', kind: 'window' }
-      ]
+      ],
+      automationToken: null
     }
   }
 }
@@ -1249,6 +1253,32 @@ function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   pushGraphicsForChannel(channelId)
 }
 
+// ── Automation API (Stream Deck/Companion) ──────────────────────────────────
+// Thin wrappers only — goNext/goPrevious reuse the exact IPC event the web
+// remote's own prev/next already sends (so they share that mechanism's one
+// real limitation: nothing happens if the Main window isn't open). clear/
+// blank/show call the same standalone functions above everything else in
+// this file already calls, by channel id, same as the operator console.
+
+function automationGoNext(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('queue:navigate', 'next')
+}
+
+function automationGoPrevious(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('queue:navigate', 'prev')
+}
+
+function automationState(): AutomationChannelState[] {
+  return [...channels.values()].map((c) => ({
+    id: c.id,
+    label: c.label,
+    current: c.current,
+    blanked: c.blanked
+  }))
+}
+
 // ── Projection IPC ────────────────────────────────────────────────────────────
 
 ipcMain.handle('projection:open', () => {
@@ -1839,6 +1869,31 @@ ipcMain.handle('webremote:ip', () => {
   // Prefer the name — it survives a DHCP lease change; the IP is the fallback
   // shown only until (or unless) mDNS finishes probing.
   return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
+})
+
+// ── Automation API (Stream Deck/Companion) ──────────────────────────────────
+// Off by default — reading a null token means every /api/automation/*
+// request is accepted unchecked, same zero-friction posture the phone
+// remote's own /command endpoint has always had. Setting one here is the
+// only thing that turns the check on.
+
+function automationInfo(): { token: string | null; baseUrl: string | null } {
+  return { token: getSettingsSafe().automationToken, baseUrl: graphicsBaseUrl() }
+}
+
+ipcMain.handle('automation:get-info', () => automationInfo())
+
+ipcMain.handle('automation:set-token', (_event, token: string | null) => {
+  updateSettings({ automationToken: token && token.trim() ? token.trim() : null })
+  setAutomationToken(getSettingsSafe().automationToken)
+  return automationInfo()
+})
+
+ipcMain.handle('automation:generate-token', () => {
+  const token = randomUUID().replace(/-/g, '')
+  updateSettings({ automationToken: token })
+  setAutomationToken(token)
+  return automationInfo()
 })
 
 // ── Outputs (Phase 2: the Graphics destination) ───────────────────────────────
@@ -2613,8 +2668,17 @@ app.whenReady().then(() => {
           return Promise.resolve([])
         }
       }
+    },
+    {
+      goNext: automationGoNext,
+      goPrevious: automationGoPrevious,
+      clear: (channelId) => clearChannel(channelId),
+      blank: (channelId) => setChannelBlank(channelId, true),
+      show: (channelId) => setChannelBlank(channelId, false),
+      getState: automationState
     }
   )
+  setAutomationToken(getSettingsSafe().automationToken)
   startMdns(REMOTE_PORT)
 
   app.on('activate', () => {

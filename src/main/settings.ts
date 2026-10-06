@@ -60,6 +60,12 @@ export interface AppSettings {
    *  data change, not a code change — and so routing survives a crash or
    *  restart the same way display assignments already do. */
   destinationRouting: DestinationRoutingEntry[]
+  /** Shared secret the automation API (Stream Deck/Companion-style HTTP +
+   *  WebSocket control) requires on every request once set. null/unset
+   *  means the automation endpoints are reachable with no auth at all —
+   *  same zero-friction default as the phone remote's own /command endpoint
+   *  has always had. Operator-set in Settings; this file only persists it. */
+  automationToken: string | null
 }
 
 const DEFAULTS: AppSettings = {
@@ -79,7 +85,8 @@ const DEFAULTS: AppSettings = {
   destinationRouting: [
     { destinationId: 'congregation', channelId: 'main', kind: 'window' },
     { destinationId: 'stage', channelId: 'main', kind: 'window' }
-  ]
+  ],
+  automationToken: null
 }
 
 let cache: AppSettings | null = null

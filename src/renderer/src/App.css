@@ -1707,6 +1707,11 @@ button.display-row:hover {
 }
 .remote-popover-body {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.remote-popover-row {
+  display: flex;
   gap: 14px;
   align-items: center;
 }
@@ -1772,6 +1777,53 @@ button.display-row:hover {
   margin: 0;
   font-size: var(--text-2xs);
   color: var(--text-secondary);
+}
+.remote-note code {
+  font-family: var(--font-mono);
+}
+
+/* Automation API — collapsed by default, same reasoning as every other
+ * progressive-disclosure section in this app: most operators never open
+ * this, it's for the ones wiring up a Stream Deck or Companion. */
+.remote-automation {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.remote-automation-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.remote-automation-head svg {
+  flex-shrink: 0;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.remote-automation-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.remote-automation-body .remote-hint code {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+.remote-token-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  cursor: pointer;
 }
 .remote-trigger--error {
   color: var(--warn);

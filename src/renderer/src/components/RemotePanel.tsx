@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Copy, Check, AlertTriangle } from 'lucide-react'
+import { Smartphone, Copy, Check, AlertTriangle, ChevronDown, RefreshCw } from 'lucide-react'
 import QRCode from 'qrcode'
 
 interface RemoteInfo {
@@ -7,6 +7,11 @@ interface RemoteInfo {
   url: string
   ipUrl: string
   hostnameUrl: string | null
+}
+
+interface AutomationInfo {
+  token: string | null
+  baseUrl: string | null
 }
 
 /**
@@ -28,6 +33,28 @@ export default function RemotePanel(): JSX.Element {
   const [copied, setCopied] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const wrapRef = useRef<HTMLDivElement>(null)
+  /** Collapsed by default — most operators never touch this; it's here for
+   *  the ones wiring up a Stream Deck or Companion, not the common case. */
+  const [automationOpen, setAutomationOpen] = useState(false)
+  const [automation, setAutomation] = useState<AutomationInfo | null>(null)
+  const [tokenCopied, setTokenCopied] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    window.electronAPI.getAutomationInfo().then(setAutomation)
+  }, [open])
+
+  const requireToken = (require: boolean): void => {
+    if (require) window.electronAPI.generateAutomationToken().then(setAutomation)
+    else window.electronAPI.setAutomationToken(null).then(setAutomation)
+  }
+
+  const copyToken = (): void => {
+    if (!automation?.token) return
+    navigator.clipboard?.writeText(automation.token)
+    setTokenCopied(true)
+    setTimeout(() => setTokenCopied(false), 1500)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -137,36 +164,106 @@ export default function RemotePanel(): JSX.Element {
             </div>
           ) : (
           <div className="remote-popover-body">
-            <div className="remote-qr">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} width={120} height={120} alt="QR code for the remote address" />
-              ) : (
-                <div className="remote-qr-placeholder" />
-              )}
-            </div>
-            <div className="remote-info">
-              <p className="remote-hint">
-                Scan once, on this WiFi. It stays connected on that phone or tablet from then on
-                — no address to type, no re-scanning.
-              </p>
-              {info?.url ? (
-                <div className="remote-address">
-                  <code>{info.url.replace(/^https?:\/\//, '')}</code>
-                  <button className="btn-icon remote-copy" onClick={copy} title="Copy address" aria-label="Copy address">
-                    {copied ? (
-                      <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
-                    ) : (
-                      <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="remote-address remote-address--pending">Starting…</div>
-              )}
-              {info?.available && !info.hostnameUrl && (
-                <p className="remote-note">
-                  Still finding a name for this computer — using its network address for now.
+            <div className="remote-popover-row">
+              <div className="remote-qr">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} width={120} height={120} alt="QR code for the remote address" />
+                ) : (
+                  <div className="remote-qr-placeholder" />
+                )}
+              </div>
+              <div className="remote-info">
+                <p className="remote-hint">
+                  Scan once, on this WiFi. It stays connected on that phone or tablet from then on
+                  — no address to type, no re-scanning.
                 </p>
+                {info?.url ? (
+                  <div className="remote-address">
+                    <code>{info.url.replace(/^https?:\/\//, '')}</code>
+                    <button className="btn-icon remote-copy" onClick={copy} title="Copy address" aria-label="Copy address">
+                      {copied ? (
+                        <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                      ) : (
+                        <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="remote-address remote-address--pending">Starting…</div>
+                )}
+                {info?.available && !info.hostnameUrl && (
+                  <p className="remote-note">
+                    Still finding a name for this computer — using its network address for now.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="remote-automation">
+              <button
+                className="remote-automation-head"
+                onClick={() => setAutomationOpen((v) => !v)}
+                aria-expanded={automationOpen}
+              >
+                <span>Automation API (Stream Deck, Companion)</span>
+                <ChevronDown
+                  width={13}
+                  height={13}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={{ transform: automationOpen ? 'rotate(180deg)' : undefined }}
+                />
+              </button>
+              {automationOpen && (
+                <div className="remote-automation-body">
+                  <p className="remote-hint">
+                    HTTP + WebSocket control for a macro pad — next, previous, clear, blank, and show,
+                    per channel, plus a read-only state feed. Reachable at{' '}
+                    <code>{automation?.baseUrl ?? '…'}/api/automation/</code>.
+                  </p>
+                  <label className="remote-token-toggle">
+                    <input
+                      type="checkbox"
+                      checked={!!automation?.token}
+                      onChange={(e) => requireToken(e.target.checked)}
+                    />
+                    Require a token
+                  </label>
+                  {automation?.token && (
+                    <>
+                      <div className="remote-address">
+                        <code>{automation.token}</code>
+                        <button
+                          className="btn-icon remote-copy"
+                          onClick={copyToken}
+                          title="Copy token"
+                          aria-label="Copy automation token"
+                        >
+                          {tokenCopied ? (
+                            <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                          ) : (
+                            <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                          )}
+                        </button>
+                        <button
+                          className="btn-icon remote-copy"
+                          onClick={() => window.electronAPI.generateAutomationToken().then(setAutomation)}
+                          title="Generate a new token — invalidates the old one"
+                          aria-label="Regenerate automation token"
+                        >
+                          <RefreshCw width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                        </button>
+                      </div>
+                      <p className="remote-note">
+                        Send it as an <code>X-Born-Token</code> header or a <code>?token=</code> query param.
+                      </p>
+                    </>
+                  )}
+                  <p className="remote-note">
+                    POST .../next · .../prev · .../clear/&lt;channel&gt; · .../blank/&lt;channel&gt; ·
+                    .../show/&lt;channel&gt; — GET .../state — WS .../ws
+                  </p>
+                </div>
               )}
             </div>
           </div>

@@ -364,6 +364,14 @@ const api = {
     hostnameUrl: string | null
   }> => ipcRenderer.invoke('webremote:ip'),
 
+  // Automation API (Stream Deck/Companion)
+  getAutomationInfo: (): Promise<{ token: string | null; baseUrl: string | null }> =>
+    ipcRenderer.invoke('automation:get-info'),
+  setAutomationToken: (token: string | null): Promise<{ token: string | null; baseUrl: string | null }> =>
+    ipcRenderer.invoke('automation:set-token', token),
+  generateAutomationToken: (): Promise<{ token: string | null; baseUrl: string | null }> =>
+    ipcRenderer.invoke('automation:generate-token'),
+
   // Outputs (Phase 2: the Graphics destination)
   listOutputs: (): Promise<OutputInfo[]> => ipcRenderer.invoke('outputs:list'),
   addGraphicsOutput: (channelId: string): Promise<OutputInfo[]> =>

@@ -146,6 +146,10 @@ declare global {
         ipUrl: string
         hostnameUrl: string | null
       }>
+      // Automation API (Stream Deck/Companion)
+      getAutomationInfo: () => Promise<{ token: string | null; baseUrl: string | null }>
+      setAutomationToken: (token: string | null) => Promise<{ token: string | null; baseUrl: string | null }>
+      generateAutomationToken: () => Promise<{ token: string | null; baseUrl: string | null }>
       // Outputs (Phase 2: the Graphics destination)
       listOutputs: () => Promise<OutputInfo[]>
       addGraphicsOutput: (channelId: string) => Promise<OutputInfo[]>

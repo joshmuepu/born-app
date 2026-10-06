@@ -3,6 +3,7 @@ import { networkInterfaces } from 'os'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
+import { WebSocketServer, WebSocket } from 'ws'
 import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAssets'
 // Unlike the small shape-only types duplicated across main/preload/renderer
 // elsewhere in this file (WebRemoteSlide etc.), presentation profiles are
@@ -15,6 +16,7 @@ import {
   type PresentationProfileId
 } from '../shared/presentationProfiles'
 import { chunkLines } from '../shared/paginate'
+import { automationRequestAuthorized } from '../shared/automationAuth'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
@@ -123,6 +125,73 @@ export interface WebRemoteSearchHandlers {
   recentSermons: () => Promise<unknown[]>
   onThisDay: () => Promise<unknown[]>
   recentKeys: () => Promise<string[]>
+}
+
+/** One channel's state as the automation API reports it — deliberately just
+ *  enough for a Stream Deck/Companion feedback to color a button by (is
+ *  something live, is it blanked), not the full operator picture
+ *  Observability's own IPC-only snapshot gives the desktop UI. */
+export interface AutomationChannelState {
+  id: string
+  label: string
+  current: WebRemoteSlide | null
+  blanked: boolean
+}
+
+/** Thin wrappers over the exact same internal functions the operator
+ *  console and the existing phone remote already call — see index.ts's
+ *  "Channel control (internal command surface)" section, which this and
+ *  CommandCallback both exist to expose, never to duplicate. goNext/
+ *  goPrevious specifically only work while the Main window is open, same
+ *  limitation the phone remote's own prev/next already has — queue
+ *  navigation lives in that window's own renderer state, not in main. */
+export interface AutomationHandlers {
+  goNext: () => void
+  goPrevious: () => void
+  clear: (channelId: string) => void
+  blank: (channelId: string) => void
+  show: (channelId: string) => void
+  getState: () => AutomationChannelState[]
+}
+
+let automationHandlers: AutomationHandlers | null = null
+let automationToken: string | null = null
+let wss: WebSocketServer | null = null
+
+/** index.ts calls this once at startup and again any time the operator
+ *  changes it in Settings — null/empty disables the check entirely, same
+ *  zero-friction posture /command has always had. */
+export function setAutomationToken(token: string | null): void {
+  automationToken = token && token.trim() ? token.trim() : null
+}
+
+/** Reads the actual header/query param off a real request and hands them to
+ *  the pure decision function — see shared/automationAuth.ts. */
+function checkAutomationAuth(req: IncomingMessage, url: URL): boolean {
+  const header = req.headers['x-born-token']
+  const headerToken = Array.isArray(header) ? header[0] : header
+  const queryToken = url.searchParams.get('token')
+  return automationRequestAuthorized(automationToken, headerToken, queryToken)
+}
+
+function broadcastAutomationState(): void {
+  if (!wss || !automationHandlers) return
+  const data = JSON.stringify(automationHandlers.getState())
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) client.send(data)
+  }
+}
+
+// Push-on-interval rather than wired to every mutation site that could
+// change a channel's state (slide change, blank, destination suppress) —
+// those live all over index.ts, and threading a broadcast call through
+// each one is a lot of surface for what this adapter is supposed to be: a
+// thin, low-risk exposure layer. A one-second granularity is plenty for a
+// Stream Deck/Companion feedback light; nothing here is frame-accurate.
+let automationBroadcastTimer: ReturnType<typeof setInterval> | null = null
+function ensureAutomationBroadcastLoop(): void {
+  if (automationBroadcastTimer) return
+  automationBroadcastTimer = setInterval(broadcastAutomationState, 1000)
 }
 
 let currentState: WebRemoteState = {
@@ -682,6 +751,49 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
 
+  // ── Automation API (Stream Deck/Companion-style control) ───────────────────
+  // Every route here is a thin wrapper over AutomationHandlers — no new
+  // capability beyond what the operator console and the phone remote's own
+  // /command already do, just exposed as individually addressable HTTP
+  // actions a macro pad can bind one button each to.
+  if (path.startsWith('/api/automation/')) {
+    if (!checkAutomationAuth(req, url)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Invalid or missing automation token.' }))
+      return
+    }
+    if (path === '/api/automation/next' && req.method === 'POST') {
+      automationHandlers?.goNext()
+      res.writeHead(204)
+      res.end()
+      return
+    }
+    if (path === '/api/automation/prev' && req.method === 'POST') {
+      automationHandlers?.goPrevious()
+      res.writeHead(204)
+      res.end()
+      return
+    }
+    const channelActionMatch = /^\/api\/automation\/(clear|blank|show)\/([^/]+)$/.exec(path)
+    if (channelActionMatch && req.method === 'POST') {
+      const [, action, rawChannelId] = channelActionMatch
+      const channelId = decodeURIComponent(rawChannelId)
+      if (action === 'clear') automationHandlers?.clear(channelId)
+      else if (action === 'blank') automationHandlers?.blank(channelId)
+      else automationHandlers?.show(channelId)
+      res.writeHead(204)
+      res.end()
+      return
+    }
+    if (path === '/api/automation/state' && req.method === 'GET') {
+      sendJSON(res, 200, automationHandlers?.getState() ?? [])
+      return
+    }
+    res.writeHead(404)
+    res.end()
+    return
+  }
+
   if (path === '/command' && req.method === 'POST') {
     const body = await readBody(req)
     try {
@@ -744,9 +856,14 @@ export function isWebRemoteAvailable(): boolean {
   return remoteAvailable
 }
 
-export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSearchHandlers): void {
+export function startWebRemote(
+  onCommand: CommandCallback,
+  search: WebRemoteSearchHandlers,
+  automation: AutomationHandlers
+): void {
   commandCallback = onCommand
   searchHandlers = search
+  automationHandlers = automation
   const server = createServer((req, res) => {
     handleRequest(req, res).catch(() => {
       try {
@@ -765,6 +882,29 @@ export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSear
       console.error('Web remote server error', err)
     }
   })
+
+  // Same server, same port — a macro pad's WebSocket feedback connection is
+  // just another thing this one HTTP server upgrades, not a second port to
+  // open, advertise, or fail independently of the remote it already runs.
+  wss = new WebSocketServer({ noServer: true })
+  wss.on('connection', (ws) => {
+    ws.send(JSON.stringify(automationHandlers?.getState() ?? []))
+  })
+  server.on('upgrade', (req, socket, head) => {
+    const url = new URL(req.url ?? '/', 'http://internal')
+    if (url.pathname !== '/api/automation/ws') {
+      socket.destroy()
+      return
+    }
+    if (!checkAutomationAuth(req, url)) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
+      socket.destroy()
+      return
+    }
+    wss!.handleUpgrade(req, socket, head, (ws) => wss!.emit('connection', ws))
+  })
+  ensureAutomationBroadcastLoop()
+
   server.listen(REMOTE_PORT, () => {
     remoteAvailable = true
     console.log(`Web remote available at http://${getLocalIP()}:${REMOTE_PORT}`)
