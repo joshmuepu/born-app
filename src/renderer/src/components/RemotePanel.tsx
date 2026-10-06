@@ -219,7 +219,8 @@ export default function RemotePanel(): JSX.Element {
                   <p className="remote-hint">
                     HTTP + WebSocket control for a macro pad — next, previous, clear, blank, and show,
                     per channel, plus a read-only state feed. Reachable at{' '}
-                    <code>{automation?.baseUrl ?? '…'}/api/automation/</code>.
+                    <code>{automation?.baseUrl ?? '…'}/api/v1/automation/</code>{' '}
+                    (the unversioned <code>/api/automation/</code> keeps working too).
                   </p>
                   <label className="remote-token-toggle">
                     <input

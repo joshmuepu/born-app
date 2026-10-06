@@ -17,6 +17,7 @@ import {
 } from '../shared/presentationProfiles'
 import { chunkLines } from '../shared/paginate'
 import { automationRequestAuthorized } from '../shared/automationAuth'
+import { resolveApiV1, AUTOMATION_WS_VERSION } from '../shared/apiVersioning'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
@@ -178,9 +179,17 @@ function checkAutomationAuth(req: IncomingMessage, url: URL): boolean {
   return automationRequestAuthorized(automationToken, headerToken, queryToken)
 }
 
+/** Every WebSocket message on this connection is an envelope carrying this
+ *  version, not a bare state array — so a future, shape-changing v2 can be
+ *  introduced as a genuinely new message shape a client can branch on by
+ *  `v`, instead of silently changing what today's clients already parse. */
+function automationWsFrame(): string {
+  return JSON.stringify({ v: AUTOMATION_WS_VERSION, state: automationHandlers?.getState() ?? [] })
+}
+
 function broadcastAutomationState(): void {
   if (!wss || !automationHandlers) return
-  const data = JSON.stringify(automationHandlers.getState())
+  const data = automationWsFrame()
   for (const client of wss.clients) {
     if (client.readyState === WebSocket.OPEN) client.send(data)
   }
@@ -617,7 +626,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*')
   const url = new URL(req.url ?? '/', 'http://internal')
-  const path = url.pathname
+  const path = resolveApiV1(url.pathname)
 
   if (path === '/app.css' && req.method === 'GET') {
     sendText(res, 200, 'text/css; charset=utf-8', APP_CSS)
@@ -892,11 +901,11 @@ export function startWebRemote(
   // open, advertise, or fail independently of the remote it already runs.
   wss = new WebSocketServer({ noServer: true })
   wss.on('connection', (ws) => {
-    ws.send(JSON.stringify(automationHandlers?.getState() ?? []))
+    ws.send(automationWsFrame())
   })
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://internal')
-    if (url.pathname !== '/api/automation/ws') {
+    if (resolveApiV1(url.pathname) !== '/api/automation/ws') {
       socket.destroy()
       return
     }
