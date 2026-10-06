@@ -1327,6 +1327,99 @@ mark.hl {
   transition: transform var(--dur-fast) var(--ease-out);
 }
 
+/* Status — a collapsed single-line pill answers "is everything fine?" at a
+ * glance; the per-channel/per-destination breakdown only renders once a
+ * stressed operator actually clicks in to check. */
+.screens-status-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.screens-status-pill {
+  flex: 1;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-align: right;
+}
+.screens-status-pill--ok {
+  color: var(--live);
+}
+.screens-status-pill--warn {
+  color: var(--warn);
+}
+.screens-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.screens-status-channel {
+  padding: 8px;
+  background: var(--bg-hover);
+  border-radius: var(--r-sm);
+}
+.screens-status-channel-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.screens-status-channel-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.screens-status-current {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.screens-status-current--idle {
+  font-style: italic;
+}
+.screens-status-destinations {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.screens-status-dest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.screens-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--live);
+}
+.screens-status-dest.is-warn .screens-status-dot {
+  background: var(--warn);
+}
+.screens-status-dest.is-off .screens-status-dot {
+  background: var(--text-secondary);
+  opacity: 0.5;
+}
+.screens-status-dest-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.screens-status-dest-state {
+  color: var(--text-secondary);
+}
+.screens-status-dest.is-warn .screens-status-dest-state {
+  color: var(--warn);
+}
+
 /* The detail panel a channel row expands into — every control that used to
  * sit permanently in the row, still here, just shown only while actually
  * being changed. */

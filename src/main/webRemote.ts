@@ -193,6 +193,16 @@ export function isGraphicsActive(id: string): boolean {
   return graphicsDestinations.has(id)
 }
 
+/** Live SSE client count for one Graphics destination — the only real
+ *  "is anything actually watching this" signal that exists for a Graphics
+ *  output, since (unlike the window-kind destinations) it has no open/closed
+ *  lifecycle of its own to report ready=false against. 0 for an unregistered
+ *  id, same as a destination with no viewer connected — observability can't
+ *  tell those apart and doesn't need to. */
+export function graphicsClientCount(id: string): number {
+  return graphicsDestinations.get(id)?.clients.size ?? 0
+}
+
 /** Push a Graphics update to every client currently connected to this one
  *  destination (SSE — push, not poll, since a lagging live-presentation feed
  *  is actively bad, unlike the phone remote's state which tolerates a second

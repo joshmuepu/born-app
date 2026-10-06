@@ -97,6 +97,26 @@ export interface ChannelInfo {
   sync: ChannelSyncConfig
 }
 
+/** One place a channel's content is routed to, with the only signal that
+ *  actually matters on a status screen: is it reaching anyone right now. */
+export interface ObservabilityDestination {
+  id: string
+  kind: 'window' | 'browser'
+  label: string
+  connected: boolean
+  warning: string | null
+}
+
+/** One channel's current on-screen state plus every destination it's routed
+ *  to — the whole picture a stressed operator needs at a glance. */
+export interface ObservabilityChannel {
+  id: string
+  label: string
+  current: SlidePayload | null
+  blanked: boolean
+  destinations: ObservabilityDestination[]
+}
+
 /** A labeled collection songs belong to — 'default' is the pre-existing flat
  *  library every song started in before songbooks existed. */
 export interface Songbook {

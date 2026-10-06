@@ -99,6 +99,22 @@ export interface ChannelInfo {
   sync: ChannelSyncConfig
 }
 
+export interface ObservabilityDestination {
+  id: string
+  kind: 'window' | 'browser'
+  label: string
+  connected: boolean
+  warning: string | null
+}
+
+export interface ObservabilityChannel {
+  id: string
+  label: string
+  current: SlidePayload | null
+  blanked: boolean
+  destinations: ObservabilityDestination[]
+}
+
 export interface Songbook {
   id: string
   label: string
@@ -381,6 +397,10 @@ const api = {
   showSlideOnChannel: (channelId: string, slide: SlidePayload): void =>
     ipcRenderer.send('channel:show-slide', channelId, slide),
   clearChannel: (channelId: string): void => ipcRenderer.send('channel:clear', channelId),
+
+  // Observability — pull-only (the view polls while open; see its own
+  // component for why this isn't a push subscription).
+  getObservability: (): Promise<ObservabilityChannel[]> => ipcRenderer.invoke('observability:snapshot'),
   syncWebRemote: (state: {
     queue: Array<{
       id: string

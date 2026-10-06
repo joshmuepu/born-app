@@ -40,8 +40,15 @@ import {
   registerGraphicsDestination,
   unregisterGraphicsDestination,
   setGraphicsProfile,
+  graphicsClientCount,
   REMOTE_PORT
 } from './webRemote'
+import { getPresentationProfile } from '../shared/presentationProfiles'
+import {
+  describeDestinationStatus,
+  type ObservabilityDestination,
+  type ObservabilityChannel
+} from '../shared/observability'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { formatVerse } from '../shared/bibleRef'
@@ -240,6 +247,47 @@ export function channelRoutingSnapshot(): Array<{
   return [...channels.values()].map((channel) => ({
     channel,
     destinations: destinationsFor(channel.id).map((d) => ({ id: d.config.id, ready: d.ready }))
+  }))
+}
+
+/** Gathers the real facts for one destination (window ready state, stage
+ *  display targeting, Graphics SSE client count) and hands them to the pure
+ *  decision function — this function is the only part of observability
+ *  that's allowed to touch the `destinations` registry or other Electron-
+ *  side state; describeDestinationStatus itself has none. `display` is
+ *  threaded in rather than re-fetched per destination since it's one
+ *  global, not per-destination, read. */
+function describeObservabilityDestination(
+  id: string,
+  ready: boolean,
+  display: ReturnType<typeof displayInfoPayload>
+): ObservabilityDestination {
+  const dest = destinations.get(id)
+  if (!dest) return describeDestinationStatus(id, { role: 'unknown' })
+  if (id === 'congregation') return describeDestinationStatus(id, { role: 'congregation', ready })
+  if (id === 'stage') {
+    return describeDestinationStatus(id, { role: 'stage', ready, windowed: display.stageIsWindowed })
+  }
+  const profile = getPresentationProfile(dest.config.profileId ?? 'fullscreen')
+  return describeDestinationStatus(id, {
+    role: 'graphics',
+    clientCount: graphicsClientCount(id),
+    profileName: profile.name
+  })
+}
+
+/** What a stressed operator actually wants from a status screen: for every
+ *  channel, what's live and whether each place it's routed to is actually
+ *  reaching someone — built directly on channelRoutingSnapshot() so this
+ *  stays a read, never a second source of truth for the registry itself. */
+export function observabilitySnapshot(): ObservabilityChannel[] {
+  const display = displayInfoPayload()
+  return channelRoutingSnapshot().map(({ channel, destinations: routed }) => ({
+    id: channel.id,
+    label: channel.label,
+    current: channel.current,
+    blanked: channel.blanked,
+    destinations: routed.map((d) => describeObservabilityDestination(d.id, d.ready, display))
   }))
 }
 
@@ -1833,6 +1881,8 @@ ipcMain.on('channel:show-slide', (_event, channelId: ChannelId, slide: SlidePayl
 ipcMain.on('channel:clear', (_event, channelId: ChannelId) => {
   clearChannel(channelId)
 })
+
+ipcMain.handle('observability:snapshot', () => observabilitySnapshot())
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 

@@ -21,7 +21,9 @@ import type {
   ChannelInfo,
   ChannelSyncConfig,
   Songbook,
-  PresentationProfileId
+  PresentationProfileId,
+  ObservabilityChannel,
+  SlidePayload
 } from '../types'
 
 interface Props {
@@ -272,6 +274,13 @@ function roleButtonClass(role: 'projection' | 'stage'): string {
   return role === 'projection' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'
 }
 
+/** One short line for "what's live" on the Status section — a reference/
+ *  label when the content has one (every Bible verse and sermon quote does),
+ *  falling back to the raw text for a song slide, which has neither. */
+function summarizeSlide(slide: SlidePayload): string {
+  return slide.reference ?? slide.label ?? slide.text.slice(0, 60)
+}
+
 const CHECKLIST_STEPS = [
   'Check the cable is in a native HDMI/DisplayPort port on the computer itself — not a USB-C hub or dock. Hubs are a common, silent point of failure for exactly this.',
   'On Windows: Win+P → make sure it’s set to "Extend", not "PC screen only" or disconnected. Settings → System → Display → click Detect if it’s not listed.',
@@ -321,6 +330,29 @@ export default function ScreensMenu({
    *  a reason to compare two channels' settings side by side, and keeping
    *  it singular keeps the popover from growing unboundedly tall again. */
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
+
+  /** Status section — collapsed by default (progressive disclosure, same as
+   *  Outputs/Channels above). A single fetch on menu-open keeps the collapsed
+   *  pill honest without polling for a panel nobody's looking at; polling
+   *  only kicks in once the section itself is actually expanded, since this
+   *  is a live monitor meant to be glanced at, not a push-subscribed view. */
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [obsChannels, setObsChannels] = useState<ObservabilityChannel[] | null>(null)
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const fetchObs = (): void => {
+      window.electronAPI.getObservability().then((data) => {
+        if (!cancelled) setObsChannels(data)
+      })
+    }
+    fetchObs()
+    const interval = statusOpen ? setInterval(fetchObs, 1500) : null
+    return () => {
+      cancelled = true
+      if (interval) clearInterval(interval)
+    }
+  }, [open, statusOpen])
 
   const submitAddChannel = (): void => {
     const label = channelDraft.trim()
@@ -876,6 +908,77 @@ export default function ScreensMenu({
               })
             )}
           </div>
+
+          {/* Status — what's live and whether it's actually reaching anyone,
+              for every channel. Collapsed by default: the pill alone answers
+              "is everything fine?" for the common case, same progressive-
+              disclosure shape as Outputs/Channels above it. */}
+          {(() => {
+            const warnings = (obsChannels ?? []).flatMap((c) => c.destinations.filter((d) => d.warning))
+            const pillLabel =
+              obsChannels === null ? '…' : warnings.length === 0 ? 'All connected' : `${warnings.length} issue${warnings.length === 1 ? '' : 's'}`
+            const pillClass = obsChannels !== null && warnings.length > 0 ? 'screens-status-pill--warn' : 'screens-status-pill--ok'
+            return (
+              <div className="screens-group">
+                <div
+                  className="screens-status-head"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setStatusOpen((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setStatusOpen((v) => !v)
+                    }
+                  }}
+                >
+                  <span className="screens-group-title">Status</span>
+                  <span className={`screens-status-pill ${pillClass}`}>{pillLabel}</span>
+                  <ChevronDown
+                    className="screens-channel-chevron"
+                    style={{ transform: statusOpen ? 'rotate(180deg)' : undefined }}
+                    width={13}
+                    height={13}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                </div>
+                {statusOpen && (
+                  <div className="screens-status-list">
+                    {(obsChannels ?? []).map((c) => (
+                      <div key={c.id} className="screens-status-channel">
+                        <div className="screens-status-channel-head">
+                          <span className="screens-status-channel-name">{c.label}</span>
+                          {c.current ? (
+                            <span className="screens-status-current">{summarizeSlide(c.current)}</span>
+                          ) : (
+                            <span className="screens-status-current screens-status-current--idle">Nothing live</span>
+                          )}
+                          {c.blanked && <span className="screens-chip screens-chip-off">Blanked</span>}
+                        </div>
+                        {c.destinations.length === 0 ? (
+                          <p className="screens-note">No destinations routed to this channel.</p>
+                        ) : (
+                          <div className="screens-status-destinations">
+                            {c.destinations.map((d) => (
+                              <div
+                                key={d.id}
+                                className={`screens-status-dest${d.warning ? ' is-warn' : d.connected ? ' is-ok' : ' is-off'}`}
+                              >
+                                <span className="screens-status-dot" aria-hidden="true" />
+                                <span className="screens-status-dest-label">{d.label}</span>
+                                <span className="screens-status-dest-state">{d.warning ?? (d.connected ? '' : 'Off')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {checklistFor && (
             <div className="screens-group display-checklist">

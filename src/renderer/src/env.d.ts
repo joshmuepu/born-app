@@ -30,7 +30,8 @@ import type {
   ChannelInfo,
   ChannelSyncConfig,
   Songbook,
-  PresentationProfileId
+  PresentationProfileId,
+  ObservabilityChannel
 } from './types'
 
 declare global {
@@ -161,6 +162,7 @@ declare global {
       onChannelsChanged: (callback: (channels: ChannelInfo[]) => void) => () => void
       showSlideOnChannel: (channelId: string, slide: SlidePayload) => void
       clearChannel: (channelId: string) => void
+      getObservability: () => Promise<ObservabilityChannel[]>
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never
