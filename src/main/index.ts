@@ -720,14 +720,16 @@ function createProjectionWindow(): void {
     projectionReady = false
     const dest = destinations.get('congregation')
     if (dest) dest.ready = false
-    channels.set(
-      'main',
-      patchChannel(channels.get('main')!, { current: null, next: null, blanked: false })
-    )
-    // Nothing is being projected any more — the stage monitor falls back to the
-    // clock rather than freezing on the last slide.
-    sendToStage('stage:update', { current: null, next: null })
-    sendToStage('stage:set-blank', false)
+    // Nothing is being projected on this channel any more — clear it exactly
+    // the way the operator's own Clear button would, so every other
+    // destination routed to the same channel (stage, a Graphics output) falls
+    // back in step instead of silently continuing to show whatever was last
+    // pushed to it while the channel itself now reports nothing live. Reads
+    // the destination's actual routed channel rather than assuming 'main' —
+    // congregation is only ever routed to 'main' today, but hardcoding that
+    // here (as this did before) is exactly the kind of channel/destination
+    // coupling the rest of this file deliberately avoids.
+    clearChannel(dest?.config.channelId ?? 'main')
     sendToMain('projection:closed')
   })
 }
