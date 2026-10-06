@@ -67,6 +67,9 @@ export interface SlidePayload {
   reference?: string
   marker?: string
   source?: SlideSource
+  /** This channel follows another, had no translation for this content, and
+   *  fell back to English. */
+  translationFallback?: boolean
 }
 
 export type PresentationProfileId = 'fullscreen' | 'lower-third'

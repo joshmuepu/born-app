@@ -1333,6 +1333,10 @@ mark.hl {
   background: rgba(52, 199, 89, 0.15);
   color: var(--live);
 }
+.screens-chip-warn {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
 /* Independent / No output share the base chip's neutral look on purpose —
  * named classes kept so the JSX states its intent, not because the look
  * differs from .screens-chip itself. */

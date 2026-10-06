@@ -18,7 +18,15 @@ export interface ObservabilityDestination {
 export interface ObservabilityChannel {
   id: string
   label: string
-  current: { kind: 'quote' | 'bible' | 'song'; text: string; label?: string; reference?: string } | null
+  current: {
+    kind: 'quote' | 'bible' | 'song'
+    text: string
+    label?: string
+    reference?: string
+    /** This channel follows another, had no translation for this content,
+     *  and fell back to English — see main/index.ts's deriveFollowSlide. */
+    translationFallback?: boolean
+  } | null
   blanked: boolean
   destinations: ObservabilityDestination[]
 }

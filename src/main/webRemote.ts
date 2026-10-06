@@ -32,6 +32,10 @@ export interface WebRemoteSlide {
    *  slide built before this existed, which just falls back to whatever
    *  profile the destination had fixed. */
   kind?: 'quote' | 'bible' | 'song'
+  /** This channel follows another, had no translation for this content, and
+   *  fell back to English — purely informational, carried through to the
+   *  automation API's state endpoint so an external tool can show it too. */
+  translationFallback?: boolean
 }
 
 export interface WebRemoteState {

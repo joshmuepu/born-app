@@ -182,6 +182,14 @@ export interface SlidePayload {
    *  slide (no translated-lyric source exists) and for anything built before
    *  this existed — a follow channel simply doesn't update for those. */
   source?: SlideSource
+  /** Set by deriveFollowSlide when a follow channel's own language/
+   *  translation had no content for this slide and it fell back to English
+   *  instead — purely informational (which text is actually showing), never
+   *  read by navigation: Next/Prev still walk the leader's own slides
+   *  exactly as before regardless of this flag. Absent/false for the
+   *  leader's own content and for a follow channel that had a real
+   *  translation available. */
+  translationFallback?: boolean
 }
 
 export type SlideSource =
@@ -1188,7 +1196,11 @@ async function deriveFollowSlide(
     const ref = formatVerse(bookNum, chapter, verse)
     const translation = channelTranslations.get(followChannelId) ?? 'KJV'
     let resolved = lookupPassage(ref, translation)
-    if ('error' in resolved) resolved = lookupPassage(ref, 'KJV')
+    let fellBack = false
+    if ('error' in resolved && translation !== 'KJV') {
+      resolved = lookupPassage(ref, 'KJV')
+      fellBack = !('error' in resolved)
+    }
     if ('error' in resolved) return null
     const first = resolved.slides[0]
     if (!first) return null
@@ -1198,15 +1210,18 @@ async function deriveFollowSlide(
       label: first.label,
       reference: first.reference,
       marker: first.marker,
-      source: slide.source
+      source: slide.source,
+      translationFallback: fellBack
     }
   }
 
   const { sermonId, paragraphRef } = slide.source
   const language = TRANSLATION_SERMON_LANGUAGE[channelTranslations.get(followChannelId) ?? 'KJV'] ?? 'en'
   let text = await translateQuoteParagraph(sermonId, paragraphRef, language)
+  let fellBack = false
   if (text === null && language !== 'en') {
     text = await translateQuoteParagraph(sermonId, paragraphRef, 'en')
+    fellBack = text !== null
   }
   if (text === null) return null
   // Label/reference/marker stay the source's own (still the English
@@ -1218,7 +1233,8 @@ async function deriveFollowSlide(
     label: slide.label,
     reference: slide.reference,
     marker: slide.marker,
-    source: slide.source
+    source: slide.source,
+    translationFallback: fellBack
   }
 }
 

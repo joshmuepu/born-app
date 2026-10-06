@@ -1019,6 +1019,14 @@ export default function ScreensMenu({
                           ) : (
                             <span className="screens-status-current screens-status-current--idle">Nothing live</span>
                           )}
+                          {c.current?.translationFallback && (
+                            <span
+                              className="screens-chip screens-chip-warn"
+                              title="This channel's own translation has no version of this content — showing English instead"
+                            >
+                              Fallback: English
+                            </span>
+                          )}
                           {c.blanked && <span className="screens-chip screens-chip-off">Blanked</span>}
                         </div>
                         {c.destinations.length === 0 ? (

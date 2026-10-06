@@ -71,6 +71,9 @@ export interface SlidePayload {
   /** Structured source identity, for a channel configured to 'follow' this
    *  one. Absent for a song slide, or anything built before this existed. */
   source?: SlideSource
+  /** This channel follows another, had no translation for this content, and
+   *  fell back to English. */
+  translationFallback?: boolean
 }
 
 export type PresentationProfileId = 'fullscreen' | 'lower-third'
