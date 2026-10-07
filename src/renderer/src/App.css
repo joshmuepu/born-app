@@ -1144,6 +1144,12 @@ mark.hl {
   right: 0;
   z-index: 50;
   width: 320px;
+  /* Bounded so the popover never runs off the bottom of a short window —
+   * 100vh minus roughly the trigger's own offset from the top of the window
+   * plus a bottom margin, capped so it also doesn't balloon on a tall
+   * screen. The scrollable body below is what actually handles overflow;
+   * this is just the outer limit. */
+  max-height: min(640px, calc(100vh - 88px));
   padding: 6px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -1158,6 +1164,14 @@ mark.hl {
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px 6px;
+  flex-shrink: 0;
+}
+.screens-popover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
 }
 .screens-popover-title {
   font-size: var(--text-xs);

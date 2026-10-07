@@ -734,6 +734,7 @@ export default function ScreensMenu({
             </button>
           </div>
 
+          <div className="screens-popover-body">
           <ScreenRoleGroup
             role="projection"
             title="Congregation screen"
@@ -1091,6 +1092,7 @@ export default function ScreensMenu({
                 <button className="btn-secondary btn-sm" onClick={() => onFontSize(0.25)} disabled={fontSize >= 8} aria-label="Larger">+</button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}
