@@ -383,6 +383,11 @@ export default function ScreensMenu({
                           />
                         </div>
                         <span className="screens-chips">
+                          <span className="screens-chip screens-chip-lang">{c.translation}</span>
+                          <span className={`screens-chip ${c.sync.syncMode === 'follow' ? 'screens-chip-follow' : 'screens-chip-indep'}`}>
+                            <span className="screens-chip-dot" aria-hidden="true" />
+                            {c.sync.syncMode === 'follow' ? 'Following' : 'Independent'}
+                          </span>
                           {hasFallback && (
                             <span className="screens-chip screens-chip-warn">
                               <TriangleAlert width={11} height={11} strokeWidth={2.4} aria-hidden="true" />
@@ -395,8 +400,10 @@ export default function ScreensMenu({
                               {destWarnings[0].warning}
                             </span>
                           )}
-                          {out && (
+                          {out ? (
                             <span className="screens-chip screens-chip-indep">{profileLabel(out)}</span>
+                          ) : (
+                            <span className="screens-chip screens-chip-off">No Graphics</span>
                           )}
                           {obs?.blanked && <span className="screens-chip screens-chip-off">Blanked</span>}
                         </span>
