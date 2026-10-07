@@ -77,6 +77,7 @@ import {
   fingerprintAndOrdinal,
   findNamedEntry,
   nameForDisplay,
+  clearDisplayName,
   type DisplayLike,
   type NamedDisplay
 } from './displays'
@@ -1585,6 +1586,37 @@ ipcMain.handle('displays:rename', (_event, displayId: number, rawName: string) =
     updateSettings(patch)
   } catch (e) {
     log.error('persist displays:rename failed', e)
+  }
+  broadcastDisplayInfo()
+  return displayInfoPayload()
+})
+
+/** Remove a saved display name — the one thing displays:rename never grew a
+ *  way to undo. Keyed by name, not a display id, since the whole point is
+ *  this also has to work for a name whose physical display is disconnected
+ *  right now (stale names otherwise never get cleaned up). Deliberately
+ *  never repositions or closes a window: a role pointed at this name falls
+ *  back to Automatic in settings for its *next* resolution, but whatever is
+ *  already open stays exactly where it is — the renderer is responsible for
+ *  telling the operator that happened, since only it knows whether the
+ *  fallback actually changes anything the operator cares about. */
+ipcMain.handle('displays:clear-name', (_event, rawName: string) => {
+  const name = rawName.trim()
+  if (!name) return displayInfoPayload()
+
+  const settings = getSettingsSafe()
+  const patch: Partial<AppSettings> = clearDisplayName(
+    name,
+    settings.namedDisplays,
+    settings.projectionDisplayName,
+    settings.stageDisplayName
+  )
+
+  log.info(`ipc displays:clear-name "${name}"`)
+  try {
+    updateSettings(patch)
+  } catch (e) {
+    log.error('persist displays:clear-name failed', e)
   }
   broadcastDisplayInfo()
   return displayInfoPayload()

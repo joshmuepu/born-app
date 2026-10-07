@@ -77,6 +77,7 @@ declare global {
       setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>
       setStageDisplay: (displayId: number | null) => Promise<DisplayInfo>
       renameDisplay: (displayId: number, name: string) => Promise<DisplayInfo>
+      clearDisplayName: (name: string) => Promise<DisplayInfo>
       identifyDisplay: (displayId: number) => Promise<boolean>
       testPatternDisplay: (displayId: number) => Promise<boolean>
       getDisplayDiagnostics: () => Promise<string>

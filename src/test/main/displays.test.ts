@@ -6,6 +6,7 @@ import {
   fingerprintAndOrdinal,
   matchNamedDisplay,
   nameForDisplay,
+  clearDisplayName,
   type DisplayLike,
   type NamedDisplay
 } from '../../main/displays'
@@ -218,5 +219,52 @@ describe('fingerprintAndOrdinal / matchNamedDisplay round trip', () => {
     const named = nameIt(displays, displays[1], 'Sanctuary Projector')
     const withoutIt = [mk(1, { internal: true })]
     expect(matchNamedDisplay(withoutIt, named)).toBeNull()
+  })
+})
+
+describe('clearDisplayName', () => {
+  const displays = [mk(1, { internal: true }), mk(2, { internal: false, label: 'ViewSonic' })]
+  const named = nameIt(displays, displays[1], 'Sanctuary Projector')
+  const other = nameIt(displays, displays[0], 'Lobby TV')
+
+  it('removes the saved name and leaves neither role patched when nothing was using it', () => {
+    const result = clearDisplayName('Sanctuary Projector', [named, other], null, null)
+    expect(result.namedDisplays).toEqual([other])
+    expect('projectionDisplayName' in result).toBe(false)
+    expect('stageDisplayName' in result).toBe(false)
+  })
+
+  it('falls the congregation role back to Automatic when it was pointed at the cleared name', () => {
+    const result = clearDisplayName('Sanctuary Projector', [named], 'Sanctuary Projector', null)
+    expect(result.namedDisplays).toEqual([])
+    expect(result.projectionDisplayName).toBeNull()
+    expect('stageDisplayName' in result).toBe(false)
+  })
+
+  it('falls the stage role back to Automatic when it was pointed at the cleared name', () => {
+    const result = clearDisplayName('Sanctuary Projector', [named], null, 'Sanctuary Projector')
+    expect('projectionDisplayName' in result).toBe(false)
+    expect(result.stageDisplayName).toBeNull()
+  })
+
+  it('falls back both roles when both were pointed at the same cleared name', () => {
+    const result = clearDisplayName('Sanctuary Projector', [named], 'Sanctuary Projector', 'Sanctuary Projector')
+    expect(result.projectionDisplayName).toBeNull()
+    expect(result.stageDisplayName).toBeNull()
+  })
+
+  it('clears a name whose display is currently disconnected — the function only ever looks at the saved name list, never live connection state', () => {
+    // No `displays` argument at all: clearing works purely off the saved
+    // namedDisplays/role settings, which is exactly what lets a stale name
+    // (its physical monitor unplugged) get cleaned up.
+    const result = clearDisplayName('Sanctuary Projector', [named, other], 'Sanctuary Projector', null)
+    expect(result.namedDisplays).toEqual([other])
+    expect(result.projectionDisplayName).toBeNull()
+  })
+
+  it('is a no-op on the name list when the name was never saved', () => {
+    const result = clearDisplayName('Nonexistent', [named, other], 'Sanctuary Projector', null)
+    expect(result.namedDisplays).toEqual([named, other])
+    expect('projectionDisplayName' in result).toBe(false)
   })
 })

@@ -101,6 +101,34 @@ export function nameForDisplay(
   return findNamedEntry(displays, d, namedDisplays)?.name ?? null
 }
 
+export interface ClearNameResult {
+  namedDisplays: NamedDisplay[]
+  /** Only present when that role's override pointed at the cleared name —
+   *  always `null` (never omitted) in that case, so a caller can tell "this
+   *  role falls back to Automatic now" apart from "this role is untouched"
+   *  by checking the key, not just the value. */
+  projectionDisplayName?: string | null
+  stageDisplayName?: string | null
+}
+
+/** Removes a saved name — the one thing naming a display never grew an
+ *  undo for. Keyed by name rather than a live display id since this has to
+ *  work for a name whose physical display is disconnected right now (that's
+ *  the only way a stale name ever gets cleaned up). Pure: no window is
+ *  moved or closed by clearing a name — a role pointed at it just falls
+ *  back to Automatic for its *next* resolution. */
+export function clearDisplayName(
+  name: string,
+  namedDisplays: NamedDisplay[],
+  projectionDisplayName: string | null,
+  stageDisplayName: string | null
+): ClearNameResult {
+  const result: ClearNameResult = { namedDisplays: namedDisplays.filter((n) => n.name !== name) }
+  if (projectionDisplayName === name) result.projectionDisplayName = null
+  if (stageDisplayName === name) result.stageDisplayName = null
+  return result
+}
+
 export interface ProjectionTarget {
   display: DisplayLike
   /** true when we fell back to the operator's own screen (no external display). */

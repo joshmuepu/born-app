@@ -29,7 +29,8 @@ import {
   LayoutGrid,
   Radio,
   Cast,
-  Activity
+  Activity,
+  Eraser
 } from 'lucide-react'
 import type {
   DisplayInfo,
@@ -99,6 +100,7 @@ interface RoleProps {
   busyAction: string | null
   missingStreak: Record<string, number>
   onOpenChecklist: (name: string) => void
+  onClearName: (name: string) => void
 }
 
 function ScreenRoleGroup(p: RoleProps): JSX.Element {
@@ -219,6 +221,16 @@ function ScreenRoleGroup(p: RoleProps): JSX.Element {
                       >
                         <Pencil width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
                       </button>
+                      {d.name && (
+                        <button
+                          className="display-row-btn"
+                          title="Clear this name — back to its default label"
+                          aria-label={`Clear name for ${label}`}
+                          onClick={() => p.onClearName(d.name as string)}
+                        >
+                          <Eraser width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                        </button>
+                      )}
                     </span>
                   </>
                 )}
@@ -235,16 +247,26 @@ function ScreenRoleGroup(p: RoleProps): JSX.Element {
                   <span className="display-row-name">{n.name}</span>
                   <span className="display-row-sub">Not detected</span>
                 </span>
-                {isActiveMissing && streak >= 2 && (
+                <span className="display-row-actions">
+                  {isActiveMissing && streak >= 2 && (
+                    <button
+                      className="display-row-btn"
+                      title="Not seeing a screen you expect?"
+                      aria-label="Troubleshoot missing display"
+                      onClick={() => p.onOpenChecklist(n.name)}
+                    >
+                      <HelpCircle width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                    </button>
+                  )}
                   <button
                     className="display-row-btn"
-                    title="Not seeing a screen you expect?"
-                    aria-label="Troubleshoot missing display"
-                    onClick={() => p.onOpenChecklist(n.name)}
+                    title="Clear this name — this display stays disconnected, but the stale name goes away"
+                    aria-label={`Clear name for ${n.name}`}
+                    onClick={() => p.onClearName(n.name)}
                   >
-                    <HelpCircle width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                    <Eraser width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
                   </button>
-                )}
+                </span>
               </div>
             )
           })}
@@ -316,6 +338,11 @@ export default function ScreensManager({
   const [channelDraft, setChannelDraft] = useState('')
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
+  /** Set right after clearing a name that a role (Congregation/Stage) was
+   *  actually using — the one case clearing a name has a consequence worth
+   *  surfacing, since the role is now Automatic and that's otherwise a
+   *  silent settings change. Cleared on the next action. */
+  const [clearNameNotice, setClearNameNotice] = useState<string | null>(null)
 
   // Esc closes this modal — same pattern the popover itself already uses.
   useEffect(() => {
@@ -370,6 +397,27 @@ export default function ScreensManager({
     if (!trimmed) return
     const info = await window.electronAPI.renameDisplay(id, trimmed)
     onDisplayInfoChange(info)
+  }
+
+  /** Clearing a name never repositions or closes a window (main process
+   *  guarantees that) — but if Congregation or Stage was actively pointed at
+   *  this exact name, that role is now Automatic for its next resolution,
+   *  which is worth saying out loud rather than letting it change quietly. */
+  const handleClearName = async (name: string): Promise<void> => {
+    const usedByProjection =
+      (displayInfo?.isOverride && displayInfo.targetName === name) || displayInfo?.missingOverrideName === name
+    const usedByStage =
+      (displayInfo?.stageIsOverride && displayInfo.stageTargetName === name) || displayInfo?.stageMissingOverrideName === name
+    const info = await window.electronAPI.clearDisplayName(name)
+    onDisplayInfoChange(info)
+    if (usedByProjection || usedByStage) {
+      const roles = [usedByProjection && 'Congregation', usedByStage && 'Stage'].filter(Boolean).join(' and ')
+      setClearNameNotice(
+        `“${name}” was cleared. ${roles} ${roles.includes('and') ? 'were' : 'was'} set to it — switched to Automatic for next time. Whatever's already open hasn't moved.`
+      )
+    } else {
+      setClearNameNotice(null)
+    }
   }
 
   const copyDiagnostics = async (): Promise<void> => {
@@ -538,6 +586,12 @@ export default function ScreensManager({
                     <RefreshCw width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
                   </button>
                 </div>
+                {clearNameNotice && (
+                  <p className="screens-note screens-note--warn">
+                    <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+                    {clearNameNotice}
+                  </p>
+                )}
                 <ScreenRoleGroup
                   role="projection"
                   title="Congregation screen"
@@ -560,6 +614,7 @@ export default function ScreensManager({
                   busyAction={busyAction}
                   missingStreak={missingStreak}
                   onOpenChecklist={setChecklistFor}
+                  onClearName={handleClearName}
                 />
                 <ScreenRoleGroup
                   role="stage"
@@ -585,6 +640,7 @@ export default function ScreensManager({
                   busyAction={busyAction}
                   missingStreak={missingStreak}
                   onOpenChecklist={setChecklistFor}
+                  onClearName={handleClearName}
                 />
                 {checklistFor !== null && (
                   <div className="screens-group display-checklist">

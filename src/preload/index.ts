@@ -184,6 +184,7 @@ const api = {
     ipcRenderer.invoke('stage:set-display', displayId),
   renameDisplay: (displayId: number, name: string): Promise<DisplayInfo> =>
     ipcRenderer.invoke('displays:rename', displayId, name),
+  clearDisplayName: (name: string): Promise<DisplayInfo> => ipcRenderer.invoke('displays:clear-name', name),
   identifyDisplay: (displayId: number): Promise<boolean> => ipcRenderer.invoke('displays:identify', displayId),
   testPatternDisplay: (displayId: number): Promise<boolean> =>
     ipcRenderer.invoke('displays:test-pattern', displayId),
