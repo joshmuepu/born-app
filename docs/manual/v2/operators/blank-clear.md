@@ -4,16 +4,13 @@
 
 Once the projection window is open, a button appears that reads **Hide screen**.
 Click it (or press **Esc**) to black out the Congregation screen — the congregation
-sees plain black, nothing else. The button now reads **Show screen**; click it (or
-press **Esc** again) to bring back whatever was already projected.
+sees plain black, nothing else. The button now turns solid amber, its icon
+changes to a crossed-out eye, and it reads **Show screen**; click it (or press
+**Esc** again) to bring back whatever was already projected. The color, icon, and
+label all change together — an unmistakable "the congregation currently sees
+nothing" signal, readable at a glance even if you can't tell colors apart.
 
-> **Not yet verified as working:** the button is designed to turn solid amber
-> while the screen is hidden, as an unmistakable "the congregation currently sees
-> nothing" signal. In the running app at the time of writing, it does not
-> visually change color — only its label changes. Rely on the label text
-> ("Show screen" = currently hidden) until this is fixed.
-
-![The Hide screen / Show screen button after clicking — note the label changes to "Show screen" but the amber highlight described in the app's own code does not currently render.](../images/operator-hide-screen-amber.png)
+![The Hide screen / Show screen button in its amber "hidden" state — solid amber fill, crossed-out eye icon, and the "Show screen" label.](../images/operator-hide-screen-amber.png)
 
 This is the button to reach for between items, or any time you want the room's
 attention off the screen — it's deliberately the one thing in BORN that's always in

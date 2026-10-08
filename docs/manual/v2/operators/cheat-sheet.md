@@ -22,7 +22,7 @@ sound desk.*
 | Find a song | Click **Songs** → search → **Project** |
 | Move to the next slide | Press **→** or **Space**, or click **Next** |
 | Go back a slide | Press **←**, or click **Back** |
-| Black out the screen | Press **Esc**, or click **Hide screen** — it relabels to **Show screen** while hidden |
+| Black out the screen | Press **Esc**, or click **Hide screen** — it turns amber and relabels to **Show screen** while hidden |
 | Bring it back | Press **Esc** again, or click **Show screen** |
 | Show a one-off announcement | Click **Message** → type it → **Show message** (clears itself after ~10s) |
 
@@ -30,7 +30,7 @@ The line above the Back/Next bar always shows exactly what's on the screen right
 — if it says "Screen is hidden" or "Projection window is closed," that's why nothing
 is showing.
 
-![The Hide screen / Show screen button.](../images/cheat-hide-show-small.png)
+![The Hide screen / Show screen button, amber while hidden.](../images/cheat-hide-show-small.png)
 
 ## If something looks wrong
 

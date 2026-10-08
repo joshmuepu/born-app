@@ -13,9 +13,9 @@ warning BORN can show.
    Hide/Show-screen controls already? If it still says "Open projection," click it
    — the screen stays black until something is actually projected, which is
    normal, but the *window* itself has to be opened first.
-3. Is the screen showing solid black because it's **hidden**? Check the button's
-   label — if it reads **Show screen**, the screen is currently hidden. Press
-   **Esc** or click it to show.
+3. Is the screen showing solid black because it's **hidden**? The Hide/Show-screen
+   button turns solid amber and reads **Show screen** while hidden. Press **Esc**
+   or click it to show.
 4. Still nothing? Open **Screens** — does the Congregation row show a warning
    line? If so, see [Setup warnings explained](setup-warnings.md).
 

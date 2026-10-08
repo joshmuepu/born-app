@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame } from 'lucide-react'
+import { Sun, Moon, Flame, Eye, EyeOff } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -1277,10 +1277,15 @@ export default function App() {
           {projectionOpen && (
             <>
               <button
-                className={`btn-secondary${isScreenBlanked ? ' btn-toggle-on' : ''}`}
+                className={`btn-secondary btn-icon-text${isScreenBlanked ? ' btn-toggle-on' : ''}`}
                 onClick={handleToggleBlank}
                 title="Black out the congregation screen (Esc)"
               >
+                {isScreenBlanked ? (
+                  <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                ) : (
+                  <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                )}
                 {isScreenBlanked ? 'Show screen' : 'Hide screen'}
               </button>
               <button

@@ -346,14 +346,18 @@ body {
 }
 
 /* "Show screen" while the output is blanked — filled amber so it's
-   unmistakable that the congregation currently sees nothing. */
-.btn-toggle-on {
+   unmistakable that the congregation currently sees nothing. Combined with
+   .btn-secondary (not just .btn-toggle-on alone) so this wins regardless of
+   CSS source order — a bare .btn-toggle-on rule here was previously being
+   silently overridden by the later, equal-specificity .btn-secondary rule
+   below, so the button never actually changed color, only its label did. */
+.btn-secondary.btn-toggle-on {
   background-color: var(--warn);
   border-color: var(--warn);
   color: var(--on-accent);
   font-weight: 700;
 }
-.btn-toggle-on:hover {
+.btn-secondary.btn-toggle-on:hover {
   background-color: var(--warn);
   opacity: 0.9;
 }
