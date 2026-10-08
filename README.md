@@ -55,6 +55,10 @@ npm run build         # type-check + bundle
 npm run dist:mac      # package installers — also dist:win
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular, any user-facing change
+must update the [user manual](docs/manual/v2/) (press F1 inside BORN to read it)
+and its screenshots.
+
 `npm run build:db` and `npm run build:library` regenerate the bundled sermon and
 Bible/song databases; CI runs these on every release.
 
