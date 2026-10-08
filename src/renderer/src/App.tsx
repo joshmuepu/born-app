@@ -1078,10 +1078,19 @@ export default function App() {
       }
     }
     if (projected.item.kind === 'quote') {
+      // tail is `slide.reference` split on " · " — title / dateCode / paragraph
+      // (e.g. "41a"), but a sermon's header slide has no third segment at all
+      // ("Title · DateCode"), since it isn't a numbered paragraph. Checking
+      // only `tail[tail.length - 1]` for truthiness doesn't catch that case:
+      // it falls back to the *dateCode* segment (e.g. "63-0825E"), which
+      // parses as a paragraph range [63, 825] and then spuriously overlaps
+      // nearly every real paragraph in the sermon in SermonFollowView's
+      // on-screen matching. Only trust the last segment when it's genuinely
+      // the third one.
       return {
         kind: 'quote',
         sermonId: projected.item.quote.sermonId,
-        paragraphRef: tail[tail.length - 1] || projected.item.quote.paragraphRef
+        paragraphRef: tail.length >= 3 ? tail[tail.length - 1] : projected.item.quote.paragraphRef
       }
     }
     if (projected.item.kind === 'song') {

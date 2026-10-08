@@ -8,7 +8,6 @@ import type {
   DateTree,
   DateTreeYear
 } from '../types'
-import { refsOverlap } from '../../../shared/paragraphRef'
 import { quoteToItem } from '../../../shared/queueItem'
 import './BrowsePanel.css'
 
@@ -224,8 +223,11 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             // on onSendToProjection.
             quoteToItem(q).slides.map((s, slideIndex) => {
               const marker = s.marker ?? q.paragraphRef
-              const live =
-                !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, marker)
+              // Exact match, not refsOverlap: this list is already one row per
+              // page ("1a", "1b", …), so refsOverlap's numeric-only comparison
+              // (it ignores the letter suffix) would mark every page of the
+              // same paginated paragraph as on-screen at once.
+              const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
               return (
                 <div
                   key={`${q.paragraphRef}:${slideIndex}`}
@@ -610,8 +612,8 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
           {recentQuotes.flatMap((q, i) =>
             quoteToItem(q).slides.map((s, slideIndex) => {
               const marker = s.marker ?? q.paragraphRef
-              const live =
-                !!onScreen && onScreen.sermonId === q.sermonId && refsOverlap(onScreen.paragraphRef, marker)
+              // Exact match — see the same note in the Date/Series list above.
+              const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
               return (
                 <div key={`${i}:${slideIndex}`} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
                   <div className="browse-para-ref">
