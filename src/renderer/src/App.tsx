@@ -841,6 +841,10 @@ export default function App() {
         e.preventDefault()
         setTopTab('sermons')
         setSermonsTab('search')
+        // A sermon open in the follow view replaces the search box entirely
+        // (see the conditional render below) — back out of it first, or
+        // there's nothing to focus and this becomes a silent no-op.
+        setFollowSermon(null)
         document.getElementById('born-search-input')?.focus()
         return
       }
