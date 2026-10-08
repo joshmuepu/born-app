@@ -92,6 +92,18 @@ import {
 } from './tableApi'
 
 /**
+ * Dev-only escape hatch: if set, use a separate userData directory instead of
+ * the real one. Lets a second local checkout of BORN (e.g. this QA worktree,
+ * running alongside a real install or another dev checkout) run fully
+ * independently — separate settings/queue/single-instance-lock — without the
+ * two colliding. Never set for a real install; inert unless something
+ * explicitly exports it.
+ */
+if (process.env.BORN_USER_DATA_DIR) {
+  app.setPath('userData', process.env.BORN_USER_DATA_DIR)
+}
+
+/**
  * Single-instance lock — must run before anything else touches `app`. Without
  * this, launching BORN a second time (or a first instance left running with
  * its windows closed, forgotten about) starts a fully separate process. Both
