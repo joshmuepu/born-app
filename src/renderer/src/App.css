@@ -2189,6 +2189,23 @@ kbd {
   padding: 32px 20px;
   color: var(--text-secondary);
 }
+.help-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--warn);
+  margin: 0 auto;
+  max-width: 36ch;
+}
+.help-error-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
 .help-body {
   display: flex;
   flex: 1;

@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
-import { X, Printer, Loader2 } from 'lucide-react'
+import { X, Printer, Loader2, TriangleAlert } from 'lucide-react'
 import type { ManualManifest } from '../types'
 
 interface Props {
@@ -89,24 +89,59 @@ function pageTitle(manifest: ManualManifest | null, file: string): string {
   return 'BORN manual'
 }
 
+/** Shown wherever a manual request fails — the manifest itself, or a single
+ *  page — instead of leaving the loading spinner running forever. Plain
+ *  language (no error codes, no "undefined"), always with a way out. */
+function HelpErrorState({ onRetry }: { onRetry: () => void }): JSX.Element {
+  return (
+    <div className="help-error">
+      <TriangleAlert width={22} height={22} strokeWidth={1.75} aria-hidden="true" />
+      <p className="help-error-text">
+        Help couldn&rsquo;t load. Try closing and reopening BORN. If it still fails,
+        contact the person who set up BORN.
+      </p>
+      <button className="btn-secondary btn-sm" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  )
+}
+
 export default function HelpViewer({ onClose }: Props): JSX.Element {
   const [manifest, setManifest] = useState<ManualManifest | null>(null)
   const [activeFile, setActiveFile] = useState<string | null>(null)
   const [html, setHtml] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [unavailable, setUnavailable] = useState(false)
+  const [manifestError, setManifestError] = useState(false)
+  const [manifestAttempt, setManifestAttempt] = useState(0)
+  const [pageError, setPageError] = useState(false)
+  const [pageAttempt, setPageAttempt] = useState(0)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    window.electronAPI.getManualManifest().then((m) => {
-      setManifest(m)
-      const first = m?.sections[0]?.pages[0]?.file
-      if (first) setActiveFile(first)
-      else setUnavailable(true)
-    })
-  }, [])
+    let cancelled = false
+    setManifestError(false)
+    window.electronAPI
+      .getManualManifest()
+      .then((m) => {
+        if (cancelled) return
+        const first = m?.sections[0]?.pages[0]?.file
+        if (first) {
+          setManifest(m)
+          setActiveFile(first)
+        } else {
+          setManifestError(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setManifestError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [manifestAttempt])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -123,24 +158,33 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
     if (!activeFile) return
     let cancelled = false
     setLoading(true)
-    window.electronAPI.getManualPage(activeFile).then(async (source) => {
-      if (cancelled) return
-      if (source === null) {
-        setHtml('<p>This page could not be loaded.</p>')
-        setLoading(false)
-        return
-      }
-      const rendered = await renderPage(source, activeFile)
-      if (!cancelled) {
-        setHtml(rendered)
-        setLoading(false)
-        contentRef.current?.scrollTo(0, 0)
-      }
-    })
+    setPageError(false)
+    window.electronAPI
+      .getManualPage(activeFile)
+      .then(async (source) => {
+        if (cancelled) return
+        if (source === null) {
+          setPageError(true)
+          setLoading(false)
+          return
+        }
+        const rendered = await renderPage(source, activeFile)
+        if (!cancelled) {
+          setHtml(rendered)
+          setLoading(false)
+          contentRef.current?.scrollTo(0, 0)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPageError(true)
+          setLoading(false)
+        }
+      })
     return () => {
       cancelled = true
     }
-  }, [activeFile])
+  }, [activeFile, pageAttempt])
 
   const navigateTo = (file: string): void => {
     const exists = manifest?.sections.some((s) => s.pages.some((p) => p.file === file))
@@ -197,9 +241,9 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
           </button>
         </div>
 
-        {unavailable ? (
+        {manifestError ? (
           <div className="help-unavailable">
-            <p>The manual isn&rsquo;t available in this build.</p>
+            <HelpErrorState onRetry={() => setManifestAttempt((n) => n + 1)} />
           </div>
         ) : (
           <div className="help-body">
@@ -223,7 +267,11 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
             <div className="help-content-pane">
               <div className="help-content-head">
                 <span className="help-content-title">{title}</span>
-                <button className="btn-quiet btn-sm" onClick={printCurrentPage} disabled={printing || loading}>
+                <button
+                  className="btn-quiet btn-sm"
+                  onClick={printCurrentPage}
+                  disabled={printing || loading || pageError}
+                >
                   {printing ? (
                     <Loader2 width={13} height={13} strokeWidth={2.2} className="spin" aria-hidden="true" />
                   ) : (
@@ -233,7 +281,9 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
                 </button>
               </div>
               <div className="help-content" ref={contentRef} onClick={handleContentClick}>
-                {loading ? (
+                {pageError ? (
+                  <HelpErrorState onRetry={() => setPageAttempt((n) => n + 1)} />
+                ) : loading ? (
                   <div className="help-loading">
                     <Loader2 width={20} height={20} strokeWidth={2} className="spin" aria-hidden="true" />
                   </div>
