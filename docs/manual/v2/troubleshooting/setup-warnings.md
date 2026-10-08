@@ -65,11 +65,7 @@ Bible translation missing that verse.
 blank screen. If this happens constantly for a specific channel, it may mean that
 translation/sermon simply isn't available yet for your content.
 
-*Screenshot not captured in this session — it needs a Follow-Main channel whose
-translation genuinely lacks the live sermon quote, and the specific quote
-projected while writing this manual happened to already have a French
-translation. The condition and wording above are confirmed directly from
-`main/index.ts`'s fallback logic, not guessed.*
+![The "Fallback: English" chip on a channel following Main in French, for a sermon quote with no French translation.](../images/warn-english-fallback.png)
 
 ## "No viewer connected"
 
