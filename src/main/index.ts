@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
@@ -1749,9 +1749,18 @@ ipcMain.handle('indexer:stop', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log.boot()
   app.setName('Branham or Nothing')
+  // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
+  // instance's network traffic at an address nothing listens on, so every
+  // fetch fails fast with a real connection error instead of actually
+  // leaving the LAN. Scoped to this Electron session only; never touches
+  // the host machine's own network config. Never set for a real install.
+  if (process.env.BORN_OFFLINE) {
+    await session.defaultSession.setProxy({ proxyRules: '127.0.0.1:1' })
+    log.info('BORN_OFFLINE set — network traffic routed to a dead proxy')
+  }
   // electron-builder applies build/icons/* only when packaging — set the
   // Dock icon explicitly in dev so `npm run dev` previews the real icon too.
   if (!app.isPackaged && process.platform === 'darwin') {
