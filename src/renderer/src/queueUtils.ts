@@ -4,6 +4,32 @@
  * unit-tested.
  */
 
+import type { Quote } from './types'
+
+export interface FollowSermon {
+  sermonId: number
+  anchorRef: string
+  query?: string
+  matchType?: Quote['matchType']
+}
+
+/**
+ * Next follow-view state after projecting/opening `quote` from a path that
+ * is never itself a search (Browse, or "Restart here" inside the follow view
+ * on a paragraph of the sermon already being followed). Projecting a fresh
+ * sermon drops any search query/matchType the previous follow session had —
+ * otherwise a term searched earlier keeps getting highlighted in paragraphs
+ * of a completely unrelated sermon opened later via Browse or the queue.
+ * Staying on the *same* sermon (e.g. clicking another paragraph's "Restart
+ * here" while already following it) preserves the existing query/matchType,
+ * since that's still a legitimate, in-context search highlight.
+ */
+export function nextFollowSermon(prev: FollowSermon | null, quote: Quote): FollowSermon {
+  return prev && prev.sermonId === quote.sermonId
+    ? { ...prev, anchorRef: quote.paragraphRef }
+    : { sermonId: quote.sermonId, anchorRef: quote.paragraphRef }
+}
+
 export function reorder<T>(list: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list
   const next = list.slice()

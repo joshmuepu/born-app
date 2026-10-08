@@ -21,7 +21,7 @@ import type {
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
-import { reorder, replaceContributorItems } from './queueUtils'
+import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
 
@@ -54,10 +54,11 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
   /** When set, the search panel shows the whole sermon (scrolled to `anchorRef`)
-   *  instead of the results list — opened by clicking a result or projecting one. */
-  const [followSermon, setFollowSermon] = useState<{ sermonId: number; anchorRef: string } | null>(
-    null
-  )
+   *  instead of the results list — opened by clicking a result or projecting one.
+   *  `query`/`matchType` are only set when this sermon was actually opened from
+   *  a search result — they're what SermonFollowView highlights — so opening a
+   *  sermon from Browse or the queue never carries over a stale search term. */
+  const [followSermon, setFollowSermon] = useState<FollowSermon | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -385,8 +386,11 @@ export default function App() {
     (quote: Quote, slideIndex = 0) => {
       doProject(quoteToItem(quote), slideIndex, null)
       window.electronAPI.noteSermonUsed(quote)
-      // switch the results list to the whole-sermon follow view
-      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
+      // Switch the results list to the whole-sermon follow view. Used both by
+      // Browse (never a search) and by "Restart here" on a paragraph inside
+      // an already-open follow view — nextFollowSermon keeps the existing
+      // query/matchType only when this is the sermon already being followed.
+      setFollowSermon((prev) => nextFollowSermon(prev, quote))
     },
     [doProject]
   )
@@ -405,14 +409,25 @@ export default function App() {
           : findMatchingSlideIndex(item.slides.map((s) => s.text), query)
       doProject(item, slide, null)
       window.electronAPI.noteSermonUsed(quote)
-      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
+      setFollowSermon({
+        sermonId: quote.sermonId,
+        anchorRef: quote.paragraphRef,
+        query,
+        matchType: quote.matchType
+      })
     },
     [doProject, searchQuery]
   )
   /** Click a search result: open the whole sermon at that paragraph, no projection. */
   const handleOpenSermon = useCallback(
-    (quote: Quote) => setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef }),
-    []
+    (quote: Quote) =>
+      setFollowSermon({
+        sermonId: quote.sermonId,
+        anchorRef: quote.paragraphRef,
+        query: searchQuery,
+        matchType: quote.matchType
+      }),
+    [searchQuery]
   )
 
   const passageToItem = (p: ResolvedPassage): QueueItem => ({
@@ -1273,8 +1288,8 @@ export default function App() {
                       ? onScreenLoc.paragraphRef
                       : null
                   }
-                  query={searchQuery}
-                  matchType={searchResults[0]?.matchType}
+                  query={followSermon.query}
+                  matchType={followSermon.matchType}
                   onBack={() => setFollowSermon(null)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
