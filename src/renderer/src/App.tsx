@@ -58,11 +58,14 @@ interface Projected {
  *  content in another language instead of just mirroring this exact text.
  *  Bible: re-parses this specific slide's own citation (same technique
  *  onScreenLoc below already uses for the same reason — an item can span
- *  several verses, one per slide, each needing its own). Quote: sermonId +
- *  paragraphRef are already right on the item — every slide built from one
- *  quote shares the same source sermon/paragraph-range. Song: no translated-
- *  lyric source exists, so there's nothing to attach. */
-function slideSource(item: QueueItem, s: Slide): SlideSource | undefined {
+ *  several verses, one per slide, each needing its own). Quote: uses this
+ *  slide's own `paragraphRef`, not the parent item's — a quote's paragraphRef
+ *  can be a merged range that this one slide only covers part of, and
+ *  flow-through (liveNav.ts) appends slides from entirely different
+ *  paragraphs onto the same item, so only the slide itself knows its true
+ *  source paragraph. Song: no translated-lyric source exists, so there's
+ *  nothing to attach. */
+export function slideSource(item: QueueItem, s: Slide): SlideSource | undefined {
   if (item.kind === 'bible') {
     const tail = (s.reference || '').split(' · ')
     const ref = tail[0]?.replace(/([0-9]+)[a-z]$/, '$1')
@@ -73,7 +76,12 @@ function slideSource(item: QueueItem, s: Slide): SlideSource | undefined {
     return undefined
   }
   if (item.kind === 'quote') {
-    return { kind: 'quote', sermonId: item.quote.sermonId, paragraphRef: item.quote.paragraphRef }
+    return {
+      kind: 'quote',
+      sermonId: item.quote.sermonId,
+      paragraphRef: s.paragraphRef ?? item.quote.paragraphRef,
+      page: s.page ?? 0
+    }
   }
   return undefined
 }

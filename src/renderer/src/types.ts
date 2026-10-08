@@ -74,7 +74,7 @@ export interface RecentService {
  *  exact text. Absent for a song slide (no translated-lyric source exists). */
 export type SlideSource =
   | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
-  | { kind: 'quote'; sermonId: number; paragraphRef: string }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string; page?: number }
 
 /** One slide as pushed to the projection / stage windows. */
 export interface SlidePayload {

@@ -29,6 +29,19 @@ export interface Slide {
   reference?: string
   /** Small number shown at the start of the text — verse number, paragraph number. */
   marker?: string
+  /** Quote slides only: the exact source paragraph this slide's text came
+   *  from. A quote's own `paragraphRef` can be a merged range ("173-174")
+   *  that this slide only covers part of (see splitSubParagraphs below), or
+   *  flow-through (liveNav.ts) can append a slide from an entirely different
+   *  paragraph — so a follow channel resolving content for this slide must
+   *  use this, not the parent item's `quote.paragraphRef`. */
+  paragraphRef?: string
+  /** Quote slides only: which projector-sized page of `paragraphRef`'s own
+   *  text this slide shows (0 for the first/only page, 1 for "b", …) — a
+   *  long paragraph splits into several slides same as a long Bible verse,
+   *  and a follow channel needs to know which page to show, not just which
+   *  paragraph. */
+  page?: number
 }
 
 /** Which remote contributor added an item — absent for anything added
@@ -108,7 +121,7 @@ const INLINE_PARAGRAPH_START = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘
  * one boundary just doesn't split — the same combined-text behavior as
  * before the fix, not a broken split.
  */
-function splitSubParagraphs(body: string, lo: number, hi: number): Array<{ num: number; text: string }> {
+export function splitSubParagraphs(body: string, lo: number, hi: number): Array<{ num: number; text: string }> {
   if (hi <= lo) return [{ num: lo, text: body }]
 
   const boundaries: Array<{ index: number; num: number }> = []
@@ -196,7 +209,9 @@ export function quoteToItem(quote: Quote): QuoteItem {
       slides.push({
         text,
         reference: cite(`${refValue}${suffix}`),
-        marker: num ? `${num}${suffix}` : undefined
+        marker: num ? `${num}${suffix}` : undefined,
+        paragraphRef: refValue,
+        page: i
       })
     })
   })
@@ -206,7 +221,14 @@ export function quoteToItem(quote: Quote): QuoteItem {
       kind: 'quote',
       id: makeId('q'),
       quote,
-      slides: [{ text: body, reference: cite(quote.paragraphRef), marker: leadMarker }]
+      slides: [
+        {
+          text: body,
+          reference: cite(quote.paragraphRef),
+          marker: leadMarker,
+          paragraphRef: quote.paragraphRef
+        }
+      ]
     }
   }
   return { kind: 'quote', id: makeId('q'), quote, slides }

@@ -58,7 +58,9 @@ import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { formatVerse } from '../shared/bibleRef'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
-import { quoteToItem, type Quote } from '../shared/queueItem'
+import { quoteToItem, splitSubParagraphs, type Quote } from '../shared/queueItem'
+import { parseParagraphRef } from '../shared/paragraphRef'
+import { paginateText } from '../shared/paginate'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -196,7 +198,7 @@ export interface SlidePayload {
 
 export type SlideSource =
   | { kind: 'bible'; bookNum: number; chapter: number; verse: number }
-  | { kind: 'quote'; sermonId: number; paragraphRef: string }
+  | { kind: 'quote'; sermonId: number; paragraphRef: string; page?: number }
 
 const channels = new Map<ChannelId, ChannelState<SlidePayload>>(
   getSettingsSafe().channelDefinitions.map((def) => [
@@ -1217,12 +1219,12 @@ async function deriveFollowSlide(
     }
   }
 
-  const { sermonId, paragraphRef } = slide.source
+  const { sermonId, paragraphRef, page } = slide.source
   const language = TRANSLATION_SERMON_LANGUAGE[channelTranslations.get(followChannelId) ?? 'KJV'] ?? 'en'
-  let text = await translateQuoteParagraph(sermonId, paragraphRef, language)
+  let text = await translateQuoteParagraph(sermonId, paragraphRef, language, page ?? 0)
   let fellBack = false
   if (text === null && language !== 'en') {
-    text = await translateQuoteParagraph(sermonId, paragraphRef, 'en')
+    text = await translateQuoteParagraph(sermonId, paragraphRef, 'en', page ?? 0)
     fellBack = text !== null
   }
   if (text === null) return null
@@ -2553,7 +2555,10 @@ ipcMain.handle('languages:list', () => fetchLanguages())
  *  specific paragraph isn't in that sermon" — callers decide what null means
  *  for them (BrowsePanel shows nothing changed; follow-mode falls back to
  *  English). */
-async function translateQuoteParagraph(
+/** The target paragraph's whole text — unpaginated, so a caller can split it
+ *  into the same projector-sized pages the leader's own slide came from and
+ *  pick the one it actually needs (see translateQuoteParagraph). */
+async function resolveFullParagraphText(
   sermonId: number,
   paragraphRef: string,
   language: string
@@ -2584,11 +2589,45 @@ async function translateQuoteParagraph(
     })()
 
     const match = content.sections.find((s) => s.ref === paragraphRef)
-    return match?.text ?? null
+    if (match) return match.text
+
+    // A quote's own slide can cite one paragraph out of a merged range
+    // ("83" out of a row stored only as "83-85") — the exact match above
+    // only ever hits a whole-range row. Find the row whose range contains
+    // this paragraph and extract just its text, the same splitting
+    // quoteToItem uses to divide a merged range for display, so a follow
+    // channel doesn't resolve to nothing just because this exact sub-ref
+    // was never its own row.
+    const target = parseParagraphRef(paragraphRef)
+    if (!target) return null
+    const [targetNum] = target
+    for (const s of content.sections) {
+      const range = parseParagraphRef(s.ref)
+      if (!range || targetNum < range[0] || targetNum > range[1]) continue
+      const part = splitSubParagraphs(s.text, range[0], range[1]).find((p) => p.num === targetNum)
+      if (part) return part.text
+    }
+    return null
   } catch (e) {
-    log.error('translateQuoteParagraph error', e)
+    log.error('resolveFullParagraphText error', e)
     return null
   }
+}
+
+/** A long paragraph projects as several slides, same as a long Bible verse —
+ *  `page` picks which one, paginated the same deterministic way quoteToItem
+ *  paginates the leader's own text, so the two always agree on where the
+ *  breaks fall. */
+async function translateQuoteParagraph(
+  sermonId: number,
+  paragraphRef: string,
+  language: string,
+  page = 0
+): Promise<string | null> {
+  const full = await resolveFullParagraphText(sermonId, paragraphRef, language)
+  if (full === null) return null
+  const pages = paginateText(full)
+  return pages[page] ?? pages[pages.length - 1] ?? full
 }
 
 ipcMain.handle(

@@ -68,6 +68,18 @@ describe('quoteToItem', () => {
     expect(item.slides[1].reference).toBe('Come Follow Me · 63-0901M · 26b')
   })
 
+  it('stamps each page of a split paragraph with its own page index', () => {
+    // A follow channel re-paginates the whole paragraph's own text the same
+    // deterministic way and needs to know which page to pick.
+    const long = '26 ' + 'This is a sentence that keeps going on and on. '.repeat(12)
+    const item = quoteToItem({ ...quote, text: long, paragraphRef: '26' })
+    expect(item.slides.length).toBeGreaterThan(1)
+    expect(item.slides[0].page).toBe(0)
+    expect(item.slides[1].page).toBe(1)
+    expect(item.slides[0].paragraphRef).toBe('26')
+    expect(item.slides[1].paragraphRef).toBe('26')
+  })
+
   it('never combines two paragraphs onto the same slide within a range', () => {
     // Range "5-7": paragraph 5 is short (stays one slide); 6 and 7 are each
     // long enough to need their own extra page.
@@ -149,6 +161,31 @@ describe('quoteToItem', () => {
     const refs = item.slides.map((s) => s.reference)
     expect(refs.some((r) => r.endsWith('· 210'))).toBe(true)
     expect(refs.some((r) => /· 211[a-z]?$/.test(r))).toBe(true)
+  })
+
+  it('stamps each split sub-paragraph slide with its own paragraphRef, not the merged range', () => {
+    // A follow channel resolves content by paragraphRef — if every slide of
+    // a merged range carried the whole range, a channel following paragraph
+    // 173 alone would receive 174's text mixed in too.
+    const text = '173 Dear Heavenly Father, I am very thankful tonight. 174 Lord, bless this service.'
+    const item = quoteToItem({ ...quote, text, paragraphRef: '173-174' })
+    const p173 = item.slides.find((s) => s.text.includes('very thankful'))
+    const p174 = item.slides.find((s) => s.text.includes('bless this service'))
+    expect(p173?.paragraphRef).toBe('173')
+    expect(p174?.paragraphRef).toBe('174')
+  })
+
+  it('stamps a slide with the one real paragraph it covers, even when the item ref names a wider range', () => {
+    // paragraphRef is "146-147" but the text only actually contains 146 (no
+    // inline "147" boundary found) — the slide's own ref must say "146", the
+    // paragraph it truly covers, not the unresolved "146-147" range.
+    const item = quoteToItem({ ...quote, text: '146 But the five streams you see', paragraphRef: '146-147' })
+    expect(item.slides[0].paragraphRef).toBe('146')
+  })
+
+  it('stamps the no-leading-number fallback slide with the quote paragraphRef', () => {
+    const item = quoteToItem({ ...quote, text: 'By faith Abraham', paragraphRef: 'p1' })
+    expect(item.slides[0].paragraphRef).toBe('p1')
   })
 })
 
