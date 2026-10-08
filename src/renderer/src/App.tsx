@@ -171,7 +171,17 @@ export default function App() {
     window.electronAPI.checkForUpdate().then((u) => {
       setUpdate(u)
       setUpdateDismissed(false)
-      setUpdateMsg(u.hasUpdate ? '' : `You're on the latest version (${u.current}).`)
+      // checkFailed means the check itself couldn't complete (offline,
+      // GitHub unreachable, …) — hasUpdate is just the unchanged default
+      // false in that case, not a real answer, so this must not be reported
+      // as "you're up to date."
+      setUpdateMsg(
+        u.checkFailed
+          ? "Couldn't check for updates — check your internet connection."
+          : u.hasUpdate
+            ? ''
+            : `You're on the latest version (${u.current}).`
+      )
       if (!u.hasUpdate) setTimeout(() => setUpdateMsg(''), 4000)
     })
   }, [])

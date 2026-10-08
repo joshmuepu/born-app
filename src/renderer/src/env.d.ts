@@ -38,6 +38,7 @@ declare global {
     url: string
     notes?: string
     asset?: string
+    checkFailed?: boolean
   }
 
   interface Window {

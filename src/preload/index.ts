@@ -73,6 +73,7 @@ export interface UpdateInfo {
   url: string
   notes?: string
   asset?: string
+  checkFailed?: boolean
 }
 
 const api = {
