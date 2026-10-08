@@ -56,7 +56,7 @@ alias).
 |---|---|---|
 | `POST` | `/next` | Advance the Main operator console's current item/slide — identical to the phone remote's own Next. Only has an effect while the Main window is open (queue navigation lives in that window's own state). |
 | `POST` | `/prev` | Same, in reverse. |
-| `POST` | `/clear/<channelId>` | Clear that channel's current content — identical to the operator's own Clear button. |
+| `POST` | `/clear/<channelId>` | Clear that channel's current content (there's no dedicated "Clear" button in the operator UI today — the closest equivalents are Hide/Show screen, which blanks the whole channel instead of removing its loaded content, and simply projecting something else). |
 | `POST` | `/blank/<channelId>` | Blank that channel (congregation screen goes black; a Graphics output on it reports blanked). |
 | `POST` | `/show/<channelId>` | Un-blank / re-assert that channel's current content. Does **not** accept a content payload — it shows whatever is already current on that channel, the inverse of blank. |
 | `GET` | `/state` | Read-only snapshot of every channel: `{ id, label, current, blanked }[]`. `current` is `null` when nothing is live. |
