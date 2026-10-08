@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, shell } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
@@ -97,6 +97,7 @@ import {
   getOnThisDay
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings } from './settings'
+import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
   fetchAutocompleteSuggestions,
@@ -1420,6 +1421,41 @@ ipcMain.handle('app:download-update', (e) =>
 ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
 ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
 ipcMain.handle('app:quit', () => app.quit())
+
+// ── Help / manual IPC ─────────────────────────────────────────────────────────
+// The manual itself is Markdown + images read straight from disk (see
+// manual.ts) — the renderer never gets raw filesystem access, same arm's-
+// length shape as every other IPC call here.
+
+ipcMain.handle('manual:manifest', () => getManualManifest())
+ipcMain.handle('manual:page', (_e, relPath: string) => readManualPage(relPath))
+ipcMain.handle('manual:image', (_e, relPath: string) => readManualImage(relPath))
+ipcMain.handle('manual:open-external', (_e, url: string) => shell.openExternal(url))
+
+/** A full page already rendered to self-contained HTML (markdown-it's output
+ *  with every image inlined as a data: URL) is handed in from the renderer
+ *  rather than re-rendered here, so there's exactly one Markdown rendering
+ *  pipeline in the app, not two that could drift apart. */
+ipcMain.handle('manual:print-pdf', async (_e, html: string, suggestedName: string) => {
+  // printToPDF needs the window to actually paint at least once — `show: false`
+  // can hang indefinitely on some platforms, so this parks a real (shown)
+  // window off-screen instead, which the operator never sees.
+  const printWin = new BrowserWindow({ x: -10000, y: -10000, width: 900, height: 1200, frame: false })
+  try {
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+    const pdfData = await printWin.webContents.printToPDF({ printBackground: true })
+    const result = await dialog.showSaveDialog({
+      title: 'Save as PDF',
+      defaultPath: suggestedName,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (result.canceled || !result.filePath) return { saved: false }
+    writeFileSync(result.filePath, pdfData)
+    return { saved: true, path: result.filePath }
+  } finally {
+    printWin.destroy()
+  }
+})
 
 // ── Display IPC ───────────────────────────────────────────────────────────────
 

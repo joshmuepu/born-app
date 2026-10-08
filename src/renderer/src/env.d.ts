@@ -31,7 +31,8 @@ import type {
   ChannelSyncConfig,
   Songbook,
   PresentationProfileId,
-  ObservabilityChannel
+  ObservabilityChannel,
+  ManualManifest
 } from './types'
 
 declare global {
@@ -63,6 +64,12 @@ declare global {
       onDownloadProgress: (
         callback: (p: { received: number; total: number }) => void
       ) => () => void
+      // Help / manual
+      getManualManifest: () => Promise<ManualManifest | null>
+      getManualPage: (relPath: string) => Promise<string | null>
+      getManualImage: (relPath: string) => Promise<string | null>
+      printManualPdf: (html: string, suggestedName: string) => Promise<{ saved: boolean; path?: string }>
+      openManualExternalLink: (url: string) => Promise<void>
       // Projection
       openProjection: () => Promise<void>
       closeProjection: () => Promise<void>
