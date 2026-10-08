@@ -950,23 +950,45 @@ export default function App() {
     setPlayedIds(new Set())
   }, [])
 
-  const handleOpenService = useCallback(async () => {
-    const loaded = await window.electronAPI.openService()
-    if (loaded) {
-      loadServiceItems(loaded)
-      refreshRecents()
-    }
-  }, [loadServiceItems, refreshRecents])
+  // Shown under the queue toolbar when Open/Import can't read or parse a
+  // file — a damaged or empty .born file otherwise fails with nothing
+  // visible at all. Auto-clears so it doesn't linger once the operator has
+  // moved on, same pattern as SongsPanel's import message.
+  const [openError, setOpenError] = useState<string | null>(null)
+  const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showOpenError = useCallback((message: string) => {
+    if (openErrorTimer.current) clearTimeout(openErrorTimer.current)
+    setOpenError(message)
+    openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
+  }, [])
 
-  const handleOpenRecent = useCallback(
-    async (path: string) => {
-      const loaded = await window.electronAPI.openServicePath(path)
+  const handleOpenService = useCallback(async () => {
+    try {
+      const loaded = await window.electronAPI.openService()
       if (loaded) {
         loadServiceItems(loaded)
         refreshRecents()
       }
+    } catch (e) {
+      showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
+    }
+  }, [loadServiceItems, refreshRecents, showOpenError])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      try {
+        const loaded = await window.electronAPI.openServicePath(path)
+        if (loaded) {
+          loadServiceItems(loaded)
+          refreshRecents()
+        } else {
+          showOpenError("Couldn't open that service file — it may be damaged or empty.")
+        }
+      } catch {
+        showOpenError("Couldn't open that service file — it may be damaged or empty.")
+      }
     },
-    [loadServiceItems, refreshRecents]
+    [loadServiceItems, refreshRecents, showOpenError]
   )
 
   /** Untagged items from an imported file (saved before per-item source tags
@@ -990,12 +1012,19 @@ export default function App() {
    *  combines one or more separately-saved service files into the current
    *  queue instead of requiring only one file open at a time. */
   const handleImportService = useCallback(async () => {
-    const files = await window.electronAPI.importService()
-    if (!files || files.length === 0) return
+    const { files, failed } = await window.electronAPI.importService()
+    if (failed.length > 0) {
+      showOpenError(
+        failed.length === 1
+          ? `Couldn't import "${failed[0]}" — it may be damaged or empty.`
+          : `Couldn't import ${failed.length} files (may be damaged or empty): ${failed.join(', ')}`
+      )
+    }
+    if (files.length === 0) return
     const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
     if (allTagged.length > 0) addToQueue(allTagged)
     refreshRecents()
-  }, [tagUntaggedItems, addToQueue, refreshRecents])
+  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError])
 
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
@@ -1387,6 +1416,7 @@ export default function App() {
             onSaveService={handleSaveService}
             recents={recents}
             onOpenRecent={handleOpenRecent}
+            openError={openError}
           />
         </div>
       </main>

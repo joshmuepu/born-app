@@ -1257,9 +1257,14 @@ ipcMain.handle('service:open', async () => {
   })
   if (result.canceled || !result.filePaths[0]) return null
   const path = result.filePaths[0]
-  const data = JSON.parse(readFileSync(path, 'utf-8'))
-  rememberService(path)
-  return data
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf-8'))
+    rememberService(path)
+    return data
+  } catch (e) {
+    log.error(`service:open failed for ${path}`, e)
+    throw new Error(`Couldn't read "${basename(path)}" — it may be damaged or empty.`)
+  }
 })
 
 /** "Import" — additive alongside "Open" above (which replaces the whole
@@ -1276,12 +1281,21 @@ ipcMain.handle('service:import', async () => {
     filters: [{ name: 'BORN Service', extensions: ['born', 'bpservice'] }],
     properties: ['openFile', 'multiSelections']
   })
-  if (result.canceled || result.filePaths.length === 0) return []
-  return result.filePaths.map((path) => {
-    const data = JSON.parse(readFileSync(path, 'utf-8'))
-    rememberService(path)
-    return { name: basename(path).replace(/\.(born|bpservice)$/, ''), items: data }
-  })
+  if (result.canceled || result.filePaths.length === 0) return { files: [], failed: [] }
+  const files: Array<{ name: string; items: unknown }> = []
+  const failed: string[] = []
+  for (const path of result.filePaths) {
+    const name = basename(path).replace(/\.(born|bpservice)$/, '')
+    try {
+      const data = JSON.parse(readFileSync(path, 'utf-8'))
+      rememberService(path)
+      files.push({ name, items: data })
+    } catch (e) {
+      log.error(`service:import failed for ${path}`, e)
+      failed.push(name)
+    }
+  }
+  return { files, failed }
 })
 
 ipcMain.handle('service:recents', () => {

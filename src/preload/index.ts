@@ -272,7 +272,7 @@ const api = {
     ipcRenderer.invoke('service:recents'),
   openServicePath: (path: string): Promise<Quote[] | null> =>
     ipcRenderer.invoke('service:open-path', path),
-  importService: (): Promise<Array<{ name: string; items: unknown[] }>> =>
+  importService: (): Promise<{ files: Array<{ name: string; items: unknown[] }>; failed: string[] }> =>
     ipcRenderer.invoke('service:import'),
 
   // Stage view

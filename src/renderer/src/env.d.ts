@@ -123,7 +123,7 @@ declare global {
       openService: () => Promise<unknown[] | null>
       getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
       openServicePath: (path: string) => Promise<unknown[] | null>
-      importService: () => Promise<Array<{ name: string; items: unknown[] }>>
+      importService: () => Promise<{ files: Array<{ name: string; items: unknown[] }>; failed: string[] }>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>
