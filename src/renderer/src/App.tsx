@@ -114,8 +114,10 @@ export default function App() {
   const sermonCacheRef = useRef<Map<number, Quote[]>>(new Map())
   const queueLoaded = useRef(false)
   const projectionOpenRef = useRef(false)
+  const isScreenBlankedRef = useRef(false)
 
   useEffect(() => { projectionOpenRef.current = projectionOpen }, [projectionOpen])
+  useEffect(() => { isScreenBlankedRef.current = isScreenBlanked }, [isScreenBlanked])
   useEffect(() => { queueRef.current = serviceQueue }, [serviceQueue])
   useEffect(() => { projectedRef.current = projected }, [projected])
 
@@ -938,8 +940,18 @@ export default function App() {
       setProjected(null)
       setFollowSermon(null)
       setPlayedIds(new Set())
+      // setProjected(null) above only clears this window's own idea of
+      // what's live — it sends nothing to the actual projection window, so
+      // without this, the congregation screen keeps showing whatever was up
+      // before "New service" while the operator's own status bar says
+      // "Nothing on screen yet," which is simply false. Blank the real
+      // output to match what the operator is being told.
+      if (projectionOpen && !isScreenBlanked) {
+        setIsScreenBlanked(true)
+        window.electronAPI.setBlankScreen(true)
+      }
     }
-  }, [serviceQueue.length])
+  }, [serviceQueue.length, projectionOpen, isScreenBlanked])
 
   const handleSaveService = useCallback(async () => {
     const ok = await window.electronAPI.saveService(serviceQueue)
@@ -952,6 +964,15 @@ export default function App() {
     setProjected(null)
     setFollowSermon(null)
     setPlayedIds(new Set())
+    // setProjected(null) only clears this window's own idea of what's live —
+    // it sends nothing to the real projection window. Opening a different
+    // service while something is still up would otherwise leave the
+    // congregation looking at the old service's content while the operator's
+    // own status bar claims there's nothing on screen.
+    if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+    }
   }, [])
 
   // Shown under the queue toolbar when Open/Import can't read or parse a
@@ -1041,6 +1062,12 @@ export default function App() {
         setProjected(null)
         setFollowSermon(null)
         setPlayedIds(new Set())
+        // Same reasoning as handleNewService's own blank call: clearing this
+        // window's idea of what's live doesn't touch the real projection.
+        if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+          setIsScreenBlanked(true)
+          window.electronAPI.setBlankScreen(true)
+        }
       }),
     []
   )
