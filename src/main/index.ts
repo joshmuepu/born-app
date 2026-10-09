@@ -1874,9 +1874,9 @@ app.whenReady().then(() => {
           return Promise.resolve([])
         }
       }
-    }
+    },
+    () => startMdns(REMOTE_PORT)
   )
-  startMdns(REMOTE_PORT)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

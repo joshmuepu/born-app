@@ -1,3 +1,4 @@
+import { createServer, type Server } from 'http'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // os.networkInterfaces() is mocked per-test below — getLocalIP() must pick
@@ -11,10 +12,19 @@ vi.mock('os', () => ({
 
 // Re-imported fresh per test file run; getLocalIP reads networkInterfaces()
 // on every call (no caching), so re-mocking between tests is enough.
-const { getLocalIP } = await import('../../main/webRemote')
+const { getLocalIP, startWebRemote, stopWebRemote, isWebRemoteAvailable } =
+  await import('../../main/webRemote')
+
+// A dedicated test-only port — REMOTE_PORT (4316) may legitimately already
+// be held by a real BORN dev instance running on the same machine, which is
+// exactly the kind of collision these tests would otherwise be flaky about.
+const TEST_PORT = 43160
 
 beforeEach(() => {
   mockInterfaces.mockReset()
+  // getLocalIP() runs as a side effect of a successful bind (it's logged) —
+  // give it something harmless to enumerate so that path never throws.
+  mockInterfaces.mockReturnValue({})
 })
 
 function iface(address: string, opts: Partial<{ internal: boolean; family: string }> = {}) {
@@ -87,5 +97,63 @@ describe('getLocalIP', () => {
   it('falls back to "localhost" when there are no usable addresses at all', () => {
     mockInterfaces.mockReturnValue({})
     expect(getLocalIP()).toBe('localhost')
+  })
+})
+
+// A no-op pair that satisfies startWebRemote's required arguments — these
+// tests are only exercising the bind-success/bind-failure sequencing, not
+// any actual command/search behavior.
+const noopSearch = {
+  sermons: async () => [],
+  bible: async () => [],
+  songs: async () => [],
+  song: async () => null,
+  bibleBooks: async () => [],
+  bibleChapter: async () => null,
+  recentSongs: async () => [],
+  recentServices: async () => [],
+  sermonSeries: async () => [],
+  sermonsByIds: async () => [],
+  sermonParagraphs: async () => [],
+  recentSermons: async () => [],
+  onThisDay: async () => []
+}
+
+describe('startWebRemote bind sequencing', () => {
+  it('only calls onListening once the server has actually bound', async () => {
+    const onListening = vi.fn()
+    await new Promise<void>((resolve) => {
+      startWebRemote(() => {}, noopSearch, () => {
+        onListening()
+        resolve()
+      }, TEST_PORT)
+    })
+    expect(onListening).toHaveBeenCalledTimes(1)
+    expect(isWebRemoteAvailable()).toBe(true)
+    stopWebRemote()
+    // Give the OS a moment to actually release the port before the next
+    // test tries to bind it again (close() itself returns before the
+    // underlying socket is fully torn down).
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  })
+
+  it('never calls onListening, and marks the remote unavailable, when the port is already taken', async () => {
+    // Occupy the port ourselves first, so startWebRemote's own listen() is
+    // guaranteed to hit EADDRINUSE rather than racing a real bind.
+    const blocker: Server = createServer()
+    await new Promise<void>((resolve) => blocker.listen(TEST_PORT, resolve))
+
+    const onListening = vi.fn()
+    await new Promise<void>((resolve) => {
+      startWebRemote(() => {}, noopSearch, onListening, TEST_PORT)
+      // listen()'s error event fires asynchronously but promptly — a short
+      // delay is enough to observe it without racing a real network stack.
+      setTimeout(resolve, 50)
+    })
+
+    expect(onListening).not.toHaveBeenCalled()
+    expect(isWebRemoteAvailable()).toBe(false)
+
+    await new Promise<void>((resolve) => blocker.close(() => resolve()))
   })
 })

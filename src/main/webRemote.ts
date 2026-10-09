@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAssets'
+import { log } from './logger'
 
 export const REMOTE_PORT = 4316
 
@@ -375,15 +376,40 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 let remoteAvailable = false
+let server: ReturnType<typeof createServer> | null = null
 
 export function isWebRemoteAvailable(): boolean {
   return remoteAvailable
 }
 
-export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSearchHandlers): void {
+/** Releases the port. Only used by tests today (the app itself just exits
+ *  the process instead of shutting this down), but a clean stop is needed to
+ *  test the bind-failure path without leaking a held port across test files. */
+export function stopWebRemote(): void {
+  server?.close()
+  server = null
+  remoteAvailable = false
+}
+
+export function startWebRemote(
+  onCommand: CommandCallback,
+  search: WebRemoteSearchHandlers,
+  // Fires only once the HTTP server has actually bound — the caller starts
+  // mDNS advertising from here, never unconditionally after this function
+  // returns, since listen() is async and a bind failure (EADDRINUSE or
+  // otherwise) must not leave BORN advertising a name/port nothing is
+  // listening on (a phone would resolve the name fine and then hang or get
+  // refused, with the operator's panel showing nothing wrong).
+  onListening?: () => void,
+  // Overridable only so tests can bind an ephemeral port instead of the
+  // real REMOTE_PORT, which may legitimately already be held by another
+  // BORN instance on the same dev machine. Production always uses the
+  // default.
+  port: number = REMOTE_PORT
+): void {
   commandCallback = onCommand
   searchHandlers = search
-  const server = createServer((req, res) => {
+  server = createServer((req, res) => {
     handleRequest(req, res).catch(() => {
       try {
         res.writeHead(500)
@@ -396,14 +422,15 @@ export function startWebRemote(onCommand: CommandCallback, search: WebRemoteSear
   server.on('error', (err: NodeJS.ErrnoException) => {
     remoteAvailable = false
     if (err.code === 'EADDRINUSE') {
-      console.error(`Web remote: port ${REMOTE_PORT} is already in use — remote disabled`)
+      log.error(`webRemote: port ${port} is already in use — remote disabled`)
     } else {
-      console.error('Web remote server error', err)
+      log.error('webRemote: server error', err)
     }
   })
-  server.listen(REMOTE_PORT, () => {
+  server.listen(port, () => {
     remoteAvailable = true
-    console.log(`Web remote available at http://${getLocalIP()}:${REMOTE_PORT}`)
+    log.info(`webRemote: listening on http://${getLocalIP()}:${port}`)
+    onListening?.()
   })
 }
 
