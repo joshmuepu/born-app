@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame, Eye, EyeOff } from 'lucide-react'
+import { Sun, Moon, Flame, Eye, EyeOff, X } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -1675,7 +1675,12 @@ export default function App() {
       {showAlertDialog && (
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Show a message on screen</h3>
+            <div className="modal-title-row">
+              <h3 className="modal-title">Show a message on screen</h3>
+              <button className="btn-icon btn-sm" onClick={() => setShowAlertDialog(false)} aria-label="Close">
+                <X width={15} height={15} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            </div>
             <p className="modal-hint">It appears across the bottom of the screen for about 10 seconds.</p>
             <input
               type="text"
@@ -1683,7 +1688,15 @@ export default function App() {
               placeholder="e.g. Please silence your phones"
               value={alertMessage}
               onChange={(e) => setAlertMessage(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSendAlert() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendAlert()
+                // The app-wide shortcut handler bails out early while this
+                // dialog is open (so Space/arrows don't leak through while
+                // typing a message) — which also swallows Esc before it ever
+                // reaches that handler, so Esc has to close this dialog
+                // itself. (Ported from v1-ui-audit-help.)
+                else if (e.key === 'Escape') setShowAlertDialog(false)
+              }}
               autoFocus
             />
             <div className="alert-target">
