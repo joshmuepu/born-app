@@ -41,6 +41,16 @@ declare global {
     checkFailed?: boolean
   }
 
+  interface DbRecoveryStatus {
+    recovered: boolean
+    quarantinedTo?: string
+  }
+
+  interface DataRecoveryInfo {
+    sermons: DbRecoveryStatus
+    library: DbRecoveryStatus
+  }
+
   interface Window {
     electronAPI: {
       // App / updates
@@ -54,6 +64,8 @@ declare global {
         filePath: string
       ) => Promise<{ ok: boolean; needsManual?: boolean; error?: string }>
       quitApp: () => Promise<void>
+      getDataRecoveryInfo: () => Promise<DataRecoveryInfo>
+      openDataFolder: () => Promise<string>
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
       onDownloadProgress: (
         callback: (p: { received: number; total: number }) => void

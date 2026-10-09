@@ -107,6 +107,10 @@ export default function App() {
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
+  /** Set once on mount — whether sermons.db/library.db were found corrupted
+   *  and auto-recovered at startup, so the status line can say exactly
+   *  that instead of a generic "needs an internet connection" message. */
+  const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
   const { theme, toggle: toggleTheme } = useTheme()
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
@@ -939,6 +943,10 @@ export default function App() {
   }, [])
   useEffect(() => refreshRecents(), [refreshRecents])
 
+  useEffect(() => {
+    window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
+  }, [])
+
   const handleNewService = useCallback(() => {
     if (serviceQueue.length === 0) {
       setFollowSermon(null)
@@ -1561,6 +1569,21 @@ export default function App() {
                   </button>
                 </div>
               )}
+              {dataRecovery?.library.recovered && (
+                <div className="status-popover-row status-text status-warn">
+                  Your local Bible/songs data was damaged — it&rsquo;s been reset and restored. The
+                  damaged file was kept, not deleted, in case support needs it.
+                </div>
+              )}
+              <div className="status-popover-row">
+                <button
+                  className="btn-secondary btn-sm"
+                  title="Open the folder holding BORN's local data — useful if support asks for it"
+                  onClick={() => window.electronAPI.openDataFolder()}
+                >
+                  Open data folder
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1574,6 +1597,14 @@ export default function App() {
             </span>
             <div className="status-progress"><div className="status-progress-fill" style={{ width: `${pct}%` }} /></div>
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.stopIndexer()}>Stop</button>
+          </>
+        ) : indexer.indexed === 0 && dataRecovery?.sermons.recovered ? (
+          <>
+            <span className="status-text status-warn">
+              Your local sermon data was damaged — it&rsquo;s been reset and is rebuilding now. The
+              damaged file was kept, not deleted, in case support needs it.
+            </span>
+            <button className="btn-primary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Retry</button>
           </>
         ) : indexer.indexed === 0 ? (
           <>

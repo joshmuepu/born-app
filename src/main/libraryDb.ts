@@ -10,8 +10,17 @@ import { gunzipSync } from 'zlib'
 import { join } from 'path'
 import { log } from './logger'
 import { initLibrarySchema } from './librarySchema'
+import { checkAndRecoverDatabase, type IntegrityCheckResult } from './dbIntegrity'
 
 let db: Database.Database | null = null
+let recoveryInfo: IntegrityCheckResult = { recovered: false }
+
+/** Set once getLibraryDb() has run its integrity check — lets the renderer
+ *  show an accurate "your data was restored" message instead of a generic
+ *  one. */
+export function getLibraryDbRecoveryInfo(): IntegrityCheckResult {
+  return recoveryInfo
+}
 
 function userDbPath(): string {
   return join(app.getPath('userData'), 'library.db')
@@ -45,7 +54,7 @@ function seedFromBundled(target: string): void {
 export function getLibraryDb(): Database.Database {
   if (!db) {
     const p = userDbPath()
-    seedFromBundled(p)
+    recoveryInfo = checkAndRecoverDatabase(p, seedFromBundled, 'library.db')
     db = new Database(p)
     db.pragma('journal_mode = WAL')
     db.pragma('synchronous = NORMAL')

@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session, shell } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
-import { getDb, closeDb } from './db'
-import { closeLibraryDb } from './libraryDb'
+import { getDb, closeDb, getDbRecoveryInfo } from './db'
+import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -764,6 +764,18 @@ ipcMain.handle('app:download-update', (e) =>
 ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
 ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
 ipcMain.handle('app:quit', () => app.quit())
+
+/** Whether either local database was found corrupted and auto-recovered at
+ *  startup — drives the status message so a damaged file reads as exactly
+ *  that, never as "needs an internet connection." */
+ipcMain.handle('app:data-recovery-info', () => ({
+  sermons: getDbRecoveryInfo(),
+  library: getLibraryDbRecoveryInfo()
+}))
+
+/** Opens the folder holding the local databases/settings, so a support
+ *  conversation ("go to this folder") doesn't require finding it by hand. */
+ipcMain.handle('app:open-data-folder', () => shell.openPath(app.getPath('userData')))
 
 // ── Display IPC ───────────────────────────────────────────────────────────────
 
@@ -1783,6 +1795,14 @@ app.whenReady().then(async () => {
   }
   projectionState.fontSize = getSettingsSafe().fontSize
   nativeTheme.themeSource = getSettingsSafe().theme
+  // Open (and integrity-check) both local databases before any window
+  // exists, so a damaged file is already quarantined-and-reseeded — and
+  // the recovery info is already known — by the time the renderer asks
+  // for it. Opening here is the same lazy-init getDb()/getLibraryDb()
+  // would do on first real use anyway; doing it explicitly just removes
+  // the race between that first use and the renderer's own status check.
+  getDb()
+  getLibraryDb()
   createMainWindow()
 
   // Auto-start indexer so sermons are available immediately on first launch
