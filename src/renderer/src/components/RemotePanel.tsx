@@ -11,8 +11,10 @@ interface RemoteInfo {
 
 /**
  * "Scan once, on this WiFi" — the desktop side of the auto-connecting remote.
- * Shows a QR code for the mDNS address (falls back to the raw IP until/unless
- * mDNS finishes probing) so a phone never needs to type anything in.
+ * Shows a QR code for the computer's plain LAN IP (more reliable to resolve
+ * than `.local` on networks/phones where mDNS is flaky) so a phone never
+ * needs to type anything in. The `.local` name is offered as a secondary,
+ * more DHCP-stable address once mDNS has finished probing.
  */
 /** A few retries covers the real "still starting up" window (the server and
  *  mDNS take a moment right after launch) — past this, retrying forever
@@ -163,9 +165,10 @@ export default function RemotePanel(): JSX.Element {
               ) : (
                 <div className="remote-address remote-address--pending">Starting…</div>
               )}
-              {info?.available && !info.hostnameUrl && (
+              {info?.available && info.hostnameUrl && (
                 <p className="remote-note">
-                  Still finding a name for this computer — using its network address for now.
+                  Also reachable at {info.hostnameUrl.replace(/^https?:\/\//, '')} once a phone
+                  resolves it — the address above is more reliable to scan.
                 </p>
               )}
             </div>

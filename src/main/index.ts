@@ -33,6 +33,7 @@ import {
   getLocalIP,
   isWebRemoteAvailable,
   getWebRemoteTranslation,
+  buildRemoteConnectionInfo,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
@@ -1215,12 +1216,7 @@ ipcMain.handle('webremote:ip', () => {
   if (!isWebRemoteAvailable()) {
     return { available: false, url: '', ipUrl: '', hostnameUrl: null }
   }
-  const ipUrl = `http://${getLocalIP()}:${REMOTE_PORT}`
-  const host = getMdnsHostname()
-  const hostnameUrl = host ? `http://${host}:${REMOTE_PORT}` : null
-  // Prefer the name — it survives a DHCP lease change; the IP is the fallback
-  // shown only until (or unless) mDNS finishes probing.
-  return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
+  return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
 })
 
 // ── Service file IPC ──────────────────────────────────────────────────────────

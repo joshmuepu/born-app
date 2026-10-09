@@ -150,6 +150,29 @@ export function getLocalIP(): string {
   return real.find(isPrivate) ?? candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
 }
 
+export interface RemoteConnectionInfo {
+  available: boolean
+  url: string
+  ipUrl: string
+  hostnameUrl: string | null
+}
+
+/** IP is primary: `.local` resolution depends on mDNS actually working on
+ *  the phone and the network (some guest/isolated networks and some Android
+ *  builds don't resolve it at all), while a bare IP works whenever the phone
+ *  can reach the port at all — the exact thing a QR scan needs to get right
+ *  on the first try. `.local` is still offered as a secondary address since
+ *  it survives a DHCP lease change that would break a bookmarked IP. */
+export function buildRemoteConnectionInfo(
+  ip: string,
+  hostname: string | null,
+  port: number
+): RemoteConnectionInfo {
+  const ipUrl = `http://${ip}:${port}`
+  const hostnameUrl = hostname ? `http://${hostname}:${port}` : null
+  return { available: true, url: ipUrl, ipUrl, hostnameUrl }
+}
+
 function buildHTML(): string {
   return `<!doctype html>
 <html lang="en">

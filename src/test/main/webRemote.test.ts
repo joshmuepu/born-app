@@ -12,7 +12,7 @@ vi.mock('os', () => ({
 
 // Re-imported fresh per test file run; getLocalIP reads networkInterfaces()
 // on every call (no caching), so re-mocking between tests is enough.
-const { getLocalIP, startWebRemote, stopWebRemote, isWebRemoteAvailable } =
+const { getLocalIP, startWebRemote, stopWebRemote, isWebRemoteAvailable, buildRemoteConnectionInfo } =
   await import('../../main/webRemote')
 
 // A dedicated test-only port — REMOTE_PORT (4316) may legitimately already
@@ -97,6 +97,24 @@ describe('getLocalIP', () => {
   it('falls back to "localhost" when there are no usable addresses at all', () => {
     mockInterfaces.mockReturnValue({})
     expect(getLocalIP()).toBe('localhost')
+  })
+})
+
+describe('buildRemoteConnectionInfo', () => {
+  it('uses the plain IP as the primary url, with the hostname offered as a secondary address', () => {
+    const info = buildRemoteConnectionInfo('10.0.0.124', 'born-remote.local', 4316)
+    expect(info).toEqual({
+      available: true,
+      url: 'http://10.0.0.124:4316',
+      ipUrl: 'http://10.0.0.124:4316',
+      hostnameUrl: 'http://born-remote.local:4316'
+    })
+  })
+
+  it('still uses the IP as the primary url when mDNS has not resolved a hostname yet', () => {
+    const info = buildRemoteConnectionInfo('10.0.0.124', null, 4316)
+    expect(info.url).toBe('http://10.0.0.124:4316')
+    expect(info.hostnameUrl).toBeNull()
   })
 })
 
