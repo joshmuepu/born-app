@@ -46,6 +46,18 @@ export function cmpVersion(a: string, b: string): number {
   return 0
 }
 
+/** A release from a different major version is a different product line
+ *  (v1 "released" vs. v2 "unreleased, rebranding in 2027"), not an update —
+ *  GitHub's /releases/latest returns whichever release is newest *by publish
+ *  date*, not by semver, so this stays correct even if a v2 preview build
+ *  ever gets manually published to this same repo ahead of a v1 release, or
+ *  vice versa. Without this, cmpVersion() alone would happily call a
+ *  different major version "newer" and offer it as an upgrade. */
+export function sameMajor(a: string, b: string): boolean {
+  const majorOf = (v: string): number => parseInt(v.replace(/^v/, '').split('.')[0], 10) || 0
+  return majorOf(a) === majorOf(b)
+}
+
 /** The installer filename for this platform + architecture. */
 function assetName(version: string): string | undefined {
   const v = version.replace(/^v/, '')
@@ -68,7 +80,7 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
     const tag = (json.tag_name ?? '').trim()
     if (tag) {
       info.latest = tag.replace(/^v/, '')
-      info.hasUpdate = cmpVersion(info.latest, current) > 0
+      info.hasUpdate = sameMajor(info.latest, current) && cmpVersion(info.latest, current) > 0
       if (json.html_url) info.url = json.html_url
       if (json.body) info.notes = json.body
       if (info.hasUpdate) info.asset = assetName(info.latest)
