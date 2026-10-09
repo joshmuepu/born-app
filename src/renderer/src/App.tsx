@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame } from 'lucide-react'
+import { Sun, Moon, Flame, X } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -1224,8 +1224,19 @@ export default function App() {
               </button>
               <button
                 className="btn-secondary"
-                onClick={() => { setAlertTarget('stage'); setShowAlertDialog(true) }}
-                title="Show a short message across the bottom of a screen (defaults to the stage monitor)"
+                onClick={() => {
+                  // Defaulting to Stage monitor unconditionally used to send a
+                  // message nowhere visible whenever no stage monitor was on
+                  // for that session — default to it only when it's actually
+                  // showing something, Main screen otherwise.
+                  setAlertTarget(stageOpen ? 'stage' : 'congregation')
+                  setShowAlertDialog(true)
+                }}
+                title={
+                  stageOpen
+                    ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
+                    : 'Show a short message across the bottom of a screen (defaults to the main screen)'
+                }
               >
                 Message
               </button>
@@ -1479,7 +1490,12 @@ export default function App() {
       {showAlertDialog && (
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Show a message on screen</h3>
+            <div className="modal-title-row">
+              <h3 className="modal-title">Show a message on screen</h3>
+              <button className="btn-icon btn-sm" onClick={() => setShowAlertDialog(false)} aria-label="Close">
+                <X width={15} height={15} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            </div>
             <p className="modal-hint">It appears across the bottom of the screen for about 10 seconds.</p>
             <input
               type="text"
