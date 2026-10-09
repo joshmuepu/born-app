@@ -34,6 +34,8 @@ import {
   isWebRemoteAvailable,
   getWebRemoteTranslation,
   buildRemoteConnectionInfo,
+  listAdapters,
+  getConnectedPhoneCount,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
@@ -1218,6 +1220,21 @@ ipcMain.handle('webremote:ip', () => {
   }
   return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
 })
+
+/** Backs the "Remote connection check" panel — everything an operator (or
+ *  support, reading a copied dump) needs to see why a phone can't connect,
+ *  since the panel otherwise only knows "the server bound" and has no way to
+ *  know whether anything on the LAN can actually reach it. */
+ipcMain.handle('webremote:diagnostics', () => ({
+  available: isWebRemoteAvailable(),
+  port: REMOTE_PORT,
+  chosenIp: getLocalIP(),
+  adapters: listAdapters(),
+  mdnsHostname: getMdnsHostname(),
+  connectedPhones: getConnectedPhoneCount(),
+  recentLogLines: log.getRecentLines(40),
+  platform: process.platform
+}))
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 

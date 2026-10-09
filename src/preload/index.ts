@@ -66,6 +66,24 @@ export interface SlidePayload {
   marker?: string
 }
 
+export interface RemoteAdapterInfo {
+  name: string
+  address: string
+  virtual: boolean
+  chosen: boolean
+}
+
+export interface RemoteDiagnostics {
+  available: boolean
+  port: number
+  chosenIp: string
+  adapters: RemoteAdapterInfo[]
+  mdnsHostname: string | null
+  connectedPhones: number
+  recentLogLines: string[]
+  platform: string
+}
+
 export interface UpdateInfo {
   current: string
   latest: string | null
@@ -308,6 +326,7 @@ const api = {
     ipUrl: string
     hostnameUrl: string | null
   }> => ipcRenderer.invoke('webremote:ip'),
+  getWebRemoteDiagnostics: (): Promise<RemoteDiagnostics> => ipcRenderer.invoke('webremote:diagnostics'),
   syncWebRemote: (state: {
     queue: Array<{
       id: string

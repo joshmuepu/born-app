@@ -150,6 +150,32 @@ export function getLocalIP(): string {
   return real.find(isPrivate) ?? candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
 }
 
+export interface AdapterInfo {
+  name: string
+  address: string
+  /** Matched one of the known VPN/virtual-switch naming patterns. */
+  virtual: boolean
+  /** This is the address getLocalIP() actually picked. */
+  chosen: boolean
+}
+
+/** Every non-loopback IPv4 adapter on this machine, for the "Remote
+ *  connection check" diagnostic — lets the operator (or support, reading a
+ *  copied diagnostics dump) see every candidate address and which one BORN
+ *  picked and why, instead of just trusting a single hidden choice. */
+export function listAdapters(): AdapterInfo[] {
+  const nets = networkInterfaces()
+  const chosenIp = getLocalIP()
+  const out: AdapterInfo[] = []
+  for (const [name, ifaces] of Object.entries(nets)) {
+    for (const net of ifaces ?? []) {
+      if (net.family !== 'IPv4' || net.internal) continue
+      out.push({ name, address: net.address, virtual: VIRTUAL_ADAPTER_NAME.test(name), chosen: net.address === chosenIp })
+    }
+  }
+  return out
+}
+
 export interface RemoteConnectionInfo {
   available: boolean
   url: string
@@ -273,6 +299,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   if (path === '/state' && req.method === 'GET') {
+    // The remote polls this endpoint every second while connected — the most
+    // reliable heartbeat already available, so it doubles as the "how many
+    // phones are actually connected right now" signal for diagnostics,
+    // without adding a second mechanism.
+    const clientIp = req.socket.remoteAddress
+    if (clientIp) lastSeenByClient.set(clientIp, Date.now())
     sendJSON(res, 200, currentState)
     return
   }
@@ -403,6 +435,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 let remoteAvailable = false
 let server: ReturnType<typeof createServer> | null = null
 
+// Client IP -> last time it polled /state. A phone that stops polling (app
+// closed, screen locked, Wi-Fi dropped) ages out instead of counting forever.
+const lastSeenByClient = new Map<string, number>()
+const CONNECTED_WINDOW_MS = 5000
+
+/** How many distinct phones have polled /state in the last few seconds —
+ *  the operator-visible "N connected" count. Approximate by design: a NAT'd
+ *  network could put two phones behind one IP, and a phone that just closed
+ *  its tab still counts until it ages out. */
+export function getConnectedPhoneCount(): number {
+  const now = Date.now()
+  let n = 0
+  for (const t of lastSeenByClient.values()) {
+    if (now - t <= CONNECTED_WINDOW_MS) n++
+  }
+  return n
+}
+
 export function isWebRemoteAvailable(): boolean {
   return remoteAvailable
 }
@@ -414,6 +464,7 @@ export function stopWebRemote(): void {
   server?.close()
   server = null
   remoteAvailable = false
+  lastSeenByClient.clear()
 }
 
 export function startWebRemote(

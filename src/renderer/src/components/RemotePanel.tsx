@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Copy, Check, AlertTriangle } from 'lucide-react'
+import { Smartphone, Copy, Check, AlertTriangle, Stethoscope } from 'lucide-react'
 import QRCode from 'qrcode'
 
 interface RemoteInfo {
@@ -7,6 +7,40 @@ interface RemoteInfo {
   url: string
   ipUrl: string
   hostnameUrl: string | null
+}
+
+/** Plain-language, OS-specific next step — the self-test below this can say
+ *  "nothing is obviously wrong" but still miss a firewall silently dropping
+ *  inbound connections, so this is always shown rather than only on error. */
+function firewallHint(platform: string): string {
+  if (platform === 'darwin') {
+    return 'macOS may have shown a firewall prompt for BORN the first time the remote started. If it was dismissed, denied, or never seen: open System Settings → Network → Firewall → Options, and make sure BORN is allowed to accept incoming connections.'
+  }
+  if (platform === 'win32') {
+    return 'Windows may have shown a "Windows Defender Firewall has blocked some features" prompt for BORN. If it was cancelled, or the wrong network type (Public) was chosen: open Windows Security → Firewall & network protection → Allow an app through firewall, and check BORN for both Private and Public.'
+  }
+  return "Check this computer's firewall settings to make sure BORN is allowed to accept incoming connections on this network."
+}
+
+function buildDiagnosticsText(diag: RemoteDiagnostics): string {
+  const lines = [
+    `BORN remote connection check — ${new Date().toISOString()}`,
+    `Platform: ${diag.platform}`,
+    `Server listening: ${diag.available}`,
+    `Port: ${diag.port}`,
+    `Chosen address: ${diag.chosenIp}`,
+    `mDNS hostname: ${diag.mdnsHostname ?? '(not resolved)'}`,
+    `Connected phones: ${diag.connectedPhones}`,
+    '',
+    'Network adapters:',
+    ...diag.adapters.map(
+      (a) => `  ${a.chosen ? '→' : ' '} ${a.name}: ${a.address}${a.virtual ? ' (virtual/VPN)' : ''}`
+    ),
+    '',
+    'Recent log lines:',
+    ...diag.recentLogLines.map((l) => `  ${l}`)
+  ]
+  return lines.join('\n')
 }
 
 /**
@@ -29,6 +63,9 @@ export default function RemotePanel(): JSX.Element {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(0)
+  const [diag, setDiag] = useState<RemoteDiagnostics | null>(null)
+  const [diagOpen, setDiagOpen] = useState(false)
+  const [diagCopied, setDiagCopied] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -107,6 +144,19 @@ export default function RemotePanel(): JSX.Element {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const toggleDiagnostics = (): void => {
+    const next = !diagOpen
+    setDiagOpen(next)
+    if (next) window.electronAPI.getWebRemoteDiagnostics().then(setDiag)
+  }
+
+  const copyDiagnostics = (): void => {
+    if (!diag) return
+    navigator.clipboard?.writeText(buildDiagnosticsText(diag))
+    setDiagCopied(true)
+    setTimeout(() => setDiagCopied(false), 1500)
+  }
+
   return (
     <div className="remote-panel" ref={wrapRef}>
       <button
@@ -173,6 +223,48 @@ export default function RemotePanel(): JSX.Element {
               )}
             </div>
           </div>
+          )}
+
+          <button className="btn-secondary btn-sm remote-diag-toggle" onClick={toggleDiagnostics}>
+            <Stethoscope width={13} height={13} strokeWidth={2} aria-hidden="true" />
+            {diagOpen ? 'Hide connection check' : 'Remote connection check'}
+          </button>
+
+          {diagOpen && (
+            <div className="remote-diag">
+              {diag ? (
+                <>
+                  <p className="remote-diag-row">
+                    Server: {diag.available ? 'listening' : 'not listening'} on port {diag.port}
+                  </p>
+                  <p className="remote-diag-row">Connected phones right now: {diag.connectedPhones}</p>
+                  <p className="remote-diag-row">
+                    mDNS name: {diag.mdnsHostname ?? 'not resolved yet'}
+                  </p>
+                  <p className="remote-diag-row">Network adapters found:</p>
+                  <ul className="remote-diag-adapters">
+                    {diag.adapters.map((a) => (
+                      <li key={a.name + a.address}>
+                        {a.chosen ? '→ ' : '　'}
+                        <code>{a.address}</code> ({a.name}
+                        {a.virtual ? ', looks virtual/VPN' : ''})
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="remote-diag-row remote-diag-firewall">{firewallHint(diag.platform)}</p>
+                  <button className="btn-secondary btn-sm" onClick={copyDiagnostics}>
+                    {diagCopied ? (
+                      <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                    ) : (
+                      <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                    )}
+                    Copy diagnostics
+                  </button>
+                </>
+              ) : (
+                <p className="remote-diag-row">Checking…</p>
+              )}
+            </div>
           )}
         </div>
       )}

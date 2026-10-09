@@ -40,6 +40,24 @@ declare global {
     asset?: string
   }
 
+  interface RemoteAdapterInfo {
+    name: string
+    address: string
+    virtual: boolean
+    chosen: boolean
+  }
+
+  interface RemoteDiagnostics {
+    available: boolean
+    port: number
+    chosenIp: string
+    adapters: RemoteAdapterInfo[]
+    mdnsHostname: string | null
+    connectedPhones: number
+    recentLogLines: string[]
+    platform: string
+  }
+
   interface Window {
     electronAPI: {
       // App / updates
@@ -140,6 +158,7 @@ declare global {
         ipUrl: string
         hostnameUrl: string | null
       }>
+      getWebRemoteDiagnostics: () => Promise<RemoteDiagnostics>
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never

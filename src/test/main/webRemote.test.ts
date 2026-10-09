@@ -12,8 +12,15 @@ vi.mock('os', () => ({
 
 // Re-imported fresh per test file run; getLocalIP reads networkInterfaces()
 // on every call (no caching), so re-mocking between tests is enough.
-const { getLocalIP, startWebRemote, stopWebRemote, isWebRemoteAvailable, buildRemoteConnectionInfo } =
-  await import('../../main/webRemote')
+const {
+  getLocalIP,
+  listAdapters,
+  startWebRemote,
+  stopWebRemote,
+  isWebRemoteAvailable,
+  getConnectedPhoneCount,
+  buildRemoteConnectionInfo
+} = await import('../../main/webRemote')
 
 // A dedicated test-only port — REMOTE_PORT (4316) may legitimately already
 // be held by a real BORN dev instance running on the same machine, which is
@@ -100,6 +107,30 @@ describe('getLocalIP', () => {
   })
 })
 
+describe('listAdapters', () => {
+  it('lists every real candidate and flags which one was chosen, plus any virtual adapters', () => {
+    mockInterfaces.mockReturnValue({
+      utun3: iface('10.8.0.2'),
+      en0: iface('10.0.0.124')
+    })
+    expect(listAdapters()).toEqual([
+      { name: 'utun3', address: '10.8.0.2', virtual: true, chosen: false },
+      { name: 'en0', address: '10.0.0.124', virtual: false, chosen: true }
+    ])
+  })
+
+  it('excludes loopback and IPv6 entries, same as getLocalIP', () => {
+    mockInterfaces.mockReturnValue({
+      lo0: iface('127.0.0.1', { internal: true }),
+      en0: [
+        { address: 'fe80::1', family: 'IPv6', internal: false },
+        { address: '10.0.0.124', family: 'IPv4', internal: false }
+      ]
+    })
+    expect(listAdapters()).toEqual([{ name: 'en0', address: '10.0.0.124', virtual: false, chosen: true }])
+  })
+})
+
 describe('buildRemoteConnectionInfo', () => {
   it('uses the plain IP as the primary url, with the hostname offered as a secondary address', () => {
     const info = buildRemoteConnectionInfo('10.0.0.124', 'born-remote.local', 4316)
@@ -173,5 +204,25 @@ describe('startWebRemote bind sequencing', () => {
     expect(isWebRemoteAvailable()).toBe(false)
 
     await new Promise<void>((resolve) => blocker.close(() => resolve()))
+  })
+})
+
+describe('getConnectedPhoneCount', () => {
+  it('counts a client once it polls /state, and ages it out after the connected window passes', async () => {
+    await new Promise<void>((resolve) => startWebRemote(() => {}, noopSearch, resolve, TEST_PORT))
+    expect(getConnectedPhoneCount()).toBe(0)
+
+    await fetch(`http://127.0.0.1:${TEST_PORT}/state`)
+    expect(getConnectedPhoneCount()).toBe(1)
+
+    const realNow = Date.now
+    try {
+      const spy = vi.spyOn(Date, 'now').mockReturnValue(realNow() + 6000)
+      expect(getConnectedPhoneCount()).toBe(0)
+      spy.mockRestore()
+    } finally {
+      stopWebRemote()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
   })
 })
