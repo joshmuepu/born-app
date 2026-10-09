@@ -1,7 +1,7 @@
 {
   "name": "born",
-  "productName": "Branham or Nothing",
-  "version": "1.12.0",
+  "productName": "Branham or Nothing (v2 dev)",
+  "version": "2.0.0-dev.1",
   "description": "BORN — Branham or Nothing: sermon quote search and projection tool",
   "main": "out/main/index.js",
   "scripts": {
@@ -23,8 +23,8 @@
     "docs:screenshots": "node scripts/docs-screenshots.mjs"
   },
   "build": {
-    "appId": "com.joshmuepu.born",
-    "productName": "Branham or Nothing",
+    "appId": "com.joshmuepu.born.v2dev",
+    "productName": "Branham or Nothing (v2 dev)",
     "directories": {
       "output": "dist-installers"
     },

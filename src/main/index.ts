@@ -2702,7 +2702,11 @@ ipcMain.handle('indexer:stop', () => {
 
 app.whenReady().then(async () => {
   log.boot()
-  app.setName('Branham or Nothing')
+  // Deliberately different from v1's "Branham or Nothing": this name is what
+  // Electron derives the default userData path from, so an unreleased v2
+  // build run without BORN_USER_DATA_DIR still never shares a settings/
+  // database directory with a real v1 install on the same machine.
+  app.setName('Branham or Nothing (v2 dev)')
   // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
   // instance's network traffic at an address nothing listens on, so every
   // fetch fails fast with a real connection error instead of actually
