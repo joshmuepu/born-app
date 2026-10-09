@@ -137,7 +137,17 @@ export default function SermonFollowView({
       ) : (
         <div className="follow-list">
           {flatSlides.map((fs) => {
-            const live = liveRef !== null && refsOverlap(liveRef, fs.marker)
+            // Exact match, not refsOverlap: this list is already flattened to
+            // one card per page ("1a", "1b", …), so liveRef — the specific
+            // page actually on screen — must match exactly. refsOverlap's
+            // numeric-range comparison ignores the letter suffix entirely,
+            // which previously marked every page of a paginated paragraph
+            // (and, worse, every paragraph whose number fell inside a range
+            // accidentally parsed from an unrelated reference) as "on
+            // screen" at once. `focused` legitimately still wants the fuzzy
+            // match: it falls back to the whole clicked/merged anchorRef
+            // when nothing from this sermon is live yet.
+            const live = liveRef !== null && liveRef === fs.marker
             const focused = !live && refsOverlap(focusRef, fs.marker)
             return (
               <div

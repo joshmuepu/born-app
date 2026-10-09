@@ -1,10 +1,10 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session, shell } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { log } from './logger'
-import { getDb, closeDb } from './db'
-import { closeLibraryDb } from './libraryDb'
+import { getDb, closeDb, getDbRecoveryInfo } from './db'
+import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -44,6 +44,9 @@ import {
   setGraphicsAutoProfile,
   graphicsClientCount,
   setAutomationToken,
+  buildRemoteConnectionInfo,
+  listAdapters,
+  getConnectedPhoneCount,
   REMOTE_PORT,
   type AutomationChannelState
 } from './webRemote'
@@ -1424,6 +1427,18 @@ ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(fileP
 ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
 ipcMain.handle('app:quit', () => app.quit())
 
+/** Whether either local database was found corrupted and auto-recovered at
+ *  startup — drives the status message so a damaged file reads as exactly
+ *  that, never as "needs an internet connection." */
+ipcMain.handle('app:data-recovery-info', () => ({
+  sermons: getDbRecoveryInfo(),
+  library: getLibraryDbRecoveryInfo()
+}))
+
+/** Opens the folder holding the local databases/settings, so a support
+ *  conversation ("go to this folder") doesn't require finding it by hand. */
+ipcMain.handle('app:open-data-folder', () => shell.openPath(app.getPath('userData')))
+
 // ── Help / manual IPC ─────────────────────────────────────────────────────────
 // The manual itself is Markdown + images read straight from disk (see
 // manual.ts) — the renderer never gets raw filesystem access, same arm's-
@@ -1957,13 +1972,23 @@ ipcMain.handle('webremote:ip', () => {
   if (!isWebRemoteAvailable()) {
     return { available: false, url: '', ipUrl: '', hostnameUrl: null }
   }
-  const ipUrl = `http://${getLocalIP()}:${REMOTE_PORT}`
-  const host = getMdnsHostname()
-  const hostnameUrl = host ? `http://${host}:${REMOTE_PORT}` : null
-  // Prefer the name — it survives a DHCP lease change; the IP is the fallback
-  // shown only until (or unless) mDNS finishes probing.
-  return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
+  return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
 })
+
+/** Backs the "Remote connection check" panel — everything an operator (or
+ *  support, reading a copied dump) needs to see why a phone can't connect,
+ *  since the panel otherwise only knows "the server bound" and has no way to
+ *  know whether anything on the LAN can actually reach it. */
+ipcMain.handle('webremote:diagnostics', () => ({
+  available: isWebRemoteAvailable(),
+  port: REMOTE_PORT,
+  chosenIp: getLocalIP(),
+  adapters: listAdapters(),
+  mdnsHostname: getMdnsHostname(),
+  connectedPhones: getConnectedPhoneCount(),
+  recentLogLines: log.getRecentLines(40),
+  platform: process.platform
+}))
 
 // ── Automation API (Stream Deck/Companion) ──────────────────────────────────
 // Off by default — reading a null token means every /api/automation/*
@@ -2099,9 +2124,14 @@ ipcMain.handle('service:open', async () => {
   })
   if (result.canceled || !result.filePaths[0]) return null
   const path = result.filePaths[0]
-  const data = JSON.parse(readFileSync(path, 'utf-8'))
-  rememberService(path)
-  return data
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf-8'))
+    rememberService(path)
+    return data
+  } catch (e) {
+    log.error(`service:open failed for ${path}`, e)
+    throw new Error(`Couldn't read "${basename(path)}" — it may be damaged or empty.`)
+  }
 })
 
 /** "Import" — additive alongside "Open" above (which replaces the whole
@@ -2118,12 +2148,21 @@ ipcMain.handle('service:import', async () => {
     filters: [{ name: 'BORN Service', extensions: ['born', 'bpservice'] }],
     properties: ['openFile', 'multiSelections']
   })
-  if (result.canceled || result.filePaths.length === 0) return []
-  return result.filePaths.map((path) => {
-    const data = JSON.parse(readFileSync(path, 'utf-8'))
-    rememberService(path)
-    return { name: basename(path).replace(/\.(born|bpservice)$/, ''), items: data }
-  })
+  if (result.canceled || result.filePaths.length === 0) return { files: [], failed: [] }
+  const files: Array<{ name: string; items: unknown }> = []
+  const failed: string[] = []
+  for (const path of result.filePaths) {
+    const name = basename(path).replace(/\.(born|bpservice)$/, '')
+    try {
+      const data = JSON.parse(readFileSync(path, 'utf-8'))
+      rememberService(path)
+      files.push({ name, items: data })
+    } catch (e) {
+      log.error(`service:import failed for ${path}`, e)
+      failed.push(name)
+    }
+  }
+  return { files, failed }
 })
 
 ipcMain.handle('service:recents', () => {
@@ -2661,9 +2700,18 @@ ipcMain.handle('indexer:stop', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log.boot()
   app.setName('Branham or Nothing')
+  // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
+  // instance's network traffic at an address nothing listens on, so every
+  // fetch fails fast with a real connection error instead of actually
+  // leaving the LAN. Scoped to this Electron session only; never touches
+  // the host machine's own network config. Never set for a real install.
+  if (process.env.BORN_OFFLINE) {
+    await session.defaultSession.setProxy({ proxyRules: '127.0.0.1:1' })
+    log.info('BORN_OFFLINE set — network traffic routed to a dead proxy')
+  }
   // electron-builder applies build/icons/* only when packaging — set the
   // Dock icon explicitly in dev so `npm run dev` previews the real icon too.
   if (!app.isPackaged && process.platform === 'darwin') {
@@ -2673,6 +2721,14 @@ app.whenReady().then(() => {
   const congregation = destinations.get('congregation')
   if (congregation) congregation.fontSize = getSettingsSafe().fontSize
   nativeTheme.themeSource = getSettingsSafe().theme
+  // Open (and integrity-check) both local databases before any window
+  // exists, so a damaged file is already quarantined-and-reseeded — and
+  // the recovery info is already known — by the time the renderer asks
+  // for it. Opening here is the same lazy-init getDb()/getLibraryDb()
+  // would do on first real use anyway; doing it explicitly just removes
+  // the race between that first use and the renderer's own status check.
+  getDb()
+  getLibraryDb()
   createMainWindow()
 
   // Auto-start indexer so sermons are available immediately on first launch
@@ -2807,10 +2863,10 @@ app.whenReady().then(() => {
       blank: (channelId) => setChannelBlank(channelId, true),
       show: (channelId) => setChannelBlank(channelId, false),
       getState: automationState
-    }
+    },
+    () => startMdns(REMOTE_PORT)
   )
   setAutomationToken(getSettingsSafe().automationToken)
-  startMdns(REMOTE_PORT)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

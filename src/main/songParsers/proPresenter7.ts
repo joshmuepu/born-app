@@ -113,17 +113,35 @@ function parseStructured(buf: Buffer): StructuredResult | null {
   }
   if (groups.length === 0) return null
 
-  // A named group keeps its name (on the first slide of the section; the rest of
-  // its cues are continuation slides). Unnamed groups are numbered "Verse N",
-  // and each cue of an unnamed group is its own "Verse N".
+  // A named group's every cue repeats that name — a 2-slide "Chorus 1" shows
+  // "Chorus 1" on both of its slides, not just the first. This used to leave
+  // every cue after the first blank, on the theory that it's a "continuation"
+  // needing no label of its own — but downstream (songs.ts's
+  // normalizeSlideLabels, which exists for formats that only ever tag the
+  // very first verse) a blank label gets read as "give this an entirely new,
+  // never-before-used verse number," not "this belongs to the slide before
+  // it." A named group's blank continuation slides were getting renumbered
+  // into real-looking but wrong "Verse N" labels, colliding with genuinely
+  // different sections later in the same song (confirmed on the bundled "How
+  // Great Thou Art": its 2nd half of Verse 1 came out mislabeled "Verse 2",
+  // an exact duplicate of the song's real Verse 2 later on). Repeating the
+  // name removes the ambiguity at the source instead of teaching
+  // normalizeSlideLabels to guess which blanks are safe to renumber.
+  //
+  // Unnamed groups are unaffected: each cue of an unnamed group is still its
+  // own "Verse N" — ProPresenter's default/no-group bucket is where an
+  // author dumps standalone verses without bothering to group them, so each
+  // cue there really is its own separate verse (confirmed on the bundled
+  // "This Little Light Of Mine": 5 cues in one unnamed group are 5 different
+  // verses, not one verse split across slides).
   const slides: ParsedSongSlide[] = []
   let verseNo = 0
   for (const g of groups) {
-    g.cueIds.forEach((cid, i) => {
+    g.cueIds.forEach((cid) => {
       const text = cueText.get(cid)
       if (!text) return
-      let label: string | undefined
-      if (g.name) label = i === 0 ? g.name : undefined
+      let label: string
+      if (g.name) label = g.name
       else {
         verseNo++
         label = `Verse ${verseNo}`

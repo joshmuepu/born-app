@@ -18,6 +18,7 @@ import {
 import { chunkLines } from '../shared/paginate'
 import { automationRequestAuthorized } from '../shared/automationAuth'
 import { resolveApiV1, AUTOMATION_WS_VERSION } from '../shared/apiVersioning'
+import { log } from './logger'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
@@ -391,15 +392,79 @@ function isPrivate(addr: string): boolean {
   )
 }
 
+// Interface *names* that are almost never the LAN adapter a phone on the
+// church Wi-Fi could actually reach — VPN tunnels and OS-level virtual
+// switches. Matched against the interface name, not the address, since a VPN
+// or virtual adapter can hand out a perfectly normal-looking private IP and
+// os.networkInterfaces() enumeration order is OS-dependent, not a signal of
+// which adapter is the real one.
+// macOS/Linux: utun/tun/tap/ppp/wg/ipsec/awdl/bridge/vnic/vmnet. Windows:
+// vEthernet, VMware, VirtualBox, Hyper-V, WSL, Docker, Tailscale, ZeroTier.
+const VIRTUAL_ADAPTER_NAME =
+  /utun|^tun|^tap|ppp|wireguard|^wg|ipsec|awdl|llw|bridge|vnic|vmnet|vethernet|vmware|virtualbox|hyper-v|wsl|docker|tailscale|zerotier|vpn/i
+
 export function getLocalIP(): string {
   const nets = networkInterfaces()
-  const candidates: string[] = []
-  for (const ifaces of Object.values(nets)) {
+  const real: string[] = []
+  const virtual: string[] = []
+  for (const [name, ifaces] of Object.entries(nets)) {
     for (const net of ifaces ?? []) {
-      if (net.family === 'IPv4' && !net.internal) candidates.push(net.address)
+      if (net.family !== 'IPv4' || net.internal) continue
+      if (VIRTUAL_ADAPTER_NAME.test(name)) virtual.push(net.address)
+      else real.push(net.address)
     }
   }
-  return candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
+  const candidates = [...real, ...virtual]
+  return real.find(isPrivate) ?? candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
+}
+
+export interface AdapterInfo {
+  name: string
+  address: string
+  /** Matched one of the known VPN/virtual-switch naming patterns. */
+  virtual: boolean
+  /** This is the address getLocalIP() actually picked. */
+  chosen: boolean
+}
+
+/** Every non-loopback IPv4 adapter on this machine, for the "Remote
+ *  connection check" diagnostic — lets the operator (or support, reading a
+ *  copied diagnostics dump) see every candidate address and which one BORN
+ *  picked and why, instead of just trusting a single hidden choice. */
+export function listAdapters(): AdapterInfo[] {
+  const nets = networkInterfaces()
+  const chosenIp = getLocalIP()
+  const out: AdapterInfo[] = []
+  for (const [name, ifaces] of Object.entries(nets)) {
+    for (const net of ifaces ?? []) {
+      if (net.family !== 'IPv4' || net.internal) continue
+      out.push({ name, address: net.address, virtual: VIRTUAL_ADAPTER_NAME.test(name), chosen: net.address === chosenIp })
+    }
+  }
+  return out
+}
+
+export interface RemoteConnectionInfo {
+  available: boolean
+  url: string
+  ipUrl: string
+  hostnameUrl: string | null
+}
+
+/** IP is primary: `.local` resolution depends on mDNS actually working on
+ *  the phone and the network (some guest/isolated networks and some Android
+ *  builds don't resolve it at all), while a bare IP works whenever the phone
+ *  can reach the port at all — the exact thing a QR scan needs to get right
+ *  on the first try. `.local` is still offered as a secondary address since
+ *  it survives a DHCP lease change that would break a bookmarked IP. */
+export function buildRemoteConnectionInfo(
+  ip: string,
+  hostname: string | null,
+  port: number
+): RemoteConnectionInfo {
+  const ipUrl = `http://${ip}:${port}`
+  const hostnameUrl = hostname ? `http://${hostname}:${port}` : null
+  return { available: true, url: ipUrl, ipUrl, hostnameUrl }
 }
 
 function buildHTML(): string {
@@ -658,6 +723,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   if (path === '/state' && req.method === 'GET') {
+    // The remote polls this endpoint every second while connected — the most
+    // reliable heartbeat already available, so it doubles as the "how many
+    // phones are actually connected right now" signal for diagnostics,
+    // without adding a second mechanism.
+    const clientIp = req.socket.remoteAddress
+    if (clientIp) lastSeenByClient.set(clientIp, Date.now())
     sendJSON(res, 200, currentState)
     return
   }
@@ -864,20 +935,61 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 let remoteAvailable = false
+let server: ReturnType<typeof createServer> | null = null
+
+// Client IP -> last time it polled /state. A phone that stops polling (app
+// closed, screen locked, Wi-Fi dropped) ages out instead of counting forever.
+const lastSeenByClient = new Map<string, number>()
+const CONNECTED_WINDOW_MS = 5000
+
+/** How many distinct phones have polled /state in the last few seconds —
+ *  the operator-visible "N connected" count. Approximate by design: a NAT'd
+ *  network could put two phones behind one IP, and a phone that just closed
+ *  its tab still counts until it ages out. */
+export function getConnectedPhoneCount(): number {
+  const now = Date.now()
+  let n = 0
+  for (const t of lastSeenByClient.values()) {
+    if (now - t <= CONNECTED_WINDOW_MS) n++
+  }
+  return n
+}
 
 export function isWebRemoteAvailable(): boolean {
   return remoteAvailable
 }
 
+/** Releases the port. Only used by tests today (the app itself just exits
+ *  the process instead of shutting this down), but a clean stop is needed to
+ *  test the bind-failure path without leaking a held port across test files. */
+export function stopWebRemote(): void {
+  server?.close()
+  server = null
+  remoteAvailable = false
+  lastSeenByClient.clear()
+}
+
 export function startWebRemote(
   onCommand: CommandCallback,
   search: WebRemoteSearchHandlers,
-  automation: AutomationHandlers
+  automation: AutomationHandlers,
+  // Fires only once the HTTP server has actually bound — the caller starts
+  // mDNS advertising from here, never unconditionally after this function
+  // returns, since listen() is async and a bind failure (EADDRINUSE or
+  // otherwise) must not leave BORN advertising a name/port nothing is
+  // listening on (a phone would resolve the name fine and then hang or get
+  // refused, with the operator's panel showing nothing wrong).
+  onListening?: () => void,
+  // Overridable only so tests can bind an ephemeral port instead of the
+  // real REMOTE_PORT, which may legitimately already be held by another
+  // BORN instance on the same dev machine. Production always uses the
+  // default.
+  port: number = REMOTE_PORT
 ): void {
   commandCallback = onCommand
   searchHandlers = search
   automationHandlers = automation
-  const server = createServer((req, res) => {
+  server = createServer((req, res) => {
     handleRequest(req, res).catch(() => {
       try {
         res.writeHead(500)
@@ -890,9 +1002,9 @@ export function startWebRemote(
   server.on('error', (err: NodeJS.ErrnoException) => {
     remoteAvailable = false
     if (err.code === 'EADDRINUSE') {
-      console.error(`Web remote: port ${REMOTE_PORT} is already in use — remote disabled`)
+      log.error(`webRemote: port ${port} is already in use — remote disabled`)
     } else {
-      console.error('Web remote server error', err)
+      log.error('webRemote: server error', err)
     }
   })
 
@@ -918,9 +1030,10 @@ export function startWebRemote(
   })
   ensureAutomationBroadcastLoop()
 
-  server.listen(REMOTE_PORT, () => {
+  server.listen(port, () => {
     remoteAvailable = true
-    console.log(`Web remote available at http://${getLocalIP()}:${REMOTE_PORT}`)
+    log.info(`webRemote: listening on http://${getLocalIP()}:${port}`)
+    onListening?.()
   })
 }
 
