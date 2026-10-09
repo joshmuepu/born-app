@@ -38,7 +38,8 @@
       "title": "Troubleshooting",
       "pages": [
         { "id": "service-day", "title": "On service day", "file": "troubleshooting/service-day.md" },
-        { "id": "setup-warnings", "title": "Setup warnings explained", "file": "troubleshooting/setup-warnings.md" }
+        { "id": "setup-warnings", "title": "Setup warnings explained", "file": "troubleshooting/setup-warnings.md" },
+        { "id": "data-recovery", "title": "A damaged database", "file": "troubleshooting/data-recovery.md" }
       ]
     },
     {

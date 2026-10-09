@@ -31,7 +31,9 @@ announcement.
 ![The "Show a message on screen" dialog.](../images/operator-message-dialog.png)
 
 Type the message, choose where it shows (**Stage monitor**, **Main screen**, or
-**Both**), and click **Show message**. It appears across the bottom of the screen
+**Both**), and click **Show message**. Changed your mind? **Esc**, the **X** in the
+top corner, or **Cancel** all close the dialog without sending anything. Otherwise
+it appears across the bottom of the screen
 for about 10 seconds, then clears itself automatically — you don't need to dismiss
 it.
 

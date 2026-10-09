@@ -40,6 +40,12 @@ displays](../setup/displays.md).
   address changed (e.g. the computer reconnected to WiFi), the URL may need
   re-copying.
 
+## BORN says local data "was damaged"
+
+This is handled automatically — BORN quarantines the damaged file and rebuilds a
+fresh copy on its own. See [A damaged database](data-recovery.md) for exactly
+what happened and what, if anything, you need to do.
+
 ## A warning dot appears on "Manage…" that wasn't there before
 
 Something in setup needs attention — click **Manage…** and look for a highlighted

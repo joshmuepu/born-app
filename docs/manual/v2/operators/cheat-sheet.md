@@ -17,6 +17,7 @@ sound desk.*
 
 | To do this | Do this |
 |---|---|
+| Jump to the search box from anywhere | Press **/** |
 | Find a sermon quote | Type a word/phrase in the search box → click a result's **Project** |
 | Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → **Project** |
 | Find a song | Click **Songs** → search → **Project** |
