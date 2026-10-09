@@ -1480,6 +1480,38 @@ button.display-row:hover {
   line-height: 1.5;
   color: var(--text-primary);
 }
+.remote-diag-toggle {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.remote-diag {
+  margin-top: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.remote-diag-row {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+.remote-diag-adapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+.remote-diag-adapters code {
+  color: var(--text-primary);
+}
+.remote-diag-firewall {
+  font-style: italic;
+}
 
 /* clear (×) button inside a search field */
 .search-clear {

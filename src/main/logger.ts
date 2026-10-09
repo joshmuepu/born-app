@@ -4,7 +4,7 @@
  * Also mirrors to console so output appears in the dev terminal.
  */
 import { app } from 'electron'
-import { appendFileSync, existsSync, renameSync, statSync } from 'fs'
+import { appendFileSync, existsSync, readFileSync, renameSync, statSync } from 'fs'
 import { join } from 'path'
 
 const MAX_LOG_BYTES = 5 * 1024 * 1024 // 5 MB — rotate when exceeded
@@ -59,6 +59,18 @@ export const log = {
   warn:  (msg: string, extra?: unknown) => write('WARN ', msg, extra),
   error: (msg: string, extra?: unknown) => write('ERROR', msg, extra),
   debug: (msg: string, extra?: unknown) => write('DEBUG', msg, extra),
+
+  /** Last N log lines, for a support/diagnostics dump — never throws, just
+   *  returns [] if the log file doesn't exist yet or can't be read. */
+  getRecentLines(count: number): string[] {
+    try {
+      const content = readFileSync(getLogPath(), 'utf8')
+      const lines = content.split('\n').filter(Boolean)
+      return lines.slice(-count)
+    } catch {
+      return []
+    }
+  },
 
   /** Call once on startup to log environment info. */
   boot(): void {

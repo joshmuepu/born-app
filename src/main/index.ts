@@ -33,6 +33,9 @@ import {
   getLocalIP,
   isWebRemoteAvailable,
   getWebRemoteTranslation,
+  buildRemoteConnectionInfo,
+  listAdapters,
+  getConnectedPhoneCount,
   REMOTE_PORT
 } from './webRemote'
 import { startMdns, stopMdns, getMdnsHostname } from './mdns'
@@ -93,11 +96,12 @@ import {
 
 /**
  * Dev-only escape hatch: if set, use a separate userData directory instead of
- * the real one. Lets a second local checkout of BORN (e.g. this QA worktree,
- * running alongside a real install or another dev checkout) run fully
- * independently — separate settings/queue/single-instance-lock — without the
- * two colliding. Never set for a real install; inert unless something
- * explicitly exports it.
+ * the real one. Lets a second local checkout of BORN (e.g. a QA/test
+ * worktree, running alongside a real install or another dev checkout) run
+ * fully independently — separate settings/queue/single-instance-lock —
+ * without the two colliding. Must run before requestSingleInstanceLock()
+ * below, since Electron's lock is keyed off the userData path. Never set for
+ * a real install; inert unless something explicitly exports it.
  */
 if (process.env.BORN_USER_DATA_DIR) {
   app.setPath('userData', process.env.BORN_USER_DATA_DIR)
@@ -1226,13 +1230,23 @@ ipcMain.handle('webremote:ip', () => {
   if (!isWebRemoteAvailable()) {
     return { available: false, url: '', ipUrl: '', hostnameUrl: null }
   }
-  const ipUrl = `http://${getLocalIP()}:${REMOTE_PORT}`
-  const host = getMdnsHostname()
-  const hostnameUrl = host ? `http://${host}:${REMOTE_PORT}` : null
-  // Prefer the name — it survives a DHCP lease change; the IP is the fallback
-  // shown only until (or unless) mDNS finishes probing.
-  return { available: true, url: hostnameUrl ?? ipUrl, ipUrl, hostnameUrl }
+  return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
 })
+
+/** Backs the "Remote connection check" panel — everything an operator (or
+ *  support, reading a copied dump) needs to see why a phone can't connect,
+ *  since the panel otherwise only knows "the server bound" and has no way to
+ *  know whether anything on the LAN can actually reach it. */
+ipcMain.handle('webremote:diagnostics', () => ({
+  available: isWebRemoteAvailable(),
+  port: REMOTE_PORT,
+  chosenIp: getLocalIP(),
+  adapters: listAdapters(),
+  mdnsHostname: getMdnsHostname(),
+  connectedPhones: getConnectedPhoneCount(),
+  recentLogLines: log.getRecentLines(40),
+  platform: process.platform
+}))
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 
@@ -1929,9 +1943,9 @@ app.whenReady().then(async () => {
           return Promise.resolve([])
         }
       }
-    }
+    },
+    () => startMdns(REMOTE_PORT)
   )
-  startMdns(REMOTE_PORT)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
