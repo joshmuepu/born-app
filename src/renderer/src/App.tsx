@@ -1481,7 +1481,14 @@ export default function App() {
               placeholder="e.g. Please silence your phones"
               value={alertMessage}
               onChange={(e) => setAlertMessage(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSendAlert() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendAlert()
+                // The app-wide shortcut handler bails out early while this dialog
+                // is open (so Space/arrows don't leak through while typing a
+                // message) — which also swallows Esc before it ever reaches that
+                // handler, so Esc has to close this dialog itself.
+                else if (e.key === 'Escape') setShowAlertDialog(false)
+              }}
               autoFocus
             />
             <div className="alert-target">
