@@ -80,6 +80,46 @@ describe('parseSong — real ProPresenter 7 files', () => {
     expect(r.song.slides.join?.length ?? r.song.slides.length).toBeGreaterThan(0)
     expect(r.song.slides.map((s) => s.text).join(' ').toLowerCase()).toContain('as we gather')
   })
+
+  it('how-great-thou-art.pro → a named section repeats its label on every one of its slides, never blank', async () => {
+    // F7 regression: a named group's 2nd+ cue used to come out with label:
+    // undefined ("blank means continuation"), which downstream normalizeSlideLabels
+    // (songs.ts) read as "give this an entirely new verse number" instead —
+    // the back half of Verse 1 came out mislabeled "Verse 2", an exact
+    // collision with the song's real Verse 2 later on. Repeating the
+    // section's own name on every cue removes the ambiguity at the source.
+    const r = await parseSong('How Great Thou Art - Bb.pro', read('how-great-thou-art.pro'))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.song.slides.map((s) => s.label)).toEqual([
+      'Verse 1', 'Verse 1',
+      'Chorus 1', 'Chorus 1',
+      'Verse 2', 'Verse 2',
+      'Chorus 1', 'Chorus 1',
+      'Verse 3', 'Verse 3',
+      'Chorus 1', 'Chorus 1',
+      'Verse 4', 'Verse 4',
+      'Chorus 1', 'Chorus 1'
+    ])
+    // no slide is ever unlabeled
+    expect(r.song.slides.every((s) => !!s.label)).toBe(true)
+    // the actual lyrics are untouched and in the original order
+    expect(r.song.slides[0].text).toContain('Oh Lord my God')
+    expect(r.song.slides[1].text).toContain('I see the stars')
+    expect(r.song.slides[r.song.slides.length - 1].text).toContain('How great Thou art')
+  })
+
+  it('little-light.pro\'s distinct, ungrouped verses are unaffected by the F7 fix — still each their own "Verse N"', async () => {
+    // This fixture's 5 verses sit in ONE unnamed ProPresenter group (the
+    // file's author never bothered to tag them individually) and really are
+    // 5 different verses, not one verse split across slides — confirmed
+    // against the real bundled library before this fix shipped. The F7 fix
+    // only changes NAMED-group behavior, so this must stay exactly as it was.
+    const r = await parseSong('This Little Light Of Mine - G.pro', read('little-light.pro'))
+    if ('error' in r) throw new Error(r.error)
+    expect(r.song.slides.map((s) => s.label)).toEqual(
+      r.song.slides.map((_, i) => `Verse ${i + 1}`)
+    )
+  })
 })
 
 describe('parseSong — openLyrics', () => {
