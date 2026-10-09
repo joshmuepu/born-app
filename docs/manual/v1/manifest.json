@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "sections": [
+    {
+      "id": "start",
+      "title": "Start Here",
+      "pages": [
+        { "id": "start-here", "title": "What BORN is", "file": "start-here.md" }
+      ]
+    },
+    {
+      "id": "operators",
+      "title": "Operators",
+      "pages": [
+        { "id": "cheat-sheet", "title": "Service Day cheat sheet", "file": "operators/cheat-sheet.md" },
+        { "id": "quick-start", "title": "Quick start", "file": "operators/quick-start.md" },
+        { "id": "content-types", "title": "Projecting sermons, songs & scripture", "file": "operators/content-types.md" },
+        { "id": "blank-clear", "title": "Hiding, clearing, and messages", "file": "operators/blank-clear.md" },
+        { "id": "mobile-remote", "title": "The phone remote", "file": "operators/mobile-remote.md" },
+        { "id": "shortcuts", "title": "Keyboard shortcuts", "file": "operators/shortcuts.md" }
+      ]
+    },
+    {
+      "id": "setup",
+      "title": "Setup & Admin",
+      "pages": [
+        { "id": "installing", "title": "Installing & updating BORN", "file": "setup/installing.md" },
+        { "id": "displays", "title": "Connecting a second screen", "file": "setup/displays.md" },
+        { "id": "importing-songs", "title": "Importing songs", "file": "setup/importing-songs.md" }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "pages": [
+        { "id": "service-day", "title": "On service day", "file": "troubleshooting/service-day.md" },
+        { "id": "data-recovery", "title": "Backups and a damaged database", "file": "troubleshooting/data-recovery.md" }
+      ]
+    },
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "pages": [
+        { "id": "glossary", "title": "Glossary", "file": "glossary.md" }
+      ]
+    }
+  ]
+}
