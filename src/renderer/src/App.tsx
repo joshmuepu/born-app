@@ -21,7 +21,7 @@ import type {
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
-import { reorder, replaceContributorItems } from './queueUtils'
+import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
 
@@ -54,10 +54,11 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
   /** When set, the search panel shows the whole sermon (scrolled to `anchorRef`)
-   *  instead of the results list — opened by clicking a result or projecting one. */
-  const [followSermon, setFollowSermon] = useState<{ sermonId: number; anchorRef: string } | null>(
-    null
-  )
+   *  instead of the results list — opened by clicking a result or projecting one.
+   *  `query`/`matchType` are only set when this sermon was actually opened from
+   *  a search result — they're what SermonFollowView highlights — so opening a
+   *  sermon from Browse or the queue never carries over a stale search term. */
+  const [followSermon, setFollowSermon] = useState<FollowSermon | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -106,6 +107,10 @@ export default function App() {
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
+  /** Set once on mount — whether sermons.db/library.db were found corrupted
+   *  and auto-recovered at startup, so the status line can say exactly
+   *  that instead of a generic "needs an internet connection" message. */
+  const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
   const { theme, toggle: toggleTheme } = useTheme()
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
@@ -113,8 +118,10 @@ export default function App() {
   const sermonCacheRef = useRef<Map<number, Quote[]>>(new Map())
   const queueLoaded = useRef(false)
   const projectionOpenRef = useRef(false)
+  const isScreenBlankedRef = useRef(false)
 
   useEffect(() => { projectionOpenRef.current = projectionOpen }, [projectionOpen])
+  useEffect(() => { isScreenBlankedRef.current = isScreenBlanked }, [isScreenBlanked])
   useEffect(() => { queueRef.current = serviceQueue }, [serviceQueue])
   useEffect(() => { projectedRef.current = projected }, [projected])
 
@@ -168,7 +175,17 @@ export default function App() {
     window.electronAPI.checkForUpdate().then((u) => {
       setUpdate(u)
       setUpdateDismissed(false)
-      setUpdateMsg(u.hasUpdate ? '' : `You're on the latest version (${u.current}).`)
+      // checkFailed means the check itself couldn't complete (offline,
+      // GitHub unreachable, …) — hasUpdate is just the unchanged default
+      // false in that case, not a real answer, so this must not be reported
+      // as "you're up to date."
+      setUpdateMsg(
+        u.checkFailed
+          ? "Couldn't check for updates — check your internet connection."
+          : u.hasUpdate
+            ? ''
+            : `You're on the latest version (${u.current}).`
+      )
       if (!u.hasUpdate) setTimeout(() => setUpdateMsg(''), 4000)
     })
   }, [])
@@ -385,8 +402,11 @@ export default function App() {
     (quote: Quote, slideIndex = 0) => {
       doProject(quoteToItem(quote), slideIndex, null)
       window.electronAPI.noteSermonUsed(quote)
-      // switch the results list to the whole-sermon follow view
-      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
+      // Switch the results list to the whole-sermon follow view. Used both by
+      // Browse (never a search) and by "Restart here" on a paragraph inside
+      // an already-open follow view — nextFollowSermon keeps the existing
+      // query/matchType only when this is the sermon already being followed.
+      setFollowSermon((prev) => nextFollowSermon(prev, quote))
     },
     [doProject]
   )
@@ -405,14 +425,25 @@ export default function App() {
           : findMatchingSlideIndex(item.slides.map((s) => s.text), query)
       doProject(item, slide, null)
       window.electronAPI.noteSermonUsed(quote)
-      setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef })
+      setFollowSermon({
+        sermonId: quote.sermonId,
+        anchorRef: quote.paragraphRef,
+        query,
+        matchType: quote.matchType
+      })
     },
     [doProject, searchQuery]
   )
   /** Click a search result: open the whole sermon at that paragraph, no projection. */
   const handleOpenSermon = useCallback(
-    (quote: Quote) => setFollowSermon({ sermonId: quote.sermonId, anchorRef: quote.paragraphRef }),
-    []
+    (quote: Quote) =>
+      setFollowSermon({
+        sermonId: quote.sermonId,
+        anchorRef: quote.paragraphRef,
+        query: searchQuery,
+        matchType: quote.matchType
+      }),
+    [searchQuery]
   )
 
   const passageToItem = (p: ResolvedPassage): QueueItem => ({
@@ -826,6 +857,10 @@ export default function App() {
         e.preventDefault()
         setTopTab('sermons')
         setSermonsTab('search')
+        // A sermon open in the follow view replaces the search box entirely
+        // (see the conditional render below) — back out of it first, or
+        // there's nothing to focus and this becomes a silent no-op.
+        setFollowSermon(null)
         document.getElementById('born-search-input')?.focus()
         return
       }
@@ -908,6 +943,10 @@ export default function App() {
   }, [])
   useEffect(() => refreshRecents(), [refreshRecents])
 
+  useEffect(() => {
+    window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
+  }, [])
+
   const handleNewService = useCallback(() => {
     if (serviceQueue.length === 0) {
       setFollowSermon(null)
@@ -919,8 +958,18 @@ export default function App() {
       setProjected(null)
       setFollowSermon(null)
       setPlayedIds(new Set())
+      // setProjected(null) above only clears this window's own idea of
+      // what's live — it sends nothing to the actual projection window, so
+      // without this, the congregation screen keeps showing whatever was up
+      // before "New service" while the operator's own status bar says
+      // "Nothing on screen yet," which is simply false. Blank the real
+      // output to match what the operator is being told.
+      if (projectionOpen && !isScreenBlanked) {
+        setIsScreenBlanked(true)
+        window.electronAPI.setBlankScreen(true)
+      }
     }
-  }, [serviceQueue.length])
+  }, [serviceQueue.length, projectionOpen, isScreenBlanked])
 
   const handleSaveService = useCallback(async () => {
     const ok = await window.electronAPI.saveService(serviceQueue)
@@ -933,25 +982,56 @@ export default function App() {
     setProjected(null)
     setFollowSermon(null)
     setPlayedIds(new Set())
+    // setProjected(null) only clears this window's own idea of what's live —
+    // it sends nothing to the real projection window. Opening a different
+    // service while something is still up would otherwise leave the
+    // congregation looking at the old service's content while the operator's
+    // own status bar claims there's nothing on screen.
+    if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+    }
+  }, [])
+
+  // Shown under the queue toolbar when Open/Import can't read or parse a
+  // file — a damaged or empty .born file otherwise fails with nothing
+  // visible at all. Auto-clears so it doesn't linger once the operator has
+  // moved on, same pattern as SongsPanel's import message.
+  const [openError, setOpenError] = useState<string | null>(null)
+  const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showOpenError = useCallback((message: string) => {
+    if (openErrorTimer.current) clearTimeout(openErrorTimer.current)
+    setOpenError(message)
+    openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
   }, [])
 
   const handleOpenService = useCallback(async () => {
-    const loaded = await window.electronAPI.openService()
-    if (loaded) {
-      loadServiceItems(loaded)
-      refreshRecents()
-    }
-  }, [loadServiceItems, refreshRecents])
-
-  const handleOpenRecent = useCallback(
-    async (path: string) => {
-      const loaded = await window.electronAPI.openServicePath(path)
+    try {
+      const loaded = await window.electronAPI.openService()
       if (loaded) {
         loadServiceItems(loaded)
         refreshRecents()
       }
+    } catch (e) {
+      showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
+    }
+  }, [loadServiceItems, refreshRecents, showOpenError])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      try {
+        const loaded = await window.electronAPI.openServicePath(path)
+        if (loaded) {
+          loadServiceItems(loaded)
+          refreshRecents()
+        } else {
+          showOpenError("Couldn't open that service file — it may be damaged or empty.")
+        }
+      } catch {
+        showOpenError("Couldn't open that service file — it may be damaged or empty.")
+      }
     },
-    [loadServiceItems, refreshRecents]
+    [loadServiceItems, refreshRecents, showOpenError]
   )
 
   /** Untagged items from an imported file (saved before per-item source tags
@@ -975,12 +1055,19 @@ export default function App() {
    *  combines one or more separately-saved service files into the current
    *  queue instead of requiring only one file open at a time. */
   const handleImportService = useCallback(async () => {
-    const files = await window.electronAPI.importService()
-    if (!files || files.length === 0) return
+    const { files, failed } = await window.electronAPI.importService()
+    if (failed.length > 0) {
+      showOpenError(
+        failed.length === 1
+          ? `Couldn't import "${failed[0]}" — it may be damaged or empty.`
+          : `Couldn't import ${failed.length} files (may be damaged or empty): ${failed.join(', ')}`
+      )
+    }
+    if (files.length === 0) return
     const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
     if (allTagged.length > 0) addToQueue(allTagged)
     refreshRecents()
-  }, [tagUntaggedItems, addToQueue, refreshRecents])
+  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError])
 
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
@@ -993,6 +1080,12 @@ export default function App() {
         setProjected(null)
         setFollowSermon(null)
         setPlayedIds(new Set())
+        // Same reasoning as handleNewService's own blank call: clearing this
+        // window's idea of what's live doesn't touch the real projection.
+        if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+          setIsScreenBlanked(true)
+          window.electronAPI.setBlankScreen(true)
+        }
       }),
     []
   )
@@ -1063,10 +1156,19 @@ export default function App() {
       }
     }
     if (projected.item.kind === 'quote') {
+      // tail is `slide.reference` split on " · " — title / dateCode / paragraph
+      // (e.g. "41a"), but a sermon's header slide has no third segment at all
+      // ("Title · DateCode"), since it isn't a numbered paragraph. Checking
+      // only `tail[tail.length - 1]` for truthiness doesn't catch that case:
+      // it falls back to the *dateCode* segment (e.g. "63-0825E"), which
+      // parses as a paragraph range [63, 825] and then spuriously overlaps
+      // nearly every real paragraph in the sermon in SermonFollowView's
+      // on-screen matching. Only trust the last segment when it's genuinely
+      // the third one.
       return {
         kind: 'quote',
         sermonId: projected.item.quote.sermonId,
-        paragraphRef: tail[tail.length - 1] || projected.item.quote.paragraphRef
+        paragraphRef: tail.length >= 3 ? tail[tail.length - 1] : projected.item.quote.paragraphRef
       }
     }
     if (projected.item.kind === 'song') {
@@ -1273,8 +1375,8 @@ export default function App() {
                       ? onScreenLoc.paragraphRef
                       : null
                   }
-                  query={searchQuery}
-                  matchType={searchResults[0]?.matchType}
+                  query={followSermon.query}
+                  matchType={followSermon.matchType}
                   onBack={() => setFollowSermon(null)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
@@ -1363,6 +1465,7 @@ export default function App() {
             onSaveService={handleSaveService}
             recents={recents}
             onOpenRecent={handleOpenRecent}
+            openError={openError}
           />
         </div>
       </main>
@@ -1466,6 +1569,21 @@ export default function App() {
                   </button>
                 </div>
               )}
+              {dataRecovery?.library.recovered && (
+                <div className="status-popover-row status-text status-warn">
+                  Your local Bible/songs data was damaged — it&rsquo;s been reset and restored. The
+                  damaged file was kept, not deleted, in case support needs it.
+                </div>
+              )}
+              <div className="status-popover-row">
+                <button
+                  className="btn-secondary btn-sm"
+                  title="Open the folder holding BORN's local data — useful if support asks for it"
+                  onClick={() => window.electronAPI.openDataFolder()}
+                >
+                  Open data folder
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1479,6 +1597,14 @@ export default function App() {
             </span>
             <div className="status-progress"><div className="status-progress-fill" style={{ width: `${pct}%` }} /></div>
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.stopIndexer()}>Stop</button>
+          </>
+        ) : indexer.indexed === 0 && dataRecovery?.sermons.recovered ? (
+          <>
+            <span className="status-text status-warn">
+              Your local sermon data was damaged — it&rsquo;s been reset and is rebuilding now. The
+              damaged file was kept, not deleted, in case support needs it.
+            </span>
+            <button className="btn-primary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Retry</button>
           </>
         ) : indexer.indexed === 0 ? (
           <>

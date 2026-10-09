@@ -621,3 +621,13 @@
 .btn-nav.is-bump {
   animation: queue-nav-bump 0.22s ease-in-out;
 }
+
+/* Open/Import failed to read or parse a file (damaged or empty .born file) —
+ * without this, that fails completely silently. */
+.queue-open-error {
+  padding: 6px 16px;
+  font-size: var(--text-sm);
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+}

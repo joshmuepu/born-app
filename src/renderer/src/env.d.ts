@@ -38,6 +38,17 @@ declare global {
     url: string
     notes?: string
     asset?: string
+    checkFailed?: boolean
+  }
+
+  interface DbRecoveryStatus {
+    recovered: boolean
+    quarantinedTo?: string
+  }
+
+  interface DataRecoveryInfo {
+    sermons: DbRecoveryStatus
+    library: DbRecoveryStatus
   }
 
   interface Window {
@@ -53,6 +64,8 @@ declare global {
         filePath: string
       ) => Promise<{ ok: boolean; needsManual?: boolean; error?: string }>
       quitApp: () => Promise<void>
+      getDataRecoveryInfo: () => Promise<DataRecoveryInfo>
+      openDataFolder: () => Promise<string>
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
       onDownloadProgress: (
         callback: (p: { received: number; total: number }) => void
@@ -123,7 +136,7 @@ declare global {
       openService: () => Promise<unknown[] | null>
       getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
       openServicePath: (path: string) => Promise<unknown[] | null>
-      importService: () => Promise<Array<{ name: string; items: unknown[] }>>
+      importService: () => Promise<{ files: Array<{ name: string; items: unknown[] }>; failed: string[] }>
       // Stage view
       openStage: () => Promise<void>
       closeStage: () => Promise<void>

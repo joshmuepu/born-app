@@ -28,6 +28,10 @@ export interface UpdateInfo {
   notes?: string
   /** Filename of the installer for this platform, when an update is available. */
   asset?: string
+  /** The check itself failed (offline, GitHub unreachable, etc.) — distinct
+   *  from a successful check that just found no update, so the UI can say
+   *  "couldn't check" instead of falsely claiming the app is up to date. */
+  checkFailed?: boolean
 }
 
 let cached: UpdateInfo | null = null
@@ -72,6 +76,7 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
     log.info(`update check: current=${current} latest=${info.latest} hasUpdate=${info.hasUpdate}`)
   } catch (e) {
     log.warn('update check failed', e)
+    info.checkFailed = true
   }
   cached = info
   return info

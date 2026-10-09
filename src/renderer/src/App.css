@@ -346,14 +346,17 @@ body {
 }
 
 /* "Show screen" while the output is blanked — filled amber so it's
-   unmistakable that the congregation currently sees nothing. */
-.btn-toggle-on {
+   unmistakable that the congregation currently sees nothing. Specificity
+   must beat .btn-secondary (same 1-class specificity, declared later in
+   this file) or the amber background is silently overridden back to
+   transparent despite this rule matching too. */
+.btn-secondary.btn-toggle-on {
   background-color: var(--warn);
   border-color: var(--warn);
   color: var(--on-accent);
   font-weight: 700;
 }
-.btn-toggle-on:hover {
+.btn-secondary.btn-toggle-on:hover {
   background-color: var(--warn);
   opacity: 0.9;
 }

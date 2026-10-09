@@ -60,6 +60,10 @@ interface Props {
   onSaveService: () => void
   recents: RecentService[]
   onOpenRecent: (path: string) => void
+  /** Set when Open/Import couldn't read or parse a file — a damaged or
+   *  empty .born file otherwise fails with no feedback at all. Null/absent
+   *  when there's nothing to report (including a plain dialog cancel). */
+  openError?: string | null
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -123,7 +127,8 @@ export default function ServiceQueue({
   onImportService,
   onSaveService,
   recents,
-  onOpenRecent
+  onOpenRecent,
+  openError
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -345,6 +350,8 @@ export default function ServiceQueue({
           <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
         </div>
       </div>
+
+      {openError && <div className="queue-open-error">{openError}</div>}
 
       {queue.length === 0 ? (
         <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />

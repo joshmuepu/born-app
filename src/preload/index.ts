@@ -73,6 +73,17 @@ export interface UpdateInfo {
   url: string
   notes?: string
   asset?: string
+  checkFailed?: boolean
+}
+
+export interface DbRecoveryStatus {
+  recovered: boolean
+  quarantinedTo?: string
+}
+
+export interface DataRecoveryInfo {
+  sermons: DbRecoveryStatus
+  library: DbRecoveryStatus
 }
 
 const api = {
@@ -90,6 +101,8 @@ const api = {
   ): Promise<{ ok: boolean; needsManual?: boolean; error?: string }> =>
     ipcRenderer.invoke('app:apply-update', filePath),
   quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
+  getDataRecoveryInfo: (): Promise<DataRecoveryInfo> => ipcRenderer.invoke('app:data-recovery-info'),
+  openDataFolder: (): Promise<string> => ipcRenderer.invoke('app:open-data-folder'),
   onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
     const handler = (_e: IpcRendererEvent, info: UpdateInfo): void => callback(info)
     ipcRenderer.on('app:update-available', handler)
@@ -272,7 +285,7 @@ const api = {
     ipcRenderer.invoke('service:recents'),
   openServicePath: (path: string): Promise<Quote[] | null> =>
     ipcRenderer.invoke('service:open-path', path),
-  importService: (): Promise<Array<{ name: string; items: unknown[] }>> =>
+  importService: (): Promise<{ files: Array<{ name: string; items: unknown[] }>; failed: string[] }> =>
     ipcRenderer.invoke('service:import'),
 
   // Stage view

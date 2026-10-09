@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session, shell } from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
-import { getDb, closeDb } from './db'
-import { closeLibraryDb } from './libraryDb'
+import { getDb, closeDb, getDbRecoveryInfo } from './db'
+import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -90,6 +90,18 @@ import {
   fetchSubtitles,
   fetchLanguages
 } from './tableApi'
+
+/**
+ * Dev-only escape hatch: if set, use a separate userData directory instead of
+ * the real one. Lets a second local checkout of BORN (e.g. this QA worktree,
+ * running alongside a real install or another dev checkout) run fully
+ * independently — separate settings/queue/single-instance-lock — without the
+ * two colliding. Never set for a real install; inert unless something
+ * explicitly exports it.
+ */
+if (process.env.BORN_USER_DATA_DIR) {
+  app.setPath('userData', process.env.BORN_USER_DATA_DIR)
+}
 
 /**
  * Single-instance lock — must run before anything else touches `app`. Without
@@ -753,6 +765,18 @@ ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(fileP
 ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
 ipcMain.handle('app:quit', () => app.quit())
 
+/** Whether either local database was found corrupted and auto-recovered at
+ *  startup — drives the status message so a damaged file reads as exactly
+ *  that, never as "needs an internet connection." */
+ipcMain.handle('app:data-recovery-info', () => ({
+  sermons: getDbRecoveryInfo(),
+  library: getLibraryDbRecoveryInfo()
+}))
+
+/** Opens the folder holding the local databases/settings, so a support
+ *  conversation ("go to this folder") doesn't require finding it by hand. */
+ipcMain.handle('app:open-data-folder', () => shell.openPath(app.getPath('userData')))
+
 // ── Display IPC ───────────────────────────────────────────────────────────────
 
 function escapeHtml(s: string): string {
@@ -1245,9 +1269,14 @@ ipcMain.handle('service:open', async () => {
   })
   if (result.canceled || !result.filePaths[0]) return null
   const path = result.filePaths[0]
-  const data = JSON.parse(readFileSync(path, 'utf-8'))
-  rememberService(path)
-  return data
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf-8'))
+    rememberService(path)
+    return data
+  } catch (e) {
+    log.error(`service:open failed for ${path}`, e)
+    throw new Error(`Couldn't read "${basename(path)}" — it may be damaged or empty.`)
+  }
 })
 
 /** "Import" — additive alongside "Open" above (which replaces the whole
@@ -1264,12 +1293,21 @@ ipcMain.handle('service:import', async () => {
     filters: [{ name: 'BORN Service', extensions: ['born', 'bpservice'] }],
     properties: ['openFile', 'multiSelections']
   })
-  if (result.canceled || result.filePaths.length === 0) return []
-  return result.filePaths.map((path) => {
-    const data = JSON.parse(readFileSync(path, 'utf-8'))
-    rememberService(path)
-    return { name: basename(path).replace(/\.(born|bpservice)$/, ''), items: data }
-  })
+  if (result.canceled || result.filePaths.length === 0) return { files: [], failed: [] }
+  const files: Array<{ name: string; items: unknown }> = []
+  const failed: string[] = []
+  for (const path of result.filePaths) {
+    const name = basename(path).replace(/\.(born|bpservice)$/, '')
+    try {
+      const data = JSON.parse(readFileSync(path, 'utf-8'))
+      rememberService(path)
+      files.push({ name, items: data })
+    } catch (e) {
+      log.error(`service:import failed for ${path}`, e)
+      failed.push(name)
+    }
+  }
+  return { files, failed }
 })
 
 ipcMain.handle('service:recents', () => {
@@ -1737,9 +1775,18 @@ ipcMain.handle('indexer:stop', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log.boot()
   app.setName('Branham or Nothing')
+  // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
+  // instance's network traffic at an address nothing listens on, so every
+  // fetch fails fast with a real connection error instead of actually
+  // leaving the LAN. Scoped to this Electron session only; never touches
+  // the host machine's own network config. Never set for a real install.
+  if (process.env.BORN_OFFLINE) {
+    await session.defaultSession.setProxy({ proxyRules: '127.0.0.1:1' })
+    log.info('BORN_OFFLINE set — network traffic routed to a dead proxy')
+  }
   // electron-builder applies build/icons/* only when packaging — set the
   // Dock icon explicitly in dev so `npm run dev` previews the real icon too.
   if (!app.isPackaged && process.platform === 'darwin') {
@@ -1748,6 +1795,14 @@ app.whenReady().then(() => {
   }
   projectionState.fontSize = getSettingsSafe().fontSize
   nativeTheme.themeSource = getSettingsSafe().theme
+  // Open (and integrity-check) both local databases before any window
+  // exists, so a damaged file is already quarantined-and-reseeded — and
+  // the recovery info is already known — by the time the renderer asks
+  // for it. Opening here is the same lazy-init getDb()/getLibraryDb()
+  // would do on first real use anyway; doing it explicitly just removes
+  // the race between that first use and the renderer's own status check.
+  getDb()
+  getLibraryDb()
   createMainWindow()
 
   // Auto-start indexer so sermons are available immediately on first launch
