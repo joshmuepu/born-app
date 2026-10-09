@@ -121,15 +121,30 @@ function isPrivate(addr: string): boolean {
   )
 }
 
+// Interface *names* that are almost never the LAN adapter a phone on the
+// church Wi-Fi could actually reach — VPN tunnels and OS-level virtual
+// switches. Matched against the interface name, not the address, since a VPN
+// or virtual adapter can hand out a perfectly normal-looking private IP and
+// os.networkInterfaces() enumeration order is OS-dependent, not a signal of
+// which adapter is the real one.
+// macOS/Linux: utun/tun/tap/ppp/wg/ipsec/awdl/bridge/vnic/vmnet. Windows:
+// vEthernet, VMware, VirtualBox, Hyper-V, WSL, Docker, Tailscale, ZeroTier.
+const VIRTUAL_ADAPTER_NAME =
+  /utun|^tun|^tap|ppp|wireguard|^wg|ipsec|awdl|llw|bridge|vnic|vmnet|vethernet|vmware|virtualbox|hyper-v|wsl|docker|tailscale|zerotier|vpn/i
+
 export function getLocalIP(): string {
   const nets = networkInterfaces()
-  const candidates: string[] = []
-  for (const ifaces of Object.values(nets)) {
+  const real: string[] = []
+  const virtual: string[] = []
+  for (const [name, ifaces] of Object.entries(nets)) {
     for (const net of ifaces ?? []) {
-      if (net.family === 'IPv4' && !net.internal) candidates.push(net.address)
+      if (net.family !== 'IPv4' || net.internal) continue
+      if (VIRTUAL_ADAPTER_NAME.test(name)) virtual.push(net.address)
+      else real.push(net.address)
     }
   }
-  return candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
+  const candidates = [...real, ...virtual]
+  return real.find(isPrivate) ?? candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
 }
 
 function buildHTML(): string {
