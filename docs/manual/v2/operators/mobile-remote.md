@@ -27,6 +27,15 @@ walking the room while still controlling the queue.
 and the connection indicator (top of the phone screen) shows connected, not
 "Connecting…".
 
+### If a phone can't connect
+
+Click **Remote connection check** at the bottom of the Remote popover. It shows
+whether the remote is actually running, how many phones are currently connected,
+which network address and adapter it's using, and a firewall hint for this
+computer's operating system. A **Copy diagnostics** button there copies all of
+that as text — handy to paste into a support request without having to describe
+the setup by hand.
+
 ## Using it
 
 The phone has its own transport bar (**Prev** / **Next** / **Blank**) always
