@@ -6,7 +6,9 @@ import { app } from 'electron'
 import { APP_CSS, APP_JS, MANIFEST_JSON, SW_JS, buildAppBody } from './remoteAssets'
 import { log } from './logger'
 
-export const REMOTE_PORT = 4316
+/** Dev-only escape hatch — lets a second local checkout bind a different
+ *  port instead of colliding with this one. Never set for a real install. */
+export const REMOTE_PORT = Number(process.env.BORN_REMOTE_PORT) || 4316
 
 export interface WebRemoteSlide {
   text: string

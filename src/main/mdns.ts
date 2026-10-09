@@ -9,7 +9,13 @@
 import Bonjour, { Service } from 'bonjour-service'
 import { log } from './logger'
 
-const HOSTNAME = 'born-remote'
+/** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR/BORN_REMOTE_PORT
+ *  — lets a second local checkout advertise under a different name instead of
+ *  racing this one for 'born-remote.local' (mDNS's own probe-and-rename
+ *  handles that collision without crashing, but silently, and can leave the
+ *  hostname unresolved rather than just renamed — this avoids relying on
+ *  that). Never set for a real install. */
+const HOSTNAME = process.env.BORN_MDNS_NAME || 'born-remote'
 
 let bonjour: Bonjour | null = null
 let service: Service | null = null
@@ -24,7 +30,7 @@ export function startMdns(port: number): void {
       log.warn('mdns: background error', err)
     })
     service = bonjour.publish({
-      name: 'BORN Remote',
+      name: process.env.BORN_MDNS_NAME ? `BORN Remote (${process.env.BORN_MDNS_NAME})` : 'BORN Remote',
       type: 'http',
       port,
       host: `${HOSTNAME}.local`,
