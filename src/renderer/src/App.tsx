@@ -9,6 +9,7 @@ import RemotePanel from './components/RemotePanel'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
+import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
   IndexerProgress,
@@ -106,6 +107,7 @@ export default function App() {
   } | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
   /** Set once on mount — whether sermons.db/library.db were found corrupted
    *  and auto-recovered at startup, so the status line can say exactly
@@ -828,6 +830,7 @@ export default function App() {
       if (showAlertDialog) return
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
+      if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
 
       // Esc toggles the projector blackout from anywhere in the control window —
       // including while a search box has focus, so it works under live pressure.
@@ -1203,6 +1206,9 @@ export default function App() {
               <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             )}
           </button>
+          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the BORN manual (F1)">
+            Help
+          </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
             Shortcuts
           </button>
@@ -1525,6 +1531,7 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
+              <div><dt><kbd>F1</kbd></dt><dd>Open / close the BORN manual</dd></div>
             </dl>
             <div className="modal-actions">
               <button className="btn-primary" onClick={() => setShowShortcuts(false)}>Close</button>
@@ -1532,6 +1539,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showHelp && <HelpViewer onClose={() => setShowHelp(false)} />}
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

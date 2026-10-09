@@ -10,6 +10,23 @@ export type {
 import type { ParsedSong } from '../../shared/song'
 export type { ParsedSong, ParsedSongSlide } from '../../shared/song'
 
+export interface ManualPage {
+  id: string
+  title: string
+  file: string
+}
+
+export interface ManualSection {
+  id: string
+  title: string
+  pages: ManualPage[]
+}
+
+export interface ManualManifest {
+  version: string
+  sections: ManualSection[]
+}
+
 export interface DisplayEntry {
   id: number
   label: string
