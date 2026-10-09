@@ -72,3 +72,4 @@ describe('remote cmd() — fails visibly instead of silently', () => {
     expect(onSuccess).not.toHaveBeenCalled()
   })
 })
+
