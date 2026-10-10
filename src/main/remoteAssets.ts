@@ -1003,6 +1003,14 @@ document.addEventListener('DOMContentLoaded', function(){
   renderCurrentTab();
   poll();
   setInterval(poll, 1000);
+  // Mobile browsers throttle (or fully suspend) setInterval while a tab is
+  // backgrounded — a phone locked or switched away from mid-service and
+  // brought back shows whatever was on screen when it was backgrounded,
+  // stale, until the next throttled tick eventually fires. Poll immediately
+  // the moment the tab is visible again instead of waiting for that.
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) poll();
+  });
 });
 function toggleBlank(){ cmd(state.qs.blanked ? 'unblank' : 'blank'); }
 
