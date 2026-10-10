@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.1
+
+**New**
+- A built-in Help viewer, reachable any time with `F1`.
+
+**Fixed**
+- The remote's "Who's this?" role picker (Song Leader, Preacher, Operator, or a typed name) didn't actually tag anything — the everyday "+ Queue" button on a search result sent no identity, so the operator's queue never showed who added what. Only the separate "My list → Send" feature worked correctly. Both paths now tag correctly, including when someone switches roles mid-service on the same phone.
+- Two rapid taps of Next/Previous (on the remote, the desktop, or the keyboard) could get lost or only advance once instead of twice.
+- The remote could show stale information for up to a minute after a phone's browser tab came back from the background (e.g. the screen waking up) — it now refreshes immediately.
+- Remote commands (Next, Queue, Project, etc.) that failed to reach BORN — most often a dropped Wi-Fi connection — used to fail silently with no indication to the person tapping. The remote now shows a clear banner and recovers automatically once the connection returns.
+- The "Show a message on screen" dialog: `Esc` now closes it, it has a close (X) button, and it defaults to a screen that's actually turned on instead of one that may not be.
+- Songs → Browse's A-Z jump could scroll one row too far, hiding the target letter's first song title under its own sticky header.
+- Various update-check and release-pipeline hardening (clearer version-mismatch handling, a tag gate to prevent mis-tagged releases).
+
 ## 1.12.0
 
 **New**
