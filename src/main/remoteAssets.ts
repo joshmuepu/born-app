@@ -2497,6 +2497,15 @@ function sheetAction(which){
     item.kind === 'bible'  ? (which === 'queue' ? 'queue-bible'  : 'project-bible')  :
                               (which === 'queue' ? 'queue-song'   : 'project-song');
   var payload = item.kind === 'sermon' ? { quote: item.payload.quote, query: item.payload.query } : item.payload;
+  // The one-tap "+ Queue" button (as opposed to "My list" → Send, which
+  // already tagged correctly) sent nothing identifying who tapped it, so an
+  // item added this way — the obvious, everyday way — never carried the
+  // "Who's this?" role the phone had picked, and the operator's queue never
+  // showed it as anyone's. Tag it here the same way the batch send does.
+  if(which === 'queue'){
+    var contributor = getContributor();
+    if(contributor) payload = Object.assign({}, payload, { contributor: contributor });
+  }
   cmd(action, payload).then(function(){
     toast(which === 'queue' ? 'Added to queue' : 'Projecting…');
     closeSheet();

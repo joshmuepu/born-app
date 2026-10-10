@@ -32,7 +32,8 @@ import type {
   Songbook,
   PresentationProfileId,
   ObservabilityChannel,
-  ManualManifest
+  ManualManifest,
+  QueueSource
 } from './types'
 
 declare global {
@@ -244,17 +245,21 @@ declare global {
       onWebRemoteProjectAt: (callback: (data: { id: string; slide: number }) => void) => () => void
       onWebRemoteReorder: (callback: (data: { id: string; toId: string }) => void) => () => void
       onWebRemoteRemove: (callback: (id: string) => void) => () => void
-      onWebRemoteQueueSermon: (callback: (quote: Quote) => void) => () => void
+      onWebRemoteQueueSermon: (
+        callback: (data: { quote: Quote; contributor?: QueueSource }) => void
+      ) => () => void
       onWebRemoteProjectSermon: (
         callback: (data: { quote: Quote; query: string; slideIndex?: number }) => void
       ) => () => void
       onWebRemoteQueueBible: (
-        callback: (data: { reference: string; translation: string }) => void
+        callback: (data: { reference: string; translation: string; contributor?: QueueSource }) => void
       ) => () => void
       onWebRemoteProjectBible: (
         callback: (data: { reference: string; translation: string }) => void
       ) => () => void
-      onWebRemoteQueueSong: (callback: (songId: number) => void) => () => void
+      onWebRemoteQueueSong: (
+        callback: (data: { songId: number; contributor?: QueueSource }) => void
+      ) => () => void
       onWebRemoteProjectSong: (callback: (songId: number, slide: number) => void) => () => void
       onWebRemoteNewService: (callback: () => void) => () => void
       onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void

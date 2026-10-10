@@ -4,7 +4,8 @@ export type {
   QueueItem,
   QuoteItem,
   BibleItem,
-  SongItem
+  SongItem,
+  QueueSource
 } from '../../shared/queueItem'
 
 import type { ParsedSong } from '../../shared/song'

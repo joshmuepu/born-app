@@ -24,7 +24,8 @@ import type {
   OutputInfo,
   ChannelInfo,
   BibleTranslation,
-  Songbook
+  Songbook,
+  QueueSource
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
@@ -568,8 +569,9 @@ export default function App() {
   }, [])
 
   const handleAddQuote = useCallback(
-    (quote: Quote) => {
-      addToQueue([quoteToItem(quote)])
+    (quote: Quote, source?: QueueSource) => {
+      const item = quoteToItem(quote)
+      addToQueue([source ? { ...item, source } : item])
       window.electronAPI.noteSermonUsed(quote)
     },
     [addToQueue]
@@ -640,8 +642,9 @@ export default function App() {
   })
 
   const handleAddPassage = useCallback(
-    (p: ResolvedPassage) => {
-      addToQueue([passageToItem(p)])
+    (p: ResolvedPassage, source?: QueueSource) => {
+      const item = passageToItem(p)
+      addToQueue([source ? { ...item, source } : item])
       window.electronAPI.noteBibleUsed(p.reference, p.translation)
     },
     [addToQueue]
@@ -673,8 +676,9 @@ export default function App() {
   }
 
   const handleAddSong = useCallback(
-    (s: SongDetail) => {
-      addToQueue([songToItem(s)])
+    (s: SongDetail, source?: QueueSource) => {
+      const item = songToItem(s)
+      addToQueue([source ? { ...item, source } : item])
       window.electronAPI.noteSongUsed(s.id)
     },
     [addToQueue]
@@ -912,7 +916,10 @@ export default function App() {
   // handlers the desktop UI uses — same queue-building, same slide-jump
   // behavior for search matches, same everything.
   useEffect(
-    () => window.electronAPI.onWebRemoteQueueSermon((quote) => handleAddQuote(quote)),
+    () =>
+      window.electronAPI.onWebRemoteQueueSermon(({ quote, contributor }) =>
+        handleAddQuote(quote, contributor)
+      ),
     [handleAddQuote]
   )
   useEffect(
@@ -924,9 +931,9 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteQueueBible(async ({ reference, translation }) => {
+      window.electronAPI.onWebRemoteQueueBible(async ({ reference, translation, contributor }) => {
         const p = await window.electronAPI.lookupPassage(reference, translation)
-        if (p && !('error' in (p as object))) handleAddPassage(p as ResolvedPassage)
+        if (p && !('error' in (p as object))) handleAddPassage(p as ResolvedPassage, contributor)
       }),
     [handleAddPassage]
   )
@@ -940,9 +947,9 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteQueueSong(async (songId) => {
+      window.electronAPI.onWebRemoteQueueSong(async ({ songId, contributor }) => {
         const s = await window.electronAPI.getSong(songId)
-        if (s) handleAddSong(s as SongDetail)
+        if (s) handleAddSong(s as SongDetail, contributor)
       }),
     [handleAddSong]
   )

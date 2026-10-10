@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 
+/** Which phone/role added something, from the remote's "Who's this?" picker
+ *  — undefined when that phone skipped picking one. */
+export interface RemoteContributor {
+  deviceId: string
+  label: string
+}
+
 export interface Quote {
   text: string
   sermonTitle: string
@@ -524,8 +531,13 @@ const api = {
     return () => ipcRenderer.removeListener('webremote:remove', handler)
   },
 
-  onWebRemoteQueueSermon: (callback: (quote: Quote) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, quote: Quote): void => callback(quote)
+  onWebRemoteQueueSermon: (
+    callback: (data: { quote: Quote; contributor?: RemoteContributor }) => void
+  ): (() => void) => {
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { quote: Quote; contributor?: RemoteContributor }
+    ): void => callback(data)
     ipcRenderer.on('webremote:queue-sermon', handler)
     return () => ipcRenderer.removeListener('webremote:queue-sermon', handler)
   },
@@ -540,11 +552,11 @@ const api = {
     return () => ipcRenderer.removeListener('webremote:project-sermon', handler)
   },
   onWebRemoteQueueBible: (
-    callback: (data: { reference: string; translation: string }) => void
+    callback: (data: { reference: string; translation: string; contributor?: RemoteContributor }) => void
   ): (() => void) => {
     const handler = (
       _evt: IpcRendererEvent,
-      data: { reference: string; translation: string }
+      data: { reference: string; translation: string; contributor?: RemoteContributor }
     ): void => callback(data)
     ipcRenderer.on('webremote:queue-bible', handler)
     return () => ipcRenderer.removeListener('webremote:queue-bible', handler)
@@ -559,8 +571,13 @@ const api = {
     ipcRenderer.on('webremote:project-bible', handler)
     return () => ipcRenderer.removeListener('webremote:project-bible', handler)
   },
-  onWebRemoteQueueSong: (callback: (songId: number) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, songId: number): void => callback(songId)
+  onWebRemoteQueueSong: (
+    callback: (data: { songId: number; contributor?: RemoteContributor }) => void
+  ): (() => void) => {
+    const handler = (
+      _evt: IpcRendererEvent,
+      data: { songId: number; contributor?: RemoteContributor }
+    ): void => callback(data)
     ipcRenderer.on('webremote:queue-song', handler)
     return () => ipcRenderer.removeListener('webremote:queue-song', handler)
   },
