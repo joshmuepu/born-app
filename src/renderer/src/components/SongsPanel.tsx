@@ -265,10 +265,19 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   )
 
   const letterRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const allListRef = useRef<HTMLDivElement | null>(null)
   const allGroups = useMemo(() => (allSongs ? groupByLetter(allSongs) : []), [allSongs])
   const availableLetters = useMemo(() => new Set(allGroups.map((g) => g.letter)), [allGroups])
   const jumpToLetter = (letter: string): void => {
-    letterRefs.current[letter]?.scrollIntoView({ block: 'start' })
+    // Not scrollIntoView: its sticky-aware scroll math lands a few rows past
+    // this letter's own sticky header (position: sticky, top: 0), scrolling
+    // the first song's title out of view behind it. Computing the offset
+    // directly against the scroll container is exact regardless of how the
+    // browser treats the sticky element.
+    const container = allListRef.current
+    const header = letterRefs.current[letter]
+    if (!container || !header) return
+    container.scrollTop += header.getBoundingClientRect().top - container.getBoundingClientRect().top
   }
 
   /** A song row shared by search results, the all-songs browse list, and
@@ -588,7 +597,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             <div className="songs-empty">Loading…</div>
           ) : (
             <div className="songs-browse-body">
-              <div className="songs-all-list">
+              <div className="songs-all-list" ref={allListRef}>
                 {allGroups.map((g) => (
                   <div key={g.letter}>
                     <div

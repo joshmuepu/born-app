@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame } from 'lucide-react'
+import { Sun, Moon, Flame, X } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -9,6 +9,7 @@ import RemotePanel from './components/RemotePanel'
 import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
+import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
   IndexerProgress,
@@ -24,6 +25,7 @@ import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
+import { newSerialQueue, serialize } from './serialize'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
 export type OnScreenLoc =
@@ -106,6 +108,7 @@ export default function App() {
   } | null>(null)
   const [displayInfo, setDisplayInfo] = useState<DisplayInfo | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [recents, setRecents] = useState<RecentService[]>([])
   /** Set once on mount — whether sermons.db/library.db were found corrupted
    *  and auto-recovered at startup, so the status line can say exactly
@@ -309,41 +312,52 @@ export default function App() {
   // rarely runs out, but it genuinely can (Revelation 22:21, a sermon
   // transcript's last paragraph), and the caller needs to know so it can
   // give feedback instead of leaving a click looking like it did nothing.
+  //
+  // Two independent callers can race here — the remote's Next button and the
+  // keyboard shortcut firing within the same tick, or two rapid taps on
+  // either one. doProject() awaits ensureProjectionOpen() before it updates
+  // projectedRef, so without serializing, a second call starting before the
+  // first finishes reads the same (stale) projectedRef.current, computes the
+  // same target slide, and the two taps net out to a single advance instead
+  // of two. serialize() makes a call only ever start reading state once the
+  // one before it has actually finished writing it.
+  const advanceQueueRef = useRef(newSerialQueue())
   const advance = useCallback(
-    async (dir: 'next' | 'prev'): Promise<boolean> => {
-      const p = projectedRef.current
-      const q = queueRef.current
-      if (!p) {
-        if (q.length > 0) {
-          doProject(q[0], 0, 0)
+    (dir: 'next' | 'prev'): Promise<boolean> =>
+      serialize(advanceQueueRef.current, async () => {
+        const p = projectedRef.current
+        const q = queueRef.current
+        if (!p) {
+          if (q.length > 0) {
+            await doProject(q[0], 0, 0)
+            return true
+          }
+          return false
+        }
+        const step = dir === 'next' ? 1 : -1
+        const target = p.slide + step
+
+        if (target >= 0 && target < p.item.slides.length) {
+          await doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
           return true
         }
-        return false
-      }
-      const step = dir === 'next' ? 1 : -1
-      const target = p.slide + step
 
-      if (target >= 0 && target < p.item.slides.length) {
-        doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
+        if (dir === 'next') {
+          const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
+          if (!ext) return false
+          const slides = [...p.item.slides, ext.slide]
+          await doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
+            head: p.head,
+            tail: ext.cursor
+          })
+        } else {
+          const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
+          if (!ext) return false
+          const slides = [ext.slide, ...p.item.slides]
+          await doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
+        }
         return true
-      }
-
-      if (dir === 'next') {
-        const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
-        if (!ext) return false
-        const slides = [...p.item.slides, ext.slide]
-        doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
-          head: p.head,
-          tail: ext.cursor
-        })
-      } else {
-        const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
-        if (!ext) return false
-        const slides = [ext.slide, ...p.item.slides]
-        doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
-      }
-      return true
-    },
+      }),
     [doProject]
   )
 
@@ -828,6 +842,7 @@ export default function App() {
       if (showAlertDialog) return
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
+      if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
 
       // Esc toggles the projector blackout from anywhere in the control window —
       // including while a search box has focus, so it works under live pressure.
@@ -1203,6 +1218,9 @@ export default function App() {
               <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             )}
           </button>
+          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the BORN manual (F1)">
+            Help
+          </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
             Shortcuts
           </button>
@@ -1218,8 +1236,19 @@ export default function App() {
               </button>
               <button
                 className="btn-secondary"
-                onClick={() => { setAlertTarget('stage'); setShowAlertDialog(true) }}
-                title="Show a short message across the bottom of a screen (defaults to the stage monitor)"
+                onClick={() => {
+                  // Defaulting to Stage monitor unconditionally used to send a
+                  // message nowhere visible whenever no stage monitor was on
+                  // for that session — default to it only when it's actually
+                  // showing something, Main screen otherwise.
+                  setAlertTarget(stageOpen ? 'stage' : 'congregation')
+                  setShowAlertDialog(true)
+                }}
+                title={
+                  stageOpen
+                    ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
+                    : 'Show a short message across the bottom of a screen (defaults to the main screen)'
+                }
               >
                 Message
               </button>
@@ -1473,7 +1502,12 @@ export default function App() {
       {showAlertDialog && (
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Show a message on screen</h3>
+            <div className="modal-title-row">
+              <h3 className="modal-title">Show a message on screen</h3>
+              <button className="btn-icon btn-sm" onClick={() => setShowAlertDialog(false)} aria-label="Close">
+                <X width={15} height={15} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            </div>
             <p className="modal-hint">It appears across the bottom of the screen for about 10 seconds.</p>
             <input
               type="text"
@@ -1481,7 +1515,14 @@ export default function App() {
               placeholder="e.g. Please silence your phones"
               value={alertMessage}
               onChange={(e) => setAlertMessage(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSendAlert() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendAlert()
+                // The app-wide shortcut handler bails out early while this dialog
+                // is open (so Space/arrows don't leak through while typing a
+                // message) — which also swallows Esc before it ever reaches that
+                // handler, so Esc has to close this dialog itself.
+                else if (e.key === 'Escape') setShowAlertDialog(false)
+              }}
               autoFocus
             />
             <div className="alert-target">
@@ -1518,6 +1559,7 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
+              <div><dt><kbd>F1</kbd></dt><dd>Open / close the BORN manual</dd></div>
             </dl>
             <div className="modal-actions">
               <button className="btn-primary" onClick={() => setShowShortcuts(false)}>Close</button>
@@ -1525,6 +1567,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showHelp && <HelpViewer onClose={() => setShowHelp(false)} />}
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

@@ -19,7 +19,8 @@
     "build:library": "npm run prepare:songs && esbuild scripts/build-library-db.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.build-library-db.mjs && (npm run -s _run-build-script && node scripts/.build-library-db.mjs || ELECTRON_RUN_AS_NODE=1 electron scripts/.build-library-db.mjs)",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
-    "dist": "electron-vite build && electron-builder --mac --win"
+    "dist": "electron-vite build && electron-builder --mac --win",
+    "docs:screenshots": "node scripts/docs-screenshots.mjs"
   },
   "build": {
     "appId": "com.joshmuepu.born",
@@ -43,6 +44,10 @@
           "locations.json",
           "remote-icons/*.png"
         ]
+      },
+      {
+        "from": "docs/manual/v1",
+        "to": "manual/v1"
       }
     ],
     "mac": {
@@ -82,6 +87,7 @@
     "fast-xml-parser": "^5.11.1",
     "lucide-react": "^1.47.0",
     "mammoth": "^1.12.3",
+    "markdown-it": "^15.0.2",
     "pdfjs-dist": "^6.3.289",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

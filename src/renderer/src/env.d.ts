@@ -25,7 +25,8 @@ import type {
   OnlinePreview,
   OnlineImportResult,
   ParsedSong,
-  DisplayInfo as DisplayInfoType
+  DisplayInfo as DisplayInfoType,
+  ManualManifest
 } from './types'
 
 declare global {
@@ -84,6 +85,13 @@ declare global {
       quitApp: () => Promise<void>
       getDataRecoveryInfo: () => Promise<DataRecoveryInfo>
       openDataFolder: () => Promise<string>
+
+      // Help / manual
+      getManualManifest: () => Promise<ManualManifest | null>
+      getManualPage: (relPath: string) => Promise<string | null>
+      getManualImage: (relPath: string) => Promise<string | null>
+      printManualPdf: (html: string, suggestedName: string) => Promise<{ saved: boolean; path?: string }>
+      openManualExternalLink: (url: string) => Promise<void>
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
       onDownloadProgress: (
         callback: (p: { received: number; total: number }) => void

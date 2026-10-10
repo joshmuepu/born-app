@@ -444,6 +444,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 .toast{position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:#238636; color:#fff; padding:9px 18px; border-radius:9px; font-size:13px; font-weight:700; z-index:90; display:none; white-space:nowrap}
+.toast.error{background:var(--warn); color:var(--warn-ink)}
 
 /* ── One-time "Add to Home Screen" sheet ──────────────────────────── */
 .a2hs-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:80}
@@ -893,19 +894,43 @@ function haptic(action){
     if(navigator.vibrate) navigator.vibrate(HAPTIC_MS[action] || 12);
   }catch(e){}
 }
+/* Every call here used to be a bare, un-caught fetch() — Next, Prev, Blank,
+ * Project, Save, everything. A dropped WiFi connection or the desktop briefly
+ * unreachable meant the tap vanished with no toast, no retry, nothing: the
+ * operator had no way to tell a lost tap from one that just hadn't shown up
+ * on screen yet, and tapping again risked double-firing once the connection
+ * came back. Centralizing the error handling here (rather than fixing each
+ * of the ~20 call sites separately) means every command fails *visibly* —
+ * an amber toast plus flipping the header dot to "Reconnecting…" immediately,
+ * not after waiting up to 1s for the next /state poll to notice — and still
+ * rejects, so a caller's own .then() (e.g. the "Added to queue" toast)
+ * correctly never fires for a command that didn't actually reach BORN. */
 function cmd(action, extra){
   haptic(action);
   var body = Object.assign({ action: action }, extra || {});
-  return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    .then(function(r){
+      if(!r.ok) throw new Error('command failed: ' + r.status);
+      setConn(true);
+      return r;
+    })
+    .catch(function(e){
+      setConn(false);
+      toast("Couldn't reach BORN — check the connection and try again", true);
+      throw e;
+    });
 }
 function getJSON(url){ return fetch(url).then(function(r){ return r.json(); }); }
 
-function toast(msg){
+function toast(msg, isError){
   var t = $('toast');
   t.textContent = msg;
+  t.classList.toggle('error', !!isError);
   t.style.display = 'block';
   clearTimeout(toast._t);
-  toast._t = setTimeout(function(){ t.style.display = 'none'; }, 1700);
+  // Longer for an error — it's something the operator needs to actually act
+  // on (retry the tap), not just a passing confirmation.
+  toast._t = setTimeout(function(){ t.style.display = 'none'; }, isError ? 3000 : 1700);
 }
 
 /* ── Tab switching ─────────────────────────────────────────────────── */
@@ -978,6 +1003,14 @@ document.addEventListener('DOMContentLoaded', function(){
   renderCurrentTab();
   poll();
   setInterval(poll, 1000);
+  // Mobile browsers throttle (or fully suspend) setInterval while a tab is
+  // backgrounded — a phone locked or switched away from mid-service and
+  // brought back shows whatever was on screen when it was backgrounded,
+  // stale, until the next throttled tick eventually fires. Poll immediately
+  // the moment the tab is visible again instead of waiting for that.
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) poll();
+  });
 });
 function toggleBlank(){ cmd(state.qs.blanked ? 'unblank' : 'blank'); }
 

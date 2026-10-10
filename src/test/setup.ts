@@ -92,7 +92,12 @@ if (typeof window !== 'undefined') {
       importSongs: vi.fn(() => Promise.resolve(null)),
       deleteSong: vi.fn(() => Promise.resolve(false)),
       getLanguages: vi.fn(() => Promise.resolve({})),
-      translateQuote: vi.fn(() => Promise.resolve(null))
+      translateQuote: vi.fn(() => Promise.resolve(null)),
+      getManualManifest: vi.fn(() => Promise.resolve(null)),
+      getManualPage: vi.fn(() => Promise.resolve(null)),
+      getManualImage: vi.fn(() => Promise.resolve(null)),
+      printManualPdf: vi.fn(() => Promise.resolve({ saved: false })),
+      openManualExternalLink: noop
     }
   })
 }

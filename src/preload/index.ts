@@ -10,6 +10,23 @@ export interface Quote {
   language?: string
 }
 
+export interface ManualPage {
+  id: string
+  title: string
+  file: string
+}
+
+export interface ManualSection {
+  id: string
+  title: string
+  pages: ManualPage[]
+}
+
+export interface ManualManifest {
+  version: string
+  sections: ManualSection[]
+}
+
 export interface DisplayEntry {
   id: number
   /** Full description — custom name (if any) + raw model + resolution + tags. */
@@ -121,6 +138,14 @@ const api = {
   quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
   getDataRecoveryInfo: (): Promise<DataRecoveryInfo> => ipcRenderer.invoke('app:data-recovery-info'),
   openDataFolder: (): Promise<string> => ipcRenderer.invoke('app:open-data-folder'),
+
+  // Help / manual
+  getManualManifest: (): Promise<ManualManifest | null> => ipcRenderer.invoke('manual:manifest'),
+  getManualPage: (relPath: string): Promise<string | null> => ipcRenderer.invoke('manual:page', relPath),
+  getManualImage: (relPath: string): Promise<string | null> => ipcRenderer.invoke('manual:image', relPath),
+  printManualPdf: (html: string, suggestedName: string): Promise<{ saved: boolean; path?: string }> =>
+    ipcRenderer.invoke('manual:print-pdf', html, suggestedName),
+  openManualExternalLink: (url: string): Promise<void> => ipcRenderer.invoke('manual:open-external', url),
   onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
     const handler = (_e: IpcRendererEvent, info: UpdateInfo): void => callback(info)
     ipcRenderer.on('app:update-available', handler)
