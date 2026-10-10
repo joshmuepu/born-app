@@ -50,6 +50,15 @@ button, just under the QR code). It reports:
 Click **Copy diagnostics** underneath to copy all of this as plain text, ready to
 paste into a message to whoever handles tech support.
 
-If the phone was connected before and now isn't (for example, after the BORN
-computer restarted), reopen the remote page in the phone's browser — it reconnects
-on its own once the server is back.
+## If the connection drops mid-service
+
+The header dot changes from **Connected** to **Reconnecting…** the moment a tap
+fails to reach BORN — a dropped WiFi signal, or the BORN computer restarting —
+and an amber banner says so too: *"Couldn't reach BORN — check the connection and
+try again."* Nothing is lost silently; if you see that banner, the tap didn't go
+through, so tap again once it says **Connected**.
+
+You do **not** need to reopen the page or rescan the QR code — it reconnects and
+catches up to whatever's currently on screen on its own, usually within a second
+or two, including right after locking the phone or switching to another app and
+coming back.
