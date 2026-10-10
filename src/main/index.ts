@@ -1900,7 +1900,7 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'clear-recent-sermons') {
         updateSettings({ recentQuotes: [] })
       } else if (cmd.action === 'queue-sermon' && cmd.quote) {
-        mainWindow.webContents.send('webremote:queue-sermon', cmd.quote)
+        mainWindow.webContents.send('webremote:queue-sermon', { quote: cmd.quote, contributor: cmd.contributor })
       } else if (cmd.action === 'project-sermon' && cmd.quote) {
         mainWindow.webContents.send('webremote:project-sermon', {
           quote: cmd.quote,
@@ -1910,7 +1910,8 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'queue-bible' && cmd.reference) {
         mainWindow.webContents.send('webremote:queue-bible', {
           reference: cmd.reference,
-          translation: cmd.translation ?? 'KJV'
+          translation: cmd.translation ?? 'KJV',
+          contributor: cmd.contributor
         })
       } else if (cmd.action === 'project-bible' && cmd.reference) {
         mainWindow.webContents.send('webremote:project-bible', {
@@ -1918,7 +1919,7 @@ app.whenReady().then(async () => {
           translation: cmd.translation ?? 'KJV'
         })
       } else if (cmd.action === 'queue-song' && cmd.songId !== undefined) {
-        mainWindow.webContents.send('webremote:queue-song', cmd.songId)
+        mainWindow.webContents.send('webremote:queue-song', { songId: cmd.songId, contributor: cmd.contributor })
       } else if (cmd.action === 'project-song' && cmd.songId !== undefined) {
         mainWindow.webContents.send('webremote:project-song', { songId: cmd.songId, slide: cmd.slide ?? 0 })
       } else if (cmd.action === 'new-service') {
