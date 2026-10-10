@@ -32,6 +32,7 @@ import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
+import { newSerialQueue, serialize } from './serialize'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
 export type OnScreenLoc =
@@ -474,41 +475,51 @@ export default function App() {
   // rarely runs out, but it genuinely can (Revelation 22:21, a sermon
   // transcript's last paragraph), and the caller needs to know so it can
   // give feedback instead of leaving a click looking like it did nothing.
+  // Two independent callers can race here — the remote's Next button and the
+  // keyboard shortcut firing within the same tick, or two rapid taps on
+  // either one. doProject() awaits ensureProjectionOpen() before it updates
+  // projectedRef, so without serializing, a second call starting before the
+  // first finishes reads the same (stale) projectedRef.current, computes the
+  // same target slide, and the two taps net out to a single advance instead
+  // of two. serialize() makes a call only ever start reading state once the
+  // one before it has actually finished writing it.
+  const advanceQueueRef = useRef(newSerialQueue())
   const advance = useCallback(
-    async (dir: 'next' | 'prev'): Promise<boolean> => {
-      const p = projectedRef.current
-      const q = queueRef.current
-      if (!p) {
-        if (q.length > 0) {
-          doProject(q[0], 0, 0)
+    (dir: 'next' | 'prev'): Promise<boolean> =>
+      serialize(advanceQueueRef.current, async () => {
+        const p = projectedRef.current
+        const q = queueRef.current
+        if (!p) {
+          if (q.length > 0) {
+            await doProject(q[0], 0, 0)
+            return true
+          }
+          return false
+        }
+        const step = dir === 'next' ? 1 : -1
+        const target = p.slide + step
+
+        if (target >= 0 && target < p.item.slides.length) {
+          await doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
           return true
         }
-        return false
-      }
-      const step = dir === 'next' ? 1 : -1
-      const target = p.slide + step
 
-      if (target >= 0 && target < p.item.slides.length) {
-        doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
+        if (dir === 'next') {
+          const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
+          if (!ext) return false
+          const slides = [...p.item.slides, ext.slide]
+          await doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
+            head: p.head,
+            tail: ext.cursor
+          })
+        } else {
+          const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
+          if (!ext) return false
+          const slides = [ext.slide, ...p.item.slides]
+          await doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
+        }
         return true
-      }
-
-      if (dir === 'next') {
-        const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
-        if (!ext) return false
-        const slides = [...p.item.slides, ext.slide]
-        doProject({ ...p.item, slides }, slides.length - 1, p.queueIndex, {
-          head: p.head,
-          tail: ext.cursor
-        })
-      } else {
-        const ext = await fetchAdjacentSlide(p.head, 'prev', sermonCacheRef.current)
-        if (!ext) return false
-        const slides = [ext.slide, ...p.item.slides]
-        doProject({ ...p.item, slides }, 0, p.queueIndex, { head: ext.cursor, tail: p.tail })
-      }
-      return true
-    },
+      }),
     [doProject]
   )
 
