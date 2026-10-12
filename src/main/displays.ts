@@ -114,18 +114,37 @@ export interface ProjectionTarget {
   missingOverrideName: string | null
 }
 
+/** Windows' Duplicate/Mirror mode (a laptop hooked to a projector without
+ *  switching to Extend) reports the mirrored output as a second display with
+ *  its own id, but the exact same bounds as the primary — it's the same
+ *  physical screen, not a spare one. Auto-picking it for projection or stage
+ *  means fullscreening over the operator's own screen, same as picking the
+ *  primary directly. Only guards automatic picks — an explicit override
+ *  still wins, since that's a deliberate operator choice. */
+function isMirrorOfPrimary(displays: DisplayLike[], primaryId: number, d: DisplayLike): boolean {
+  const primary = displays.find((p) => p.id === primaryId)
+  return (
+    !!primary &&
+    d.id !== primary.id &&
+    d.bounds.x === primary.bounds.x &&
+    d.bounds.y === primary.bounds.y &&
+    d.bounds.width === primary.bounds.width &&
+    d.bounds.height === primary.bounds.height
+  )
+}
+
 function autoPickExternal(displays: DisplayLike[], primaryId: number): DisplayLike | undefined {
-  const externals = displays.filter((d) => d.id !== primaryId)
+  const externals = displays.filter((d) => d.id !== primaryId && !isMirrorOfPrimary(displays, primaryId, d))
   return externals.find((d) => !d.internal) ?? externals[0]
 }
 
 /**
  * Choose the projection display.
  *   1. A named override that's currently connected wins.
- *   2. Otherwise the first external (non-primary) display, preferring a
- *      non-internal panel (so a closed-lid laptop with two externals is sane)
- *      — and if the override name is set but unmatched, that's recorded so
- *      the UI can say so.
+ *   2. Otherwise the first external (non-primary, non-mirror-of-primary)
+ *      display, preferring a non-internal panel (so a closed-lid laptop with
+ *      two externals is sane) — and if the override name is set but
+ *      unmatched, that's recorded so the UI can say so.
  *   3. Otherwise the primary display (marked as a fallback).
  */
 export function pickProjectionDisplay(
@@ -166,7 +185,8 @@ export interface StageTarget {
 /**
  * Choose the stage-monitor display.
  *   1. A named override that's currently connected wins.
- *   2. Otherwise a screen that is neither the operator's nor the projector's.
+ *   2. Otherwise a screen that is neither the operator's, the projector's,
+ *      nor a mirror of the operator's own screen.
  *   3. Otherwise none — the stage monitor stays a normal window.
  */
 export function pickStageDisplay(
@@ -177,7 +197,9 @@ export function pickStageDisplay(
   namedDisplays: NamedDisplay[] = []
 ): StageTarget {
   const spareOf = (): DisplayLike | undefined =>
-    displays.find((d) => d.id !== primaryId && d.id !== projectionId)
+    displays.find(
+      (d) => d.id !== primaryId && d.id !== projectionId && !isMirrorOfPrimary(displays, primaryId, d)
+    )
 
   if (overrideName) {
     const named = namedDisplays.find((n) => n.name === overrideName)

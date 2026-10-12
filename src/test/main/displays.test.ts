@@ -86,6 +86,34 @@ describe('pickProjectionDisplay', () => {
     expect(t.display.id).toBe(3)
     expect(t.isOverride).toBe(true)
   })
+
+  it('ignores a display that mirrors the primary (same bounds, different id) and falls back to the primary', () => {
+    // Windows Duplicate/Mirror mode: a laptop hooked to a projector without
+    // switching to Extend reports a second display with the SAME bounds as
+    // the primary — same physical screen, not a real second one.
+    const primary = mk(1, { internal: true })
+    const mirror = mk(2, { internal: false, bounds: primary.bounds, workArea: primary.workArea })
+    const t = pickProjectionDisplay([primary, mirror], 1)
+    expect(t.display.id).toBe(1)
+    expect(t.isFallback).toBe(true)
+  })
+
+  it('still picks a real external display when a mirror is also present', () => {
+    const primary = mk(1, { internal: true })
+    const mirror = mk(2, { internal: false, bounds: primary.bounds, workArea: primary.workArea })
+    const realProjector = mk(3, { internal: false })
+    const t = pickProjectionDisplay([primary, mirror, realProjector], 1)
+    expect(t.display.id).toBe(3)
+  })
+
+  it('honours an explicit override even if it happens to target a mirrored display', () => {
+    const primary = mk(1, { internal: true })
+    const mirror = mk(2, { internal: false, bounds: primary.bounds, workArea: primary.workArea })
+    const named = nameIt([primary, mirror], mirror, 'Projector')
+    const t = pickProjectionDisplay([primary, mirror], 1, 'Projector', [named])
+    expect(t.display.id).toBe(2)
+    expect(t.isOverride).toBe(true)
+  })
 })
 
 describe('pickStageDisplay', () => {
@@ -123,6 +151,23 @@ describe('pickStageDisplay', () => {
   it('never picks the operator or projection screen automatically', () => {
     const t = pickStageDisplay([internal, projector], 1, 2)
     expect(t.display).toBeNull()
+  })
+
+  it('does not treat a mirror of the operator screen as a spare — stays windowed instead of fullscreening over it', () => {
+    // The exact church scenario: a single computer whose Windows display
+    // settings are set to Duplicate (not Extend) reports the mirrored output
+    // as a distinct display with the same bounds as the primary. Picking it
+    // as "spare" would fullscreen Stage over the operator's own screen.
+    const mirror = mk(4, { internal: false, bounds: internal.bounds, workArea: internal.workArea })
+    const t = pickStageDisplay([internal, projector, mirror], 1, 2)
+    expect(t.display).toBeNull()
+    expect(t.isFallback).toBe(true)
+  })
+
+  it('still finds a real spare screen when a mirror of the operator screen is also present', () => {
+    const mirror = mk(4, { internal: false, bounds: internal.bounds, workArea: internal.workArea })
+    const t = pickStageDisplay([internal, projector, mirror, stageTv], 1, 2)
+    expect(t.display?.id).toBe(3)
   })
 })
 
