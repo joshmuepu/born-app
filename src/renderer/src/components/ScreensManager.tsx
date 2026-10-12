@@ -138,7 +138,7 @@ function ScreenRoleGroup(p: RoleProps): JSX.Element {
         </button>
       </div>
 
-      {(p.role === 'projection' || p.isOpen) && (p.displays.length > 1 || missingNamed.length > 0) && (
+      {(p.displays.length > 1 || missingNamed.length > 0) && (
         <div className="display-rows">
           {p.displays.length > 1 && (
           <button
@@ -276,10 +276,14 @@ function ScreenRoleGroup(p: RoleProps): JSX.Element {
       {p.role === 'projection' && p.displays.length <= 1 && missingNamed.length === 0 && (
         <p className="screens-note">Only one screen connected — projection will use this one.</p>
       )}
-      {p.role === 'stage' && p.isOpen && p.isWindowed && (
-        <p className="screens-note">No spare screen — the stage monitor is a floating window you can move.</p>
+      {p.role === 'stage' && p.isWindowed && (
+        <p className="screens-note">
+          {p.isOpen
+            ? 'No spare screen — the stage monitor is a floating window you can move.'
+            : 'No spare screen right now — turning this on with Automatic selected will open a floating window instead. Pick a screen above to target it directly once one is connected.'}
+        </p>
       )}
-      {p.role === 'stage' && p.isOpen && p.clash && (
+      {p.role === 'stage' && p.clash && (
         <p className="screens-note screens-note--warn">
           <TriangleAlert width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
           The stage monitor is on the same screen as the projection — pick a different one.
