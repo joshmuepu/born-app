@@ -1,4 +1,14 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeTheme, session, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  screen,
+  dialog,
+  nativeTheme,
+  session,
+  shell
+} from 'electron'
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
@@ -263,7 +273,11 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
       setProjectionBlank(!projectionState.blank)
     } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
       event.preventDefault()
-      projectionWindow?.close()
+      // Close whichever output window this fired from — this used to always
+      // close projectionWindow regardless of which window the listener was
+      // actually attached to, so the shortcut could never close Stage while
+      // Stage had focus (e.g. fullscreen and covering everything else).
+      win.close()
     } else if (!mod && !input.alt && input.key.toLowerCase() === 'b') {
       event.preventDefault()
       setProjectionBlank(!projectionState.blank)
@@ -1855,6 +1869,17 @@ app.whenReady().then(async () => {
   getLibraryDb()
   createMainWindow()
 
+  // Global, not per-window — works even if an output window's own
+  // before-input-event listener (attachOperatorShortcuts) somehow doesn't
+  // catch it, e.g. a display-detection edge case fullscreens Stage or
+  // Projection over the operator's own screen. A guaranteed way back to
+  // BORN without force-quitting the whole app.
+  globalShortcut.register('CommandOrControl+Alt+Shift+W', () => {
+    log.info('global shortcut: closing output windows')
+    if (projectionWindow && !projectionWindow.isDestroyed()) projectionWindow.close()
+    if (stageWindow && !stageWindow.isDestroyed()) stageWindow.close()
+  })
+
   // Auto-start indexer so sermons are available immediately on first launch
   mainWindow!.webContents.once('did-finish-load', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -2006,7 +2031,10 @@ app.on('second-instance', () => {
   }
 })
 
-app.on('before-quit', () => stopMdns())
+app.on('before-quit', () => {
+  stopMdns()
+  globalShortcut.unregisterAll()
+})
 
 app.on('window-all-closed', () => {
   log.info('all windows closed — shutting down')
