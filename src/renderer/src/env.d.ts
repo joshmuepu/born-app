@@ -27,7 +27,11 @@ import type {
   ParsedSong,
   DisplayInfo as DisplayInfoType,
   ManualManifest,
-  QueueSource
+  QueueSource,
+  SongToMatch,
+  SongMatchResult,
+  SongGroupToAdd,
+  CommitSongImportResult
 } from './types'
 
 declare global {
@@ -299,6 +303,8 @@ declare global {
       clearRecentSongs: () => Promise<void>
       updateSongKey: (id: number, key: string | null) => Promise<boolean>
       getRecentKeys: () => Promise<string[]>
+      matchSongsForImport: (incoming: SongToMatch[]) => Promise<SongMatchResult[]>
+      commitSongImport: (groups: SongGroupToAdd[]) => Promise<CommitSongImportResult>
       onlineSongSearch: (query: string) => Promise<OnlineCandidate[]>
       onlineSongPreview: (url: string, source: 'hymnary' | 'cyberhymnal') => Promise<OnlinePreview>
       onlineSongImport: (

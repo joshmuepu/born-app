@@ -8,6 +8,13 @@ export type {
   QueueSource
 } from '../../shared/queueItem'
 
+export type {
+  SongToMatch,
+  SongMatchResult,
+  SongGroupToAdd,
+  CommitSongImportResult
+} from '../../shared/songMatch'
+
 import type { ParsedSong } from '../../shared/song'
 export type { ParsedSong, ParsedSongSlide } from '../../shared/song'
 

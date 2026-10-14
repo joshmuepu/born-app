@@ -64,6 +64,11 @@ interface Props {
    *  empty .born file otherwise fails with no feedback at all. Null/absent
    *  when there's nothing to report (including a plain dialog cancel). */
   openError?: string | null
+  /** Plain-language summary shown after a queue import that touched songs
+   *  — e.g. "Imported 12 items. Added 3 new songs, 2 were already in your
+   *  library." Null/absent when nothing to report (no songs in the file,
+   *  or the operator cancelled). */
+  importNotice?: string | null
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -128,7 +133,8 @@ export default function ServiceQueue({
   onSaveService,
   recents,
   onOpenRecent,
-  openError
+  openError,
+  importNotice
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -352,6 +358,7 @@ export default function ServiceQueue({
       </div>
 
       {openError && <div className="queue-open-error">{openError}</div>}
+      {importNotice && <div className="queue-import-notice">{importNotice}</div>}
 
       {queue.length === 0 ? (
         <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />

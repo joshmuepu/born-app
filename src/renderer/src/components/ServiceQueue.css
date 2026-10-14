@@ -631,3 +631,13 @@
   background: color-mix(in srgb, var(--warn) 12%, var(--bg-secondary));
   border-bottom: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
 }
+
+/* Same slot/shape as .queue-open-error, for the plain-language confirmation
+ * after a queue import that added (or found already-present) songs. */
+.queue-import-notice {
+  padding: 6px 16px;
+  font-size: var(--text-sm);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, var(--bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+}

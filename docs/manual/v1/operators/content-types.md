@@ -67,5 +67,9 @@ clicking one adds (or projects) the *whole song*, slide by slide, in order; once
 it's the on-screen item, **Next**/**Back** move between its slides the same way
 they move between a sermon's paragraphs or a Bible passage's verses.
 
+A song you've added by hand, or that was added for you while opening a
+shared service queue, carries an **Imported** badge here and in search —
+see [Saving, opening, and sharing a service queue](sharing-queues.md).
+
 To bring in songs that aren't already in the library, see
 [Importing songs](../setup/importing-songs.md).

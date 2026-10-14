@@ -34,6 +34,13 @@ tab, so you never have to switch tabs just to advance a slide.
 Anything added to the queue from a phone shows up on the desktop's Service queue
 immediately, and vice versa — it's the same live queue, shared.
 
+Opening or importing a saved service from the phone's own Queue tab works the
+same way it does from the desktop, including the song-review step if that
+file has songs not yet in this computer's library — see
+[Saving, opening, and sharing a service queue](sharing-queues.md). That
+review always happens on the desktop, since it's the one place a decision
+about your library can be made.
+
 ## If a phone can't connect
 
 Click **Remote connection check** in the Remote popover (the stethoscope-icon

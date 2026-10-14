@@ -10,15 +10,23 @@ import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import SongsPanel from './components/SongsPanel'
 import HelpViewer from './components/HelpViewer'
+import SongImportReview, {
+  type SongImportReviewRow,
+  type SongImportReviewResult
+} from './components/SongImportReview'
 import type {
   Quote,
   IndexerProgress,
   QueueItem,
+  SongItem,
   SlidePayload,
   ResolvedPassage,
   SongDetail,
   RecentService,
-  QueueSource
+  QueueSource,
+  SongToMatch,
+  SongMatchResult,
+  SongGroupToAdd
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
@@ -505,6 +513,7 @@ export default function App() {
       songId: s.id,
       title: s.title,
       author: s.author ?? undefined,
+      songKey: s.songKey ?? undefined,
       slides: s.slides.map((sl) => ({
         text: sl.text,
         label: sl.label ?? undefined,
@@ -998,8 +1007,20 @@ export default function App() {
     if (ok) refreshRecents()
   }, [serviceQueue, refreshRecents])
 
-  const loadServiceItems = useCallback((loaded: unknown[]) => {
-    setServiceQueue(migrateQueue(loaded))
+  // Shown under the queue toolbar when Open/Import can't read or parse a
+  // file — a damaged or empty .born file otherwise fails with nothing
+  // visible at all. Auto-clears so it doesn't linger once the operator has
+  // moved on, same pattern as SongsPanel's import message.
+  const [openError, setOpenError] = useState<string | null>(null)
+  const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showOpenError = useCallback((message: string) => {
+    if (openErrorTimer.current) clearTimeout(openErrorTimer.current)
+    setOpenError(message)
+    openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
+  }, [])
+
+  const applyLoadedQueueItems = useCallback((items: QueueItem[]) => {
+    setServiceQueue(items)
     projectedRef.current = null
     setProjected(null)
     setFollowSermon(null)
@@ -1015,37 +1036,208 @@ export default function App() {
     }
   }, [])
 
-  // Shown under the queue toolbar when Open/Import can't read or parse a
-  // file — a damaged or empty .born file otherwise fails with nothing
-  // visible at all. Auto-clears so it doesn't linger once the operator has
-  // moved on, same pattern as SongsPanel's import message.
-  const [openError, setOpenError] = useState<string | null>(null)
-  const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const showOpenError = useCallback((message: string) => {
-    if (openErrorTimer.current) clearTimeout(openErrorTimer.current)
-    setOpenError(message)
-    openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
+  const loadServiceItems = useCallback(
+    (loaded: unknown[]) => applyLoadedQueueItems(migrateQueue(loaded)),
+    [applyLoadedQueueItems]
+  )
+
+  // ── Queue import: adding shared songs to the library ──────────────────────
+  //
+  // A song leader's queue embeds full slide text (that's how it was already
+  // projectable before this feature existed) but not a library row — so a
+  // song that only ever arrived this way was never searchable, never in the
+  // A-Z list, and gone again next time someone starts a fresh queue. This
+  // step runs right after reading a file, before the queue is actually
+  // replaced/appended to: match every song against the real library, skip
+  // the dialog entirely if nothing needs a decision, and — when something
+  // does — let the operator choose before anything in the queue or the
+  // library actually changes.
+  const [importNotice, setImportNotice] = useState<string | null>(null)
+  const importNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showImportNotice = useCallback((message: string) => {
+    if (importNoticeTimer.current) clearTimeout(importNoticeTimer.current)
+    setImportNotice(message)
+    importNoticeTimer.current = setTimeout(() => setImportNotice(null), 8000)
   }, [])
+
+  const [songImportReview, setSongImportReview] = useState<{
+    rows: SongImportReviewRow[]
+    resolve: (result: SongImportReviewResult) => void
+  } | null>(null)
+
+  /** Matches every song in `items` against the library, and — only if at
+   *  least one needs a decision — shows the review dialog and waits for it.
+   *  Returns the final item list (with every song's `songId` corrected to
+   *  point at the real local row) plus counts for the confirmation
+   *  message, or `null` if the operator cancelled outright (nothing should
+   *  change: no queue update, no library write). Safe to call with an item
+   *  list that has no songs at all — resolves immediately, no dialog, same
+   *  as today. */
+  const resolveSongImport = useCallback(
+    async (
+      items: QueueItem[]
+    ): Promise<{ finalItems: QueueItem[]; addedCount: number; matchedCount: number } | null> => {
+      const songItems = items.filter((it): it is SongItem => it.kind === 'song')
+      if (songItems.length === 0) return { finalItems: items, addedCount: 0, matchedCount: 0 }
+
+      const toMatch: SongToMatch[] = songItems.map((it) => ({
+        key: it.id,
+        title: it.title,
+        author: it.author,
+        songKey: it.songKey,
+        slides: it.slides
+      }))
+      const results = await window.electronAPI.matchSongsForImport(toMatch)
+      const byKey = new Map(results.map((r) => [r.key, r]))
+      const matchedCount = results.filter((r) => r.status === 'matched').length
+
+      const relinkMatchedOnly = (list: QueueItem[]): QueueItem[] =>
+        list.map((it) => {
+          if (it.kind !== 'song') return it
+          const r = byKey.get(it.id)
+          return r?.status === 'matched' ? { ...it, songId: r.songId } : it
+        })
+
+      const needsReview = results.some((r) => r.status !== 'matched')
+      if (!needsReview) return { finalItems: relinkMatchedOnly(items), addedCount: 0, matchedCount }
+
+      // One row per distinct group — two queue items that are duplicates of
+      // each other within this same file share a group and collapse to one
+      // row, so the operator is never asked about "the same song" twice.
+      const rows: SongImportReviewRow[] = []
+      const seenGroups = new Set<string>()
+      for (const item of songItems) {
+        const r = byKey.get(item.id)
+        if (!r || r.status === 'matched' || seenGroups.has(r.groupId)) continue
+        seenGroups.add(r.groupId)
+        rows.push({
+          groupId: r.groupId,
+          title: item.title,
+          author: item.author,
+          preview: item.slides
+            .slice(0, 2)
+            .map((s) => s.text)
+            .join(' '),
+          kind: r.status,
+          existingTitle: r.status === 'conflict' ? r.existingTitle : undefined
+        })
+      }
+
+      const decision = await new Promise<SongImportReviewResult>((resolve) => {
+        setSongImportReview({ rows, resolve })
+      })
+      setSongImportReview(null)
+
+      if (decision.action === 'cancel') return null
+      if (decision.action === 'import-without-adding') {
+        return { finalItems: relinkMatchedOnly(items), addedCount: 0, matchedCount }
+      }
+
+      // decision.action === 'proceed' — one representative queue item per
+      // group, to read its title/lyrics/key from when actually adding it.
+      const groupSongData = new Map<string, SongItem>()
+      for (const item of songItems) {
+        const r = byKey.get(item.id)
+        if (r && r.status !== 'matched' && !groupSongData.has(r.groupId)) {
+          groupSongData.set(r.groupId, item)
+        }
+      }
+      const groupsToAdd: SongGroupToAdd[] = []
+      for (const row of rows) {
+        if (decision.decisions.get(row.groupId) !== 'add') continue
+        const representative = groupSongData.get(row.groupId)
+        if (!representative) continue
+        groupsToAdd.push({
+          groupId: row.groupId,
+          title: representative.title,
+          author: representative.author,
+          songKey: representative.songKey,
+          slides: representative.slides
+        })
+      }
+
+      let newSongIdByGroup = new Map<string, number>()
+      if (groupsToAdd.length > 0) {
+        const commitResult = await window.electronAPI.commitSongImport(groupsToAdd)
+        if (!commitResult.ok) {
+          showOpenError(commitResult.error)
+          return null // nothing committed — queue must stay exactly as before too
+        }
+        newSongIdByGroup = new Map(commitResult.added.map((a) => [a.groupId, a.songId]))
+      }
+
+      const existingIdByGroup = new Map<string, number>()
+      for (const r of results) {
+        if (r.status === 'conflict') existingIdByGroup.set(r.groupId, r.existingSongId)
+      }
+
+      const finalItems = items.map((it) => {
+        if (it.kind !== 'song') return it
+        const r = byKey.get(it.id)
+        if (!r) return it
+        if (r.status === 'matched') return { ...it, songId: r.songId }
+        const rowDecision = decision.decisions.get(r.groupId)
+        if (rowDecision === 'add') {
+          const newId = newSongIdByGroup.get(r.groupId)
+          return newId ? { ...it, songId: newId } : it
+        }
+        if (rowDecision === 'use-existing') {
+          const existingId = existingIdByGroup.get(r.groupId)
+          return existingId ? { ...it, songId: existingId } : it
+        }
+        return it // 'skip' — leave exactly as the file had it, same as today
+      })
+
+      return { finalItems, addedCount: groupsToAdd.length, matchedCount }
+    },
+    [showOpenError]
+  )
+
+  const importSummaryMessage = (
+    itemCount: number,
+    addedCount: number,
+    matchedCount: number
+  ): string | null => {
+    if (addedCount === 0 && matchedCount === 0) return null
+    const parts = [`Imported ${itemCount} item${itemCount === 1 ? '' : 's'}.`]
+    if (addedCount > 0) parts.push(`Added ${addedCount} new song${addedCount === 1 ? '' : 's'}.`)
+    if (matchedCount > 0) {
+      parts.push(
+        `${matchedCount} ${matchedCount === 1 ? 'was' : 'were'} already in your library.`
+      )
+    }
+    return parts.join(' ')
+  }
 
   const handleOpenService = useCallback(async () => {
     try {
       const loaded = await window.electronAPI.openService()
       if (loaded) {
-        loadServiceItems(loaded)
+        const migrated = migrateQueue(loaded)
+        const resolved = await resolveSongImport(migrated)
+        if (!resolved) return // cancelled, or the song commit failed — nothing changes
+        applyLoadedQueueItems(resolved.finalItems)
         refreshRecents()
+        const notice = importSummaryMessage(migrated.length, resolved.addedCount, resolved.matchedCount)
+        if (notice) showImportNotice(notice)
       }
     } catch (e) {
       showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
     }
-  }, [loadServiceItems, refreshRecents, showOpenError])
+  }, [applyLoadedQueueItems, refreshRecents, showOpenError, resolveSongImport, showImportNotice])
 
   const handleOpenRecent = useCallback(
     async (path: string) => {
       try {
         const loaded = await window.electronAPI.openServicePath(path)
         if (loaded) {
-          loadServiceItems(loaded)
+          const migrated = migrateQueue(loaded)
+          const resolved = await resolveSongImport(migrated)
+          if (!resolved) return
+          applyLoadedQueueItems(resolved.finalItems)
           refreshRecents()
+          const notice = importSummaryMessage(migrated.length, resolved.addedCount, resolved.matchedCount)
+          if (notice) showImportNotice(notice)
         } else {
           showOpenError("Couldn't open that service file — it may be damaged or empty.")
         }
@@ -1053,7 +1245,7 @@ export default function App() {
         showOpenError("Couldn't open that service file — it may be damaged or empty.")
       }
     },
-    [loadServiceItems, refreshRecents, showOpenError]
+    [applyLoadedQueueItems, refreshRecents, showOpenError, resolveSongImport, showImportNotice]
   )
 
   /** Untagged items from an imported file (saved before per-item source tags
@@ -1086,10 +1278,17 @@ export default function App() {
       )
     }
     if (files.length === 0) return
+    // One combined review, even across several files at once — the operator
+    // picked all of them in one dialog, so adding their songs is one
+    // decision too, not one dialog per file.
     const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
-    if (allTagged.length > 0) addToQueue(allTagged)
+    const resolved = await resolveSongImport(allTagged)
+    if (!resolved) return
+    if (resolved.finalItems.length > 0) addToQueue(resolved.finalItems)
     refreshRecents()
-  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError])
+    const notice = importSummaryMessage(allTagged.length, resolved.addedCount, resolved.matchedCount)
+    if (notice) showImportNotice(notice)
+  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError, resolveSongImport, showImportNotice])
 
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
@@ -1113,19 +1312,29 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteOpenService((items) => {
-        loadServiceItems(items)
+      window.electronAPI.onWebRemoteOpenService(async (items) => {
+        const migrated = migrateQueue(items)
+        const resolved = await resolveSongImport(migrated)
+        if (!resolved) return
+        applyLoadedQueueItems(resolved.finalItems)
         refreshRecents()
+        const notice = importSummaryMessage(migrated.length, resolved.addedCount, resolved.matchedCount)
+        if (notice) showImportNotice(notice)
       }),
-    [loadServiceItems, refreshRecents]
+    [applyLoadedQueueItems, refreshRecents, resolveSongImport, showImportNotice]
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteImportService(({ items, label }) => {
-        addToQueue(tagUntaggedItems(migrateQueue(items), label))
+      window.electronAPI.onWebRemoteImportService(async ({ items, label }) => {
+        const tagged = tagUntaggedItems(migrateQueue(items), label)
+        const resolved = await resolveSongImport(tagged)
+        if (!resolved) return
+        if (resolved.finalItems.length > 0) addToQueue(resolved.finalItems)
         refreshRecents()
+        const notice = importSummaryMessage(tagged.length, resolved.addedCount, resolved.matchedCount)
+        if (notice) showImportNotice(notice)
       }),
-    [tagUntaggedItems, addToQueue, refreshRecents]
+    [tagUntaggedItems, addToQueue, refreshRecents, resolveSongImport, showImportNotice]
   )
   useEffect(
     () =>
@@ -1502,6 +1711,7 @@ export default function App() {
             recents={recents}
             onOpenRecent={handleOpenRecent}
             openError={openError}
+            importNotice={importNotice}
           />
         </div>
       </main>
@@ -1576,6 +1786,10 @@ export default function App() {
       )}
 
       {showHelp && <HelpViewer onClose={() => setShowHelp(false)} />}
+
+      {songImportReview && (
+        <SongImportReview rows={songImportReview.rows} onResolve={songImportReview.resolve} />
+      )}
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">
