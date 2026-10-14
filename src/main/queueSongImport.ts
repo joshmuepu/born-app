@@ -22,7 +22,9 @@ import {
   normalizeLyrics,
   type LibrarySongForMatch,
   type SongToMatch,
-  type SongMatchResult
+  type SongMatchResult,
+  type SongGroupToAdd,
+  type CommitSongImportResult
 } from '../shared/songMatch'
 
 // Re-derives normalized title/lyrics for the WHOLE library on every call —
@@ -57,18 +59,6 @@ export function matchQueueSongs(incoming: SongToMatch[]): SongMatchResult[] {
   if (incoming.length === 0) return []
   return matchSongs(incoming, getLibraryForMatching())
 }
-
-export interface SongGroupToAdd {
-  groupId: string
-  title: string
-  author?: string
-  songKey?: string
-  slides: Array<{ text: string; label?: string }>
-}
-
-export type CommitSongImportResult =
-  | { ok: true; added: Array<{ groupId: string; songId: number }> }
-  | { ok: false; error: string }
 
 /** Inserts every group the operator chose to add, as one transaction — if
  *  any single insert throws, better-sqlite3 rolls the whole transaction

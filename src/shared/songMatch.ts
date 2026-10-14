@@ -93,6 +93,21 @@ export type SongMatchResult =
   | { key: string; status: 'new'; groupId: string }
   | { key: string; status: 'conflict'; groupId: string; existingSongId: number; existingTitle: string }
 
+/** One group of (possibly several, deduped-within-the-file) incoming songs
+ *  the operator chose to add as a real library song — sent to
+ *  commitSongImportDecisions, which inserts exactly one song per group. */
+export interface SongGroupToAdd {
+  groupId: string
+  title: string
+  author?: string
+  songKey?: string
+  slides: Array<{ text: string; label?: string }>
+}
+
+export type CommitSongImportResult =
+  | { ok: true; added: Array<{ groupId: string; songId: number }> }
+  | { ok: false; error: string }
+
 /** Resolves each incoming song against the existing library, AND against
  *  the other incoming songs in the same batch — two queue items for "the
  *  same" song (duplicated within one shared file) must resolve to the one
