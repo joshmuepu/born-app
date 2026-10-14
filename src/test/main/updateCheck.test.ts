@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import { cmpVersion, sameMajor } from '../../main/updateCheck'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { net } from 'electron'
+import { cmpVersion, sameMajor, checkForUpdate } from '../../main/updateCheck'
+
+beforeEach(() => {
+  vi.mocked(net.fetch).mockReset()
+})
 
 describe('cmpVersion', () => {
   it('detects a newer version', () => {
@@ -37,5 +42,28 @@ describe('sameMajor', () => {
 
   it('ignores a leading v and any pre-release suffix', () => {
     expect(sameMajor('v1.5.0', '1.0.0')).toBe(true)
+  })
+})
+
+describe('checkForUpdate — a slow/stalled connection, not just a dead one', () => {
+  it('passes a timeout signal to net.fetch, so a stalled (not just a failed) request can still abort', async () => {
+    vi.mocked(net.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ tag_name: 'v9.9.9' }), { status: 200 })
+    )
+    await checkForUpdate()
+    expect(net.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ signal: expect.anything() })
+    )
+  })
+
+  it('reports checkFailed (not "up to date") when the request times out, same as any other network failure', async () => {
+    // Simulates what net.fetch itself does once the real timeout fires —
+    // this pins the code's own reaction to that failure, without depending
+    // on fake timers racing an implementation-internal AbortSignal.timeout.
+    vi.mocked(net.fetch).mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'))
+    const info = await checkForUpdate()
+    expect(info.checkFailed).toBe(true)
+    expect(info.hasUpdate).toBe(false)
   })
 })

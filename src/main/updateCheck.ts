@@ -73,7 +73,14 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
   const info: UpdateInfo = { current, latest: null, hasUpdate: false, url: RELEASES_PAGE }
   try {
     const res = await net.fetch(RELEASES_API, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': `BORN/${current}` }
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': `BORN/${current}` },
+      // A dead connection fails fast on its own (a real error, caught
+      // below) — this guards the other case, a connection that's merely
+      // slow or stalled (a flaky church WiFi, a captive portal that never
+      // completes the response), which would otherwise leave the operator
+      // looking at "Checking…" with no way to know it's stuck versus still
+      // genuinely working.
+      signal: AbortSignal.timeout(15000)
     })
     if (!res.ok) throw new Error(`GitHub API ${res.status}`)
     const json = (await res.json()) as { tag_name?: string; html_url?: string; body?: string }
