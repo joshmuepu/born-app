@@ -15,7 +15,13 @@
  *        ./node_modules/.bin/electron-vite dev --remoteDebuggingPort 9920
  *      (a throwaway user-data-dir keeps this from touching your real
  *      settings/recent-services; ELECTRON_RUN_AS_NODE must be unset)
- *   2. In another: node scripts/docs-screenshots.mjs --port 9920
+ *   2. For the song-import review shot specifically: before step 1, drop a
+ *      .born file with an unmatched song into that same throwaway profile
+ *      and add it to settings.json's recentServices as
+ *      "docs-shot-song-review.born" — the Open Recent entry's own filename
+ *      is what this script looks for to open the dialog. Safe to skip; that
+ *      one shot just won't be taken.
+ *   3. In another terminal: node scripts/docs-screenshots.mjs --port 9920
  */
 import { writeFileSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
@@ -180,6 +186,30 @@ async function main() {
   await sleep(500)
   await screenshot(ws, 'operator-remote-popover.png')
   await evaluate(ws, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+
+  // 6. Queue-import song review dialog — needs a queue file with at least
+  // one new/conflicting song already sitting in this profile's
+  // recentServices before the dev instance was launched (see this script's
+  // own usage note at the top). Skips cleanly if that setup wasn't done.
+  await sleep(300)
+  const opened = await evaluate(
+    ws,
+    `(() => {
+       const el = [...document.querySelectorAll('button')].find(b => b.textContent.trim().includes('docs-shot-song-review') && b.offsetParent !== null)
+       if (!el) return false
+       el.click()
+       return true
+     })()`
+  )
+  if (opened) {
+    await sleep(600)
+    await screenshot(ws, 'operator-song-import-review.png')
+    await evaluate(ws, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+  } else {
+    console.warn(
+      '  (skipped operator-song-import-review.png — no "docs-shot-song-review" entry in Open Recent; see this script\'s header comment)'
+    )
+  }
 
   console.log('\nDone. Screenshots written to', IMAGES_DIR)
   console.log('Remaining shots (real external display, a real phone for the mobile')
