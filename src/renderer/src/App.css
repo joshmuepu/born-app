@@ -871,6 +871,16 @@ mark.hl {
   color: var(--text-primary);
 }
 
+/* Used by any modal with a close (X) button next to its title (the Message
+ * dialog, the Help viewer) — was missing entirely, so both rendered the X
+ * stacked below the title instead of aligned beside it. */
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .modal-hint {
   font-size: var(--text-base);
   color: var(--text-secondary);

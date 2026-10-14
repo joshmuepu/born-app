@@ -92,16 +92,17 @@ declare global {
       quitApp: () => Promise<void>
       getDataRecoveryInfo: () => Promise<DataRecoveryInfo>
       openDataFolder: () => Promise<string>
-      onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
-      onDownloadProgress: (
-        callback: (p: { received: number; total: number }) => void
-      ) => () => void
+
       // Help / manual
       getManualManifest: () => Promise<ManualManifest | null>
       getManualPage: (relPath: string) => Promise<string | null>
       getManualImage: (relPath: string) => Promise<string | null>
       printManualPdf: (html: string, suggestedName: string) => Promise<{ saved: boolean; path?: string }>
       openManualExternalLink: (url: string) => Promise<void>
+      onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
+      onDownloadProgress: (
+        callback: (p: { received: number; total: number }) => void
+      ) => () => void
       // Projection
       openProjection: () => Promise<void>
       closeProjection: () => Promise<void>
