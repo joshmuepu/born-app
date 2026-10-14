@@ -579,6 +579,10 @@ const api = {
   updateSongKey: (id: number, key: string | null): Promise<boolean> =>
     ipcRenderer.invoke('songs:update-key', id, key),
   getRecentKeys: (): Promise<string[]> => ipcRenderer.invoke('songs:recent-keys'),
+  matchSongsForImport: (incoming: unknown[]): Promise<unknown[]> =>
+    ipcRenderer.invoke('songs:match-for-import', incoming),
+  commitSongImport: (groups: unknown[]): Promise<unknown> =>
+    ipcRenderer.invoke('songs:commit-import', groups),
   onlineSongSearch: (query: string): Promise<unknown[]> => ipcRenderer.invoke('songs:online-search', query),
   onlineSongPreview: (url: string, source: 'hymnary' | 'cyberhymnal'): Promise<unknown> =>
     ipcRenderer.invoke('songs:online-preview', url, source),

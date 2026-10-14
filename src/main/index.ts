@@ -35,6 +35,8 @@ import {
   onlineSongPreview,
   onlineSongImport
 } from './songs'
+import { matchQueueSongs, commitSongImportDecisions } from './queueSongImport'
+import type { SongToMatch, SongGroupToAdd } from '../shared/songMatch'
 import type { ParsedSong } from '../shared/song'
 import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
@@ -1680,6 +1682,11 @@ ipcMain.handle('bible:clear-recent', () => updateSettings({ recentBibleRefs: [] 
 ipcMain.handle('songs:search', (_event, query: string) => searchSongs(query))
 ipcMain.handle('songs:get', (_event, id: number) => getSong(id))
 ipcMain.handle('songs:delete', (_event, id: number) => deleteSong(id))
+
+// Queue-import song matching — read-only, safe to call before the operator
+// has decided anything (see queueSongImport.ts's own header comment).
+ipcMain.handle('songs:match-for-import', (_event, incoming: SongToMatch[]) => matchQueueSongs(incoming))
+ipcMain.handle('songs:commit-import', (_event, groups: SongGroupToAdd[]) => commitSongImportDecisions(groups))
 
 /** Sets or clears a song's key (null = explicitly unknown, not an error).
  *  On success, remembers it in recentKeys so the picker can surface it —
