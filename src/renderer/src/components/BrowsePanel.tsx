@@ -1,5 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  CalendarDays,
+  BookOpen,
+  MapPin,
+  Clock,
+  LayoutGrid,
+  List as ListIcon
+} from 'lucide-react'
 import type {
   Quote,
   SermonIndexItem,
@@ -30,6 +40,29 @@ interface Props {
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
+type BrowseView = 'grid' | 'list'
+
+const VIEW_KEY = 'born.browseView'
+
+/** Make a clickable div keyboard-operable (Enter / Space). */
+function activate(onClick: () => void): {
+  role: 'button'
+  tabIndex: number
+  onClick: () => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+} {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick,
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick()
+      }
+    }
+  }
+}
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -65,6 +98,26 @@ export default function BrowsePanel({
     () => initialLanguage ?? (localStorage.getItem('born.browseLanguage') || 'en')
   )
   const [languages, setLanguages] = useState<Record<string, string>>({})
+
+  // Born Again drill-down: the browse columns sit on the left, the sermon text
+  // always opens on the right. Grid or list is the operator's choice (remembered);
+  // the columns can slide away so the text gets the full width.
+  const [view, setView] = useState<BrowseView>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid'
+    } catch {
+      return 'grid'
+    }
+  })
+  const [collapsed, setCollapsed] = useState(false)
+  const chooseView = useCallback((v: BrowseView) => {
+    setView(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   // Series tab
   const [seriesList, setSeriesList] = useState<SeriesEntry[]>([])
@@ -206,7 +259,7 @@ export default function BrowsePanel({
           <div
             key={s.id}
             className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
-            onClick={() => loadParagraphs(s)}
+            {...activate(() => loadParagraphs(s))}
           >
             <div className="browse-item-code">{s.date_code}</div>
             <div className="browse-item-title">{s.title}</div>
@@ -223,11 +276,11 @@ export default function BrowsePanel({
   const renderParagraphs = (): JSX.Element => (
     <div className="browse-paragraphs">
       <div className="browse-back-row">
-        <button className="browse-back" onClick={() => { setSelectedSermon(null); setParagraphs([]) }}>
+        <button className="browse-back browse-back--stack" onClick={() => { setSelectedSermon(null); setParagraphs([]) }}>
           <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Back
         </button>
         <span className="browse-group-label">{selectedSermon?.title}</span>
-        <span className="browse-count">{selectedSermon?.date_code}</span>
+        <span className="browse-count">{selectedSermon?.date_code}{paragraphs.length ? ` · ${paragraphs.length}¶` : ''}</span>
       </div>
       {loadingParagraphs ? (
         <div className="browse-loading">Loading paragraphs…</div>
@@ -282,7 +335,6 @@ export default function BrowsePanel({
   // ── Series tab ────────────────────────────────────────────────────────────────
 
   const renderSeries = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (browsedSermons.length > 0) return renderSermonList()
     return (
       <div className="browse-list browse-list--grid">
@@ -291,7 +343,7 @@ export default function BrowsePanel({
           <div
             key={s.i}
             className="browse-item"
-            onClick={() => loadSermonsForIds(s.s, s.n)}
+            {...activate(() => loadSermonsForIds(s.s, s.n))}
           >
             <div className="browse-item-title">{s.n}</div>
             <div className="browse-item-meta">{s.s.length} sermons</div>
@@ -319,7 +371,6 @@ export default function BrowsePanel({
   )
 
   const renderLocation = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (browsedSermons.length > 0) return renderSermonList()
 
     const q = locFilter.trim().toLowerCase()
@@ -448,7 +499,6 @@ export default function BrowsePanel({
   )
 
   const renderDate = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (!dateTree) return <div className="browse-loading">Loading dates…</div>
 
     // Year grid.
@@ -588,7 +638,11 @@ export default function BrowsePanel({
           </div>
           <div className="browse-list browse-list--grid">
             {browsedSermons.map((s) => (
-              <div key={s.id} className="browse-item" onClick={() => loadParagraphs(s)}>
+              <div
+                key={s.id}
+                className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
+                {...activate(() => loadParagraphs(s))}
+              >
                 <div className="browse-item-code">{s.date_code}</div>
                 <div className="browse-item-title">{s.title}</div>
                 <div className="browse-item-meta">
@@ -664,58 +718,130 @@ export default function BrowsePanel({
     }
   }, [visible, loadDate])
 
+  // "\\" slides the browse columns away / back while this panel is in use.
+  useEffect(() => {
+    if (!visible) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== '\\' || e.ctrlKey || e.metaKey || e.altKey) return
+      const t = e.target as HTMLElement | null
+      if (t && /^(input|textarea|select)$/i.test(t.tagName)) return
+      e.preventDefault()
+      setCollapsed((c) => !c)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [visible])
+
+  const modes: Array<{ id: BrowseTab; label: string; Icon: typeof CalendarDays }> = [
+    { id: 'date', label: 'Date', Icon: CalendarDays },
+    { id: 'series', label: 'Series', Icon: BookOpen },
+    { id: 'location', label: 'Location', Icon: MapPin },
+    { id: 'recent', label: 'Recently Played', Icon: Clock }
+  ]
+  const split = tab !== 'recent'
+
   return (
-    <div className="browse-panel">
-      <div className="browse-hub">
-        <button className={`browse-hub-card${tab === 'date' ? ' active' : ''}`} onClick={() => switchTab('date')}>
-          <CalendarDays width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Date</span>
-          <span className="browse-hub-sub">Jump to any Sunday</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'series' ? ' active' : ''}`} onClick={() => switchTab('series')}>
-          <BookOpen width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Series</span>
-          <span className="browse-hub-sub">{seriesLoaded ? `${seriesList.length} series` : 'Browse by series'}</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'location' ? ' active' : ''}`} onClick={() => switchTab('location')}>
-          <MapPin width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Location</span>
-          <span className="browse-hub-sub">By city or state</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'recent' ? ' active' : ''}`} onClick={() => switchTab('recent')}>
-          <Clock width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Recently Played</span>
-          <span className="browse-hub-sub">What you used last</span>
-        </button>
-      </div>
-
-      {Object.keys(languages).length > 0 && (
-        <div className="browse-language-row">
-          <select
-            className="language-select browse-language"
-            value={language}
-            onChange={(e) => changeLanguage(e.target.value)}
-            title="Quote language"
-          >
-            <option value="en">English</option>
-            {Object.entries(languages)
-              .filter(([code]) => code !== 'en')
-              .sort((a, b) => a[1].localeCompare(b[1]))
-              .map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-          </select>
+    <div
+      className="browse-panel"
+      data-view={view}
+      data-collapsed={collapsed && split}
+      data-open={selectedSermon ? 'true' : 'false'}
+    >
+      <div className="browse-modes">
+        <div className="browse-mode-tabs" role="group" aria-label="Browse by">
+          {modes.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              className={`browse-mode${tab === id ? ' active' : ''}`}
+              onClick={() => switchTab(id)}
+              aria-pressed={tab === id}
+            >
+              <Icon width={15} height={15} strokeWidth={2} aria-hidden="true" />
+              {label}
+            </button>
+          ))}
         </div>
-      )}
-
-      <div className="browse-content">
-        {tab === 'series' && renderSeries()}
-        {tab === 'location' && renderLocation()}
-        {tab === 'date' && renderDate()}
-        {tab === 'recent' && renderRecent()}
+        <div className="browse-mode-tools">
+          {Object.keys(languages).length > 0 && (
+            <select
+              className="language-select browse-language"
+              value={language}
+              onChange={(e) => changeLanguage(e.target.value)}
+              title="Quote language"
+              aria-label="Quote language"
+            >
+              <option value="en">English</option>
+              {Object.entries(languages)
+                .filter(([code]) => code !== 'en')
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
+            </select>
+          )}
+          <div className="browse-view-toggle" role="group" aria-label="Browse view">
+            <button
+              className={view === 'grid' ? 'active' : ''}
+              onClick={() => chooseView('grid')}
+              aria-pressed={view === 'grid'}
+              title="Grid view"
+              aria-label="Grid view"
+            >
+              <LayoutGrid width={15} height={15} strokeWidth={2} aria-hidden="true" />
+            </button>
+            <button
+              className={view === 'list' ? 'active' : ''}
+              onClick={() => chooseView('list')}
+              aria-pressed={view === 'list'}
+              title="List view"
+              aria-label="List view"
+            >
+              <ListIcon width={15} height={15} strokeWidth={2} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      {split ? (
+        <div className="browse-split">
+          <div className="browse-left">
+            <div className="browse-content">
+              {tab === 'series' && renderSeries()}
+              {tab === 'location' && renderLocation()}
+              {tab === 'date' && renderDate()}
+            </div>
+          </div>
+          <div className="browse-seam">
+            <button
+              className="browse-handle"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={collapsed ? 'Show browse columns' : 'Hide browse columns'}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Show browse columns ( \\ )' : 'Hide browse columns ( \\ )'}
+            >
+              {collapsed ? (
+                <ChevronRight width={14} height={14} strokeWidth={2.4} />
+              ) : (
+                <ChevronLeft width={14} height={14} strokeWidth={2.4} />
+              )}
+            </button>
+          </div>
+          <div className="browse-right">
+            {selectedSermon ? (
+              renderParagraphs()
+            ) : (
+              <div className="browse-idle">
+                <BookOpen width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
+                <p>Pick a sermon — the text opens here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="browse-content">{renderRecent()}</div>
+      )}
     </div>
   )
 }
