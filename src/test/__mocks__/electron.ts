@@ -10,7 +10,12 @@ export const app = {
   quit: vi.fn(),
   on: vi.fn(),
   whenReady: vi.fn(() => Promise.resolve()),
-  getName: vi.fn(() => 'born')
+  getName: vi.fn(() => 'born'),
+  getVersion: vi.fn(() => '1.0.0')
+}
+
+export const net = {
+  fetch: vi.fn()
 }
 
 export const ipcMain = {
