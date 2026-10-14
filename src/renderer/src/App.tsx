@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame, Eye, EyeOff, X } from 'lucide-react'
+import { Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered } from 'lucide-react'
+import BornMark from './components/BornMark'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -156,6 +157,26 @@ export default function App() {
   const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
+  // Queue panel: open during a service (anything queued or projecting),
+  // collapsed otherwise — until the operator chooses, which is remembered.
+  const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
+    try {
+      const v = localStorage.getItem('born.queuePanel')
+      return v === 'open' || v === 'closed' ? v : null
+    } catch {
+      return null
+    }
+  })
+  const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen
+  const toggleQueue = useCallback(() => {
+    const next = queueOpen ? 'closed' : 'open'
+    setQueueChoice(next)
+    try {
+      localStorage.setItem('born.queuePanel', next)
+    } catch {
+      /* ignore */
+    }
+  }, [queueOpen])
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
   /** Song the Songs panel should have open (for the follow-along view). */
   const [focusSongId, setFocusSongId] = useState<number | null>(null)
@@ -175,7 +196,7 @@ export default function App() {
    *  and auto-recovered at startup, so the status line can say exactly
    *  that instead of a generic "needs an internet connection" message. */
   const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
-  const { theme, toggle: toggleTheme } = useTheme()
+  const { theme, toggle: toggleTheme, contrast, toggleContrast } = useTheme()
 
   // Channels beyond Main (Phase 5) — each with its own label, persisted
   // translation, and outputs. Empty for every user who hasn't added one.
@@ -1367,11 +1388,12 @@ export default function App() {
         <button
           className="app-logo-born"
           onClick={handleNewService}
-          title="BORN — back to the start screen"
+          title="Born Again — back to the start screen"
         >
-          B
-          <Flame className="app-logo-flame" width={17} height={17} strokeWidth={0} fill="currentColor" aria-hidden="true" />
-          RN
+          <BornMark size={26} />
+          <span className="app-logo-word">
+            <b>Born</b> <span>Again</span>
+          </span>
         </button>
 
         <div className="header-actions">
@@ -1387,7 +1409,16 @@ export default function App() {
               <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             )}
           </button>
-          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the BORN manual (F1)">
+          <button
+            className={`btn-icon${contrast ? ' btn-toggle-on' : ''}`}
+            onClick={toggleContrast}
+            aria-pressed={contrast}
+            title={contrast ? 'High contrast is on' : 'Turn on high contrast'}
+            aria-label="High contrast"
+          >
+            <Contrast width={16} height={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the Born Again manual (F1)">
             Help
           </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
@@ -1584,12 +1615,35 @@ export default function App() {
 
       <main className="app-main">
         <div className="search-panel">
-          <div className="panel-tab-bar">
-            <button className={`panel-tab panel-tab--sermons${topTab === 'sermons' ? ' active' : ''}`} onClick={() => setTopTab('sermons')}>Sermons</button>
-            <button className={`panel-tab panel-tab--bible${topTab === 'bible' ? ' active' : ''}`} onClick={() => setTopTab('bible')}>Bible</button>
-            <button className={`panel-tab panel-tab--songs${topTab === 'songs' ? ' active' : ''}`} onClick={() => setTopTab('songs')}>Songs</button>
-          </div>
-
+          <nav className="app-rail" aria-label="Sections">
+            {([
+              ['sermons', 'Sermons', Mic2],
+              ['bible', 'Bible', BookOpen],
+              ['songs', 'Songs', Music2]
+            ] as const).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
+                onClick={() => setTopTab(id)}
+                aria-current={topTab === id ? 'page' : undefined}
+              >
+                <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+            <span className="rail-spacer" />
+            <button
+              className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
+              onClick={toggleQueue}
+              aria-pressed={queueOpen}
+              title={queueOpen ? 'Hide the service queue' : 'Show the service queue'}
+            >
+              <ListOrdered width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Queue</span>
+              {serviceQueue.length > 0 && <em className="rail-badge">{serviceQueue.length}</em>}
+            </button>
+          </nav>
+          <div className="search-main">
           <div className="panel-view" hidden={topTab !== 'sermons'}>
             <div className="panel-subtab-bar">
               <button className={`panel-subtab${sermonsTab === 'search' ? ' active' : ''}`} onClick={() => setSermonsTab('search')}>Search</button>
@@ -1660,9 +1714,10 @@ export default function App() {
               onProjectSong={handleProjectSong}
             />
           </div>
+          </div>
         </div>
 
-        <div className="queue-panel">
+        <div className={`queue-panel${queueOpen ? '' : ' is-collapsed'}`} aria-hidden={!queueOpen}>
           <ServiceQueue
             queue={serviceQueue}
             playedIds={playedIds}
@@ -1858,7 +1913,7 @@ export default function App() {
             onClick={() => setStatusPopoverOpen((v) => !v)}
             title="App info"
           >
-            BORN v{appVersion || '—'}
+            Born Again v{appVersion || '—'}
             {update?.hasUpdate && updateDismissed && <span className="status-trigger-dot" />}
           </button>
           {statusPopoverOpen && (

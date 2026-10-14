@@ -18,97 +18,147 @@
   font-display: swap;
   src: url('./assets/fonts/JetBrainsMono-Variable.woff2') format('woff2');
 }
+/* Born Again tokens (see docs/design/tokens.css). The legacy names below are
+   kept so the ~5k lines of component CSS keep working while screens migrate. */
 :root,
 :root[data-theme='dark'] {
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #131315;
-  --bg-panel: #1b1b1f;
-  --bg-hover: #232327;
-  --bg-active: #2b2b30;
+  --bg-primary: #08080a;
+  --bg-secondary: #0f0f12;
+  --bg-panel: #16161a;
+  --bg-hover: #1e1e23;
+  --bg-active: #27272d;
 
   /* Primary — the app's one interactive color: buttons that do something,
      focus rings, links. Same everywhere, regardless of tab. */
-  --accent: #8B6FD1;      /* Plum */
-  --accent-hover: #9D82E0;
-  --on-accent: #17111f;   /* text on a filled accent button */
+  --accent: #9a80e6;      /* Plum */
+  --accent-hover: #ad97f0;
+  --on-accent: #120d1e;   /* text on a filled accent button */
 
-  --text-primary: #f3f1ec;
-  --text-secondary: #a8a5a3;
-  --border: #2a2a2f;
+  --text-primary: #f4f2ee;
+  --text-secondary: #b2afaa;
+  --text-tertiary: #8a8782;
+  --border: #26262c;
+  --border-strong: #3a3a42;
 
-  --danger: #f2545b;      /* reserved for actual errors/destructive actions — never decorative */
-  --ok: #4cb679;
-  --warn: #f0883e;
+  --danger: #ff5b61;      /* reserved for actual errors/destructive actions — never decorative */
+  --ok: #4cc17f;
+  --warn: #f0983e;
   --on-danger: #ffffff;
 
   /* Content identity — tabs, badges, queue-item borders. Never on a
-     button, so it's never confused with an action. No red in this set. */
-  --sermons: #C9C2B4;      /* Quiet Stone — the app's original/default content, no color needed */
-  --sermons-wash: rgba(201, 194, 180, 0.10);
+     button, so it's never confused with an action. */
+  --sermons: #cfc8ba;      /* Quiet Stone */
+  --sermons-wash: rgba(207, 200, 186, 0.10);
   --on-sermons: #1a1712;
-  --bible: #6FA37A;        /* Sage */
-  --bible-wash: rgba(111, 163, 122, 0.16);
+  --bible: #7ab487;        /* Sage */
+  --bible-wash: rgba(122, 180, 135, 0.16);
   --on-bible: #08130a;
-  --songs: #C98A3E;        /* Muted Amber */
-  --songs-wash: rgba(201, 138, 62, 0.15);
+  --songs: #d49a4c;        /* Muted Amber */
+  --songs-wash: rgba(212, 154, 76, 0.15);
   --on-songs: #1a1305;
-  --screens: #4FA8E0;      /* Ice Blue — Stage monitor / Screens menu only */
-  --screens-wash: rgba(79, 168, 224, 0.15);
+  --screens: #5db4ea;      /* Ice Blue — Stage monitor / Screens menu only */
+  --screens-wash: rgba(93, 180, 234, 0.15);
   --on-screens: #06131c;
 
-  --gold: #C98A3E;         /* update banner + alert accents — same Amber as Songs, not a separate color */
-  --gold-border: #A8712E;
-  --live: #34c759;        /* the "screen is live" indicator dot — its own signal, on purpose */
-  --scrim: rgba(0, 0, 0, 0.6);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.34);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.42);
-  --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.5);
+  --gold: #d49a4c;         /* update banner + alert accents — same Amber as Songs */
+  --gold-border: #a8712e;
+  --live: #ff4d4f;         /* ON AIR. Red is reserved for live + destructive. */
+  --scrim: rgba(4, 4, 6, 0.64);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.56);
 }
 
-/* Light theme — same roles, warm-neutral instead of GitHub-light-derived.
-   Projection and the stage monitor never use these; they stay dark. */
+/* Light theme — same roles, warm-neutral. Projection and the stage monitor
+   never use these; they stay dark. */
 :root[data-theme='light'] {
-  --bg-primary: #ffffff;
+  --bg-primary: #f4f1ea;
   --bg-secondary: #fbfaf7;
-  --bg-panel: #f3f0ea;
-  --bg-hover: #ece7dd;
-  --bg-active: #e6e0d4;
+  --bg-panel: #ffffff;
+  --bg-hover: #f0ece3;
+  --bg-active: #e6e0d3;
 
-  --accent: #5F4499;
-  --accent-hover: #4E3680;
+  --accent: #5b3fb0;
+  --accent-hover: #4a3294;
   --on-accent: #ffffff;
 
-  --text-primary: #1c1a16;
-  --text-secondary: #666053;
-  --border: #e2dccd;
+  --text-primary: #1a1814;
+  --text-secondary: #55503f;
+  --text-tertiary: #6d6755;
+  --border: #e3ddcf;
+  --border-strong: #cfc7b5;
 
   --danger: #c22530;
-  --ok: #1f7a49;
-  --warn: #a8590f;
+  --ok: #1b7544;
+  --warn: #9a520c;
   --on-danger: #ffffff;
 
-  --sermons: #8A8064;
-  --sermons-wash: rgba(138, 128, 100, 0.10);
+  --sermons: #7d745a;
+  --sermons-wash: rgba(125, 116, 90, 0.10);
   --on-sermons: #ffffff;
-  --bible: #3F7048;
-  --bible-wash: rgba(63, 112, 72, 0.10);
+  --bible: #38703f;
+  --bible-wash: rgba(56, 112, 63, 0.10);
   --on-bible: #ffffff;
-  --songs: #8A5D1F;
-  --songs-wash: rgba(138, 93, 31, 0.10);
+  --songs: #86581a;
+  --songs-wash: rgba(134, 88, 26, 0.10);
   --on-songs: #ffffff;
-  --screens: #1F6FA3;
-  --screens-wash: rgba(31, 111, 163, 0.10);
+  --screens: #1a6aa0;
+  --screens-wash: rgba(26, 106, 160, 0.10);
   --on-screens: #ffffff;
 
-  --gold: #8A5D1F;
-  --gold-border: #6B4718;
-  --live: #1f883d;
-  --scrim: rgba(0, 0, 0, 0.4);
+  --gold: #86581a;
+  --gold-border: #6b4718;
+  --live: #d3202a;
+  --scrim: rgba(20, 16, 8, 0.4);
   --shadow-sm: 0 1px 2px rgba(20, 16, 8, 0.08);
-  --shadow-md: 0 6px 20px rgba(20, 16, 8, 0.1);
-  --shadow-lg: 0 16px 40px rgba(20, 16, 8, 0.12);
-  --shadow-xl: 0 28px 70px rgba(20, 16, 8, 0.16);
+  --shadow-md: 0 8px 24px rgba(20, 16, 8, 0.1);
+  --shadow-lg: 0 16px 40px rgba(20, 16, 8, 0.14);
+  --shadow-xl: 0 28px 70px rgba(20, 16, 8, 0.18);
+}
+
+/* High contrast — an overlay on whichever base theme is active
+   (html[data-contrast='true']): stronger lines, full-strength text. */
+:root[data-contrast='true'],
+:root[data-contrast='true'][data-theme='dark'] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-panel: #0a0a0a;
+  --bg-hover: #1c1c1c;
+  --bg-active: #2e2e2e;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #d6d6d6;
+  --border: #8c8c8c;
+  --border-strong: #ffffff;
+  --accent: #c9b6ff;
+  --accent-hover: #ffffff;
+  --on-accent: #000000;
+  --live: #ff6b6b;
+  --sermons: #ffffff;
+  --bible: #8dff9f;
+  --songs: #ffcf70;
+  --screens: #8fd3ff;
+}
+:root[data-contrast='true'][data-theme='light'] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-hover: #ededed;
+  --bg-active: #dcdcdc;
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-tertiary: #262626;
+  --border: #595959;
+  --border-strong: #000000;
+  --accent: #3b1f9a;
+  --accent-hover: #000000;
+  --on-accent: #ffffff;
+  --live: #b00010;
+  --sermons: #000000;
+  --bible: #0b4a1a;
+  --songs: #5c3a00;
+  --screens: #004a80;
 }
 
 :root {
@@ -139,17 +189,17 @@
 
   /* radius scale — replaces the old single --radius/--radius-lg pair */
   --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
   --r-full: 999px;
   --radius: var(--r-md);
   --radius-lg: var(--r-lg);
 
   /* motion — fast and quiet; a live service has no patience for slow chrome */
-  --dur-fast: 120ms;
+  --dur-fast: 90ms;
   --dur-base: 180ms;
-  --dur-slow: 260ms;
+  --dur-slow: 280ms;
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-in: cubic-bezier(.4, 0, 1, 1);
 
@@ -158,6 +208,11 @@
 
   --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent);
   --tap: var(--dur-fast) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 
 /* Keyboard-first: every interactive element gets a clear focus ring, and
@@ -226,11 +281,26 @@ body {
 .app-logo-born:hover {
   background: var(--bg-hover);
 }
-.app-logo-flame {
+.app-logo-born {
+  gap: 9px;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.app-logo-born .born-mark {
+  color: var(--accent);
   flex-shrink: 0;
-  color: var(--bible);
-  margin: 0 -0.01em;
-  transform: translateY(-1.5px);
+}
+.app-logo-word {
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--text-primary);
+}
+.app-logo-word b {
+  font-weight: 700;
+}
+.app-logo-word span {
+  font-weight: 300;
+  color: var(--accent);
 }
 
 .header-actions {
@@ -370,9 +440,76 @@ body {
 .search-panel {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.search-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Left icon rail — replaces the old top tab row; reclaims the height. */
+.app-rail {
+  width: 68px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+}
+.rail-spacer { flex: 1; }
+.rail-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 2px 7px;
+  min-height: 56px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color var(--tap), color var(--tap);
+}
+.rail-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.rail-btn.active { background: var(--bg-hover); color: var(--text-primary); }
+.rail-btn--sermons.active { color: var(--sermons); box-shadow: inset 2px 0 0 var(--sermons); }
+.rail-btn--bible.active { color: var(--bible); box-shadow: inset 2px 0 0 var(--bible); }
+.rail-btn--songs.active { color: var(--songs); box-shadow: inset 2px 0 0 var(--songs); }
+.rail-btn--queue.active { color: var(--accent); }
+.rail-badge {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+@media (max-width: 820px) {
+  .app-rail { width: 56px; }
+  .rail-btn span { display: none; }
+  .rail-btn { min-height: 44px; }
 }
 
 .panel-view {
@@ -393,7 +530,17 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width var(--dur-slow) cubic-bezier(.65, 0, .35, 1), opacity var(--dur-base) var(--ease-out);
 }
+/* Collapsed: slid away, still mounted so the queue never loses state. */
+.queue-panel.is-collapsed {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: width var(--dur-slow) cubic-bezier(.65, 0, .35, 1), opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-slow);
+}
+.queue-panel > * { min-width: 320px; }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 

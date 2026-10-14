@@ -3,10 +3,11 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { lazy, Suspense } from 'react'
 import './App.css'
-import { applyTheme, readCachedTheme } from './useTheme'
+import { applyContrast, applyTheme, readCachedContrast, readCachedTheme } from './useTheme'
 
 // Paint the right theme before the first frame; main reconciles on mount.
 applyTheme(readCachedTheme())
+applyContrast(readCachedContrast())
 
 // Design prototype (Phase 1): isolated, read-only, only reachable explicitly.
 const DrillDown = lazy(() => import('./prototype/DrillDown'))
