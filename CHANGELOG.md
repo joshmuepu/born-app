@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.13.0
+
+**New**
+- When you open or import a shared service queue, BORN now offers to add the songs that are missing from your library — so a song leader's new songs show up in **Songs** and search for good, not just for that one service. Nothing already in your library is ever overwritten, and you can always cancel or choose to import without adding anything.
+
+Song leaders: update too, so your shared queues carry each song's key along with the lyrics.
+
+**Fixed**
+- Turning on the Stage screen while BORN runs on a single computer could fill the whole operator screen, hiding the app underneath it with no way to get back — including at least one real church-computer incident. Stage no longer takes over the operator's own screen like that, and a new shortcut (`Ctrl/Cmd+Alt+Shift+W`) force-closes both Stage and Projection if a screen window ever gets stuck.
+- The Stage screen's own picker was hidden until Stage was already turned on, making it hard to choose the right screen ahead of time. You can now pick it before switching Stage on.
+- A computer with a projector or monitor set to "Duplicate"/mirror mode could cause Stage or Projection to mistakenly pick a screen that's really the same one as the operator's own display.
+- "Check for updates" could sit on "Checking…" indefinitely on a slow or flaky connection instead of giving up and saying so.
+- A couple of small consistency and data-hygiene fixes found during an end-to-end review (a mismatched button label; a settings value that re-corrected itself on every launch instead of staying fixed).
+
 ## 1.12.1
 
 **New**
