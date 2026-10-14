@@ -70,6 +70,12 @@ export interface SongItem extends QueueItemBase {
   songId: number
   title: string
   author?: string
+  /** The song's key, carried on the queue item itself (not just baked into
+   *  a slide's display-only `reference` string) so a shared/exported queue
+   *  can recreate a full library entry losslessly on another computer.
+   *  Optional — a file saved before this field existed simply won't have
+   *  it, same as any other field a future version adds. */
+  songKey?: string
 }
 
 export type QueueItem = QuoteItem | BibleItem | SongItem

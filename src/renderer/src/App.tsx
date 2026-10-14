@@ -505,6 +505,7 @@ export default function App() {
       songId: s.id,
       title: s.title,
       author: s.author ?? undefined,
+      songKey: s.songKey ?? undefined,
       slides: s.slides.map((sl) => ({
         text: sl.text,
         label: sl.label ?? undefined,
