@@ -101,8 +101,21 @@ export function getSettings(): AppSettings {
     const raw = JSON.parse(readFileSync(settingsPath(), 'utf-8')) as Partial<AppSettings>
     // The legacy default was 3.0 but the Text control still read "100%" — realign
     // an untouched value to the new, honest 100% (4.5).
-    if (raw.fontSize === 3) raw.fontSize = 4.5
+    const needsFontSizeRealign = raw.fontSize === 3
+    if (needsFontSizeRealign) raw.fontSize = 4.5
     cache = { ...DEFAULTS, ...raw }
+    // Without this, the correction above only ever lived in memory — every
+    // future launch kept re-deriving it from an unchanged 3.0 on disk, and
+    // anything that reads settings.json directly (support, a future
+    // migration) would see the stale, pre-fix value even though the app
+    // itself has shown the correct 100% the whole time.
+    if (needsFontSizeRealign) {
+      try {
+        writeFileSync(settingsPath(), JSON.stringify(cache, null, 2))
+      } catch (e) {
+        log.error('settings write failed (fontSize realign)', e)
+      }
+    }
   } catch {
     cache = { ...DEFAULTS }
   }
