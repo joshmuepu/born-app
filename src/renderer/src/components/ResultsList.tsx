@@ -218,7 +218,7 @@ export default function ResultsList({
                 className="btn-secondary btn-sm"
                 onClick={() => onAddToQueue(quote)}
               >
-                Add to Queue
+                + Queue
               </button>
               <button
                 className="btn-primary btn-sm"
