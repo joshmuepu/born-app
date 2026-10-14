@@ -1,0 +1,162 @@
+/* Born Again — design tokens (Phase 1 proposal).
+   Namespaced --ba-* so it can sit beside the current App.css variables while
+   the prototype is evaluated; Phase 2 migrates the app onto it and retires
+   the old names. Dark is the default (dim booth). */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../../src/renderer/src/assets/fonts/Inter-Variable.woff2') format('woff2');
+}
+
+:root,
+:root[data-theme='dark'] {
+  /* surfaces: 5 steps, each ~+4% lightness; depth comes from step + hairline, not shadow alone */
+  --ba-bg-0: #08080a; /* app canvas / behind everything */
+  --ba-bg-1: #0f0f12; /* panes */
+  --ba-bg-2: #16161a; /* raised: cards, columns */
+  --ba-bg-3: #1e1e23; /* hover */
+  --ba-bg-4: #27272d; /* pressed / selected */
+  --ba-line: #26262c; /* hairline */
+  --ba-line-strong: #3a3a42;
+
+  --ba-text-1: #f4f2ee; /* 17.6:1 on bg-0 */
+  --ba-text-2: #b2afaa; /* 9.4:1  */
+  --ba-text-3: #8a8782; /* 5.4:1 — the floor for any readable text */
+
+  /* v1 identity, kept: Plum is the one action colour */
+  --ba-accent: #9a80e6;
+  --ba-accent-hi: #ad97f0;
+  --ba-accent-lo: #6f56bd;
+  --ba-on-accent: #120d1e;
+  --ba-accent-wash: rgba(154, 128, 230, 0.14);
+  --ba-focus: #c1affa;
+
+  /* v1 content identity, kept: Stone / Sage / Amber (+ Ice for Screens) */
+  --ba-sermons: #cfc8ba;
+  --ba-bible: #7ab487;
+  --ba-songs: #d49a4c;
+  --ba-screens: #5db4ea;
+
+  --ba-live: #ff4d4f; /* ON AIR. Red is reserved for live + destructive. */
+  --ba-live-wash: rgba(255, 77, 79, 0.14);
+  --ba-ok: #4cc17f;
+  --ba-warn: #f0983e;
+  --ba-danger: #ff5b61;
+
+  --ba-scrim: rgba(4, 4, 6, 0.64);
+  --ba-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ba-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(0, 0, 0, 0.56), 0 0 0 1px var(--ba-line-strong);
+}
+
+:root[data-theme='light'] {
+  --ba-bg-0: #f4f1ea;
+  --ba-bg-1: #fbfaf7;
+  --ba-bg-2: #ffffff;
+  --ba-bg-3: #f0ece3;
+  --ba-bg-4: #e6e0d3;
+  --ba-line: #e3ddcf;
+  --ba-line-strong: #cfc7b5;
+  --ba-text-1: #1a1814;
+  --ba-text-2: #55503f;
+  --ba-text-3: #6d6755;
+  --ba-accent: #5b3fb0;
+  --ba-accent-hi: #4a3294;
+  --ba-accent-lo: #7a60c8;
+  --ba-on-accent: #ffffff;
+  --ba-accent-wash: rgba(91, 63, 176, 0.1);
+  --ba-focus: #5b3fb0;
+  --ba-sermons: #7d745a;
+  --ba-bible: #38703f;
+  --ba-songs: #86581a;
+  --ba-screens: #1a6aa0;
+  --ba-live: #d3202a;
+  --ba-live-wash: rgba(211, 32, 42, 0.1);
+  --ba-ok: #1b7544;
+  --ba-warn: #9a520c;
+  --ba-danger: #c22530;
+  --ba-scrim: rgba(20, 16, 8, 0.4);
+  --ba-shadow-1: 0 1px 2px rgba(20, 16, 8, 0.08);
+  --ba-shadow-2: 0 8px 24px rgba(20, 16, 8, 0.1), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(20, 16, 8, 0.18), 0 0 0 1px var(--ba-line-strong);
+}
+
+/* High contrast: pure black/white, 2px lines, no translucency. WCAG AAA text. */
+:root[data-theme='contrast'] {
+  --ba-bg-0: #000;
+  --ba-bg-1: #000;
+  --ba-bg-2: #0a0a0a;
+  --ba-bg-3: #1a1a1a;
+  --ba-bg-4: #2e2e2e;
+  --ba-line: #8c8c8c;
+  --ba-line-strong: #ffffff;
+  --ba-text-1: #ffffff;
+  --ba-text-2: #ffffff;
+  --ba-text-3: #d6d6d6;
+  --ba-accent: #c9b6ff;
+  --ba-accent-hi: #ffffff;
+  --ba-accent-lo: #c9b6ff;
+  --ba-on-accent: #000;
+  --ba-accent-wash: rgba(201, 182, 255, 0.28);
+  --ba-focus: #ffe14d;
+  --ba-live: #ff6b6b;
+  --ba-live-wash: rgba(255, 107, 107, 0.3);
+  --ba-sermons: #ffffff;
+  --ba-bible: #8dff9f;
+  --ba-songs: #ffcf70;
+  --ba-screens: #8fd3ff;
+  --ba-shadow-2: 0 0 0 2px var(--ba-line-strong);
+  --ba-shadow-3: 0 0 0 2px var(--ba-line-strong);
+}
+
+:root {
+  /* type: Inter (kept) + JetBrains Mono for codes. Scale ratio ~1.125, UI is
+     dense by design; reading text (sermon paragraphs) has its own tier. */
+  --ba-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ba-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --ba-fs-xs: 0.72rem;
+  --ba-fs-sm: 0.8rem;
+  --ba-fs-md: 0.9rem;
+  --ba-fs-lg: 1.02rem;
+  --ba-fs-xl: 1.25rem;
+  --ba-fs-2xl: 1.6rem;
+  --ba-fs-read: 1.18rem; /* sermon / lyric reading pane */
+  --ba-lh-tight: 1.25;
+  --ba-lh-read: 1.6;
+  --ba-tracking-caps: 0.09em;
+
+  /* spacing: 4px base */
+  --ba-1: 4px; --ba-2: 8px; --ba-3: 12px; --ba-4: 16px; --ba-5: 24px; --ba-6: 32px; --ba-7: 48px;
+
+  /* radius: slightly rounder than v1 for a softer, premium feel */
+  --ba-r-sm: 6px; --ba-r-md: 10px; --ba-r-lg: 14px; --ba-r-pill: 999px;
+
+  /* density: comfortable (default) / compact via [data-density] */
+  --ba-row-h: 44px;
+  --ba-hit: 40px; /* min interactive target; 48px under [data-touch] */
+
+  /* motion — purposeful, interruptible (CSS transitions, never keyframe locks) */
+  --ba-dur-1: 90ms;  /* hover, press */
+  --ba-dur-2: 180ms; /* small state change */
+  --ba-dur-3: 280ms; /* column slide / panel */
+  --ba-ease: cubic-bezier(0.2, 0.7, 0.2, 1);       /* decelerate-in: default */
+  --ba-ease-inout: cubic-bezier(0.65, 0, 0.35, 1); /* panel slide */
+
+  /* z layers */
+  --ba-z-base: 0;
+  --ba-z-pane: 10;
+  --ba-z-sticky: 20;
+  --ba-z-popover: 40;
+  --ba-z-modal: 60;
+  --ba-z-toast: 80;
+  --ba-z-palette: 90;
+}
+:root[data-density='compact'] { --ba-row-h: 34px; --ba-hit: 32px; }
+:root[data-touch='true'] { --ba-hit: 48px; --ba-row-h: 52px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ba-dur-1: 0ms; --ba-dur-2: 0ms; --ba-dur-3: 0ms; }
+}
