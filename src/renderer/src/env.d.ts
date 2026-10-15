@@ -124,6 +124,8 @@ declare global {
       }>
       mediaBackgroundSet: (scope: 'destination' | 'channel', id: string, bg: { mediaId: string | null; dim?: number } | null) => Promise<boolean>
       onMediaBackgroundsChanged: (cb: () => void) => () => void
+      mediaPickPdf: () => Promise<{ canceled: boolean; name?: string; bytes?: ArrayBuffer; error?: string }>
+      mediaTestSetPdf: (path: string) => Promise<boolean>
       mediaReveal: (id: string) => Promise<boolean>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
       mediaPathsForFiles: (files: File[]) => string[]

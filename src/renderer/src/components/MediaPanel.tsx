@@ -15,7 +15,8 @@ import {
   Trash2,
   X,
   Film,
-  Layers
+  Layers,
+  FileText
 } from 'lucide-react'
 import MediaBackgrounds, { useBackgroundTargets } from './MediaBackgrounds'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
@@ -26,6 +27,7 @@ import { useAppActions } from '../AppActions'
 import { startQueueDrag } from '../dragItem'
 import type { MediaFolder, MediaImportResult, MediaRecord, MediaStatus } from '../../../shared/media'
 import { MEDIA_LIMITS } from '../../../shared/media'
+import { importPdf, PDF_MESSAGES } from '../pdfImport'
 import './MediaPanel.css'
 
 type Category =
@@ -93,6 +95,8 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
   const [folderEdit, setFolderEdit] = useState<{ id: string | null; name: string } | null>(null)
   const [loaded, setLoaded] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
+  const [pdfJob, setPdfJob] = useState<{ name: string; page: number; total: number } | null>(null)
+  const pdfAbort = useRef<AbortController | null>(null)
   const [cols, setCols] = useState(4)
   const menu = useContextMenu()
   const folderMenu = useContextMenu()
@@ -208,6 +212,46 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     },
     [linkInPlace, cat, summarize]
   )
+
+  const importPdfFile = useCallback(async () => {
+    if (pdfJob) return
+    const picked = await window.electronAPI.mediaPickPdf()
+    if (picked.canceled) return
+    const name = picked.name ?? 'PDF'
+    if (picked.error === 'too-large' || !picked.bytes) {
+      setReport({ added: 0, dup: 0, failed: [{ name, message: picked.error === 'too-large' ? PDF_MESSAGES['too-large'] : PDF_MESSAGES.io }], warnings: [] })
+      return
+    }
+    const ac = new AbortController()
+    pdfAbort.current = ac
+    setPdfJob({ name, page: 0, total: 0 })
+    try {
+      const api = window.electronAPI
+      const out = await importPdf(
+        picked.bytes,
+        name,
+        {
+          importBuffer: (n, b, o) => api.mediaImportBuffer(n, b, o),
+          remove: (ids) => api.mediaRemove(ids).then(() => api.mediaPurgeNow()),
+          createFolder: (n) => api.mediaFolderCreate(n)
+        },
+        { signal: ac.signal, onProgress: (p) => setPdfJob({ name, page: p.page, total: p.total }) }
+      )
+      if (!out.ok) {
+        setReport({ added: 0, dup: 0, failed: out.code === 'cancelled' ? [] : [{ name, message: out.message }], warnings: out.code === 'cancelled' ? [out.message] : [] })
+      } else {
+        const recs = (await Promise.all(out.mediaIds.map((id) => api.mediaGet(id)))).filter((r): r is MediaRecord => !!r)
+        setReport({ added: out.added, dup: out.reused, failed: [], warnings: [`“${out.name}”: ${recs.length} page${recs.length === 1 ? '' : 's'} are now a slideshow in the queue.`, ...out.warnings] })
+        onAddSlideshow(recs)
+      }
+    } catch {
+      setReport({ added: 0, dup: 0, failed: [{ name, message: PDF_MESSAGES.io }], warnings: [] })
+    } finally {
+      pdfAbort.current = null
+      setPdfJob(null)
+      void refresh()
+    }
+  }, [pdfJob, onAddSlideshow, refresh])
 
   const remove = useCallback(
     async (ids: string[]) => {
@@ -479,6 +523,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
         <div className="media-actions">
           <button className="btn-primary btn-sm" onClick={() => void pick(false)} disabled={!available.ok || !!progress}><Upload size={14} /> Add pictures</button>
           <button className="btn-quiet btn-sm" onClick={() => void pick(true)} disabled={!available.ok || !!progress}><FolderOpen size={14} /> Add folder</button>
+          <button className="btn-quiet btn-sm" onClick={() => void importPdfFile()} disabled={!available.ok || !!progress || !!pdfJob} title="Turn the pages of a PDF into a slideshow"><FileText size={14} /> Import PDF</button>
           <label className="media-link-toggle" title="Keep the original where it is instead of copying it into BORN's library. Use for very large files; the file must stay in place.">
             <input type="checkbox" checked={linkInPlace} onChange={(e) => setLinkInPlace(e.target.checked)} /> Don’t copy (link in place)
           </label>
@@ -492,6 +537,13 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
           )}
         </div>
 
+        {pdfJob && (
+          <div className="media-progress" role="status" aria-live="polite">
+            <div className="media-progress-bar"><i style={{ width: `${pdfJob.total ? Math.round((pdfJob.page / pdfJob.total) * 100) : 0}%` }} /></div>
+            <span>{pdfJob.total ? `Adding page ${pdfJob.page} of ${pdfJob.total} from “${pdfJob.name}”…` : `Reading “${pdfJob.name}”…`}</span>
+            <button className="btn-quiet btn-sm" onClick={() => pdfAbort.current?.abort()}>Cancel</button>
+          </div>
+        )}
         {progress && (
           <div className="media-progress" role="status" aria-live="polite">
             <div className="media-progress-bar"><i style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }} /></div>

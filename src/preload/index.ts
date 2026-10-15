@@ -365,6 +365,9 @@ const api = {
     ipcRenderer.on('media:backgrounds-changed', h)
     return () => ipcRenderer.removeListener('media:backgrounds-changed', h)
   },
+  mediaPickPdf: (): Promise<{ canceled: boolean; name?: string; bytes?: ArrayBuffer; error?: string }> => ipcRenderer.invoke('media:pick-pdf'),
+  /** Test-only: honoured only when BORN_TEST_ALLOW_SET_PDF or BORN_TEST_PICK_PDF is set in the environment. */
+  mediaTestSetPdf: (path: string): Promise<boolean> => ipcRenderer.invoke('media:test-set-pdf', path),
   mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */

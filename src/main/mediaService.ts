@@ -210,6 +210,37 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     const d = await l.display(id)
     return d ? { ok: true, status } : { ok: false, status: 'unreadable' as const }
   })
+  // PDF import: the file dialog and the read live here; the page rendering is done in the window (pdfImport.ts).
+  // Dev/test only (like BORN_USER_DATA_DIR): BORN_TEST_PICK_PDF=<file> answers the picker without a dialog,
+  // so automated runs can drive the real import. Unset in every normal run.
+  let testPdfPath = process.env.BORN_TEST_PICK_PDF || ''
+  ipcMain.handle('media:pick-pdf', async () => {
+    if (testPdfPath) {
+      const p = testPdfPath
+      try {
+        const buf = readFileSync(p)
+        return { canceled: false, name: p.split(/[\\/]/).pop(), bytes: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) }
+      } catch {
+        return { canceled: false, error: 'io', name: p.split(/[\\/]/).pop() }
+      }
+    }
+    const r = await dialog.showOpenDialog(getMain() ?? (undefined as never), { title: 'Choose a PDF', properties: ['openFile'], filters: [{ name: 'PDF', extensions: ['pdf'] }] })
+    if (r.canceled || !r.filePaths[0]) return { canceled: true }
+    const p = r.filePaths[0]
+    try {
+      const st = statSync(p)
+      if (st.size > 200 * 1024 * 1024) return { canceled: false, error: 'too-large', name: p.split(/[\\/]/).pop() }
+      const buf = readFileSync(p)
+      return { canceled: false, name: p.split(/[\\/]/).pop(), bytes: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) }
+    } catch {
+      return { canceled: false, error: 'io', name: p.split(/[\\/]/).pop() }
+    }
+  })
+  ipcMain.handle('media:test-set-pdf', (_e, path: string) => {
+    if (!process.env.BORN_TEST_PICK_PDF && !process.env.BORN_TEST_ALLOW_SET_PDF) return false
+    testPdfPath = String(path || '')
+    return true
+  })
   ipcMain.handle('media:reveal', (_e, id: string) => {
     const l = getMediaLibrary()
     const rec = l?.get(id)
