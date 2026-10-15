@@ -479,6 +479,7 @@ export default function App() {
       if (queueIndex != null) {
         setPlayedIds((prev) => (prev.has(item.id) ? prev : new Set(prev).add(item.id)))
       }
+      setStagedId((cur) => (cur === item.id ? null : cur))
       setIsScreenBlanked(false)
       setBiblePreview(null) // projecting anything ends a queue-item preview
       if (item.kind === 'song') setFocusSongId(item.songId)
@@ -565,21 +566,39 @@ export default function App() {
   // tail for them), so fetchAdjacentSlide correctly resolves to null there —
   // "end of item" stays accurate for songs.
   const [nextPreviewText, setNextPreviewText] = useState<string | undefined>(undefined)
+  const [nextFlowPayload, setNextFlowPayload] = useState<SlidePayload | null>(null)
+  // The queue item the operator has staged for the Preview pane by clicking its
+  // row. Staging only ever changes Preview; nothing goes live until it's taken.
+  const [stagedId, setStagedId] = useState<string | null>(null)
   useEffect(() => {
     const p = projected
     if (!p) {
       setNextPreviewText(undefined)
+      setNextFlowPayload(null)
       return
     }
     const loaded = p.item.slides[p.slide + 1]?.text
     if (loaded !== undefined) {
       setNextPreviewText(loaded)
+      setNextFlowPayload(slidePayload(p.item, p.slide + 1))
       return
     }
     setNextPreviewText(undefined)
+    setNextFlowPayload(null)
     fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current).then((ext) => {
       if (projectedRef.current !== p) return // stale — a newer projection landed first
       setNextPreviewText(ext?.slide.text)
+      setNextFlowPayload(
+        ext
+          ? {
+              kind: p.item.kind,
+              text: ext.slide.text,
+              label: ext.slide.label,
+              reference: ext.slide.reference,
+              marker: ext.slide.marker
+            }
+          : null
+      )
     })
   }, [projected])
 
@@ -748,7 +767,10 @@ export default function App() {
   const handleSelectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) followForItem(item, true)
+      if (item) {
+        setStagedId(item.id)
+        followForItem(item, true)
+      }
     },
     [followForItem]
   )
@@ -826,6 +848,22 @@ export default function App() {
     setIsScreenBlanked(b)
     window.electronAPI.setBlankScreen(b)
   }, [isScreenBlanked])
+
+  // Preview/Live pair inputs. A staged item that has left the queue simply
+  // stops being staged.
+  const stagedItem = stagedId ? (serviceQueue.find((it) => it.id === stagedId) ?? null) : null
+  const stagedPayload = stagedItem ? slidePayload(stagedItem, 0) : null
+  const previewNextPayload =
+    nextFlowPayload ?? (!projected && serviceQueue[0] ? slidePayload(serviceQueue[0], 0) : null)
+  const handleTake = useCallback(() => {
+    const q = queueRef.current
+    const idx = stagedId ? q.findIndex((it) => it.id === stagedId) : -1
+    if (idx >= 0) {
+      handleProjectFromQueue(idx)
+    } else {
+      handleNext()
+    }
+  }, [stagedId, handleProjectFromQueue, handleNext])
 
   const handleFontSizeChange = useCallback((delta: number) => {
     setFontSize((prev) => {
@@ -1827,6 +1865,16 @@ export default function App() {
             recents={recents}
             onOpenRecent={handleOpenRecent}
             openError={openError}
+            channels={channels}
+            outputs={outputs}
+            fontSize={fontSize}
+            stagedPayload={stagedPayload}
+            stagedTitle={stagedItem ? itemTitle(stagedItem) : null}
+            nextPayload={previewNextPayload}
+            onTake={handleTake}
+            onUnstage={() => setStagedId(null)}
+            onToggleBlank={handleToggleBlank}
+            onClearChannel={(id) => window.electronAPI.clearChannel(id)}
           />
         </div>
       </main>

@@ -143,6 +143,15 @@ export interface ObservabilityChannel {
   destinations: ObservabilityDestination[]
 }
 
+/** One channel's authoritative output state (see main/index.ts liveSnapshot). */
+export interface LiveChannel {
+  id: string
+  label: string
+  current: SlidePayload | null
+  next: SlidePayload | null
+  blanked: boolean
+}
+
 export interface Songbook {
   id: string
   label: string
@@ -480,6 +489,13 @@ const api = {
   // Observability — pull-only (the view polls while open; see its own
   // component for why this isn't a push subscription).
   getObservability: (): Promise<ObservabilityChannel[]> => ipcRenderer.invoke('observability:snapshot'),
+  // Live output state — the Preview/Live pair's source of truth.
+  getLiveState: (): Promise<LiveChannel[]> => ipcRenderer.invoke('live:snapshot'),
+  onLiveChanged: (callback: (live: LiveChannel[]) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, live: LiveChannel[]): void => callback(live)
+    ipcRenderer.on('live:changed', handler)
+    return () => ipcRenderer.removeListener('live:changed', handler)
+  },
   syncWebRemote: (state: {
     queue: Array<{
       id: string

@@ -18,6 +18,9 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'electronAPI', {
     writable: true,
     value: {
+      getLiveState: vi.fn(() => Promise.resolve([])),
+      onLiveChanged: noopUnsub,
+      getObservability: vi.fn(() => Promise.resolve([])),
       openProjection: noop,
       closeProjection: noop,
       showSlide: vi.fn(),
