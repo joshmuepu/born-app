@@ -2553,7 +2553,9 @@ export default function App() {
               <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (also cancels anything still loading)</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></dt><dd>Show the church logo (set in Media)</dd></div>
+              <div><dt><kbd>Q</kbd> / <kbd>F</kbd> in Media</dt><dd>Add the picture to the queue / favorite it</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>

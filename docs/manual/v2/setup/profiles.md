@@ -25,3 +25,5 @@ between them; on a fixed profile, it should stay the same either way.
 ---
 
 Next: [Songbooks & import](songbooks.md).
+
+> **Pictures:** a picture is always a full frame. On **Auto**, pictures use **Full-screen**; on a fixed **Lower third** output they are not drawn.

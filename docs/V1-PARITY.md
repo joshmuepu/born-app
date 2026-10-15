@@ -71,3 +71,11 @@ v2's code from v1's), not an individual port. Confirmed: `595a728`
 | Why it matters to v1 | v1.13.0 (`main`, identical `migrateQueue`) opens such a file **without crashing** — verified in the real app — showing the shell as a quote row; its autosave preserves `ext`. v1 would still **crash its queue screen** on an *unknown top-level kind with slides* (`KIND_ICON[item.kind]` undefined, `ServiceQueue.tsx`); v2 never writes those. |
 | Optional v1 hotfix | Two lines in v1 (`KIND_ICON[item.kind] ?? FallbackIcon` and a default `itemTitle` branch) would make v1 safe against any future kind. Owner's decision; v1 was not touched. |
 | v2 status | **intentionally different** (v2-only feature) |
+
+## v2-only: Media (Phase 1a) — `docs/qa/v2-media-1a-report.md`
+
+| Item | v2 status | Notes |
+|---|---|---|
+| Media library, pictures, slideshows, still backgrounds, PDF import, preflight, logo key, sharing by content hash | **intentionally different** (v2-only feature) | v1 has no media area. v1 opens a v2 file with pictures safely (verified with real v1.13.0; see the compat-shell note above) |
+| `Esc` also cancels a take still in flight | **intentionally different** | v1's Esc is unchanged |
+| Optional two-line v1 hotfix so v1 never crashes on an unknown queue item kind | **not started** (owner's decision) | Not required for v2 files, which never write such kinds |
