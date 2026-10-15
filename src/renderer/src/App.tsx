@@ -1,8 +1,13 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
+import SermonModeStrip from './components/SermonModeStrip'
+import SavedPanel from './components/SavedPanel'
+import { AppActionsContext, type AppActions } from './AppActions'
+import { useNavHistory, type NavEntry } from './navHistory'
+import type { Favorite } from './favorites'
 import { isQueueDrag, readQueueDrag, type QueueDragPayload } from './dragItem'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
@@ -183,6 +188,10 @@ export default function App() {
     }
   }, [queueOpen])
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
+  const [browseModeRequest, setBrowseModeRequest] = useState<{
+    tab: 'date' | 'series' | 'location' | 'recent'
+    nonce: number
+  } | null>(null)
   /** Song the Songs panel should have open (for the follow-along view). */
   const [focusSongId, setFocusSongId] = useState<number | null>(null)
   /** Chapter the Bible panel should show when the operator is previewing a queue
@@ -869,6 +878,115 @@ export default function App() {
     },
     [bibleTranslation, mutateQueue, pushToast]
   )
+  // ── Back / forward history across the drill-down ───────────────────────────
+  // Every time the operator opens a sermon, a chapter or a song it is noted;
+  // Alt+←/→, the mouse's back/forward buttons or the header chevrons walk it.
+  // Going back only *navigates* (re-opens the thing) — it never projects.
+  const applyNav = useCallback((entry: NavEntry) => {
+    if (entry.kind === 'sermon') {
+      setTopTab('sermons')
+      setSermonsTab('search')
+      setFollowSermon({ sermonId: entry.sermonId, anchorRef: entry.anchorRef })
+    } else if (entry.kind === 'bible') {
+      setTopTab('bible')
+      setBiblePreview({ bookNum: entry.bookNum, chapter: entry.chapter, verse: entry.verse })
+    } else {
+      setTopTab('songs')
+      // Re-opening the same song that is already focused must still re-open it.
+      setFocusSongId(null)
+      window.setTimeout(() => setFocusSongId(entry.songId), 0)
+    }
+  }, [])
+  const {
+    record: recordNav,
+    back: navBack,
+    forward: navForward,
+    canBack: canNavBack,
+    canForward: canNavForward
+  } = useNavHistory(applyNav)
+
+  // A sermon opened from a search result / a favorite / the palette lands as
+  // the follow view — note it.
+  useEffect(() => {
+    if (followSermon) {
+      recordNav({ kind: 'sermon', sermonId: followSermon.sermonId, anchorRef: followSermon.anchorRef })
+    }
+  }, [followSermon?.sermonId, followSermon?.anchorRef, recordNav]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const el = e.target as HTMLElement | null
+      const typing =
+        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+      if (typing) return
+      e.preventDefault()
+      if (e.key === 'ArrowLeft') navBack()
+      else navForward()
+    }
+    const onMouse = (e: MouseEvent): void => {
+      if (e.button === 3) {
+        e.preventDefault()
+        navBack()
+      } else if (e.button === 4) {
+        e.preventDefault()
+        navForward()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mouseup', onMouse)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mouseup', onMouse)
+    }
+  }, [navBack, navForward])
+
+  // Favorites / recents slide-over, and the actions panels' context menus use.
+  const [savedOpen, setSavedOpen] = useState(false)
+  const openSermonAt = useCallback((sermonId: number, anchorRef: string) => {
+    setTopTab('sermons')
+    setSermonsTab('search')
+    setFollowSermon({ sermonId, anchorRef })
+  }, [])
+  const openVerseAt = useCallback((v: { bookNum: number; chapter: number; verse: number }) => {
+    setTopTab('bible')
+    setBiblePreview(v)
+    recordNav({ kind: 'bible', ...v })
+  }, [recordNav])
+  const openSongById = useCallback((songId: number) => {
+    setTopTab('songs')
+    setFocusSongId(songId)
+  }, [])
+  const addNextInQueue = useCallback(
+    (payload: QueueDragPayload) => {
+      const live = projectedRef.current?.queueIndex
+      void handleDropToQueue(payload, (live ?? -1) + 1)
+    },
+    [handleDropToQueue]
+  )
+  const addFavoriteToQueue = useCallback(
+    (f: Favorite) => {
+      const at = queueRef.current.length
+      if (f.kind === 'sermon') void handleDropToQueue({ type: 'quote', quote: f.quote }, at)
+      else if (f.kind === 'verse') void handleDropToQueue({ type: 'bible', reference: f.reference }, at)
+      else void handleDropToQueue({ type: 'song', songId: f.songId }, at)
+    },
+    [handleDropToQueue]
+  )
+  const appActions = useMemo<AppActions>(
+    () => ({
+      addNext: addNextInQueue,
+      openSermon: openSermonAt,
+      openVerse: openVerseAt,
+      openSong: openSongById,
+      notify: (message) => {
+        pushToast({ message, timeoutMs: 2500 })
+      }
+    }),
+    [addNextInQueue, openSermonAt, openVerseAt, openSongById, pushToast]
+  )
+
   const handleReorder = useCallback(
     (from: number, to: number) => {
       const before = queueRef.current
@@ -1623,6 +1741,7 @@ export default function App() {
   }, [projected, projectionOpen, isScreenBlanked])
 
   return (
+    <AppActionsContext.Provider value={appActions}>
     <div className="app">
       <header className="app-header">
         <button
@@ -1637,6 +1756,26 @@ export default function App() {
         </button>
 
         <div className="header-actions">
+          <div className="nav-history" role="group" aria-label="History">
+            <button
+              className="btn-icon"
+              onClick={navBack}
+              disabled={!canNavBack}
+              title="Back to what you had open (Alt+←)"
+              aria-label="Back"
+            >
+              <ChevronLeft width={16} height={16} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+            <button
+              className="btn-icon"
+              onClick={navForward}
+              disabled={!canNavForward}
+              title="Forward (Alt+→)"
+              aria-label="Forward"
+            >
+              <ChevronRight width={16} height={16} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
           <button
             className="palette-trigger"
             onClick={() => setPaletteOpen(true)}
@@ -1882,6 +2021,23 @@ export default function App() {
             ))}
             <span className="rail-spacer" />
             <button
+              className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
+              onClick={() => setSavedOpen((v) => !v)}
+              aria-pressed={savedOpen}
+              title="Favorites and recents"
+            >
+              <Star width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Saved</span>
+            </button>
+            <button
+              className="rail-btn rail-btn--open"
+              onClick={handleOpenService}
+              title="Open a saved service file"
+            >
+              <FolderOpen width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Open</span>
+            </button>
+            <button
               className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
               onClick={toggleQueue}
               onDragOver={(e) => {
@@ -1908,11 +2064,15 @@ export default function App() {
           </nav>
           <div className="search-main">
           <div className="panel-view" hidden={topTab !== 'sermons'}>
-            <div className="panel-subtab-bar">
-              <button className={`panel-subtab${sermonsTab === 'search' ? ' active' : ''}`} onClick={() => setSermonsTab('search')}>Search</button>
-              <button className={`panel-subtab${sermonsTab === 'browse' ? ' active' : ''}`} onClick={() => setSermonsTab('browse')}>Browse</button>
-            </div>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
+              <SermonModeStrip
+                active="search"
+                onSelect={(m) => {
+                  if (m === 'search') return
+                  setSermonsTab('browse')
+                  setBrowseModeRequest({ tab: m, nonce: Date.now() })
+                }}
+              />
               {followSermon ? (
                 <SermonFollowView
                   sermonId={followSermon.sermonId}
@@ -1949,6 +2109,9 @@ export default function App() {
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'browse'}>
               <BrowsePanel
+                onGoSearch={() => setSermonsTab('search')}
+                onSermonOpened={(sm) => recordNav({ kind: 'sermon', sermonId: sm.id, anchorRef: '' })}
+                modeRequest={browseModeRequest}
                 visible={topTab === 'sermons' && sermonsTab === 'browse'}
                 onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                 onAddToQueue={handleAddQuote}
@@ -1965,6 +2128,7 @@ export default function App() {
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
               onTranslationChange={setBibleTranslation}
+              onChapterOpened={(v) => recordNav({ kind: 'bible', ...v })}
             />
           </div>
 
@@ -1975,6 +2139,7 @@ export default function App() {
               focusSongId={focusSongId}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
+              onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
             />
           </div>
           </div>
@@ -2201,6 +2366,15 @@ export default function App() {
         }}
       />
 
+      <SavedPanel
+        open={savedOpen}
+        onClose={() => setSavedOpen(false)}
+        onOpenSermon={openSermonAt}
+        onOpenVerse={openVerseAt}
+        onOpenSong={openSongById}
+        onAddFavorite={addFavoriteToQueue}
+      />
+
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
 
       <footer className="status-bar">
@@ -2311,5 +2485,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+    </AppActionsContext.Provider>
   )
 }

@@ -8,6 +8,9 @@ import './SermonPanel.css'
 import { getRecentSearches } from '../recentSearches'
 import VirtualList from './VirtualList'
 import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { quoteMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
 
 interface Props {
   results: Quote[]
@@ -154,6 +157,8 @@ export default function ResultsList({
   onQuickSearch,
   onJumpToSermon
 }: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   if (loading) {
     return (
       <div className="results-loading">
@@ -199,6 +204,14 @@ export default function ResultsList({
             className={`result-item${live ? ' result-item--on-screen' : ''}`}
             draggable
             onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote })}
+            {...ctx.bind(() =>
+              quoteMenu(quote, {
+                actions,
+                project: () => onSendToProjection(quote),
+                addToQueue: () => onAddToQueue(quote),
+                openSermon: false
+              }).concat([{ id: 'open', label: 'Open the whole sermon', onSelect: () => onOpenSermon(quote), separatorBefore: true }])
+            )}
           >
             <div
               className="result-body"
@@ -245,6 +258,7 @@ export default function ResultsList({
           )
         }}
       />
+      {ctx.element}
     </div>
   )
 }

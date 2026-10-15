@@ -3,6 +3,8 @@ import { Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
 import PreviewLivePair from './PreviewLivePair'
 import { isQueueDrag, readQueueDrag, type QueueDragPayload } from '../dragItem'
+import { useContextMenu, type MenuItem } from './ContextMenu'
+import { copyText, useAppActions } from '../AppActions'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
 import './ServiceQueue.css'
@@ -150,6 +152,8 @@ export default function ServiceQueue({
   onClearChannel = () => {},
   onDropItem = () => {}
 }: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // Where a drop would land (0..queue.length), for both an item being reordered
   // and one dragged in from a browse pane. Shown as an insertion line.
@@ -243,7 +247,25 @@ export default function ServiceQueue({
   }))
   const showGroupHeaders = groups.length > 1
 
+  const queueMenu = (item: QueueItem, index: number): MenuItem[] => {
+    const ref = item.slides[0]?.reference ?? itemTitle(item)
+    return [
+      { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Project now', onSelect: () => onProject(index) },
+      { id: 'stage', label: 'Stage in Preview', hint: 'goes live only when taken', onSelect: () => onSelect(index) },
+      { id: 'up', label: 'Move up', hint: 'Alt+↑', disabled: index === 0, separatorBefore: true, onSelect: () => onReorder(index, index - 1) },
+      { id: 'down', label: 'Move down', hint: 'Alt+↓', disabled: index === queue.length - 1, onSelect: () => onReorder(index, index + 1) },
+      {
+        id: 'copy',
+        label: 'Copy reference',
+        separatorBefore: true,
+        onSelect: () => void copyText(ref).then((ok) => actions.notify(ok ? 'Copied the reference' : "Couldn't copy"))
+      },
+      { id: 'remove', label: 'Remove from queue', danger: true, onSelect: () => onRemove(index) }
+    ]
+  }
+
   const renderRow = (item: QueueItem, index: number): JSX.Element => {
+    const menuBind = ctx.bind(() => queueMenu(item, index))
     const active = index === activeIndex
     const played = !active && playedIds.has(item.id)
     const isNext = !active && projectionOpen && index === nextItemIndex
@@ -317,6 +339,8 @@ export default function ServiceQueue({
               onSelect(index)
             }
           }}
+          onKeyDownCapture={menuBind.onKeyDownCapture}
+          onContextMenu={menuBind.onContextMenu}
           {...dragProps}
         >
           <span className="queue-row-icon" aria-hidden="true">
@@ -357,6 +381,8 @@ export default function ServiceQueue({
             onSelect(index)
           }
         }}
+        onKeyDownCapture={menuBind.onKeyDownCapture}
+        onContextMenu={menuBind.onContextMenu}
         {...dragProps}
       >
         <div className="queue-item-meta">
@@ -386,6 +412,7 @@ export default function ServiceQueue({
 
   return (
     <div className="service-queue">
+      {ctx.element}
       <div className="queue-header">
         <h2>Service Queue</h2>
         <div className="queue-file-actions">

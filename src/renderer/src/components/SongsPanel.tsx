@@ -1,5 +1,8 @@
 import VirtualList, { type VirtualListHandle } from './VirtualList'
 import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { songMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
 import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown, Check, Plus } from 'lucide-react'
@@ -20,6 +23,8 @@ interface Props {
   focusSongId?: number | null
   onAddSong: (song: SongDetail) => void
   onProjectSong: (song: SongDetail, slide?: number) => void
+  /** A song was opened in the lyrics pane (for back/forward history). */
+  onSongOpened?: (songId: number) => void
 }
 
 const MIN_QUERY_LEN = 2
@@ -44,7 +49,16 @@ function groupByLetter(list: SongSummary[]): Array<{ letter: string; items: Song
 
 const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
-export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, onProjectSong }: Props) {
+export default function SongsPanel({
+  visible,
+  onScreen,
+  focusSongId,
+  onAddSong,
+  onProjectSong,
+  onSongOpened
+}: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [tab, setTab] = useState<'search' | 'browse'>('search')
   const [browseSection, setBrowseSection] = useState<'all' | 'recent'>('all')
 
@@ -173,9 +187,13 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     }
   }, [query, songbookFilter])
 
-  const openSong = useCallback((id: number) => {
-    window.electronAPI.getSong(id).then(setSelected)
-  }, [])
+  const openSong = useCallback(
+    (id: number) => {
+      window.electronAPI.getSong(id).then(setSelected)
+      onSongOpened?.(id)
+    },
+    [onSongOpened]
+  )
 
   const clearRecent = useCallback(() => {
     window.electronAPI.clearRecentSongs().then(() => setRecentSongs([]))
@@ -371,6 +389,12 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
         key={s.id}
         draggable
         onDragStart={(e) => startQueueDrag(e, { type: 'song', songId: s.id })}
+        {...ctx.bind(() =>
+          songMenu(
+            { id: s.id, title: s.title },
+            { actions, project: () => projectSong(s.id), addToQueue: () => queueSong(s.id) }
+          )
+        )}
       >
         <div className="song-row-body" role="button" tabIndex={0} onClick={() => openSong(s.id)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSong(s.id) } }}
@@ -660,6 +684,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
 
   return (
     <div className="songs-panel" data-view={view}>
+      {ctx.element}
       <div className="panel-subtab-bar">
         <button className={`panel-subtab${tab === 'search' ? ' active' : ''}`} onClick={() => setTab('search')}>
           Search

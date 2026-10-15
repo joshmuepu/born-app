@@ -2631,3 +2631,7 @@ kbd {
 :root .app .browse-panel[data-view='grid'] .browse-list--grid .browse-item {
   border-color: var(--border-strong);
 }
+
+.nav-history { display: inline-flex; gap: 2px; }
+.nav-history .btn-icon:disabled { opacity: 0.45; }
+.rail-btn--saved.active { color: var(--accent); }

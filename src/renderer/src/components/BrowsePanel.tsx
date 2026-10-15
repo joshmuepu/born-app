@@ -2,6 +2,12 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
 import VirtualList from './VirtualList'
 import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { quoteMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
+import { toggleFavorite, loadFavorites } from '../favorites'
+import type { MenuItem } from './ContextMenu'
+import SermonModeStrip, { type SermonMode } from './SermonModeStrip'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import type {
   Quote,
@@ -30,6 +36,12 @@ interface Props {
    *  Main's last-used language, or silently change what Main defaults to
    *  next launch. Main's own instance doesn't pass this. */
   initialLanguage?: string
+  /** The unified strip also carries a Search entry — this leaves Browse for it. */
+  onGoSearch?: () => void
+  /** A sermon was opened in the reading pane (for back/forward history). */
+  onSermonOpened?: (s: { id: number; title: string }) => void
+  /** Ask Browse to switch to a mode (from the strip shown on the search view). */
+  modeRequest?: { tab: 'date' | 'series' | 'location' | 'recent'; nonce: number } | null
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
@@ -78,9 +90,14 @@ export default function BrowsePanel({
   onScreen,
   onAddToQueue,
   onSendToProjection,
-  initialLanguage
+  initialLanguage,
+  onGoSearch,
+  onSermonOpened,
+  modeRequest
 }: Props) {
   // "Pull up last Sunday" is the most common live-service need, so Date leads.
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [tab, setTab] = useState<BrowseTab>('date')
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
@@ -192,6 +209,7 @@ export default function BrowsePanel({
   const loadParagraphs = useCallback(
     async (sermon: SermonIndexItem, lang = language) => {
       setSelectedSermon(sermon)
+      onSermonOpened?.({ id: sermon.id, title: sermon.title })
       setLoadingParagraphs(true)
       setParagraphs([])
       try {
@@ -201,7 +219,7 @@ export default function BrowsePanel({
         setLoadingParagraphs(false)
       }
     },
-    [language]
+    [language, onSermonOpened]
   )
 
   const changeLanguage = useCallback(
@@ -221,6 +239,41 @@ export default function BrowsePanel({
 
   // ── Render helpers ────────────────────────────────────────────────────────────
 
+  /** Right-click a sermon in the list: open it, favorite it, copy its name. */
+  const sermonItemMenu = (s: SermonIndexItem): MenuItem[] => {
+    const id = `S:${s.id}`
+    const on = loadFavorites().some((f) => f.id === id)
+    return [
+      { id: 'open', label: 'Open this sermon', onSelect: () => loadParagraphs(s) },
+      {
+        id: 'fav',
+        label: on ? 'Remove from favorites' : 'Favorite this sermon',
+        onSelect: () => {
+          const nowOn = toggleFavorite({
+            id,
+            kind: 'sermon',
+            title: s.title,
+            subtitle: `${s.date_code} · ${s.para_count}¶`,
+            quote: {
+              text: '',
+              sermonTitle: s.title,
+              dateCode: s.date_code,
+              sermonId: s.id,
+              paragraphIndex: 0,
+              paragraphRef: ''
+            }
+          })
+          actions.notify(nowOn ? 'Added to favorites' : 'Removed from favorites')
+        }
+      },
+      {
+        id: 'copy',
+        label: 'Copy title and date',
+        onSelect: () => void navigator.clipboard?.writeText(`${s.title} (${s.date_code})`).then(() => actions.notify('Copied the title'))
+      }
+    ]
+  }
+
   const renderSermonList = (): JSX.Element => (
     <div className="browse-sermons">
       <div className="browse-back-row">
@@ -236,6 +289,7 @@ export default function BrowsePanel({
             key={s.id}
             className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
             {...activate(() => loadParagraphs(s))}
+            {...ctx.bind(() => sermonItemMenu(s))}
           >
             <div className="browse-item-code">{s.date_code}</div>
             <div className="browse-item-title">{s.title}</div>
@@ -296,6 +350,14 @@ export default function BrowsePanel({
                 className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
                 draggable
                 onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote: q })}
+                {...ctx.bind(() =>
+                  quoteMenu(q, {
+                    actions,
+                    project: () => onSendToProjection(q, slideIndex),
+                    addToQueue: () => onAddToQueue(q),
+                    openSermon: false
+                  })
+                )}
               >
                 <div className="browse-para-ref">
                   {marker}
@@ -631,6 +693,7 @@ export default function BrowsePanel({
                 key={s.id}
                 className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
                 {...activate(() => loadParagraphs(s))}
+                {...ctx.bind(() => sermonItemMenu(s))}
               >
                 <div className="browse-item-code">{s.date_code}</div>
                 <div className="browse-item-title">{s.title}</div>
@@ -710,12 +773,15 @@ export default function BrowsePanel({
   const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
   useBackslashToggle(visible, toggleCollapsed)
 
-  const modes: Array<{ id: BrowseTab; label: string; Icon: typeof CalendarDays }> = [
-    { id: 'date', label: 'Date', Icon: CalendarDays },
-    { id: 'series', label: 'Series', Icon: BookOpen },
-    { id: 'location', label: 'Location', Icon: MapPin },
-    { id: 'recent', label: 'Recently Played', Icon: Clock }
-  ]
+  // The strip on the sermon search view can send us to a mode.
+  const lastModeNonce = useRef(0)
+  useEffect(() => {
+    if (modeRequest && modeRequest.nonce !== lastModeNonce.current) {
+      lastModeNonce.current = modeRequest.nonce
+      switchTab(modeRequest.tab)
+    }
+  }, [modeRequest, switchTab])
+
   const split = tab !== 'recent'
 
   return (
@@ -725,43 +791,34 @@ export default function BrowsePanel({
       data-collapsed={collapsed && split}
       data-open={selectedSermon ? 'true' : 'false'}
     >
-      <div className="browse-modes">
-        <div className="browse-mode-tabs" role="group" aria-label="Browse by">
-          {modes.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              className={`browse-mode${tab === id ? ' active' : ''}`}
-              onClick={() => switchTab(id)}
-              aria-pressed={tab === id}
-            >
-              <Icon width={15} height={15} strokeWidth={2} aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="browse-mode-tools">
-          {Object.keys(languages).length > 0 && (
-            <select
-              className="language-select browse-language"
-              value={language}
-              onChange={(e) => changeLanguage(e.target.value)}
-              title="Quote language"
-              aria-label="Quote language"
-            >
-              <option value="en">English</option>
-              {Object.entries(languages)
-                .filter(([code]) => code !== 'en')
-                .sort((a, b) => a[1].localeCompare(b[1]))
-                .map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {name}
-                  </option>
-                ))}
-            </select>
-          )}
-          <ViewToggle view={view} onChange={chooseView} />
-        </div>
-      </div>
+      <SermonModeStrip
+        active={tab}
+        onSelect={(m: SermonMode) => (m === 'search' ? onGoSearch?.() : switchTab(m))}
+        tools={
+          <>
+            {Object.keys(languages).length > 0 && (
+              <select
+                className="language-select browse-language"
+                value={language}
+                onChange={(e) => changeLanguage(e.target.value)}
+                title="Quote language"
+                aria-label="Quote language"
+              >
+                <option value="en">English</option>
+                {Object.entries(languages)
+                  .filter(([code]) => code !== 'en')
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+              </select>
+            )}
+            <ViewToggle view={view} onChange={chooseView} />
+          </>
+        }
+      />
 
       {split ? (
         <DrillShell
@@ -791,6 +848,7 @@ export default function BrowsePanel({
       ) : (
         <div className="browse-content">{renderRecent()}</div>
       )}
+      {ctx.element}
     </div>
   )
 }

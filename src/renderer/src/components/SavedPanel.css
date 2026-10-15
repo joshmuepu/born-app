@@ -1,0 +1,41 @@
+.saved-panel {
+  position: fixed;
+  z-index: 50;
+  top: 52px;
+  bottom: 30px;
+  left: 68px;
+  width: min(380px, calc(100vw - 80px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-left: 0;
+  border-radius: 0 var(--r-lg) var(--r-lg) 0;
+  box-shadow: var(--shadow-xl);
+  outline: none;
+  animation: saved-in var(--dur-slow) cubic-bezier(.65, 0, .35, 1);
+}
+.saved-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 10px 8px 12px; border-bottom: 1px solid var(--border); }
+.saved-tabs { display: flex; gap: 4px; }
+.saved-tabs button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px;
+  background: none; border: 1px solid transparent; border-radius: var(--r-md);
+  color: var(--text-secondary); font-size: var(--text-sm); font-weight: 600; cursor: pointer;
+}
+.saved-tabs button.is-active { background: var(--accent); color: var(--on-accent); }
+.saved-body { flex: 1; overflow-y: auto; padding: 6px 8px 14px; }
+.saved-group { padding: 12px 8px 4px; font-size: var(--text-2xs); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
+.saved-empty { padding: 10px 8px; color: var(--text-secondary); font-size: var(--text-sm); }
+.saved-row { display: flex; align-items: stretch; gap: 4px; border-radius: var(--r-md); border-left: 2px solid transparent; }
+.saved-row--sermon { border-left-color: var(--sermons); }
+.saved-row--verse { border-left-color: var(--bible); }
+.saved-row--song { border-left-color: var(--songs); }
+.saved-row:hover { background: var(--bg-hover); }
+.saved-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 8px; background: none; border: 0; color: var(--text-primary); text-align: left; cursor: pointer; }
+.saved-text { display: flex; flex-direction: column; min-width: 0; }
+.saved-title { font-size: var(--text-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-sub { font-size: var(--text-xs); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-add, .saved-remove { align-self: center; background: none; border: 1px solid var(--border-strong); border-radius: var(--r-sm); color: var(--text-secondary); font-size: var(--text-xs); min-height: 28px; padding: 0 8px; cursor: pointer; }
+.saved-add:hover, .saved-remove:hover { color: var(--text-primary); background: var(--bg-hover); }
+@keyframes saved-in { from { transform: translateX(-14px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .saved-panel { animation: none; } }

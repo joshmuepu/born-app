@@ -6,6 +6,9 @@ import { quoteToItem } from '../../../shared/queueItem'
 import { highlight } from '../highlight'
 import VirtualList from './VirtualList'
 import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { quoteMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
 import './SermonPanel.css'
 import type { HighlightMode } from '../../../shared/searchHighlight'
 
@@ -67,6 +70,8 @@ export default function SermonFollowView({
   onAddToQueue,
   language = 'en'
 }: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   // What to keep in view: the projected paragraph if we're live, else the
@@ -165,6 +170,14 @@ export default function SermonFollowView({
                 tabIndex={0}
                 draggable
                 onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote: fs.quote })}
+                {...ctx.bind(() =>
+                  quoteMenu(fs.quote, {
+                    actions,
+                    project: () => onProject(fs.quote, fs.slideIndex),
+                    addToQueue: () => onAddToQueue(fs.quote),
+                    openSermon: false
+                  })
+                )}
                 title="Put this paragraph on the screen — or drag it into the queue"
                 onClick={(e) => { onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
@@ -199,6 +212,7 @@ export default function SermonFollowView({
           }}
         />
       )}
+      {ctx.element}
     </div>
   )
 }
