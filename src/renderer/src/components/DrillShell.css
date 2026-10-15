@@ -1,0 +1,80 @@
+/* Shared drill-down frame: columns left, content right, slide-away handle. */
+.drill {
+  container-type: inline-size;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.drill-left {
+  flex: 0 0 auto;
+  width: clamp(300px, 40%, 460px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  transition: width var(--dur-slow) cubic-bezier(.65, 0, .35, 1), opacity var(--dur-base) var(--ease-out);
+}
+.drill-left > * { min-width: 300px; }
+.drill[data-collapsed='true'] .drill-left { width: 0; opacity: 0; pointer-events: none; }
+.drill-seam {
+  flex: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.drill-handle {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 56px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.drill-handle:hover { color: var(--text-primary); background: var(--bg-hover); }
+.drill-right {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.drill-idle {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* The pane's own "back to the list" controls are only needed when stacked. */
+.drill-right .follow-head > button,
+.drill-right .song-detail-head > .browse-back,
+.drill-right .browse-back--stack { display: none; }
+
+/* Narrow: one column with Back — columns and content never share the screen. */
+@container (max-width: 760px) {
+  .drill-left { width: 100%; }
+  .drill-seam { display: none; }
+  .drill-right { display: none; }
+  .drill[data-open='true'] .drill-left { display: none; }
+  .drill[data-open='true'] .drill-right { display: flex; }
+  .drill-left > * { min-width: 0; }
+  .drill-right .follow-head > button,
+  .drill-right .song-detail-head > .browse-back,
+  .drill-right .browse-back--stack { display: inline-flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-left { transition: none; }
+}

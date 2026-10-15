@@ -497,3 +497,27 @@
   border-color: var(--bible);
   background: var(--bg-panel);
 }
+
+/* ── Born Again drill-down ─────────────────────────────────────────────── */
+.bible-view-toggle { margin-left: auto; display: inline-flex; }
+.bible-browse-book-name { display: none; }
+.bible-left .bible-browse-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+.bible-left .bible-browse-scroll { padding: 12px; }
+.bible-panel[data-view='list'] .bible-browse-grid:not(.bible-browse-grid--chapters) {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bible-panel[data-view='list'] .bible-browse-book {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  text-align: left;
+  border-color: transparent;
+  background: none;
+  padding: 8px 10px;
+}
+.bible-panel[data-view='list'] .bible-browse-book:hover { background: var(--bg-hover); }
+.bible-panel[data-view='list'] .bible-browse-book-abbrev { display: none; }
+.bible-panel[data-view='list'] .bible-browse-book-name { display: inline; font-weight: 600; font-size: 0.9rem; }
+.bible-right .follow-list { padding-bottom: 32px; }

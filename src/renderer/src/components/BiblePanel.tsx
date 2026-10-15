@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { ChevronLeft, ChevronDown, X, BookOpen, Search, Check, Clock } from 'lucide-react'
 import type {
   BibleTranslation,
@@ -110,6 +111,10 @@ export default function BiblePanel({
   // place, no drawer.
   const [browseSection, setBrowseSection] = useState<'all' | 'recent'>('all')
   const [browseBook, setBrowseBook] = useState<number | null>(null)
+  const [view, chooseView] = useBrowseView()
+  const [collapsed, setCollapsed] = useState(false)
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
+  useBackslashToggle(visible, toggleCollapsed)
 
   const [recentRefs, setRecentRefs] = useState<Array<{ reference: string; translation: string }>>([])
   const [recentLoaded, setRecentLoaded] = useState(false)
@@ -712,6 +717,7 @@ export default function BiblePanel({
               {OT_BOOKS.map((b) => (
                 <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
                   <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-name">{b.name}</span>
                   <span className="bible-browse-book-count">{b.chapters} ch</span>
                 </button>
               ))}
@@ -726,6 +732,7 @@ export default function BiblePanel({
               {NT_BOOKS.map((b) => (
                 <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
                   <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-name">{b.name}</span>
                   <span className="bible-browse-book-count">{b.chapters} ch</span>
                 </button>
               ))}
@@ -753,7 +760,7 @@ export default function BiblePanel({
   )
 
   return (
-    <div className="bible-panel">
+    <div className="bible-panel" data-view={view}>
       <div className="panel-subtab-bar">
         <button className={`panel-subtab${tab === 'search' ? ' active' : ''}`} onClick={() => { setTab('search'); setShowSearch(true) }}>
           Search
@@ -761,9 +768,29 @@ export default function BiblePanel({
         <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => { setTab('browse'); setShowSearch(true) }}>
           Browse
         </button>
+        {tab === 'browse' && (
+          <span className="bible-view-toggle">
+            <ViewToggle view={view} onChange={chooseView} />
+          </span>
+        )}
       </div>
       <div className="bible-panel-main">
-        {readingView || (tab === 'search' ? searchView : browseView)}
+        <DrillShell
+          open={!!readingView}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          leftClassName="bible-left"
+          rightClassName="bible-right"
+          left={tab === 'search' ? searchView : browseView}
+          right={
+            readingView || (
+              <div className="drill-idle">
+                <BookOpen width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
+                <p>Pick a book and chapter, or look up a verse — the text opens here.</p>
+              </div>
+            )
+          }
+        />
       </div>
     </div>
   )

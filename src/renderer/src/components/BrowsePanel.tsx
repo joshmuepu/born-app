@@ -1,15 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  X,
-  CalendarDays,
-  BookOpen,
-  MapPin,
-  Clock,
-  LayoutGrid,
-  List as ListIcon
-} from 'lucide-react'
+import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
+import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import type {
   Quote,
   SermonIndexItem,
@@ -40,9 +31,6 @@ interface Props {
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
-type BrowseView = 'grid' | 'list'
-
-const VIEW_KEY = 'born.browseView'
 
 /** Make a clickable div keyboard-operable (Enter / Space). */
 function activate(onClick: () => void): {
@@ -102,22 +90,8 @@ export default function BrowsePanel({
   // Born Again drill-down: the browse columns sit on the left, the sermon text
   // always opens on the right. Grid or list is the operator's choice (remembered);
   // the columns can slide away so the text gets the full width.
-  const [view, setView] = useState<BrowseView>(() => {
-    try {
-      return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid'
-    } catch {
-      return 'grid'
-    }
-  })
+  const [view, chooseView] = useBrowseView()
   const [collapsed, setCollapsed] = useState(false)
-  const chooseView = useCallback((v: BrowseView) => {
-    setView(v)
-    try {
-      localStorage.setItem(VIEW_KEY, v)
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   // Series tab
   const [seriesList, setSeriesList] = useState<SeriesEntry[]>([])
@@ -718,19 +692,8 @@ export default function BrowsePanel({
     }
   }, [visible, loadDate])
 
-  // "\\" slides the browse columns away / back while this panel is in use.
-  useEffect(() => {
-    if (!visible) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== '\\' || e.ctrlKey || e.metaKey || e.altKey) return
-      const t = e.target as HTMLElement | null
-      if (t && /^(input|textarea|select)$/i.test(t.tagName)) return
-      e.preventDefault()
-      setCollapsed((c) => !c)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [visible])
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
+  useBackslashToggle(visible, toggleCollapsed)
 
   const modes: Array<{ id: BrowseTab; label: string; Icon: typeof CalendarDays }> = [
     { id: 'date', label: 'Date', Icon: CalendarDays },
@@ -781,64 +744,35 @@ export default function BrowsePanel({
                 ))}
             </select>
           )}
-          <div className="browse-view-toggle" role="group" aria-label="Browse view">
-            <button
-              className={view === 'grid' ? 'active' : ''}
-              onClick={() => chooseView('grid')}
-              aria-pressed={view === 'grid'}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <LayoutGrid width={15} height={15} strokeWidth={2} aria-hidden="true" />
-            </button>
-            <button
-              className={view === 'list' ? 'active' : ''}
-              onClick={() => chooseView('list')}
-              aria-pressed={view === 'list'}
-              title="List view"
-              aria-label="List view"
-            >
-              <ListIcon width={15} height={15} strokeWidth={2} aria-hidden="true" />
-            </button>
-          </div>
+          <ViewToggle view={view} onChange={chooseView} />
         </div>
       </div>
 
       {split ? (
-        <div className="browse-split">
-          <div className="browse-left">
+        <DrillShell
+          open={!!selectedSermon}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          leftClassName="browse-left"
+          rightClassName="browse-right"
+          left={
             <div className="browse-content">
               {tab === 'series' && renderSeries()}
               {tab === 'location' && renderLocation()}
               {tab === 'date' && renderDate()}
             </div>
-          </div>
-          <div className="browse-seam">
-            <button
-              className="browse-handle"
-              onClick={() => setCollapsed((c) => !c)}
-              aria-label={collapsed ? 'Show browse columns' : 'Hide browse columns'}
-              aria-expanded={!collapsed}
-              title={collapsed ? 'Show browse columns ( \\ )' : 'Hide browse columns ( \\ )'}
-            >
-              {collapsed ? (
-                <ChevronRight width={14} height={14} strokeWidth={2.4} />
-              ) : (
-                <ChevronLeft width={14} height={14} strokeWidth={2.4} />
-              )}
-            </button>
-          </div>
-          <div className="browse-right">
-            {selectedSermon ? (
+          }
+          right={
+            selectedSermon ? (
               renderParagraphs()
             ) : (
-              <div className="browse-idle">
+              <div className="drill-idle">
                 <BookOpen width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
                 <p>Pick a sermon — the text opens here.</p>
               </div>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
       ) : (
         <div className="browse-content">{renderRecent()}</div>
       )}

@@ -888,3 +888,27 @@
   align-self: flex-start;
   margin-top: 10px;
 }
+
+/* ── Born Again drill-down ─────────────────────────────────────────────── */
+.songs-view-toggle { margin-left: auto; display: inline-flex; }
+.songs-view-toggle + .songs-songbook-menu { margin-left: 0; }
+.song-row--selected { background: var(--songs-wash); border-color: color-mix(in srgb, var(--songs) 45%, transparent); }
+.songs-right .song-detail { padding-bottom: 32px; }
+
+/* Grid view: songs as compact cards, two-up in the left column. */
+.songs-panel[data-view='grid'] .songs-group,
+.songs-panel[data-view='grid'] .songs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  align-content: start;
+}
+.songs-panel[data-view='grid'] .songs-group > .songs-letter-head { grid-column: 1 / -1; }
+.songs-panel[data-view='grid'] .song-row {
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  gap: 6px;
+}
+.songs-panel[data-view='grid'] .song-row-actions { justify-content: flex-start; }

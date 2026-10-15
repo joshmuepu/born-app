@@ -64,59 +64,8 @@
 .browse-view-toggle button:hover { color: var(--text-primary); }
 .browse-view-toggle button.active { background: var(--accent); color: var(--on-accent); }
 
-.browse-split { flex: 1; display: flex; min-height: 0; position: relative; }
-.browse-left {
-  flex: 0 0 auto;
-  width: clamp(300px, 40%, 460px);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  transition: width var(--dur-slow) cubic-bezier(.65, 0, .35, 1), opacity var(--dur-base) var(--ease-out);
-}
-.browse-left > * { min-width: 300px; }
-.browse-panel[data-collapsed='true'] .browse-left { width: 0; opacity: 0; pointer-events: none; }
-.browse-seam {
-  flex: 0 0 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  background: var(--bg-secondary);
-}
-.browse-handle {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 56px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.browse-handle:hover { color: var(--text-primary); background: var(--bg-hover); }
-.browse-right {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-.browse-idle {
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 32px;
-  color: var(--text-tertiary);
-  text-align: center;
-}
 .browse-right .browse-paragraphs { padding-bottom: 32px; }
 .browse-right .browse-para-text { font-size: 1.04rem; line-height: 1.6; }
-.browse-right .browse-back--stack { display: none; }
 
 /* Compact calendar inside the left column so the sermon list keeps its room. */
 .browse-left .browse-cal-cell { min-height: 30px; }
@@ -151,21 +100,6 @@
   justify-content: space-between;
   align-items: baseline;
   min-height: 38px;
-}
-
-/* Narrow: a single column with Back — the grid and text never share the screen. */
-@container (max-width: 760px) {
-  .browse-left { width: 100%; }
-  .browse-seam { display: none; }
-  .browse-right { display: none; }
-  .browse-panel[data-open='true'] .browse-left { display: none; }
-  .browse-panel[data-open='true'] .browse-right { display: flex; }
-  .browse-right .browse-back--stack { display: inline-flex; }
-  .browse-left > * { min-width: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .browse-left { transition: none; }
 }
 
 .browse-language {
