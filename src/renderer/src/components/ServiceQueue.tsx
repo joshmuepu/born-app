@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
-import { Mic, BookOpen, Music, Check } from 'lucide-react'
+import { Mic, BookOpen, Music, Check, Image as ImageIcon, FileQuestion } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
 import PreviewLivePair from './PreviewLivePair'
 import { isQueueDrag, readQueueDrag, type QueueDragPayload } from '../dragItem'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import { copyText, useAppActions } from '../AppActions'
-import { itemTitle } from '../../../shared/queueItem'
+import { itemTitle, isProjectable, unprojectableReason } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
 import './ServiceQueue.css'
 
@@ -80,7 +80,9 @@ interface Props {
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
   quote: 'Quote',
   bible: 'Bible',
-  song: 'Song'
+  song: 'Song',
+  media: 'Media',
+  unknown: 'Unavailable'
 }
 
 /** Sermons/quotes are deliberately left as the app's neutral default
@@ -90,7 +92,9 @@ const KIND_BADGE: Record<QueueItem['kind'], string> = {
 const KIND_ICON: Record<QueueItem['kind'], typeof Mic> = {
   quote: Mic,
   bible: BookOpen,
-  song: Music
+  song: Music,
+  media: ImageIcon,
+  unknown: FileQuestion
 }
 
 /** Short preview line for a queue row. */
@@ -249,10 +253,15 @@ export default function ServiceQueue({
 
   const queueMenu = (item: QueueItem, index: number): MenuItem[] => {
     const ref = item.slides[0]?.reference ?? itemTitle(item)
+    const playableItem = isProjectable(item)
     return [
-      { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Project now', onSelect: () => onProject(index) },
-      { id: 'stage', label: 'Stage in Preview', hint: 'goes live only when taken', onSelect: () => onSelect(index) },
-      { id: 'up', label: 'Move up', hint: 'Alt+↑', disabled: index === 0, separatorBefore: true, onSelect: () => onReorder(index, index - 1) },
+      ...(playableItem
+        ? [
+            { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Project now', onSelect: () => onProject(index) },
+            { id: 'stage', label: 'Stage in Preview', hint: 'goes live only when taken', onSelect: () => onSelect(index) }
+          ]
+        : []),
+      { id: 'up', label: 'Move up', hint: 'Alt+↑', disabled: index === 0, separatorBefore: playableItem, onSelect: () => onReorder(index, index - 1) },
       { id: 'down', label: 'Move down', hint: 'Alt+↓', disabled: index === queue.length - 1, onSelect: () => onReorder(index, index + 1) },
       {
         id: 'copy',
@@ -269,7 +278,9 @@ export default function ServiceQueue({
     const active = index === activeIndex
     const played = !active && playedIds.has(item.id)
     const isNext = !active && projectionOpen && index === nextItemIndex
-    const Icon = KIND_ICON[item.kind]
+    const Icon = KIND_ICON[item.kind] ?? FileQuestion
+    const playable = isProjectable(item)
+    const whyNot = unprojectableReason(item)
     const dragProps = {
       draggable: true,
       onDragStart: (e: React.DragEvent) => {
@@ -334,11 +345,18 @@ export default function ServiceQueue({
           className={rowClass}
           role="button"
           tabIndex={0}
-          title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
-          onClick={() => onSelect(index)}
+          title={
+            !playable
+              ? `${whyNot ?? 'Not available'} — it stays in your service file; it cannot be shown here`
+              : played
+                ? 'Already shown — click to go to it'
+                : 'Go to this item to read it — use Project to put it on screen'
+          }
+          aria-disabled={!playable || undefined}
+          onClick={() => playable && onSelect(index)}
           onKeyDown={(e) => {
             if (moveWithKeys(e)) return
-            if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+            if (playable && (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
               e.preventDefault()
               onSelect(index)
             }
@@ -357,9 +375,15 @@ export default function ServiceQueue({
               {isNext && <span className="queue-row-tag">Up next</span>}
             </div>
             {detail && <div className="queue-row-detail">{detail}</div>}
+            {!playable && whyNot && item.kind !== 'unknown' && <div className="queue-row-detail">{whyNot}</div>}
+            {item.kind === 'unknown' && (
+              <div className="queue-row-detail">
+                {item.reason === 'newer' ? 'Kept in the file — open it with the newer version.' : 'Kept as it was — it may be damaged.'}
+              </div>
+            )}
           </div>
           <span className="queue-row-actions">
-            <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>
+            {playable && <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>}
             <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
           </span>
         </div>

@@ -85,7 +85,40 @@ export interface SongItem extends QueueItemBase {
   author?: string
 }
 
-export type QueueItem = QuoteItem | BibleItem | SongItem
+/**
+ * Media (images and slideshows — Phase 1a). Saved to `.born` only as a *compat
+ * shell* (see serializeItem) so an older BORN reads it as a harmless quote row
+ * instead of crashing. `slides` stays empty until the media output exists.
+ */
+export type MediaKind = 'image' | 'slideshow'
+export interface MediaItem extends QueueItemBase {
+  kind: 'media'
+  mediaId: string
+  mediaKind: MediaKind
+  name: string
+  /** Unknown `ext` fields from a newer writer, carried through a save unchanged. */
+  _ext?: Record<string, unknown>
+  /** Unknown top-level fields on the shell, carried through unchanged. */
+  _top?: Record<string, unknown>
+}
+
+/**
+ * An item this version cannot use: written by a newer BORN (`reason: 'newer'`)
+ * or damaged (`'malformed'`). It is shown as a clearly labelled, non-projectable
+ * row and written back to disk exactly as it was read (`raw`), so opening and
+ * re-saving a file never loses what a newer version put in it.
+ */
+export interface UnknownItem extends QueueItemBase {
+  kind: 'unknown'
+  reason: 'newer' | 'malformed'
+  label: string
+  raw: unknown
+}
+
+export type QueueItem = QuoteItem | BibleItem | SongItem | MediaItem | UnknownItem
+
+export const NEWER_VERSION_LABEL = 'Made by a newer version of BORN'
+export const UNREADABLE_LABEL = "Couldn't read this item"
 
 let idCounter = 0
 /** Cheap unique id — good enough for in-memory queue rows. */
@@ -234,24 +267,153 @@ export function quoteToItem(quote: Quote): QuoteItem {
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
+/** Version of the `ext` envelope this build writes and understands. */
+export const EXT_VERSION = 1
+
+type Obj = Record<string, unknown>
+const isObj = (x: unknown): x is Obj => x !== null && typeof x === 'object' && !Array.isArray(x)
+const validSlides = (x: unknown): x is Slide[] =>
+  Array.isArray(x) && x.every((sl) => isObj(sl) && typeof sl.text === 'string')
+
+function unknownItem(raw: unknown, reason: 'newer' | 'malformed'): UnknownItem {
+  const o = isObj(raw) ? raw : {}
+  const src = o.source
+  const source =
+    isObj(src) && typeof src.deviceId === 'string' && typeof src.label === 'string'
+      ? { deviceId: src.deviceId, label: src.label }
+      : undefined
+  return {
+    kind: 'unknown',
+    id: typeof o.id === 'string' && o.id ? o.id : makeId('unk'),
+    slides: [],
+    source,
+    reason,
+    label: reason === 'newer' ? NEWER_VERSION_LABEL : UNREADABLE_LABEL,
+    raw
+  }
+}
+
+/** The smallest shape each known kind needs so nothing downstream can throw. */
+function knownShapeOk(kind: string, e: Obj): boolean {
+  if (!validSlides(e.slides)) return false
+  if (kind === 'quote') return isObj(e.quote) && typeof e.quote.text === 'string'
+  if (kind === 'bible') return typeof e.reference === 'string' && typeof e.translation === 'string'
+  if (kind === 'song') return typeof e.songId === 'number' && typeof e.title === 'string'
+  return false
+}
+
+/** `ext.kind` values this build can promote back into a real item. */
+const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
+  media: (e, ext) => {
+    if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
+    if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
+    const { v: _v, kind: _k, mediaId, mediaKind, name, ...extra } = ext
+    const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
+    return {
+      kind: 'media',
+      id: typeof id === 'string' && id ? id : makeId('media'),
+      slides: [],
+      source: source as MediaItem['source'],
+      mediaId,
+      mediaKind,
+      name: typeof name === 'string' ? name : 'Media',
+      ...(Object.keys(extra).length ? { _ext: extra } : {}),
+      ...(Object.keys(top).length ? { _top: top } : {})
+    }
+  }
+}
+
+/**
+ * Turn one persisted entry into a QueueItem. Never throws and never drops an
+ * entry: anything this version cannot use becomes an UnknownItem that keeps the
+ * original JSON, so a damaged or newer-format item is visible, harmless, and
+ * survives a save.
+ */
+export function normalizeQueueEntry(entry: unknown): QueueItem {
+  if (!isObj(entry)) return unknownItem(entry, 'malformed')
+
+  // The envelope a newer BORN writes for item kinds older builds don't know.
+  if (isObj(entry.ext) && typeof entry.ext.kind === 'string') {
+    const ext = entry.ext
+    const extKind = ext.kind as string
+    const reader = Object.prototype.hasOwnProperty.call(EXT_READERS, extKind) ? EXT_READERS[extKind] : undefined
+    if (reader && Number.isInteger(ext.v) && (ext.v as number) <= EXT_VERSION) {
+      const item = reader(entry, ext)
+      return item ?? unknownItem(entry, 'malformed')
+    }
+    return unknownItem(entry, 'newer')
+  }
+
+  if (typeof entry.kind === 'string') {
+    if (entry.kind === 'quote' || entry.kind === 'bible' || entry.kind === 'song') {
+      if (!knownShapeOk(entry.kind, entry)) return unknownItem(entry, 'malformed')
+      const item = entry as unknown as QueueItem
+      return item.id ? item : ({ ...item, id: makeId(item.kind) } as QueueItem)
+    }
+    return unknownItem(entry, 'newer')
+  }
+
+  // Oldest format: a bare Quote.
+  if ('text' in entry && 'sermonId' in entry) return quoteToItem(entry as unknown as Quote)
+  return unknownItem(entry, 'malformed')
+}
+
 /**
  * Migrate a persisted queue (old format was `Quote[]`, new format is
- * `QueueItem[]`). Anything already shaped like a QueueItem passes through.
+ * `QueueItem[]`). Every entry yields an item — see normalizeQueueEntry.
  */
 export function migrateQueue(raw: unknown): QueueItem[] {
   if (!Array.isArray(raw)) return []
-  return raw
-    .map((entry): QueueItem | null => {
-      if (entry && typeof entry === 'object' && 'kind' in entry && Array.isArray((entry as QueueItem).slides)) {
-        const item = entry as QueueItem
-        return item.id ? item : { ...item, id: makeId(item.kind) }
-      }
-      if (entry && typeof entry === 'object' && 'text' in entry && 'sermonId' in entry) {
-        return quoteToItem(entry as Quote)
-      }
-      return null
-    })
-    .filter((x): x is QueueItem => x !== null)
+  return raw.map(normalizeQueueEntry)
+}
+
+/** Can this item go on a screen in this build? (Unknown items and, until the
+ *  media output exists, media items cannot.) */
+export function isProjectable(item: QueueItem): boolean {
+  if (item.kind === 'unknown' || item.kind === 'media') return false
+  return item.slides.length > 0
+}
+
+/** What a queue row says when `isProjectable` is false. */
+export function unprojectableReason(item: QueueItem): string | null {
+  if (item.kind === 'unknown') return item.label
+  if (item.kind === 'media') return 'Media is not available in this build yet'
+  return item.slides.length === 0 ? 'Nothing to show' : null
+}
+
+/**
+ * The persisted shape of one item. Known kinds are written as they are.
+ * Newer kinds are written as a *compat shell*: an ordinary `quote` row an
+ * older BORN can open, step over and re-save (and which reads as a clear
+ * warning), carrying the real data in `ext`. Unknown items are written back
+ * exactly as they were read.
+ */
+export function serializeItem(item: QueueItem): unknown {
+  if (item.kind === 'unknown') return item.raw
+  if (item.kind === 'media') {
+    const text = `${item.name} — ${item.mediaKind === 'slideshow' ? 'slideshow' : 'picture'} (${NEWER_VERSION_LABEL.toLowerCase()})`
+    return {
+      ...(item._top ?? {}),
+      kind: 'quote',
+      id: item.id,
+      slides: [{ text }],
+      quote: {
+        text,
+        sermonTitle: `${item.name} (needs a newer BORN)`,
+        dateCode: '',
+        sermonId: -1,
+        paragraphIndex: 0,
+        paragraphRef: ''
+      },
+      ...(item.source ? { source: item.source } : {}),
+      ext: { ...(item._ext ?? {}), v: EXT_VERSION, kind: 'media', mediaId: item.mediaId, mediaKind: item.mediaKind, name: item.name }
+    }
+  }
+  return item
+}
+
+export function serializeQueue(items: QueueItem[]): unknown[] {
+  return items.map(serializeItem)
 }
 
 /** Short label for a queue row / stage view. */
@@ -263,5 +425,11 @@ export function itemTitle(item: QueueItem): string {
       return `${item.reference} · ${item.translation}`
     case 'song':
       return item.title
+    case 'media':
+      return item.name
+    case 'unknown':
+      return item.label
+    default:
+      return 'Unknown item'
   }
 }

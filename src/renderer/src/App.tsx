@@ -39,7 +39,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -106,6 +106,7 @@ export function slideSource(item: QueueItem, s: Slide): SlideSource | undefined 
 }
 
 function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
+  if (item.kind === 'media' || item.kind === 'unknown') return null
   const s = item.slides[slide]
   if (!s) return null
   return {
@@ -372,7 +373,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (queueLoaded.current) window.electronAPI.saveQueue(serviceQueue)
+    if (queueLoaded.current) window.electronAPI.saveQueue(serializeQueue(serviceQueue) as never)
   }, [serviceQueue])
 
   // Show the real saved projection text size in the Text control.
@@ -632,7 +633,7 @@ export default function App() {
       setNextFlowPayload(
         ext
           ? {
-              kind: p.item.kind,
+              kind: p.item.kind as SlidePayload['kind'],
               text: ext.slide.text,
               label: ext.slide.label,
               reference: ext.slide.reference,
@@ -796,7 +797,7 @@ export default function App() {
   const handleProjectFromQueue = useCallback(
     (index: number, slide = 0) => {
       const item = queueRef.current[index]
-      if (!item) return
+      if (!item || !isProjectable(item)) return
       doProject(item, slide, index)
       followForItem(item)
     },
@@ -808,7 +809,7 @@ export default function App() {
   const handleSelectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) {
+      if (item && isProjectable(item)) {
         setStagedId(item.id)
         followForItem(item, true)
       }
@@ -824,7 +825,9 @@ export default function App() {
       if (q.length === 0) return
       const cur = projectedRef.current?.queueIndex
       const from = cur == null ? (step === 1 ? -1 : q.length) : cur
-      const next = from + step
+      let next = from + step
+      // Step over anything this build can't show (newer-format or damaged items).
+      while (next >= 0 && next < q.length && !isProjectable(q[next])) next += step
       if (next < 0 || next >= q.length) return
       doProject(q[next], 0, next)
       followForItem(q[next])
@@ -1592,7 +1595,7 @@ export default function App() {
   }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
   const handleSaveService = useCallback(async () => {
-    const ok = await window.electronAPI.saveService(serviceQueue)
+    const ok = await window.electronAPI.saveService(serializeQueue(serviceQueue) as never)
     if (ok) refreshRecents()
   }, [serviceQueue, refreshRecents])
 
@@ -1745,7 +1748,7 @@ export default function App() {
   useEffect(
     () =>
       window.electronAPI.onWebRemoteSaveQueue(async (name) => {
-        await window.electronAPI.saveServiceNamed(name, serviceQueue)
+        await window.electronAPI.saveServiceNamed(name, serializeQueue(serviceQueue) as never)
         refreshRecents()
       }),
     [serviceQueue, refreshRecents]

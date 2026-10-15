@@ -31,8 +31,13 @@ describe('migrateQueue', () => {
     expect(migrateQueue([item])[0].source).toEqual({ deviceId: 'dev-1', label: 'Song Leader' })
   })
 
-  it('drops junk entries and handles non-arrays', () => {
-    expect(migrateQueue([null, 42, {}, quote])).toHaveLength(1)
+  it('keeps junk entries as labelled, non-projectable items (never silently dropped) and handles non-arrays', () => {
+    // Behaviour deliberately changed with the compat shell (spike 8): a damaged
+    // entry used to vanish without a word; now it is kept, labelled and written
+    // back unchanged. See src/test/shared/queueCompat.test.ts for the full matrix.
+    const out = migrateQueue([null, 42, {}, quote])
+    expect(out).toHaveLength(4)
+    expect(out.map((i) => i.kind)).toEqual(['unknown', 'unknown', 'unknown', 'quote'])
     expect(migrateQueue('nope' as unknown)).toEqual([])
   })
 })
