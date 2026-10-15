@@ -93,6 +93,17 @@ export interface SongItem extends QueueItemBase {
  * instead of crashing. `slides` stays empty until the media output exists.
  */
 export type MediaKind = 'image' | 'slideshow'
+
+/** How a shared service file identifies a picture on another computer: by what it IS (its
+ *  content hash), never by this computer's private id. Written when a service is saved. */
+export interface MediaRef {
+  id: string
+  hash: string
+  name: string
+  width: number
+  height: number
+  bytes: number
+}
 export interface MediaItem extends QueueItemBase {
   kind: 'media'
   /** The (first) picture. For a slideshow, `mediaIds` lists all of them in order. */
@@ -100,6 +111,8 @@ export interface MediaItem extends QueueItemBase {
   mediaKind: MediaKind
   name: string
   mediaIds?: string[]
+  /** What each picture is (hash, name, size) — lets another computer find or ask for them. */
+  refs?: MediaRef[]
   fit?: 'fit' | 'fill' | 'stretch' | 'center'
   /** Slideshow only. Seconds per picture; absent = manual (the safe default). */
   autoAdvanceSec?: number
@@ -363,7 +376,7 @@ const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
   media: (e, ext) => {
     if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
     if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
-    const { v: _v, kind: _k, mediaId, mediaKind, name, mediaIds, fit, autoAdvanceSec, loop, ...extra } = ext
+    const { v: _v, kind: _k, mediaId, mediaKind, name, mediaIds, refs, fit, autoAdvanceSec, loop, ...extra } = ext
     const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
     const nm = typeof name === 'string' ? name : 'Media'
     const ids = Array.isArray(mediaIds) && mediaIds.length > 0 && mediaIds.every((x) => typeof x === 'string' && x) ? (mediaIds as string[]) : undefined
@@ -373,6 +386,14 @@ const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
       id: typeof id === 'string' && id ? id : makeId('media'),
       slides: mediaSlides(ids ?? [mediaId], fitV, ids ? ids.map(() => nm) : [nm]),
       ...(ids ? { mediaIds: ids } : {}),
+      ...(Array.isArray(refs)
+        ? (() => {
+            const ok = (refs as unknown[]).filter(
+              (r): r is MediaRef => isObj(r) && typeof r.id === 'string' && /^[0-9a-f]{64}$/.test(String(r.hash)) && typeof r.name === 'string' && typeof r.bytes === 'number'
+            )
+            return ok.length ? { refs: ok } : {}
+          })()
+        : {}),
       ...(fitV ? { fit: fitV } : {}),
       ...(typeof autoAdvanceSec === 'number' && autoAdvanceSec > 0 && autoAdvanceSec < 3600 ? { autoAdvanceSec } : {}),
       ...(loop === true ? { loop: true } : {}),
@@ -476,6 +497,7 @@ export function serializeItem(item: QueueItem): unknown {
         mediaKind: item.mediaKind,
         name: item.name,
         ...(item.mediaIds ? { mediaIds: item.mediaIds } : {}),
+        ...(item.refs ? { refs: item.refs } : {}),
         ...(item.fit ? { fit: item.fit } : {}),
         ...(item.autoAdvanceSec ? { autoAdvanceSec: item.autoAdvanceSec } : {}),
         ...(item.loop ? { loop: true } : {})
@@ -505,4 +527,46 @@ export function itemTitle(item: QueueItem): string {
     default:
       return 'Unknown item'
   }
+}
+
+// ── Pictures travelling with a saved service ───────────────────────────────────
+
+/** Every picture id used by media items in a queue. */
+export function mediaIdsInQueue(items: QueueItem[]): string[] {
+  const out = new Set<string>()
+  for (const it of items) if (it.kind === 'media') for (const s of it.slides) if (s.media?.mediaId) out.add(s.media.mediaId)
+  return [...out]
+}
+
+/** A copy of the queue with `refs` filled in for every media item (needed before saving). */
+export function attachMediaRefs(items: QueueItem[], lookup: (id: string) => MediaRef | null): QueueItem[] {
+  return items.map((it) => {
+    if (it.kind !== 'media') return it
+    const ids = it.mediaIds ?? [it.mediaId]
+    const refs = ids.map((id) => lookup(id)).filter((r): r is MediaRef => !!r)
+    return refs.length ? { ...it, refs } : it
+  })
+}
+
+/** Point a queue's pictures at this computer's library ids (`map`: the file's id → local id). */
+export function remapMediaIds(items: QueueItem[], map: Record<string, string>): QueueItem[] {
+  const m = (id: string): string => map[id] ?? id
+  return items.map((it) => {
+    if (it.kind !== 'media') return it
+    const next: MediaItem = {
+      ...it,
+      mediaId: m(it.mediaId),
+      ...(it.mediaIds ? { mediaIds: it.mediaIds.map(m) } : {}),
+      ...(it.refs ? { refs: it.refs.map((r) => ({ ...r, id: m(r.id) })) } : {}),
+      slides: it.slides.map((s) => (s.media ? { ...s, media: { ...s.media, mediaId: m(s.media.mediaId) } } : s))
+    }
+    return next
+  })
+}
+
+/** The distinct picture references a queue carries (for matching against a library). */
+export function collectMediaRefs(items: QueueItem[]): MediaRef[] {
+  const seen = new Map<string, MediaRef>()
+  for (const it of items) if (it.kind === 'media') for (const r of it.refs ?? []) if (!seen.has(r.hash)) seen.set(r.hash, r)
+  return [...seen.values()]
 }

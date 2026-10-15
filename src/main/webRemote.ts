@@ -86,6 +86,8 @@ export interface WebRemoteState {
     label?: string
     marker?: string
     nextText?: string
+    /** A picture is on screen: which library picture (the remote shows its thumbnail). */
+    mediaId?: string
     /** Next/Prev flow-through has carried the live slide past what was
      *  actually queued — see App.tsx's `readingAhead`. */
     readingAhead?: boolean
@@ -514,8 +516,8 @@ function cssDecl(rec: Record<string, string>): string {
  *  that id as a `data-profile` attribute every profile's CSS is scoped
  *  under, so switching treatment is one attribute write, never a reload. */
 /** Set by the main process: turns a library picture id into a file to serve. */
-let mediaResolver: ((id: string) => Promise<{ path: string; type: string } | null>) | null = null
-export function setMediaResolver(fn: (id: string) => Promise<{ path: string; type: string } | null>): void {
+let mediaResolver: ((id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>) | null = null
+export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>): void {
   mediaResolver = fn
 }
 
@@ -763,10 +765,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
 
-  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/display$/.exec(path)
+  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/(display|thumb)$/.exec(path)
   if (picMatch && req.method === 'GET') {
     try {
-      const f = mediaResolver ? await mediaResolver(picMatch[1]) : null
+      const f = mediaResolver ? await mediaResolver(picMatch[1], picMatch[2] as 'display' | 'thumb') : null
       if (!f) {
         res.writeHead(404)
         res.end()
@@ -930,6 +932,26 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
     if (path === '/api/automation/state' && req.method === 'GET') {
       sendJSON(res, 200, automationHandlers?.getState() ?? [])
+      return
+    }
+    // Read-only view of the Main queue (additive in v1: new path, nothing existing changed). Pictures are
+    // identified by their library ids — stable for this computer — so a Stream Deck or script can show
+    // "what's next" and "which picture is live" without being able to change either.
+    if (path === '/api/automation/queue' && req.method === 'GET') {
+      sendJSON(
+        res,
+        200,
+        currentState.queue.map((q, index) => ({
+          id: q.id,
+          index,
+          kind: q.kind,
+          title: q.title,
+          slideCount: q.slideCount,
+          played: q.played,
+          live: index === currentState.activeIndex,
+          mediaIds: Array.from(new Set(q.slides.map((s) => s.media?.mediaId).filter((x): x is string => !!x)))
+        }))
+      )
       return
     }
     res.writeHead(404)

@@ -95,6 +95,8 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
   const [folderEdit, setFolderEdit] = useState<{ id: string | null; name: string } | null>(null)
   const [loaded, setLoaded] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
+  /** Every picture seen so far, so ticked pictures stay usable after the search or view changes. */
+  const seen = useRef<Map<string, MediaRecord>>(new Map())
   const [pdfJob, setPdfJob] = useState<{ name: string; page: number; total: number } | null>(null)
   const pdfAbort = useRef<AbortController | null>(null)
   const [cols, setCols] = useState(4)
@@ -119,6 +121,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
         api.mediaCheckAll()
       ])
       if (mine !== seq.current) return
+      list.forEach((r) => seen.current.set(r.id, r))
       setItems(list)
       setFolders(fl)
       setTags(tg)
@@ -279,7 +282,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     [status, onAddToQueue, actions]
   )
   /** The ticked pictures in the order they were ticked (the order of a slideshow). */
-  const orderedChecked = useCallback((): MediaRecord[] => [...checked].map((id) => items.find((i) => i.id === id)).filter((x): x is MediaRecord => !!x), [checked, items])
+  const orderedChecked = useCallback((): MediaRecord[] => [...checked].map((id) => seen.current.get(id) ?? items.find((i) => i.id === id)).filter((x): x is MediaRecord => !!x), [checked, items])
   const targets = useCallback((r: MediaRecord): MediaRecord[] => (checked.has(r.id) ? orderedChecked() : [r]), [checked, items])
 
   const itemMenu = (r: MediaRecord): MenuItem[] => {

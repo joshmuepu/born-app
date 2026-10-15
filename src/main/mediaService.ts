@@ -202,6 +202,18 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     }
   })
   // Make sure a picture can be put on a screen right now (a large one gets its screen-sized copy built).
+  // Shared services: which of these pictures (by content hash) does this computer already have?
+  ipcMain.handle('media:resolve-hashes', (_e, hashes: string[]) => need((l) => l.findByHashes(Array.isArray(hashes) ? hashes.slice(0, 5000) : []), {} as Record<string, string>))
+  ipcMain.handle('media:locate-folder', async (_e, wanted: Array<{ hash: string; bytes: number }>) => {
+    const l = getMediaLibrary()
+    if (!l || !Array.isArray(wanted)) return { canceled: true, found: {}, scanned: 0 }
+    // BORN_TEST_LOCATE_DIR: dev/test only, answers the folder picker without a dialog.
+    const testDir = process.env.BORN_TEST_LOCATE_DIR
+    const r = testDir ? { canceled: false, filePaths: [testDir] } : await dialog.showOpenDialog(getMain() ?? (undefined as never), { title: 'Choose the folder that has the pictures', properties: ['openDirectory'] })
+    if (r.canceled || !r.filePaths[0]) return { canceled: true, found: {}, scanned: 0 }
+    const out = await l.locateInFolder(r.filePaths[0], wanted.filter((w) => w && typeof w.hash === 'string' && typeof w.bytes === 'number').slice(0, 5000))
+    return { canceled: false, ...out }
+  })
   ipcMain.handle('media:preflight', async (_e, ids: string[]) => {
     const l = getMediaLibrary()
     if (!l || !Array.isArray(ids)) return []
@@ -266,9 +278,15 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
 }
 
 /** For the Graphics (OBS/browser) output: resolves `/media/<id>/display` to a file. */
-export async function resolveMediaForHttp(id: string): Promise<{ path: string; type: string } | null> {
+export async function resolveMediaForHttp(id: string, kind: 'display' | 'thumb' = 'display'): Promise<{ path: string; type: string } | null> {
   if (!/^m_[0-9a-f]{12}$/.test(id)) return null
   const l = getMediaLibrary()
-  if (!l || l.check(id) !== 'ok') return null
+  if (!l) return null
+  if (kind === 'thumb') {
+    // thumbnails live in BORN's own cache, so they still show for a picture whose original has gone missing
+    const p = await l.thumbnail(id, 320)
+    return p ? { path: p, type: p.endsWith('.png') ? 'image/png' : 'image/jpeg' } : null
+  }
+  if (l.check(id) !== 'ok') return null
   return l.display(id)
 }

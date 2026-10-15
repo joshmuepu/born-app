@@ -695,6 +695,54 @@ export class MediaLibrary {
     return out
   }
 
+  /** Which of these content hashes this library already has (live items only): hash → local id. */
+  findByHashes(hashes: string[]): Record<string, string> {
+    const out: Record<string, string> = {}
+    const st = this.db.prepare('SELECT id FROM media_items WHERE hash = ? AND deleted_at IS NULL')
+    for (const h of hashes) {
+      if (!/^[0-9a-f]{64}$/.test(h)) continue
+      const r = st.get(h) as { id: string } | undefined
+      if (r) out[h] = r.id
+    }
+    return out
+  }
+
+  /**
+   * Look through a folder (recursively) for pictures whose contents match the wanted hashes, and add
+   * the matches to the library. Only files of the wanted size are ever hashed, so a big folder is cheap.
+   */
+  async locateInFolder(root: string, wanted: Array<{ hash: string; bytes: number }>, opts: { maxFiles?: number } = {}): Promise<{ found: Record<string, string>; scanned: number }> {
+    const bySize = new Map<number, Set<string>>()
+    for (const w of wanted) (bySize.get(w.bytes) ?? bySize.set(w.bytes, new Set()).get(w.bytes)!).add(w.hash)
+    const found: Record<string, string> = {}
+    let scanned = 0
+    const max = opts.maxFiles ?? 20000
+    const stack: Array<[string, number]> = [[resolve(root), 0]]
+    while (stack.length && scanned < max) {
+      const [d, depth] = stack.pop()!
+      let names: string[] = []
+      try { names = readdirSync(d) } catch { continue }
+      for (const n of names) {
+        if (n.startsWith('.')) continue
+        const p = join(d, n)
+        let st
+        try { st = statSync(p) } catch { continue }
+        if (st.isDirectory()) { if (depth < 8) stack.push([p, depth + 1]); continue }
+        if (!st.isFile()) continue
+        scanned++
+        const hashes = bySize.get(st.size)
+        if (!hashes) continue
+        let h: string
+        try { h = await hashFile(p) } catch { continue }
+        if (hashes.has(h) && !found[h]) {
+          const r = await this.importFile(p)
+          if (r.ok) found[h] = r.item.id
+        }
+      }
+    }
+    return { found, scanned }
+  }
+
   /** Re-point a missing linked item at a file that has the same bytes (a "relink"). */
   async relink(id: string, newPath: string): Promise<{ ok: boolean; message?: string }> {
     const rec = this.get(id)

@@ -24,6 +24,7 @@ import ChannelSermonsPanel from './components/ChannelSermonsPanel'
 import SongsPanel from './components/SongsPanel'
 import MediaPanel from './components/MediaPanel'
 import Preflight from './components/Preflight'
+import MediaImportReview, { type ReviewRequest } from './components/MediaImportReview'
 import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
@@ -41,7 +42,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, slideshowToItem, withMediaSettings, type MediaItem } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, slideshowToItem, withMediaSettings, attachMediaRefs, mediaIdsInQueue, collectMediaRefs, remapMediaIds, type MediaItem, type MediaRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -1236,7 +1237,8 @@ export default function App() {
           text: s.text,
           label: s.label,
           marker: s.marker,
-          reference: s.reference
+          reference: s.reference,
+          ...(s.media ? { media: s.media } : {})
         }))
       })),
       activeIndex: activeQueueIndex,
@@ -1253,7 +1255,8 @@ export default function App() {
                 projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
               label: projected.item.slides[projected.slide]?.label,
               nextText: nextPreviewText,
-              readingAhead
+              readingAhead,
+              ...(projected.item.slides[projected.slide]?.media ? { mediaId: projected.item.slides[projected.slide]?.media?.mediaId } : {})
             }
           : null
     })
@@ -1723,10 +1726,53 @@ export default function App() {
     })
   }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
+  // ── Pictures travelling with a saved service ──────────────────────────────
+  // A saved service names each picture by what it IS (a content hash), because another computer's
+  // library ids mean nothing. On opening, pictures this computer already has are matched silently;
+  // for the rest the operator reviews once, before anything changes.
+  const [mediaReview, setMediaReview] = useState<ReviewRequest | null>(null)
+
+  const withMediaRefs = useCallback(async (q: QueueItem[]): Promise<QueueItem[]> => {
+    const ids = mediaIdsInQueue(q)
+    if (ids.length === 0) return q
+    const recs = await Promise.all(ids.map((id) => window.electronAPI.mediaGet(id)))
+    const refs = new Map<string, MediaRef>()
+    for (const r of recs) if (r) refs.set(r.id, { id: r.id, hash: r.hash, name: r.name, width: r.width, height: r.height, bytes: r.bytes })
+    return attachMediaRefs(q, (id) => refs.get(id) ?? null)
+  }, [])
+
+  /** Match a loaded queue's pictures to this library. Resolves to the queue to use, or null if the
+   *  operator cancelled (nothing is changed in that case). */
+  const prepareMediaForQueue = useCallback(
+    async (items: QueueItem[], opts: { silent?: boolean } = {}): Promise<QueueItem[] | null> => {
+      let current = items
+      for (let round = 0; round < 3; round++) {
+        const refs = collectMediaRefs(current)
+        if (refs.length === 0) return current
+        const have = await window.electronAPI.mediaResolveHashes(refs.map((r) => r.hash))
+        const map: Record<string, string> = {}
+        for (const r of refs) if (have[r.hash]) map[r.id] = have[r.hash]
+        current = remapMediaIds(current, map)
+        const missing = refs.filter((r) => !have[r.hash])
+        if (missing.length === 0 || opts.silent) return current // silent (unattended remote import): never wait on a dialog
+        const choice = await new Promise<'locate' | 'open' | 'cancel'>((resolve) => setMediaReview({ missing, total: refs.length, resolve }))
+        setMediaReview(null)
+        if (choice === 'cancel') return null
+        if (choice === 'open') return current
+        const r = await window.electronAPI.mediaLocateFolder(missing.map((m) => ({ hash: m.hash, bytes: m.bytes })))
+        if (r.canceled) return null
+        // loop: re-match against the (now larger) library
+      }
+      return current
+    },
+    []
+  )
+
   const handleSaveService = useCallback(async () => {
-    const ok = await window.electronAPI.saveService(serializeQueue(serviceQueue) as never)
+    const withRefs = await withMediaRefs(serviceQueue)
+    const ok = await window.electronAPI.saveService(serializeQueue(withRefs) as never)
     if (ok) refreshRecents()
-  }, [serviceQueue, refreshRecents])
+  }, [serviceQueue, refreshRecents, withMediaRefs])
 
   const loadServiceItems = useCallback(
     (loaded: unknown[]) => {
@@ -1778,20 +1824,24 @@ export default function App() {
     try {
       const loaded = await window.electronAPI.openService()
       if (loaded) {
-        loadServiceItems(loaded)
+        const prepared = await prepareMediaForQueue(migrateQueue(loaded))
+        if (!prepared) return // cancelled at the picture review: nothing changed
+        loadServiceItems(serializeQueue(prepared))
         refreshRecents()
       }
     } catch (e) {
       showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
     }
-  }, [loadServiceItems, refreshRecents, showOpenError])
+  }, [loadServiceItems, refreshRecents, showOpenError, prepareMediaForQueue])
 
   const handleOpenRecent = useCallback(
     async (path: string) => {
       try {
         const loaded = await window.electronAPI.openServicePath(path)
         if (loaded) {
-          loadServiceItems(loaded)
+          const prepared = await prepareMediaForQueue(migrateQueue(loaded))
+          if (!prepared) return
+          loadServiceItems(serializeQueue(prepared))
           refreshRecents()
         } else {
           showOpenError("Couldn't open that service file — it may be damaged or empty.")
@@ -1800,7 +1850,7 @@ export default function App() {
         showOpenError("Couldn't open that service file — it may be damaged or empty.")
       }
     },
-    [loadServiceItems, refreshRecents, showOpenError]
+    [loadServiceItems, refreshRecents, showOpenError, prepareMediaForQueue]
   )
 
   /** Untagged items from an imported file (saved before per-item source tags
@@ -1833,10 +1883,12 @@ export default function App() {
       )
     }
     if (files.length === 0) return
-    const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
+    const allTagged0 = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
+    const allTagged = await prepareMediaForQueue(allTagged0)
+    if (!allTagged) return // cancelled at the picture review: nothing was added
     if (allTagged.length > 0) addToQueue(allTagged)
     refreshRecents()
-  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError])
+  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError, prepareMediaForQueue])
 
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
@@ -1869,18 +1921,18 @@ export default function App() {
   useEffect(
     () =>
       window.electronAPI.onWebRemoteImportService(({ items, label }) => {
-        addToQueue(tagUntaggedItems(migrateQueue(items), label))
+        void prepareMediaForQueue(tagUntaggedItems(migrateQueue(items), label), { silent: true }).then((p) => p && addToQueue(p))
         refreshRecents()
       }),
-    [tagUntaggedItems, addToQueue, refreshRecents]
+    [tagUntaggedItems, addToQueue, refreshRecents, prepareMediaForQueue]
   )
   useEffect(
     () =>
       window.electronAPI.onWebRemoteSaveQueue(async (name) => {
-        await window.electronAPI.saveServiceNamed(name, serializeQueue(serviceQueue) as never)
+        await window.electronAPI.saveServiceNamed(name, serializeQueue(await withMediaRefs(serviceQueue)) as never)
         refreshRecents()
       }),
-    [serviceQueue, refreshRecents]
+    [serviceQueue, refreshRecents, withMediaRefs]
   )
 
   const isRunning = indexer?.status === 'running'
@@ -2598,6 +2650,8 @@ export default function App() {
             </div>
           )
         })()}
+
+      <MediaImportReview request={mediaReview} />
 
       <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} />
 

@@ -13,7 +13,7 @@ import {
   type UnknownItem
 } from '../../shared/queueItem'
 import { stepForward } from '../../shared/queueNav'
-import { mediaToItem, slideshowToItem, withMediaSettings } from '../../shared/queueItem'
+import { mediaToItem, slideshowToItem, withMediaSettings, attachMediaRefs, remapMediaIds, collectMediaRefs, mediaIdsInQueue, type MediaRef } from '../../shared/queueItem'
 
 const song = { kind: 'song', id: 's1', songId: 7, title: 'Amazing Grace', slides: [{ text: 'Amazing grace' }, { text: 'How sweet' }] }
 const bible = { kind: 'bible', id: 'b1', translation: 'KJV', reference: 'John 3:16', bookNum: 43, chapter: 3, verseStart: 16, verseEnd: 16, slides: [{ text: 'For God so loved' }] }
@@ -247,5 +247,47 @@ describe('media queue items: pictures and slideshows', () => {
     expect(it.loop).toBeUndefined()
     expect(it.mediaIds).toBeUndefined()
     expect(it.slides).toHaveLength(1)
+  })
+})
+
+describe('pictures travelling with a saved service', () => {
+  const H1 = 'a'.repeat(64)
+  const H2 = 'b'.repeat(64)
+  const refsById: Record<string, MediaRef> = {
+    m_000000000001: { id: 'm_000000000001', hash: H1, name: 'Welcome', width: 1920, height: 1080, bytes: 1000 },
+    m_000000000002: { id: 'm_000000000002', hash: H2, name: 'Offering', width: 800, height: 600, bytes: 2000 }
+  }
+  const queue = () => [
+    ...migrateQueue([{ kind: 'song', id: 's', songId: 1, title: 'A', slides: [{ text: 'x' }] }]),
+    mediaToItem({ id: 'm_000000000001', name: 'Welcome' }),
+    slideshowToItem([{ id: 'm_000000000001', name: 'Welcome' }, { id: 'm_000000000002', name: 'Offering' }], 'Show')
+  ]
+
+  it('finds every picture id used', () => {
+    expect(mediaIdsInQueue(queue()).sort()).toEqual(['m_000000000001', 'm_000000000002'])
+  })
+  it('attaches hashes and names, and they survive the file', () => {
+    const withRefs = attachMediaRefs(queue(), (id) => refsById[id] ?? null)
+    const saved = JSON.parse(JSON.stringify(serializeQueue(withRefs)))
+    const back = migrateQueue(saved)
+    const refs = collectMediaRefs(back)
+    expect(refs.map((r) => r.hash).sort()).toEqual([H1, H2])
+    expect(refs.find((r) => r.hash === H2)).toMatchObject({ name: 'Offering', bytes: 2000 })
+  })
+  it('another computer re-points the pictures at its own ids, in every place they appear', () => {
+    const back = migrateQueue(JSON.parse(JSON.stringify(serializeQueue(attachMediaRefs(queue(), (id) => refsById[id] ?? null)))))
+    const mapped = remapMediaIds(back, { m_000000000001: 'm_aaaaaaaaaaaa', m_000000000002: 'm_bbbbbbbbbbbb' }) as MediaItem[]
+    const show = mapped[2]
+    expect(show.mediaIds).toEqual(['m_aaaaaaaaaaaa', 'm_bbbbbbbbbbbb'])
+    expect(show.slides.map((s) => s.media?.mediaId)).toEqual(['m_aaaaaaaaaaaa', 'm_bbbbbbbbbbbb'])
+    expect(show.refs?.map((r) => r.id)).toEqual(['m_aaaaaaaaaaaa', 'm_bbbbbbbbbbbb'])
+    expect(mapped[1].mediaId).toBe('m_aaaaaaaaaaaa')
+  })
+  it('junk refs in a file are ignored, never trusted', () => {
+    const shell = serializeItem(mediaToItem({ id: 'm_000000000001', name: 'W' })) as { ext: Record<string, unknown> }
+    shell.ext.refs = [{ id: 'm_1', hash: 'nothex', name: 'x', bytes: 1 }, 'bad', null, { id: 'm_000000000001', hash: H1, name: 'ok', bytes: 5, width: 1, height: 1 }]
+    const [it] = migrateQueue([shell]) as MediaItem[]
+    expect(it.refs).toHaveLength(1)
+    expect(it.refs?.[0].hash).toBe(H1)
   })
 })

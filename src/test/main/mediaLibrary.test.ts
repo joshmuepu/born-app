@@ -419,3 +419,27 @@ describe('media library: the pre-service check (preflight)', () => {
     expect((await lib.preflight('m_000000000000')).status).toBe('missing')
   })
 })
+
+describe('media library: sharing — find pictures by what they are', () => {
+  it('findByHashes answers only for pictures it has (live ones)', async () => {
+    const a = ok(await lib.importFile(fx('tiny.jpg')))
+    const missing = 'c'.repeat(64)
+    expect(lib.findByHashes([a.item.hash, missing, 'not-a-hash'])).toEqual({ [a.item.hash]: a.item.id })
+    lib.remove([a.item.id])
+    expect(lib.findByHashes([a.item.hash])).toEqual({})
+  })
+  it('locateInFolder finds matches by content in a messy folder tree and adds only those', async () => {
+    const src = join(dir, 'USB stick')
+    mkdirSync(join(src, 'Easter', 'deep'), { recursive: true })
+    copyFileSync(fx('tiny.jpg'), join(src, 'Easter', 'deep', 'IMG_0042 final FINAL.jpeg'))
+    copyFileSync(fx('tiny.png'), join(src, 'unrelated.png'))
+    writeFileSync(join(src, 'notes.txt'), 'x')
+    const jpg = readFileSync(fx('tiny.jpg'))
+    const h = (await import('../../main/mediaLibrary')).hashFile
+    const wanted = [{ hash: await h(fx('tiny.jpg')), bytes: jpg.length }, { hash: 'd'.repeat(64), bytes: 999999 }]
+    const r = await lib.locateInFolder(src, wanted)
+    expect(Object.keys(r.found)).toEqual([wanted[0].hash])
+    expect(lib.count().items).toBe(1) // the unrelated picture was NOT added
+    expect(r.scanned).toBe(3)
+  })
+})

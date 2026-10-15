@@ -130,6 +130,8 @@ declare global {
       mediaLogoSet: (id: string | null) => Promise<boolean>
       onLogoShortcut: (cb: () => void) => () => void
       mediaReveal: (id: string) => Promise<boolean>
+      mediaResolveHashes: (hashes: string[]) => Promise<Record<string, string>>
+      mediaLocateFolder: (wanted: Array<{ hash: string; bytes: number }>) => Promise<{ canceled: boolean; found: Record<string, string>; scanned: number }>
       mediaPreflight: (ids: string[]) => Promise<import('../../shared/media').MediaPreflightResult[]>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
       mediaPathsForFiles: (files: File[]) => string[]

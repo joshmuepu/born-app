@@ -225,6 +225,9 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 .qsub{font-size:12px; color:var(--text2); margin-top:2px}
 /* Tablet-only (richPreview) — the item's own first line, so a real tablet's
    extra width goes toward reading the plan, not sitting empty. */
+.qthumb{display:block; width:100%; max-width:220px; aspect-ratio:16/9; object-fit:contain; background:#000; border-radius:8px; margin-bottom:8px}
+.qthumb--slide{max-width:120px; margin:0 12px 0 0; flex:none}
+.now-pic{display:block; max-width:100%; max-height:46vh; margin:0 auto 10px; object-fit:contain; background:#000; border-radius:8px}
 .qpreview{font-size:12.5px; color:var(--text2); margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .empty{text-align:center; color:var(--text2); padding:40px 24px; font-size:14px; line-height:1.5}
 
@@ -1250,6 +1253,7 @@ function nowNextPerfHtml(){
     + (on.reference ? '<span class="now-ref ' + refClass + '-ref">' + esc(on.reference) + '</span>' : '') + '</div>';
   html += '<div class="now-card perf' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"' + (clickable ? ' style="cursor:pointer" onclick="openQueueItemDetail(' + state.qs.activeIndex + ')"' : '') + '>'
     + '<div class="now-card-body">'
+    + (on.mediaId ? '<img class="now-pic" alt="" src="/media/' + on.mediaId + '/thumb">' : '')
     + '<div class="now-text">' + esc(on.text) + '</div>'
     + '</div></div>';
   html += '<div class="next-card">'
@@ -1325,7 +1329,8 @@ function queueRowHtml(q, i, editable, richPreview){
   var body = '<div class="qkind">' + (played ? ICON_CHECK + ' ' : '') + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
     + '<div class="qtitle">' + esc(it.title) + '</div>'
     + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
-    + (richPreview && it.slides && it.slides[0] ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
+    + (richPreview && it.slides && it.slides[0] && !it.slides[0].media ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
+  if(it.slides && it.slides[0] && it.slides[0].media){ body = '<img class="qthumb" alt="" src="/media/' + it.slides[0].media.mediaId + '/thumb">' + body; }
   if(editable){
     return '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
       + '<div class="qitem-body">' + body + '</div>'
@@ -1508,7 +1513,7 @@ function queueDetailInnerHtml(i){
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
-    html += '<div class="slide-text">' + esc(sl.text) + '</div></button>';
+    html += (sl.media ? '<img class="qthumb qthumb--slide" alt="" src="/media/' + sl.media.mediaId + '/thumb">' : '') + '<div class="slide-text">' + esc(sl.text) + '</div></button>';
   }
   html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
   return html;

@@ -376,6 +376,8 @@ const api = {
     return () => ipcRenderer.removeListener('shortcut:logo', h)
   },
   mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
+  mediaResolveHashes: (hashes: string[]): Promise<Record<string, string>> => ipcRenderer.invoke('media:resolve-hashes', hashes),
+  mediaLocateFolder: (wanted: Array<{ hash: string; bytes: number }>): Promise<{ canceled: boolean; found: Record<string, string>; scanned: number }> => ipcRenderer.invoke('media:locate-folder', wanted),
   mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
