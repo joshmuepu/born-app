@@ -136,7 +136,7 @@ describe.each([
     expect(ratio(t['text3'], t[bg])).toBeGreaterThanOrEqual(4.5)
   })
   it.each(['bg', 'surface', 'surface2'])('accent, status and identity colours on %s', (bg) => {
-    for (const c of ['accent', 'live', 'warn', 'sage', 'amber', 'stone']) {
+    for (const c of ['accent', 'live', 'ok', 'warn', 'sage', 'amber', 'stone']) {
       expect(ratio(t[c], t[bg])).toBeGreaterThanOrEqual(4.5)
     }
   })

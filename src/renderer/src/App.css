@@ -1404,7 +1404,7 @@ mark.hl {
   color: #c3b2f0;
 }
 .screens-chip-live {
-  background: rgba(52, 199, 89, 0.15);
+  background: color-mix(in srgb, var(--live) 15%, transparent);
   color: var(--live);
 }
 .screens-chip-warn {
@@ -1450,7 +1450,7 @@ mark.hl {
   flex: 1;
 }
 .screens-status-pill--ok {
-  color: var(--live);
+  color: var(--ok);
 }
 .screens-status-pill--warn {
   color: var(--warn);
@@ -1507,7 +1507,7 @@ mark.hl {
   height: 7px;
   border-radius: 999px;
   flex-shrink: 0;
-  background: var(--live);
+  background: var(--ok);
 }
 .screens-status-dest.is-warn .screens-status-dot {
   background: var(--warn);

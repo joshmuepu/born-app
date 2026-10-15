@@ -205,7 +205,7 @@
   opacity: 0.85;
 }
 .queue-row--played .queue-row-icon {
-  color: var(--live);
+  color: var(--ok);
 }
 .queue-row--next {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));

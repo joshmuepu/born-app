@@ -10,7 +10,7 @@ export const APP_CSS = `
   --bg:#08080a; --surface:#16161a; --surface2:#1e1e23; --border:#26262c;
   --text:#f4f2ee; --text2:#b2afaa; --text3:#8a8782;
   --accent:#9a80e6; --accent-hover:#ad97f0; --accent-ink:#120d1e;
-  --live:#ff4d4f; --warn:#f0983e; --warn-ink:#1a1200;
+  --live:#ff4d4f; --ok:#4cc17f; --warn:#f0983e; --warn-ink:#1a1200;
   --sage:#7ab487; --amber:#d49a4c; --stone:#cfc8ba;
   color-scheme:dark;
 }
@@ -20,7 +20,7 @@ export const APP_CSS = `
     --bg:#f4f1ea; --surface:#ffffff; --surface2:#f0ece3; --border:#e3ddcf;
     --text:#1a1814; --text2:#55503f; --text3:#6d6755;
     --accent:#5b3fb0; --accent-hover:#4a3294; --accent-ink:#ffffff;
-    --live:#c01c26; --warn:#9a520c; --warn-ink:#ffffff;
+    --live:#c01c26; --ok:#1b7544; --warn:#9a520c; --warn-ink:#ffffff;
     --sage:#38703f; --amber:#86581a; --stone:#6f6650;
     color-scheme:light;
   }
@@ -54,7 +54,7 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 .brand b{font-weight:700; color:var(--text)}
 .brand svg{width:20px; height:24px; flex-shrink:0}
 .conn{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700}
-.conn.ok{color:var(--live)}
+.conn.ok{color:var(--ok)}
 .conn.bad{color:var(--text2)}
 .conn .led{width:6px; height:6px; border-radius:50%; background:currentColor}
 
@@ -231,7 +231,7 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 /* Already shown this run — dimmed, not hidden, so a glance up the list still
    confirms "yes we already did that one" instead of it just vanishing. */
 .qitem--played,.qstrip-card--played{opacity:0.5}
-.qstrip-card--played .qstrip-kind{color:var(--live)}
+.qstrip-card--played .qstrip-kind{color:var(--ok)}
 
 /* Edit mode — Up/Down/Remove replace the normal tap-to-preview row. Native
    HTML5 drag-and-drop (the desktop's own reorder gesture) can't fire from a
@@ -526,7 +526,7 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
   .sidebar-spacer{flex:1}
   .sidebar .blank{width:84px; min-height:60px; padding:12px 0; border-radius:14px; background:rgba(227,179,65,0.12); border:1.5px solid rgba(227,179,65,0.4); color:var(--warn); font-size:13px; font-weight:800; margin-bottom:16px}
   .sidebar .blank.active{background:var(--warn); color:var(--warn-ink)}
-  .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--live)}
+  .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--ok)}
 
   /* No bottom tab bar on tablet (the sidebar is the nav), so the phone
    * offset above isn't needed here — but the sidebar itself is a persistent
@@ -1094,7 +1094,7 @@ function pollUntilOnScreen(done){
 function setConn(ok){
   var p = $('conn-p'); var t = $('conn-t');
   if(p){ p.className = 'conn ' + (ok ? 'ok' : 'bad'); p.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
-  if(t){ t.style.background = ok ? 'var(--live)' : 'var(--text3)'; t.title = ok ? 'Connected' : 'Reconnecting…'; }
+  if(t){ t.style.background = ok ? 'var(--ok)' : 'var(--text3)'; t.title = ok ? 'Connected' : 'Reconnecting…'; }
 }
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){

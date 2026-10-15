@@ -2257,6 +2257,10 @@ export default function App() {
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
               <div><dt><kbd>\</kbd></dt><dd>Slide the browse columns away / back</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Undo the last queue change</dd></div>
+              <div><dt><kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Back / forward through what you opened</dd></div>
+              <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> on a queue row</dt><dd>Move that row up / down</dd></div>
+              <div><dt><kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd></dt><dd>Open the right-click menu on the focused item</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>

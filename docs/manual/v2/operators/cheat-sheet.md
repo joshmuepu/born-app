@@ -27,9 +27,10 @@ sound desk.*
 | Bring it back | Press **Esc** again, or click **Show screen** |
 | Show a one-off announcement | Click **Message** → type it → **Show message** (clears itself after ~10s) |
 
-The line above the Back/Next bar always shows exactly what's on the screen right now
-— if it says "Screen is hidden" or "Projection window is closed," that's why nothing
-is showing.
+The two small pictures above the Back/Next bar show **Preview** (what Next or Take
+will put up) and **Live** (what is on the screen right now, read back from the
+screen itself). If Live says "Hidden" or "Projection closed," that's why nothing is
+showing.
 
 ![The Hide screen / Show screen button, amber while hidden.](../images/cheat-hide-show-small.png)
 

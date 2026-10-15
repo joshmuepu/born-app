@@ -14,6 +14,14 @@ is also a **high-contrast** button next to the light/dark toggle, and the phone
 remote follows your phone's light or dark setting. Everything from before is still
 there.
 
+## Preview and Live, undo, and saving time
+
+The queue panel now shows a true **Preview** and **Live** picture side by side, read
+back from the screen itself. Mistakes can be undone (toasts with **Undo**, **Ctrl+Z**),
+sermon paragraphs, verses and songs can be dragged into the queue, right-click menus,
+favorites, and back/forward history are new. See [Preview, Live, and saving
+time](operators/preview-live.md).
+
 ## Channels — a second language, running alongside the main service
 
 v1 had one feed of content. v2 can run a second (or further) **channel**
