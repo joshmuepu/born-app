@@ -6,6 +6,11 @@ against this folder's actual code, not assumed from the commit message.
 
 See `CLAUDE.md`'s "v1 parity" section for the rules this file supports.
 
+> **UI conventions:** since the Born Again redesign landed in v2, v1 UI changes
+> are ported by intent into the shared components and tokens described in
+> `docs/design/born-again-ui-direction.md` (and `CLAUDE.md`'s "UI conventions"),
+> not by applying v1 diffs.
+
 ## v1.11.0 → v1.12.0 (QA passes 1–3, remote connectivity)
 
 Every fix in this range reached v2 the same way: a direct

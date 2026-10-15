@@ -20,3 +20,30 @@ Nothing under `docs/commercial` is ever pushed.
   intentionally different) and the owner decides if/when it's ported.
 - Never overwrite v2's identity or the `v1.x.x`-only release tag gate
   when merging `main` in.
+- The Born Again UI redesign has landed (see below), so most v1 UI diffs
+  will not apply as-is: port the *intent* into the shared components, and
+  record it in `docs/V1-PARITY.md`.
+
+## UI conventions (Born Again)
+
+The visual language, layout, drill-down pattern and component decisions
+live in `docs/design/born-again-ui-direction.md`; follow it for any new
+UI. In short:
+
+- Colours, radii, motion and layers come from the tokens in
+  `src/renderer/src/App.css` (mirrored, with the full set, in
+  `docs/design/tokens.css`). Never hard-code a colour; use a token, and
+  keep `src/test/shared/themeContrast.test.ts` green (it guards AA/AAA
+  contrast for dark, light and high-contrast, and the remote's tokens).
+- Reuse the shared components before writing a new one: `DrillShell`
+  (columns left, content right), `VirtualList`, `PanelResizer`,
+  `ContextMenu`, `Toasts` (undo), `SlideThumb`, `PreviewLivePair`,
+  `CommandPalette`. Destructive queue actions get an Undo toast, not a
+  confirm, unless something is live.
+- Red is only for live/destructive; connected/ok is green. Nothing a
+  user can do from a menu, drop or history may change what is live
+  unless they take it.
+- Interface scaling is CSS zoom on the app root, never browser zoom (it
+  would also zoom the projection output). Pointer maths must use
+  `currentUiZoom()`.
+- Honour `prefers-reduced-motion`; keep everything keyboard-operable.
