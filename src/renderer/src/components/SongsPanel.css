@@ -84,7 +84,6 @@
  * a key, without every keyless row (most of them, for a while) reading as
  * a warning. */
 .song-row-meta-nokey {
-  opacity: 0.65;
   font-style: italic;
 }
 
@@ -247,7 +246,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  opacity: 0.55;
+  opacity: 1;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 .song-slide:hover .song-slide-project,
@@ -601,6 +600,11 @@
   color: var(--border);
   cursor: default;
 }
+/* The letter whose songs are at the top of the list right now. */
+.songs-azrail-btn.is-current {
+  background: var(--accent);
+  color: var(--on-accent);
+}
 
 /* ── Songbook picker ──────────────────────────────────────────────────── */
 .songs-songbook-menu {
@@ -888,3 +892,38 @@
   align-self: flex-start;
   margin-top: 10px;
 }
+
+/* ── Born Again drill-down ─────────────────────────────────────────────── */
+.songs-view-toggle { margin-left: auto; display: inline-flex; }
+.songs-view-toggle + .songs-songbook-menu { margin-left: 0; }
+.song-row--selected { background: var(--songs-wash); border-color: color-mix(in srgb, var(--songs) 45%, transparent); }
+.songs-right .song-detail { padding-bottom: 32px; }
+
+/* Grid view: songs as compact cards, two-up in the left column. */
+.songs-panel[data-view='grid'] .songs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  align-content: start;
+}
+.songs-panel[data-view='grid'] .song-row {
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  gap: 6px;
+}
+.songs-panel[data-view='grid'] .song-row-actions { justify-content: flex-start; }
+
+@media (hover: none) {
+  .song-slide-project { opacity: 1; }
+}
+
+/* The A-Z list is windowed (VirtualList): the scroller owns padding, rows are
+   absolutely positioned, and the current letter is shown as a pill instead of
+   a sticky header. */
+.songs-all-wrap { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.songs-all-wrap .songs-all-list { flex: 1; min-height: 0; padding: 0 8px; }
+.songs-letter-head { position: static; }
+.songs-vrow--grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.songs-vrow--list { display: block; }

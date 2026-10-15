@@ -6,7 +6,7 @@ sound desk.*
 ## Before people arrive
 
 1. Turn on the Congregation screen (and Stage monitor, if used) **first**.
-2. Open BORN.
+2. Open Born Again.
 3. If nothing was projecting last time: click **Open projection** (top of the
    window). The Congregation screen should go to a plain black screen — that's
    correct, it means it's ready and showing nothing yet.
@@ -27,9 +27,10 @@ sound desk.*
 | Bring it back | Press **Esc** again, or click **Show screen** |
 | Show a one-off announcement | Click **Message** → type it → **Show message** (clears itself after ~10s) |
 
-The line above the Back/Next bar always shows exactly what's on the screen right now
-— if it says "Screen is hidden" or "Projection window is closed," that's why nothing
-is showing.
+The two small pictures above the Back/Next bar show **Preview** (what Next or Take
+will put up) and **Live** (what is on the screen right now, read back from the
+screen itself). If Live says "Hidden" or "Projection closed," that's why nothing is
+showing.
 
 ![The Hide screen / Show screen button, amber while hidden.](../images/cheat-hide-show-small.png)
 
@@ -41,4 +42,4 @@ is showing.
 | It's on the wrong screen | Open the **Screens** menu (top right) → check which display Congregation is set to |
 | A warning dot/line appears near a channel or display | Open **Screens → Manage…** — the exact message tells you what to do (see [Troubleshooting](../troubleshooting/service-day.md)) |
 
-Full manual: press **F1** inside BORN, any time.
+Full manual: press **F1** inside Born Again, any time.

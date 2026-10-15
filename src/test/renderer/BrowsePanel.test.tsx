@@ -298,4 +298,68 @@ describe('BrowsePanel', () => {
     expect(window.electronAPI.clearRecentSermons).toHaveBeenCalledOnce()
     await waitFor(() => expect(screen.getByText(/show up here/i)).toBeDefined())
   })
+
+  describe('drill-down layout (Born Again)', () => {
+    const panel = (c: HTMLElement): HTMLElement => c.querySelector('.browse-panel') as HTMLElement
+
+    it('shows the idle prompt on the right until a sermon is picked, then the text opens there', async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />
+      )
+      expect(screen.getByText(/the text opens here/i)).toBeDefined()
+      await user.click(screen.getByRole('button', { name: /^Series/ }))
+      await waitFor(() => screen.getByText('Church Age Book'))
+      await user.click(screen.getByText('Church Age Book'))
+      await waitFor(() => screen.getByText('Sermon One'))
+      await user.click(screen.getByText('Sermon One'))
+      await waitFor(() => screen.getByText('In the beginning'))
+      expect(panel(container).dataset.open).toBe('true')
+      // the sermon list stays in the left column beside the text
+      expect(container.querySelector('.browse-left')?.textContent).toContain('Sermon One')
+      expect(container.querySelector('.browse-right')?.textContent).toContain('In the beginning')
+    })
+
+    it('defaults to grid, switches to list, and remembers the choice', async () => {
+      localStorage.removeItem('born.browseView')
+      const user = userEvent.setup()
+      const { container, unmount } = render(
+        <BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />
+      )
+      expect(panel(container).dataset.view).toBe('grid')
+      await user.click(screen.getByRole('button', { name: 'List view' }))
+      expect(panel(container).dataset.view).toBe('list')
+      expect(localStorage.getItem('born.browseView')).toBe('list')
+      unmount()
+      const again = render(
+        <BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />
+      )
+      expect(panel(again.container).dataset.view).toBe('list')
+      localStorage.removeItem('born.browseView')
+    })
+
+    it('collapses and restores the browse columns with the handle and with the backslash key', async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />
+      )
+      expect(panel(container).dataset.collapsed).toBe('false')
+      await user.click(screen.getByRole('button', { name: 'Hide browse columns' }))
+      expect(panel(container).dataset.collapsed).toBe('true')
+      await user.keyboard('\\')
+      expect(panel(container).dataset.collapsed).toBe('false')
+    })
+
+    it('opens a sermon with the keyboard (Enter on a focused row)', async () => {
+      const user = userEvent.setup()
+      render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+      await user.click(screen.getByRole('button', { name: /^Series/ }))
+      await waitFor(() => screen.getByText('Church Age Book'))
+      await user.click(screen.getByText('Church Age Book'))
+      await waitFor(() => screen.getByText('Sermon One'))
+      screen.getByText('Sermon One').closest('[role="button"]')!.focus()
+      await user.keyboard('{Enter}')
+      await waitFor(() => expect(screen.getByText('In the beginning')).toBeDefined())
+    })
+  })
 })

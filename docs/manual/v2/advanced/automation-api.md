@@ -3,7 +3,7 @@
 HTTP + WebSocket control for a macro pad (Stream Deck, Bitfocus Companion,
 or anything else that can fire an HTTP request or hold a WebSocket open).
 This is a thin adapter over the exact same internal functions the operator
-console and BORN's own phone remote already call — no capability exists
+console and Born Again's own phone remote already call — no capability exists
 here that isn't already reachable some other way.
 
 Served by the same HTTP server as the phone remote and the Graphics

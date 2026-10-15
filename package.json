@@ -82,6 +82,7 @@
     }
   },
   "dependencies": {
+    "@tanstack/react-virtual": "3.13.12",
     "better-sqlite3": "^11.5.0",
     "bonjour-service": "^1.4.4",
     "fast-xml-parser": "^5.11.1",

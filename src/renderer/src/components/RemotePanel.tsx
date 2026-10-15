@@ -19,17 +19,17 @@ interface AutomationInfo {
  *  inbound connections, so this is always shown rather than only on error. */
 function firewallHint(platform: string): string {
   if (platform === 'darwin') {
-    return 'macOS may have shown a firewall prompt for BORN the first time the remote started. If it was dismissed, denied, or never seen: open System Settings → Network → Firewall → Options, and make sure BORN is allowed to accept incoming connections.'
+    return 'macOS may have shown a firewall prompt for Born Again the first time the remote started. If it was dismissed, denied, or never seen: open System Settings → Network → Firewall → Options, and make sure Born Again is allowed to accept incoming connections.'
   }
   if (platform === 'win32') {
-    return 'Windows may have shown a "Windows Defender Firewall has blocked some features" prompt for BORN. If it was cancelled, or the wrong network type (Public) was chosen: open Windows Security → Firewall & network protection → Allow an app through firewall, and check BORN for both Private and Public.'
+    return 'Windows may have shown a "Windows Defender Firewall has blocked some features" prompt for Born Again. If it was cancelled, or the wrong network type (Public) was chosen: open Windows Security → Firewall & network protection → Allow an app through firewall, and check Born Again for both Private and Public.'
   }
-  return "Check this computer's firewall settings to make sure BORN is allowed to accept incoming connections on this network."
+  return "Check this computer's firewall settings to make sure Born Again is allowed to accept incoming connections on this network."
 }
 
 function buildDiagnosticsText(diag: RemoteDiagnostics): string {
   const lines = [
-    `BORN remote connection check — ${new Date().toISOString()}`,
+    `Born Again remote connection check — ${new Date().toISOString()}`,
     `Platform: ${diag.platform}`,
     `Server listening: ${diag.available}`,
     `Port: ${diag.port}`,
@@ -206,8 +206,8 @@ export default function RemotePanel(): JSX.Element {
             <div className="remote-popover-body remote-popover-body--error">
               <AlertTriangle width={22} height={22} strokeWidth={1.75} aria-hidden="true" />
               <p className="remote-error-text">
-                The remote couldn&rsquo;t start — usually another copy of BORN is already running
-                somewhere and is holding the connection. Try quitting BORN completely (not just
+                The remote couldn&rsquo;t start — usually another copy of Born Again is already running
+                somewhere and is holding the connection. Try quitting Born Again completely (not just
                 closing the window) and reopening it.
               </p>
               <button className="btn-secondary btn-sm" onClick={retryNow}>

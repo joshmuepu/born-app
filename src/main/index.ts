@@ -451,6 +451,29 @@ function themeBackground(): string {
 function sendToMain(channel: string, ...args: unknown[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
+/** What each channel actually has on its output right now — the authority the
+ *  operator's Preview/Live pair renders from, so a thumbnail can never claim
+ *  something the output isn't showing. Pushed on every change and also
+ *  pullable (the renderer re-reads it periodically to recover from any
+ *  missed event). */
+function liveSnapshot(): Array<{
+  id: string
+  label: string
+  current: SlidePayload | null
+  next: SlidePayload | null
+  blanked: boolean
+}> {
+  return [...channels.values()].map((c) => ({
+    id: c.id,
+    label: c.label,
+    current: c.current,
+    next: c.next,
+    blanked: c.blanked
+  }))
+}
+function pushLive(): void {
+  sendToMain('live:changed', liveSnapshot())
+}
 function sendToProjection(channel: string, ...args: unknown[]): void {
   if (projectionWindow && !projectionWindow.isDestroyed()) {
     projectionWindow.webContents.send(channel, ...args)
@@ -605,6 +628,9 @@ function setOutputProfile(id: string, profileId: PresentationProfileId): void {
   setGraphicsProfile(id, profileId)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
+  // Re-send the current frame so an already-open Graphics page (OBS) switches
+  // layout now, not only when the next slide happens to arrive.
+  pushGraphicsForChannel(dest.config.channelId)
 }
 
 function setOutputAutoProfile(id: string, autoProfile: boolean): void {
@@ -614,6 +640,7 @@ function setOutputAutoProfile(id: string, autoProfile: boolean): void {
   setGraphicsAutoProfile(id, autoProfile)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
+  pushGraphicsForChannel(dest.config.channelId)
 }
 
 // ── Windows ───────────────────────────────────────────────────────────────────
@@ -625,7 +652,7 @@ function createMainWindow(): void {
     height: 800,
     minWidth: 1040,
     minHeight: 640,
-    title: 'BORN — Branham or Nothing',
+    title: 'Born Again',
     backgroundColor: themeBackground(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -1156,6 +1183,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   const channel = channels.get(channelId)
   if (!channel) return
   channels.set(channelId, patchChannel(channel, { blanked: blank }))
+  pushLive()
   const congregation = destinations.get('congregation')
   if (congregation && congregation.config.channelId === channelId) {
     congregation.send('projection:set-blank', blank || congregation.suppressed)
@@ -1175,6 +1203,7 @@ function clearChannel(channelId: ChannelId): void {
   const channel = channels.get(channelId)
   if (!channel) return
   channels.set(channelId, patchChannel(channel, { current: null, next: null, blanked: false }))
+  pushLive()
   const congregation = destinations.get('congregation')
   if (congregation && congregation.config.channelId === channelId) congregation.send('projection:clear')
   const stage = destinations.get('stage')
@@ -1290,6 +1319,7 @@ function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   if (congregation && congregation.config.channelId === channelId && !congregation.suppressed) {
     congregation.send('projection:show-slide', slide)
   }
+  pushLive()
   // A fresh slide always un-blanks — keep the stage screen in step so it
   // doesn't stay stuck on the clock after an Esc blackout (unless it's
   // independently suppressed, which stays in effect through a new slide).
@@ -1972,6 +2002,7 @@ ipcMain.on(
     // real position, even while stage is suppressed — suppression only gates
     // what actually gets sent to the stage window below.
     channels.set(channelId, patchChannel(channel, { current: incoming.current, next: incoming.next }))
+    pushLive()
     sendToStage('stage:update', stage?.suppressed ? { current: null, next: null } : incoming)
   }
 )
@@ -2102,6 +2133,7 @@ ipcMain.on('channel:clear', (_event, channelId: ChannelId) => {
 })
 
 ipcMain.handle('observability:snapshot', () => observabilitySnapshot())
+ipcMain.handle('live:snapshot', () => liveSnapshot())
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 

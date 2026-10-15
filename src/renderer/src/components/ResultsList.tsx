@@ -6,6 +6,11 @@ import { refsOverlap } from '../../../shared/paragraphRef'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import './SermonPanel.css'
 import { getRecentSearches } from '../recentSearches'
+import VirtualList from './VirtualList'
+import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { quoteMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
 
 interface Props {
   results: Quote[]
@@ -152,6 +157,8 @@ export default function ResultsList({
   onQuickSearch,
   onJumpToSermon
 }: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   if (loading) {
     return (
       <div className="results-loading">
@@ -176,8 +183,16 @@ export default function ResultsList({
   return (
     <div className="results-panel">
       <div className="results-count">{resultCountLabel(results.length)}</div>
-      <div className="results-list">
-        {results.map((quote, index) => {
+      <VirtualList
+        className="results-list results-list--virtual"
+        items={results}
+        estimateSize={132}
+        threshold={200}
+        gap={8}
+        paddingStart={10}
+        paddingEnd={10}
+        itemKey={(q, i) => `${q.sermonId}:${q.paragraphRef}:${i}`}
+        renderItem={(quote) => {
           const live =
             !!onScreen &&
             onScreen.sermonId === quote.sermonId &&
@@ -185,7 +200,19 @@ export default function ResultsList({
           const mode = quote.matchType ?? 'all'
           const { snippet, moreCount } = smartSnippet(bodyOf(quote.text), query, mode)
           return (
-          <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
+          <div
+            className={`result-item${live ? ' result-item--on-screen' : ''}`}
+            draggable
+            onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote })}
+            {...ctx.bind(() =>
+              quoteMenu(quote, {
+                actions,
+                project: () => onSendToProjection(quote),
+                addToQueue: () => onAddToQueue(quote),
+                openSermon: false
+              }).concat([{ id: 'open', label: 'Open the whole sermon', onSelect: () => onOpenSermon(quote), separatorBefore: true }])
+            )}
+          >
             <div
               className="result-body"
               role="button"
@@ -229,8 +256,9 @@ export default function ResultsList({
             </div>
           </div>
           )
-        })}
-      </div>
+        }}
+      />
+      {ctx.element}
     </div>
   )
 }

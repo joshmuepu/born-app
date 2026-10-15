@@ -90,6 +90,15 @@ export interface SlidePayload {
   translationFallback?: boolean
 }
 
+/** One channel's authoritative output state, pushed from the main process. */
+export interface LiveChannel {
+  id: string
+  label: string
+  current: SlidePayload | null
+  next: SlidePayload | null
+  blanked: boolean
+}
+
 export type PresentationProfileId = 'fullscreen' | 'lower-third'
 
 /** One configured output destination beyond the built-in congregation/stage

@@ -1,0 +1,92 @@
+/* A true miniature of the projection output: the same 16:9 stage, text band,
+   label and reference geometry as ProjectionApp.css (vh converted to px on a
+   1920x1080 canvas), scaled with transform. Output colours are the output's
+   own (always black/white), never the app theme's. */
+.slide-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--r-sm);
+  container-type: size;
+}
+.slide-thumb-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+  background: #000;
+  animation: st-in 220ms var(--ease-out);
+}
+.st-label {
+  position: absolute;
+  top: 64.8px;
+  left: 100px;
+  right: 100px;
+  text-align: center;
+  font-size: 25.6px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #948d7c;
+}
+.st-text {
+  position: absolute;
+  top: 129.6px;
+  bottom: 140.4px;
+  left: 0;
+  right: 0;
+  padding: 0 100px;
+  overflow: hidden;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+}
+.st-text-inner { width: 100%; }
+.st-reference {
+  position: absolute;
+  bottom: 54px;
+  left: 100px;
+  right: 100px;
+  text-align: center;
+  font-size: 34.56px;
+  color: #c8c8c8;
+  letter-spacing: 0.02em;
+}
+.slide-thumb--quote .st-reference { color: #c9c2b4; }
+.slide-thumb--bible .st-reference { color: #83c08e; }
+.slide-thumb--song .st-reference { color: #d9a25c; }
+.st-marker {
+  font-size: 0.45em;
+  font-weight: 700;
+  color: #b8b8b8;
+  vertical-align: super;
+  line-height: 0;
+  margin-right: 0.3em;
+}
+.slide-thumb--bible .st-text-inner,
+.slide-thumb--song .st-text-inner { text-align: center; }
+.slide-thumb--song .st-text-inner { white-space: pre-wrap; }
+.slide-thumb-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #b2afaa;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: center;
+  padding: 6px;
+}
+@keyframes st-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .slide-thumb-stage { animation: none; }
+}

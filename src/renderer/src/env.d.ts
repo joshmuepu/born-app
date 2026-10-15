@@ -32,6 +32,7 @@ import type {
   Songbook,
   PresentationProfileId,
   ObservabilityChannel,
+  LiveChannel,
   ManualManifest,
   QueueSource
 } from './types'
@@ -210,6 +211,8 @@ declare global {
       showSlideOnChannel: (channelId: string, slide: SlidePayload) => void
       clearChannel: (channelId: string) => void
       getObservability: () => Promise<ObservabilityChannel[]>
+      getLiveState: () => Promise<LiveChannel[]>
+      onLiveChanged: (callback: (live: LiveChannel[]) => void) => () => void
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never

@@ -1,5 +1,14 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
+import VirtualList from './VirtualList'
+import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { quoteMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
+import { toggleFavorite, loadFavorites } from '../favorites'
+import type { MenuItem } from './ContextMenu'
+import SermonModeStrip, { type SermonMode } from './SermonModeStrip'
+import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import type {
   Quote,
   SermonIndexItem,
@@ -27,9 +36,35 @@ interface Props {
    *  Main's last-used language, or silently change what Main defaults to
    *  next launch. Main's own instance doesn't pass this. */
   initialLanguage?: string
+  /** The unified strip also carries a Search entry — this leaves Browse for it. */
+  onGoSearch?: () => void
+  /** A sermon was opened in the reading pane (for back/forward history). */
+  onSermonOpened?: (s: { id: number; title: string }) => void
+  /** Ask Browse to switch to a mode (from the strip shown on the search view). */
+  modeRequest?: { tab: 'date' | 'series' | 'location' | 'recent'; nonce: number } | null
 }
 
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
+
+/** Make a clickable div keyboard-operable (Enter / Space). */
+function activate(onClick: () => void): {
+  role: 'button'
+  tabIndex: number
+  onClick: () => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+} {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick,
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick()
+      }
+    }
+  }
+}
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -55,9 +90,14 @@ export default function BrowsePanel({
   onScreen,
   onAddToQueue,
   onSendToProjection,
-  initialLanguage
+  initialLanguage,
+  onGoSearch,
+  onSermonOpened,
+  modeRequest
 }: Props) {
   // "Pull up last Sunday" is the most common live-service need, so Date leads.
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [tab, setTab] = useState<BrowseTab>('date')
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
@@ -65,6 +105,12 @@ export default function BrowsePanel({
     () => initialLanguage ?? (localStorage.getItem('born.browseLanguage') || 'en')
   )
   const [languages, setLanguages] = useState<Record<string, string>>({})
+
+  // Born Again drill-down: the browse columns sit on the left, the sermon text
+  // always opens on the right. Grid or list is the operator's choice (remembered);
+  // the columns can slide away so the text gets the full width.
+  const [view, chooseView] = useBrowseView()
+  const [collapsed, setCollapsed] = useState(false)
 
   // Series tab
   const [seriesList, setSeriesList] = useState<SeriesEntry[]>([])
@@ -163,6 +209,7 @@ export default function BrowsePanel({
   const loadParagraphs = useCallback(
     async (sermon: SermonIndexItem, lang = language) => {
       setSelectedSermon(sermon)
+      onSermonOpened?.({ id: sermon.id, title: sermon.title })
       setLoadingParagraphs(true)
       setParagraphs([])
       try {
@@ -172,7 +219,7 @@ export default function BrowsePanel({
         setLoadingParagraphs(false)
       }
     },
-    [language]
+    [language, onSermonOpened]
   )
 
   const changeLanguage = useCallback(
@@ -192,6 +239,41 @@ export default function BrowsePanel({
 
   // ── Render helpers ────────────────────────────────────────────────────────────
 
+  /** Right-click a sermon in the list: open it, favorite it, copy its name. */
+  const sermonItemMenu = (s: SermonIndexItem): MenuItem[] => {
+    const id = `S:${s.id}`
+    const on = loadFavorites().some((f) => f.id === id)
+    return [
+      { id: 'open', label: 'Open this sermon', onSelect: () => loadParagraphs(s) },
+      {
+        id: 'fav',
+        label: on ? 'Remove from favorites' : 'Favorite this sermon',
+        onSelect: () => {
+          const nowOn = toggleFavorite({
+            id,
+            kind: 'sermon',
+            title: s.title,
+            subtitle: `${s.date_code} · ${s.para_count}¶`,
+            quote: {
+              text: '',
+              sermonTitle: s.title,
+              dateCode: s.date_code,
+              sermonId: s.id,
+              paragraphIndex: 0,
+              paragraphRef: ''
+            }
+          })
+          actions.notify(nowOn ? 'Added to favorites' : 'Removed from favorites')
+        }
+      },
+      {
+        id: 'copy',
+        label: 'Copy title and date',
+        onSelect: () => void navigator.clipboard?.writeText(`${s.title} (${s.date_code})`).then(() => actions.notify('Copied the title'))
+      }
+    ]
+  }
+
   const renderSermonList = (): JSX.Element => (
     <div className="browse-sermons">
       <div className="browse-back-row">
@@ -206,7 +288,8 @@ export default function BrowsePanel({
           <div
             key={s.id}
             className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
-            onClick={() => loadParagraphs(s)}
+            {...activate(() => loadParagraphs(s))}
+            {...ctx.bind(() => sermonItemMenu(s))}
           >
             <div className="browse-item-code">{s.date_code}</div>
             <div className="browse-item-title">{s.title}</div>
@@ -220,61 +303,82 @@ export default function BrowsePanel({
     </div>
   )
 
+  // One row per page of each paragraph ("1a", "1b" …) — the same split the
+  // projector uses, so a row can never differ from what goes on screen.
+  const paragraphSlides = useMemo(
+    () =>
+      paragraphs.flatMap((q) =>
+        quoteToItem(q).slides.map((s, slideIndex) => ({
+          q,
+          slideIndex,
+          marker: s.marker ?? q.paragraphRef,
+          text: s.text
+        }))
+      ),
+    [paragraphs]
+  )
+
   const renderParagraphs = (): JSX.Element => (
     <div className="browse-paragraphs">
       <div className="browse-back-row">
-        <button className="browse-back" onClick={() => { setSelectedSermon(null); setParagraphs([]) }}>
+        <button className="browse-back browse-back--stack" onClick={() => { setSelectedSermon(null); setParagraphs([]) }}>
           <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Back
         </button>
         <span className="browse-group-label">{selectedSermon?.title}</span>
-        <span className="browse-count">{selectedSermon?.date_code}</span>
+        <span className="browse-count">{selectedSermon?.date_code}{paragraphs.length ? ` · ${paragraphs.length}¶` : ''}</span>
       </div>
       {loadingParagraphs ? (
         <div className="browse-loading">Loading paragraphs…</div>
       ) : (
-        <div className="browse-list">
-          {paragraphs.flatMap((q) =>
-            // One paragraph per row, not per source row — see the Props note
-            // on onSendToProjection.
-            quoteToItem(q).slides.map((s, slideIndex) => {
-              const marker = s.marker ?? q.paragraphRef
-              // Exact match, not refsOverlap: this list is already one row per
-              // page ("1a", "1b", …), so refsOverlap's numeric-only comparison
-              // (it ignores the letter suffix) would mark every page of the
-              // same paginated paragraph as on-screen at once.
-              const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
-              return (
-                <div
-                  key={`${q.paragraphRef}:${slideIndex}`}
-                  className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
-                >
-                  <div className="browse-para-ref">
-                    {marker}
-                    {live && <span className="on-screen-tag">On screen</span>}
-                  </div>
-                  <div className="browse-para-text">{s.text}</div>
-                  <div className="browse-para-actions">
-                    <button
-                      className="btn-secondary btn-sm"
-                      onClick={() => onAddToQueue(q)}
-                    >
-                      + Queue
-                    </button>
-                    <button
-                      className="btn-primary btn-sm"
-                      onClick={() => onSendToProjection(q, slideIndex)}
-                    >
-                      Project
-                    </button>
-                  </div>
+        <VirtualList
+          className="browse-list browse-list--virtual"
+          items={paragraphSlides}
+          estimateSize={128}
+          threshold={400}
+          gap={2}
+          paddingStart={8}
+          paddingEnd={24}
+          itemKey={(p) => `${p.q.paragraphRef}:${p.slideIndex}`}
+          renderItem={({ q, slideIndex, marker, text }) => {
+            // Exact match, not refsOverlap: this list is already one row per
+            // page ("1a", "1b", …), so refsOverlap's numeric-only comparison
+            // (it ignores the letter suffix) would mark every page of the
+            // same paginated paragraph as on-screen at once.
+            const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
+            return (
+              <div
+                className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
+                draggable
+                onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote: q })}
+                {...ctx.bind(() =>
+                  quoteMenu(q, {
+                    actions,
+                    project: () => onSendToProjection(q, slideIndex),
+                    addToQueue: () => onAddToQueue(q),
+                    openSermon: false
+                  })
+                )}
+              >
+                <div className="browse-para-ref">
+                  {marker}
+                  {live && <span className="on-screen-tag">On screen</span>}
                 </div>
-              )
-            })
-          )}
-          {paragraphs.length === 0 && !loadingParagraphs && (
-            <div className="browse-empty">No paragraphs found</div>
-          )}
-        </div>
+                <div className="browse-para-text">{text}</div>
+                <div className="browse-para-actions">
+                  <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>
+                    + Queue
+                  </button>
+                  <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q, slideIndex)}>
+                    Project
+                  </button>
+                </div>
+              </div>
+            )
+          }}
+        />
+      )}
+      {paragraphs.length === 0 && !loadingParagraphs && (
+        <div className="browse-empty">No paragraphs found</div>
       )}
     </div>
   )
@@ -282,7 +386,6 @@ export default function BrowsePanel({
   // ── Series tab ────────────────────────────────────────────────────────────────
 
   const renderSeries = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (browsedSermons.length > 0) return renderSermonList()
     return (
       <div className="browse-list browse-list--grid">
@@ -291,7 +394,7 @@ export default function BrowsePanel({
           <div
             key={s.i}
             className="browse-item"
-            onClick={() => loadSermonsForIds(s.s, s.n)}
+            {...activate(() => loadSermonsForIds(s.s, s.n))}
           >
             <div className="browse-item-title">{s.n}</div>
             <div className="browse-item-meta">{s.s.length} sermons</div>
@@ -319,7 +422,6 @@ export default function BrowsePanel({
   )
 
   const renderLocation = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (browsedSermons.length > 0) return renderSermonList()
 
     const q = locFilter.trim().toLowerCase()
@@ -448,7 +550,6 @@ export default function BrowsePanel({
   )
 
   const renderDate = (): JSX.Element => {
-    if (selectedSermon) return renderParagraphs()
     if (!dateTree) return <div className="browse-loading">Loading dates…</div>
 
     // Year grid.
@@ -588,7 +689,12 @@ export default function BrowsePanel({
           </div>
           <div className="browse-list browse-list--grid">
             {browsedSermons.map((s) => (
-              <div key={s.id} className="browse-item" onClick={() => loadParagraphs(s)}>
+              <div
+                key={s.id}
+                className={`browse-item${selectedSermon?.id === s.id ? ' selected' : ''}`}
+                {...activate(() => loadParagraphs(s))}
+                {...ctx.bind(() => sermonItemMenu(s))}
+              >
                 <div className="browse-item-code">{s.date_code}</div>
                 <div className="browse-item-title">{s.title}</div>
                 <div className="browse-item-meta">
@@ -664,58 +770,85 @@ export default function BrowsePanel({
     }
   }, [visible, loadDate])
 
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
+  useBackslashToggle(visible, toggleCollapsed)
+
+  // The strip on the sermon search view can send us to a mode.
+  const lastModeNonce = useRef(0)
+  useEffect(() => {
+    if (modeRequest && modeRequest.nonce !== lastModeNonce.current) {
+      lastModeNonce.current = modeRequest.nonce
+      switchTab(modeRequest.tab)
+    }
+  }, [modeRequest, switchTab])
+
+  const split = tab !== 'recent'
+
   return (
-    <div className="browse-panel">
-      <div className="browse-hub">
-        <button className={`browse-hub-card${tab === 'date' ? ' active' : ''}`} onClick={() => switchTab('date')}>
-          <CalendarDays width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Date</span>
-          <span className="browse-hub-sub">Jump to any Sunday</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'series' ? ' active' : ''}`} onClick={() => switchTab('series')}>
-          <BookOpen width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Series</span>
-          <span className="browse-hub-sub">{seriesLoaded ? `${seriesList.length} series` : 'Browse by series'}</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'location' ? ' active' : ''}`} onClick={() => switchTab('location')}>
-          <MapPin width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Location</span>
-          <span className="browse-hub-sub">By city or state</span>
-        </button>
-        <button className={`browse-hub-card${tab === 'recent' ? ' active' : ''}`} onClick={() => switchTab('recent')}>
-          <Clock width={18} height={18} strokeWidth={2} aria-hidden="true" />
-          <span className="browse-hub-title">Recently Played</span>
-          <span className="browse-hub-sub">What you used last</span>
-        </button>
-      </div>
+    <div
+      className="browse-panel"
+      data-view={view}
+      data-collapsed={collapsed && split}
+      data-open={selectedSermon ? 'true' : 'false'}
+    >
+      <SermonModeStrip
+        active={tab}
+        onSelect={(m: SermonMode) => (m === 'search' ? onGoSearch?.() : switchTab(m))}
+        tools={
+          <>
+            {Object.keys(languages).length > 0 && (
+              <select
+                className="language-select browse-language"
+                value={language}
+                onChange={(e) => changeLanguage(e.target.value)}
+                title="Quote language"
+                aria-label="Quote language"
+              >
+                <option value="en">English</option>
+                {Object.entries(languages)
+                  .filter(([code]) => code !== 'en')
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+              </select>
+            )}
+            <ViewToggle view={view} onChange={chooseView} />
+          </>
+        }
+      />
 
-      {Object.keys(languages).length > 0 && (
-        <div className="browse-language-row">
-          <select
-            className="language-select browse-language"
-            value={language}
-            onChange={(e) => changeLanguage(e.target.value)}
-            title="Quote language"
-          >
-            <option value="en">English</option>
-            {Object.entries(languages)
-              .filter(([code]) => code !== 'en')
-              .sort((a, b) => a[1].localeCompare(b[1]))
-              .map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-          </select>
-        </div>
+      {split ? (
+        <DrillShell
+          open={!!selectedSermon}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          leftClassName="browse-left"
+          rightClassName="browse-right"
+          left={
+            <div className="browse-content">
+              {tab === 'series' && renderSeries()}
+              {tab === 'location' && renderLocation()}
+              {tab === 'date' && renderDate()}
+            </div>
+          }
+          right={
+            selectedSermon ? (
+              renderParagraphs()
+            ) : (
+              <div className="drill-idle">
+                <BookOpen width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
+                <p>Pick a sermon — the text opens here.</p>
+              </div>
+            )
+          }
+        />
+      ) : (
+        <div className="browse-content">{renderRecent()}</div>
       )}
-
-      <div className="browse-content">
-        {tab === 'series' && renderSeries()}
-        {tab === 'location' && renderLocation()}
-        {tab === 'date' && renderDate()}
-        {tab === 'recent' && renderRecent()}
-      </div>
+      {ctx.element}
     </div>
   )
 }

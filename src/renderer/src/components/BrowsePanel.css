@@ -5,52 +5,101 @@
   overflow: hidden;
 }
 
-/* ── Browse hub: four entry cards replace the old plain text tab bar ──────── */
-.browse-hub {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+/* ── Born Again drill-down: mode strip, browse columns left, text right ── */
+.browse-panel { container-type: inline-size; }
+
+.browse-modes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
-
-.browse-hub-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.browse-mode-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.browse-mode {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding: 12px 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  color: var(--sermons);
+  padding: 6px 12px;
+  min-height: 34px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
   cursor: pointer;
-  text-align: left;
-  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  transition: background-color var(--tap), color var(--tap);
 }
-.browse-hub-card:hover {
-  background: var(--bg-hover);
-}
-.browse-hub-card.active {
-  border-color: var(--sermons);
+.browse-mode:hover { background: var(--bg-hover); color: var(--text-primary); }
+.browse-mode.active {
   background: var(--sermons-wash);
-}
-.browse-hub-title {
-  font-size: var(--text-base);
-  font-weight: 700;
+  border-color: var(--sermons);
   color: var(--text-primary);
 }
-.browse-hub-sub {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+.browse-mode.active svg { color: var(--sermons); }
+.browse-mode-tools { display: flex; align-items: center; gap: 8px; }
+.browse-view-toggle {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
 }
+.browse-view-toggle button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.browse-view-toggle button:hover { color: var(--text-primary); }
+.browse-view-toggle button.active { background: var(--accent); color: var(--on-accent); }
 
-.browse-language-row {
+.browse-right .browse-paragraphs { padding-bottom: 32px; }
+.browse-right .browse-para-text { font-size: 1.04rem; line-height: 1.6; }
+
+/* Compact calendar inside the left column so the sermon list keeps its room. */
+.browse-left .browse-cal-cell { min-height: 30px; }
+.browse-left .browse-cal-grid { gap: 2px; }
+
+/* Grid cards sit two-up inside the left column. */
+.browse-left .browse-list--grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.browse-left .browse-year-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+
+/* List view: the same items as compact rows. */
+.browse-panel[data-view='list'] .browse-list--grid {
   display: flex;
-  justify-content: flex-end;
-  padding: 8px 12px 0;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+}
+.browse-panel[data-view='list'] .browse-list--grid .browse-item {
+  background: none;
+  border: 0;
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+}
+.browse-panel[data-view='list'] .browse-list--grid .browse-item:hover { background: var(--bg-hover); }
+.browse-panel[data-view='list'] .browse-year-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+}
+.browse-panel[data-view='list'] .browse-year-cell {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  min-height: 38px;
 }
 
 .browse-language {
@@ -459,3 +508,8 @@
 .browse-date-results .browse-list {
   overflow-y: auto;
 }
+
+/* Windowed paragraph list: it is its own scroller inside the right pane. */
+.browse-right { overflow: hidden; }
+.browse-right .browse-paragraphs { flex: 1; min-height: 0; padding-bottom: 0; display: flex; flex-direction: column; }
+.browse-list--virtual { display: block; flex: 1; min-height: 0; padding: 0; gap: 0; }

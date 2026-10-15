@@ -19,6 +19,23 @@ export function readCachedTheme(): Theme {
   }
 }
 
+const CONTRAST_KEY = 'born.contrast'
+
+/** High contrast is a renderer-only overlay on whichever theme is active
+ *  (html[data-contrast='true']), so it needs no main-process setting. */
+export function readCachedContrast(): boolean {
+  try {
+    return localStorage.getItem(CONTRAST_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function applyContrast(on: boolean): void {
+  if (on) document.documentElement.dataset.contrast = 'true'
+  else delete document.documentElement.dataset.contrast
+}
+
 function remember(t: Theme): void {
   try {
     localStorage.setItem(KEY, t)
@@ -27,8 +44,28 @@ function remember(t: Theme): void {
   }
 }
 
-export function useTheme(): { theme: Theme; toggle: () => void; set: (t: Theme) => void } {
+export function useTheme(): {
+  theme: Theme
+  toggle: () => void
+  set: (t: Theme) => void
+  contrast: boolean
+  toggleContrast: () => void
+} {
   const [theme, setThemeState] = useState<Theme>(readCachedTheme)
+  const [contrast, setContrast] = useState<boolean>(readCachedContrast)
+
+  const toggleContrast = useCallback(() => {
+    setContrast((c) => {
+      const next = !c
+      applyContrast(next)
+      try {
+        localStorage.setItem(CONTRAST_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     window.electronAPI.getTheme().then((t) => {
@@ -55,5 +92,5 @@ export function useTheme(): { theme: Theme; toggle: () => void; set: (t: Theme) 
     [theme, set]
   )
 
-  return { theme, toggle, set }
+  return { theme, toggle, set, contrast, toggleContrast }
 }

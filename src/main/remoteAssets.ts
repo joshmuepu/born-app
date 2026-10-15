@@ -7,11 +7,26 @@
 
 export const APP_CSS = `
 :root{
-  --bg:#0d1117; --surface:#161b22; --surface2:#1c2230; --border:#30363d;
-  --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
-  --accent:#8B6FD1; --accent-hover:#9d82e0; --accent-ink:#0d1117;
-  --live:#2ea043; --warn:#e3b341; --warn-ink:#1a1200;
-  --sage:#83C08E; --amber:#D9A25C; --stone:#C9C2B4;
+  --bg:#08080a; --surface:#16161a; --surface2:#1e1e23; --border:#26262c;
+  --text:#f4f2ee; --text2:#b2afaa; --text3:#8a8782;
+  --accent:#9a80e6; --accent-hover:#ad97f0; --accent-ink:#120d1e;
+  --live:#ff4d4f; --ok:#4cc17f; --warn:#f0983e; --warn-ink:#1a1200;
+  --sage:#7ab487; --amber:#d49a4c; --stone:#cfc8ba;
+  color-scheme:dark;
+}
+/* Light follows the phone's setting; dark is the default (a dim booth). */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f4f1ea; --surface:#ffffff; --surface2:#f0ece3; --border:#e3ddcf;
+    --text:#1a1814; --text2:#55503f; --text3:#6d6755;
+    --accent:#5b3fb0; --accent-hover:#4a3294; --accent-ink:#ffffff;
+    --live:#c01c26; --ok:#1b7544; --warn:#9a520c; --warn-ink:#ffffff;
+    --sage:#38703f; --amber:#86581a; --stone:#6f6650;
+    color-scheme:light;
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.001ms !important; transition-duration:0.001ms !important}
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -24,7 +39,7 @@ body{
 button{font-family:inherit;-webkit-tap-highlight-color:transparent}
 input{font-family:inherit}
 ::-webkit-scrollbar{display:none}
-mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; padding:0 2px}
+mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; padding:0 2px}
 
 /* ── App shell: two whole shells, one shown per breakpoint ────────── */
 #app{height:100vh; height:100dvh; overflow:hidden;}
@@ -35,10 +50,11 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
   padding:calc(14px + env(safe-area-inset-top,0px)) 18px 0;
 }
-.brand{font-size:14px; font-weight:800; letter-spacing:0.02em; color:var(--accent); display:flex; align-items:center; gap:2px}
-.brand .dot{color:var(--sage)}
+.brand{font-size:15px; font-weight:300; letter-spacing:0.01em; color:var(--accent); display:flex; align-items:center; gap:8px}
+.brand b{font-weight:700; color:var(--text)}
+.brand svg{width:20px; height:24px; flex-shrink:0}
 .conn{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700}
-.conn.ok{color:var(--live)}
+.conn.ok{color:var(--ok)}
 .conn.bad{color:var(--text2)}
 .conn .led{width:6px; height:6px; border-radius:50%; background:currentColor}
 
@@ -81,7 +97,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .livebar--blanked{border-left-color:var(--warn)}
 .livebar:active{background:var(--surface2)}
 .livebar svg{flex-shrink:0; color:var(--text2)}
-.livebar-dot{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
+.livebar-dot{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(255,77,79,0.22); flex-shrink:0}
 .livebar-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
 .livebar-body{flex:1; min-width:0}
 .livebar-ref{font-size:10px; font-weight:800; letter-spacing:0.05em; color:var(--live)}
@@ -144,7 +160,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    wrap beside the label — found during a broad QA pass, not a regression
    from any single change. */
 .now-head{display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin:14px 18px 8px}
-.now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
+.now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(255,77,79,0.22); flex-shrink:0}
 .now-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
 .now-label{font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:var(--live); flex-shrink:0}
 .now-label--blanked{color:var(--warn)}
@@ -215,7 +231,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 /* Already shown this run — dimmed, not hidden, so a glance up the list still
    confirms "yes we already did that one" instead of it just vanishing. */
 .qitem--played,.qstrip-card--played{opacity:0.5}
-.qstrip-card--played .qstrip-kind{color:var(--live)}
+.qstrip-card--played .qstrip-kind{color:var(--ok)}
 
 /* Edit mode — Up/Down/Remove replace the normal tap-to-preview row. Native
    HTML5 drag-and-drop (the desktop's own reorder gesture) can't fire from a
@@ -243,7 +259,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .slide-list{display:flex; flex-direction:column; gap:10px}
 .slide-row{display:block; width:100%; text-align:left; padding:14px 16px; border-radius:12px; background:var(--surface2); border:1px solid var(--border)}
 .slide-row:active{background:var(--surface)}
-.slide-row.live{border-color:var(--live); background:rgba(46,160,67,0.12)}
+.slide-row.live{border-color:var(--live); background:rgba(255,77,79,0.12)}
 /* The verse the operator actually opened on — a lighter accent than "live",
  * same distinction the desktop app draws between .bible-verse--focus and
  * .bible-verse--on-screen. */
@@ -510,7 +526,8 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .sidebar-spacer{flex:1}
   .sidebar .blank{width:84px; min-height:60px; padding:12px 0; border-radius:14px; background:rgba(227,179,65,0.12); border:1.5px solid rgba(227,179,65,0.4); color:var(--warn); font-size:13px; font-weight:800; margin-bottom:16px}
   .sidebar .blank.active{background:var(--warn); color:var(--warn-ink)}
-  .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--live)}
+  .sidebar .conn{flex-direction:column; gap:5px; font-size:10px; text-align:center; margin-bottom:6px}
+  .sidebar .conn .led{width:8px; height:8px}
 
   /* No bottom tab bar on tablet (the sidebar is the nav), so the phone
    * offset above isn't needed here — but the sidebar itself is a persistent
@@ -608,12 +625,12 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 export const MANIFEST_JSON = JSON.stringify(
   {
-    name: 'BORN Remote',
-    short_name: 'BORN',
+    name: 'Born Again Remote',
+    short_name: 'Born Again',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0d1117',
-    theme_color: '#0d1117',
+    background_color: '#08080a',
+    theme_color: '#08080a',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
@@ -661,8 +678,8 @@ export function buildAppBody(): string {
 <div id="app">
   <div id="phoneShell">
     <div class="topbar">
-      <div class="brand">B${ICON.flame}RN</div>
-      <div class="conn bad" id="conn-p"><span class="led"></span><span class="connLabel">Connecting…</span></div>
+      <div class="brand"><svg viewBox="-30 -40 60 80" aria-hidden="true"><path d="M0,-36 C4,-22 24,-10 24,8 C24,23 13,33 0,33 C-13,33 -24,23 -24,8 C-24,-2 -19,-10 -13,-17 C-12,-9 -8,-5 -4,-6 C-6,-17 -5,-28 0,-36 Z" fill="currentColor"/><path d="M0,8 C5,14 9,18 9,22 C9,26 5,29 0,29 C-5,29 -9,26 -9,22 C-9,18 -4,14 0,8 Z" fill="var(--bg)"/></svg><span><b>Born</b> Again</span></div>
+      <div class="conn bad" id="conn-p" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="transport">
       <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
@@ -685,14 +702,14 @@ export function buildAppBody(): string {
 
   <div id="tabletShell">
     <div class="sidebar">
-      <div class="brand">B${ICON.flame}RN</div>
+      <div class="brand"><svg viewBox="-30 -40 60 80" aria-hidden="true"><path d="M0,-36 C4,-22 24,-10 24,8 C24,23 13,33 0,33 C-13,33 -24,23 -24,8 C-24,-2 -19,-10 -13,-17 C-12,-9 -8,-5 -4,-6 C-6,-17 -5,-28 0,-36 Z" fill="currentColor"/><path d="M0,8 C5,14 9,18 9,22 C9,26 5,29 0,29 C-5,29 -9,26 -9,22 C-9,18 -4,14 0,8 Z" fill="var(--bg)"/></svg><span><b>Born</b> Again</span></div>
       <button class="sidebar-tab active" data-tab="queue">${ICON.queue}Queue</button>
       <button class="sidebar-tab" data-tab="sermons">${ICON.sermons}Sermons</button>
       <button class="sidebar-tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
       <div class="sidebar-spacer"></div>
       <button class="blank" id="blank-t">Blank</button>
-      <div class="led" id="conn-t" title="Connecting…"></div>
+      <div class="conn bad" id="conn-t" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="tablet-main">
       <div class="list-pane" id="tabletList"></div>
@@ -1078,7 +1095,7 @@ function pollUntilOnScreen(done){
 function setConn(ok){
   var p = $('conn-p'); var t = $('conn-t');
   if(p){ p.className = 'conn ' + (ok ? 'ok' : 'bad'); p.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
-  if(t){ t.style.background = ok ? 'var(--live)' : 'var(--text3)'; t.title = ok ? 'Connected' : 'Reconnecting…'; }
+  if(t){ t.className = 'conn ' + (ok ? 'ok' : 'bad'); t.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
 }
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){

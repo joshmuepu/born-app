@@ -86,7 +86,7 @@ function pageTitle(manifest: ManualManifest | null, file: string): string {
     const page = section.pages.find((p) => p.file === file)
     if (page) return page.title
   }
-  return 'BORN manual'
+  return 'Born Again manual'
 }
 
 /** Shown wherever a manual request fails — the manifest itself, or a single
@@ -97,8 +97,8 @@ function HelpErrorState({ onRetry }: { onRetry: () => void }): JSX.Element {
     <div className="help-error">
       <TriangleAlert width={22} height={22} strokeWidth={1.75} aria-hidden="true" />
       <p className="help-error-text">
-        Help couldn&rsquo;t load. Try closing and reopening BORN. If it still fails,
-        contact the person who set up BORN.
+        Help couldn&rsquo;t load. Try closing and reopening Born Again. If it still fails,
+        contact the person who set up Born Again.
       </p>
       <button className="btn-secondary btn-sm" onClick={onRetry}>
         Retry
@@ -223,7 +223,7 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
         table { border-collapse: collapse; }
         td, th { border: 1px solid #ccc; padding: 4px 8px; }
       </style></head><body>${html}</body></html>`
-      await window.electronAPI.printManualPdf(doc, `BORN — ${title}.pdf`)
+      await window.electronAPI.printManualPdf(doc, `Born Again — ${title}.pdf`)
     } finally {
       setPrinting(false)
     }
@@ -233,9 +233,9 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal help-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="BORN manual">
+      <div className="modal help-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Born Again manual">
         <div className="modal-title-row">
-          <h3 className="modal-title">BORN manual</h3>
+          <h3 className="modal-title">Born Again manual</h3>
           <button className="btn-icon btn-sm" onClick={onClose} aria-label="Close">
             <X width={15} height={15} strokeWidth={2.2} aria-hidden="true" />
           </button>

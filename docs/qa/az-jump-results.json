@@ -1,0 +1,3282 @@
+[
+ {
+  "name": "dark/grid jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "dark/grid jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "dark/grid jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":143,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "dark/grid jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "dark/grid jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":1894,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "dark/grid jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "dark/grid jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3558,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "dark/grid jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "dark/grid jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5504,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "dark/grid jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "dark/grid jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6280,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "dark/grid jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "dark/grid jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7056,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "dark/grid jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "dark/grid jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8045,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "dark/grid jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "dark/grid jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":10804,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "dark/grid jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "dark/grid jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":16632,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "dark/grid jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "dark/grid jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":26517,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "dark/grid jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "dark/grid jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29296,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "dark/grid jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "dark/grid jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29682,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "dark/grid jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "dark/grid jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32160,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "dark/grid jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "dark/grid jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34390,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "dark/grid jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "dark/grid jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":35130,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "dark/grid jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "dark/grid jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37289,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "dark/grid jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "dark/grid jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38791,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "dark/grid jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "dark/grid jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38929,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "dark/grid jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "dark/grid jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":39882,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "dark/grid jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "dark/grid jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42892,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "dark/grid jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "dark/grid jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50190,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "dark/grid jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "dark/grid jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50487,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "dark/grid jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "dark/grid jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50785,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "dark/grid jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "dark/grid jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55266,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "dark/grid jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/grid jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "dark/grid jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":56630,\"topHead\":\"Z\",\"topHeadTop\":405,\"firstRowTop\":-21,\"firstRowBottomInside\":true,\"headBottom\":431,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "dark/grid jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":437,\"bottom\":519,\"h\":531,\"headBottom\":431}"
+ },
+ {
+  "name": "dark/grid jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "dark/grid scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "dark/grid scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "dark/grid scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "dark/grid scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "dark/list jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "dark/list jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "dark/list jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":134,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "dark/list jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "dark/list jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":2050,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "dark/list jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "dark/list jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3778,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "dark/list jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "dark/list jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5850,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "dark/list jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "dark/list jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6656,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "dark/list jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "dark/list jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7480,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "dark/list jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "dark/list jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8494,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "dark/list jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "dark/list jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":11588,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "dark/list jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "dark/list jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":17998,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "dark/list jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "dark/list jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":28916,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "dark/list jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "dark/list jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":31942,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "dark/list jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "dark/list jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32332,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "dark/list jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "dark/list jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34958,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "dark/list jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "dark/list jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37376,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "dark/list jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "dark/list jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38234,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "dark/list jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "dark/list jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":40496,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "dark/list jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "dark/list jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42134,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "dark/list jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "dark/list jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42212,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "dark/list jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "dark/list jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":43278,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "dark/list jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "dark/list jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":46582,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "dark/list jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "dark/list jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54604,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "dark/list jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "dark/list jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54890,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "dark/list jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "dark/list jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55176,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "dark/list jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "dark/list jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":60078,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "dark/list jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "dark/list jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "dark/list jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":61537,\"topHead\":\"Z\",\"topHeadTop\":441,\"firstRowTop\":-45,\"firstRowBottomInside\":true,\"headBottom\":467,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "dark/list jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":467,\"bottom\":519,\"h\":531,\"headBottom\":467}"
+ },
+ {
+  "name": "dark/list jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "dark/list scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "dark/list scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "dark/list scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "dark/list scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "light/grid jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "light/grid jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "light/grid jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":143,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "light/grid jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "light/grid jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":1894,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "light/grid jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "light/grid jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3558,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "light/grid jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "light/grid jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5504,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "light/grid jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "light/grid jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6280,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "light/grid jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "light/grid jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7056,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "light/grid jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "light/grid jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8045,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "light/grid jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "light/grid jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":10804,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "light/grid jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "light/grid jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":16632,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "light/grid jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "light/grid jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":26517,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "light/grid jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "light/grid jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29296,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "light/grid jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "light/grid jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29682,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "light/grid jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "light/grid jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32160,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "light/grid jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "light/grid jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34390,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "light/grid jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "light/grid jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":35130,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "light/grid jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "light/grid jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37289,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "light/grid jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "light/grid jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38791,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "light/grid jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "light/grid jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38929,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "light/grid jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "light/grid jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":39882,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "light/grid jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "light/grid jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42892,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "light/grid jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "light/grid jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50190,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "light/grid jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "light/grid jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50487,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "light/grid jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "light/grid jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50785,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "light/grid jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "light/grid jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55266,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "light/grid jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/grid jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "light/grid jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":56630,\"topHead\":\"Z\",\"topHeadTop\":405,\"firstRowTop\":-21,\"firstRowBottomInside\":true,\"headBottom\":431,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "light/grid jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":437,\"bottom\":519,\"h\":531,\"headBottom\":431}"
+ },
+ {
+  "name": "light/grid jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "light/grid scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "light/grid scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "light/grid scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "light/grid scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "light/list jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "light/list jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "light/list jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":134,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "light/list jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "light/list jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":2050,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "light/list jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "light/list jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3778,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "light/list jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "light/list jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5850,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "light/list jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "light/list jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6656,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "light/list jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "light/list jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7480,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "light/list jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "light/list jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8494,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "light/list jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "light/list jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":11588,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "light/list jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "light/list jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":17998,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "light/list jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "light/list jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":28916,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "light/list jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "light/list jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":31942,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "light/list jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "light/list jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32332,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "light/list jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "light/list jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34958,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "light/list jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "light/list jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37376,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "light/list jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "light/list jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38234,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "light/list jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "light/list jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":40496,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "light/list jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "light/list jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42134,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "light/list jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "light/list jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42212,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "light/list jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "light/list jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":43278,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "light/list jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "light/list jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":46582,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "light/list jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "light/list jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54604,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "light/list jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "light/list jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54890,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "light/list jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "light/list jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55176,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "light/list jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "light/list jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":60078,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "light/list jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "light/list jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "light/list jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":61537,\"topHead\":\"Z\",\"topHeadTop\":441,\"firstRowTop\":-45,\"firstRowBottomInside\":true,\"headBottom\":467,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "light/list jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":467,\"bottom\":519,\"h\":531,\"headBottom\":467}"
+ },
+ {
+  "name": "light/list jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "light/list scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "light/list scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "light/list scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "light/list scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":143,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":1894,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3558,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5504,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6280,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7056,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8045,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":10804,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":16632,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":26517,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29296,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29682,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32160,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34390,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":35130,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37289,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38791,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38929,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":39882,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42892,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50190,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50487,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50785,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55266,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/grid jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":56630,\"topHead\":\"Z\",\"topHeadTop\":405,\"firstRowTop\":-21,\"firstRowBottomInside\":true,\"headBottom\":431,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "hc-dark/grid jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":437,\"bottom\":519,\"h\":531,\"headBottom\":431}"
+ },
+ {
+  "name": "hc-dark/grid jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "hc-dark/grid scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/grid scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/grid scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/grid scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/list jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/list jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/list jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":134,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/list jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/list jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":2050,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/list jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/list jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3778,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "hc-dark/list jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "hc-dark/list jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5850,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/list jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-dark/list jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6656,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "hc-dark/list jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "hc-dark/list jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7480,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "hc-dark/list jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "hc-dark/list jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8494,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "hc-dark/list jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "hc-dark/list jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":11588,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "hc-dark/list jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "hc-dark/list jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":17998,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "hc-dark/list jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "hc-dark/list jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":28916,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "hc-dark/list jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "hc-dark/list jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":31942,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "hc-dark/list jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "hc-dark/list jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32332,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "hc-dark/list jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "hc-dark/list jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34958,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "hc-dark/list jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "hc-dark/list jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37376,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "hc-dark/list jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "hc-dark/list jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38234,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "hc-dark/list jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "hc-dark/list jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":40496,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "hc-dark/list jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42134,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "hc-dark/list jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42212,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "hc-dark/list jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "hc-dark/list jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":43278,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "hc-dark/list jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "hc-dark/list jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":46582,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "hc-dark/list jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "hc-dark/list jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54604,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "hc-dark/list jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "hc-dark/list jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54890,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "hc-dark/list jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "hc-dark/list jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55176,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "hc-dark/list jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":60078,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-dark/list jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":61537,\"topHead\":\"Z\",\"topHeadTop\":441,\"firstRowTop\":-45,\"firstRowBottomInside\":true,\"headBottom\":467,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "hc-dark/list jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":467,\"bottom\":519,\"h\":531,\"headBottom\":467}"
+ },
+ {
+  "name": "hc-dark/list jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "hc-dark/list scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-dark/list scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-dark/list scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-dark/list scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-light/grid jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "hc-light/grid jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-light/grid jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":143,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "hc-light/grid jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-light/grid jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":1894,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "hc-light/grid jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-light/grid jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3558,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "hc-light/grid jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "hc-light/grid jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5504,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "hc-light/grid jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-light/grid jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6280,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "hc-light/grid jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "hc-light/grid jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7056,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "hc-light/grid jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "hc-light/grid jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8045,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "hc-light/grid jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "hc-light/grid jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":10804,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "hc-light/grid jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "hc-light/grid jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":16632,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "hc-light/grid jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "hc-light/grid jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":26517,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "hc-light/grid jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "hc-light/grid jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29296,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "hc-light/grid jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "hc-light/grid jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":29682,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "hc-light/grid jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "hc-light/grid jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32160,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "hc-light/grid jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "hc-light/grid jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34390,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "hc-light/grid jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "hc-light/grid jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":35130,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "hc-light/grid jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "hc-light/grid jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37289,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "hc-light/grid jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38791,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "hc-light/grid jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38929,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "hc-light/grid jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":133,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "hc-light/grid jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":39882,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "hc-light/grid jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "hc-light/grid jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42892,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "hc-light/grid jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "hc-light/grid jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50190,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "hc-light/grid jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "hc-light/grid jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50487,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "hc-light/grid jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":115,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "hc-light/grid jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":50785,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "hc-light/grid jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":114,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55266,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":32,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":32,\"bottom\":132,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/grid jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":56630,\"topHead\":\"Z\",\"topHeadTop\":405,\"firstRowTop\":-21,\"firstRowBottomInside\":true,\"headBottom\":431,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "hc-light/grid jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":437,\"bottom\":519,\"h\":531,\"headBottom\":431}"
+ },
+ {
+  "name": "hc-light/grid jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "hc-light/grid scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-light/grid scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-light/grid scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-light/grid scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-light/list jump to #: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":4,\"topHead\":\"#\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"#\",\"headLetter\":\"#\"}"
+ },
+ {
+  "name": "hc-light/list jump to #: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to #: rail highlights #",
+  "ok": true,
+  "detail": "{\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-light/list jump to A: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":134,\"topHead\":\"A\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"A\",\"headLetter\":\"A\"}"
+ },
+ {
+  "name": "hc-light/list jump to A: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to A: rail highlights A",
+  "ok": true,
+  "detail": "{\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-light/list jump to B: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":2050,\"topHead\":\"B\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"B\",\"headLetter\":\"B\"}"
+ },
+ {
+  "name": "hc-light/list jump to B: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to B: rail highlights B",
+  "ok": true,
+  "detail": "{\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-light/list jump to C: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":3778,\"topHead\":\"C\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"C\",\"headLetter\":\"C\"}"
+ },
+ {
+  "name": "hc-light/list jump to C: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to C: rail highlights C",
+  "ok": true,
+  "detail": "{\"rail\":\"C\"}"
+ },
+ {
+  "name": "hc-light/list jump to D: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":5850,\"topHead\":\"D\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"D\",\"headLetter\":\"D\"}"
+ },
+ {
+  "name": "hc-light/list jump to D: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to D: rail highlights D",
+  "ok": true,
+  "detail": "{\"rail\":\"D\"}"
+ },
+ {
+  "name": "hc-light/list jump to E: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":6656,\"topHead\":\"E\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"E\",\"headLetter\":\"E\"}"
+ },
+ {
+  "name": "hc-light/list jump to E: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to E: rail highlights E",
+  "ok": true,
+  "detail": "{\"rail\":\"E\"}"
+ },
+ {
+  "name": "hc-light/list jump to F: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":7480,\"topHead\":\"F\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"F\",\"headLetter\":\"F\"}"
+ },
+ {
+  "name": "hc-light/list jump to F: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to F: rail highlights F",
+  "ok": true,
+  "detail": "{\"rail\":\"F\"}"
+ },
+ {
+  "name": "hc-light/list jump to G: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":8494,\"topHead\":\"G\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"G\",\"headLetter\":\"G\"}"
+ },
+ {
+  "name": "hc-light/list jump to G: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to G: rail highlights G",
+  "ok": true,
+  "detail": "{\"rail\":\"G\"}"
+ },
+ {
+  "name": "hc-light/list jump to H: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":11588,\"topHead\":\"H\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"H\",\"headLetter\":\"H\"}"
+ },
+ {
+  "name": "hc-light/list jump to H: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to H: rail highlights H",
+  "ok": true,
+  "detail": "{\"rail\":\"H\"}"
+ },
+ {
+  "name": "hc-light/list jump to I: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":17998,\"topHead\":\"I\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"I\",\"headLetter\":\"I\"}"
+ },
+ {
+  "name": "hc-light/list jump to I: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to I: rail highlights I",
+  "ok": true,
+  "detail": "{\"rail\":\"I\"}"
+ },
+ {
+  "name": "hc-light/list jump to J: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":28916,\"topHead\":\"J\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"J\",\"headLetter\":\"J\"}"
+ },
+ {
+  "name": "hc-light/list jump to J: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to J: rail highlights J",
+  "ok": true,
+  "detail": "{\"rail\":\"J\"}"
+ },
+ {
+  "name": "hc-light/list jump to K: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":31942,\"topHead\":\"K\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"K\",\"headLetter\":\"K\"}"
+ },
+ {
+  "name": "hc-light/list jump to K: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to K: rail highlights K",
+  "ok": true,
+  "detail": "{\"rail\":\"K\"}"
+ },
+ {
+  "name": "hc-light/list jump to L: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":32332,\"topHead\":\"L\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"L\",\"headLetter\":\"L\"}"
+ },
+ {
+  "name": "hc-light/list jump to L: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to L: rail highlights L",
+  "ok": true,
+  "detail": "{\"rail\":\"L\"}"
+ },
+ {
+  "name": "hc-light/list jump to M: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":34958,\"topHead\":\"M\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"M\",\"headLetter\":\"M\"}"
+ },
+ {
+  "name": "hc-light/list jump to M: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to M: rail highlights M",
+  "ok": true,
+  "detail": "{\"rail\":\"M\"}"
+ },
+ {
+  "name": "hc-light/list jump to N: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":37376,\"topHead\":\"N\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"N\",\"headLetter\":\"N\"}"
+ },
+ {
+  "name": "hc-light/list jump to N: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to N: rail highlights N",
+  "ok": true,
+  "detail": "{\"rail\":\"N\"}"
+ },
+ {
+  "name": "hc-light/list jump to O: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":38234,\"topHead\":\"O\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"O\",\"headLetter\":\"O\"}"
+ },
+ {
+  "name": "hc-light/list jump to O: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to O: rail highlights O",
+  "ok": true,
+  "detail": "{\"rail\":\"O\"}"
+ },
+ {
+  "name": "hc-light/list jump to P: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":40496,\"topHead\":\"P\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"P\",\"headLetter\":\"P\"}"
+ },
+ {
+  "name": "hc-light/list jump to P: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to P: rail highlights P",
+  "ok": true,
+  "detail": "{\"rail\":\"P\"}"
+ },
+ {
+  "name": "hc-light/list jump to Q: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42134,\"topHead\":\"Q\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Q\",\"headLetter\":\"Q\"}"
+ },
+ {
+  "name": "hc-light/list jump to Q: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to Q: rail highlights Q",
+  "ok": true,
+  "detail": "{\"rail\":\"Q\"}"
+ },
+ {
+  "name": "hc-light/list jump to R: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":42212,\"topHead\":\"R\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"R\",\"headLetter\":\"R\"}"
+ },
+ {
+  "name": "hc-light/list jump to R: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to R: rail highlights R",
+  "ok": true,
+  "detail": "{\"rail\":\"R\"}"
+ },
+ {
+  "name": "hc-light/list jump to S: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":43278,\"topHead\":\"S\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"S\",\"headLetter\":\"S\"}"
+ },
+ {
+  "name": "hc-light/list jump to S: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to S: rail highlights S",
+  "ok": true,
+  "detail": "{\"rail\":\"S\"}"
+ },
+ {
+  "name": "hc-light/list jump to T: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":46582,\"topHead\":\"T\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"T\",\"headLetter\":\"T\"}"
+ },
+ {
+  "name": "hc-light/list jump to T: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to T: rail highlights T",
+  "ok": true,
+  "detail": "{\"rail\":\"T\"}"
+ },
+ {
+  "name": "hc-light/list jump to U: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54604,\"topHead\":\"U\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"U\",\"headLetter\":\"U\"}"
+ },
+ {
+  "name": "hc-light/list jump to U: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to U: rail highlights U",
+  "ok": true,
+  "detail": "{\"rail\":\"U\"}"
+ },
+ {
+  "name": "hc-light/list jump to V: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":54890,\"topHead\":\"V\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"V\",\"headLetter\":\"V\"}"
+ },
+ {
+  "name": "hc-light/list jump to V: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to V: rail highlights V",
+  "ok": true,
+  "detail": "{\"rail\":\"V\"}"
+ },
+ {
+  "name": "hc-light/list jump to W: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":55176,\"topHead\":\"W\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"W\",\"headLetter\":\"W\"}"
+ },
+ {
+  "name": "hc-light/list jump to W: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to W: rail highlights W",
+  "ok": true,
+  "detail": "{\"rail\":\"W\"}"
+ },
+ {
+  "name": "hc-light/list jump to Y: head visible at top",
+  "ok": true,
+  "detail": "{\"scrollTop\":60078,\"topHead\":\"Y\",\"topHeadTop\":0,\"firstRowTop\":26,\"firstRowBottomInside\":true,\"headBottom\":26,\"currentRail\":\"Y\",\"headLetter\":\"Y\"}"
+ },
+ {
+  "name": "hc-light/list jump to Y: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":26,\"bottom\":78,\"h\":531,\"headBottom\":26}"
+ },
+ {
+  "name": "hc-light/list jump to Y: rail highlights Y",
+  "ok": true,
+  "detail": "{\"rail\":\"Y\"}"
+ },
+ {
+  "name": "hc-light/list jump to Z: head visible (list end)",
+  "ok": true,
+  "detail": "{\"scrollTop\":61537,\"topHead\":\"Z\",\"topHeadTop\":441,\"firstRowTop\":-45,\"firstRowBottomInside\":true,\"headBottom\":467,\"currentRail\":\"Z\",\"headLetter\":\"Z\"}"
+ },
+ {
+  "name": "hc-light/list jump to Z: first song fully visible below the header",
+  "ok": true,
+  "detail": "{\"top\":467,\"bottom\":519,\"h\":531,\"headBottom\":467}"
+ },
+ {
+  "name": "hc-light/list jump to Z: rail highlights Z",
+  "ok": true,
+  "detail": "{\"rail\":\"Z\"}"
+ },
+ {
+  "name": "hc-light/list scroll to 0: rail follows (#)",
+  "ok": true,
+  "detail": "{\"letter\":\"#\",\"rail\":\"#\"}"
+ },
+ {
+  "name": "hc-light/list scroll to 900: rail follows (A)",
+  "ok": true,
+  "detail": "{\"letter\":\"A\",\"rail\":\"A\"}"
+ },
+ {
+  "name": "hc-light/list scroll to 2500: rail follows (B)",
+  "ok": true,
+  "detail": "{\"letter\":\"B\",\"rail\":\"B\"}"
+ },
+ {
+  "name": "hc-light/list scroll to 6000: rail follows (D)",
+  "ok": true,
+  "detail": "{\"letter\":\"D\",\"rail\":\"D\"}"
+ }
+]

@@ -50,4 +50,4 @@ it never affects what's actually projected. **Esc** closes it immediately.
 
 ---
 
-Next, for anyone setting BORN up for the first time: [Setup & Admin](../setup/installing.md).
+Next, for anyone setting Born Again up for the first time: [Setup & Admin](../setup/installing.md).

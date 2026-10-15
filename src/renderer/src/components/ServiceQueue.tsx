@@ -1,17 +1,14 @@
 import { useRef, useState } from 'react'
-import { Monitor, MonitorPlay, MonitorOff, EyeOff, Mic, BookOpen, Music, Check } from 'lucide-react'
-import type { QueueItem, RecentService } from '../types'
+import { Mic, BookOpen, Music, Check } from 'lucide-react'
+import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
+import PreviewLivePair from './PreviewLivePair'
+import { isQueueDrag, readQueueDrag, type QueueDragPayload } from '../dragItem'
+import { useContextMenu, type MenuItem } from './ContextMenu'
+import { copyText, useAppActions } from '../AppActions'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
-import { useAutoFitFontSize } from '../useAutoFitFontSize'
 import './ServiceQueue.css'
 
-/** Ceiling for the confidence-monitor text — auto-fit shrinks below this for
- *  longer passages, so a short verse reads large and a long one still fits
- *  in full, with no scrollbar. Sized for a compact glance-at box: content is
- *  always one bounded slide now (a sermon paragraph, a Bible verse, a song
- *  section), never the old multi-paragraph blob this used to accommodate. */
-const LIVE_TEXT_BASE_REM = 1.45
 
 interface OnScreen {
   /** The exact text on the projector right now. */
@@ -64,6 +61,20 @@ interface Props {
    *  empty .born file otherwise fails with no feedback at all. Null/absent
    *  when there's nothing to report (including a plain dialog cancel). */
   openError?: string | null
+  /** Preview/Live pair (see PreviewLivePair). */
+  channels?: ChannelInfo[]
+  outputs?: OutputInfo[]
+  fontSize?: number
+  stagedPayload?: SlidePayload | null
+  stagedTitle?: string | null
+  nextPayload?: SlidePayload | null
+  onTake?: () => void
+  onUnstage?: () => void
+  onToggleBlank?: () => void
+  onClearChannel?: (channelId: string) => void
+  /** Something dragged in from a browse pane was dropped at `index`. Never
+   *  changes what is live — it only inserts. */
+  onDropItem?: (payload: QueueDragPayload, index: number) => void
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -128,13 +139,25 @@ export default function ServiceQueue({
   onSaveService,
   recents,
   onOpenRecent,
-  openError
+  openError,
+  channels = [],
+  outputs = [],
+  fontSize = 4.5,
+  stagedPayload = null,
+  stagedTitle = null,
+  nextPayload = null,
+  onTake = () => {},
+  onUnstage = () => {},
+  onToggleBlank = () => {},
+  onClearChannel = () => {},
+  onDropItem = () => {}
 }: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  // Which monitor the operator is following: the congregation's screen (current
-  // slide only) or the stage monitor (current slide + what Next will show).
-  const [monitor, setMonitor] = useState<'screen' | 'stage'>('screen')
+  // Where a drop would land (0..queue.length), for both an item being reordered
+  // and one dragged in from a browse pane. Shown as an insertion line.
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
   // Brief feedback when Prev/Next genuinely has nowhere to go (the true start
   // of the service, or the true end of all available content) — flow-through
   // means that's rare, so a silent no-op reads as broken rather than "you're
@@ -152,9 +175,6 @@ export default function ServiceQueue({
   const handleNextClick = async (): Promise<void> => {
     if (!(await onNext())) triggerBump('next')
   }
-
-  const liveTextRef = useRef<HTMLDivElement>(null)
-  const liveFitRem = useAutoFitFontSize(liveTextRef, onScreen?.text, LIVE_TEXT_BASE_REM, 0.9)
 
   // Next/Prev drive flow-through, so they're live whenever something is (or can
   // be) on screen; the handlers themselves report back when they hit a real edge.
@@ -181,8 +201,6 @@ export default function ServiceQueue({
   // bar is where an operator would actually notice the mismatch, so it has
   // to say so there rather than look like a normal tracked "on screen."
   const orphaned = !status && activeIndex == null && !!onScreen
-
-  const StatusIcon = !projectionOpen ? MonitorOff : blanked ? EyeOff : Monitor
 
   // The next thing in the service after what's on screen. Next/Prev never jump
   // here automatically — it's an explicit choice.
@@ -229,22 +247,69 @@ export default function ServiceQueue({
   }))
   const showGroupHeaders = groups.length > 1
 
+  const queueMenu = (item: QueueItem, index: number): MenuItem[] => {
+    const ref = item.slides[0]?.reference ?? itemTitle(item)
+    return [
+      { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Project now', onSelect: () => onProject(index) },
+      { id: 'stage', label: 'Stage in Preview', hint: 'goes live only when taken', onSelect: () => onSelect(index) },
+      { id: 'up', label: 'Move up', hint: 'Alt+↑', disabled: index === 0, separatorBefore: true, onSelect: () => onReorder(index, index - 1) },
+      { id: 'down', label: 'Move down', hint: 'Alt+↓', disabled: index === queue.length - 1, onSelect: () => onReorder(index, index + 1) },
+      {
+        id: 'copy',
+        label: 'Copy reference',
+        separatorBefore: true,
+        onSelect: () => void copyText(ref).then((ok) => actions.notify(ok ? 'Copied the reference' : "Couldn't copy"))
+      },
+      { id: 'remove', label: 'Remove from queue', danger: true, onSelect: () => onRemove(index) }
+    ]
+  }
+
   const renderRow = (item: QueueItem, index: number): JSX.Element => {
+    const menuBind = ctx.bind(() => queueMenu(item, index))
     const active = index === activeIndex
     const played = !active && playedIds.has(item.id)
     const isNext = !active && projectionOpen && index === nextItemIndex
     const Icon = KIND_ICON[item.kind]
     const dragProps = {
       draggable: true,
-      onDragStart: () => setDragIndex(index),
-      onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverIndex(index) },
-      onDragLeave: () => setDragOverIndex(null),
-      onDrop: () => {
-        if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
-        setDragIndex(null)
-        setDragOverIndex(null)
+      onDragStart: (e: React.DragEvent) => {
+        setDragIndex(index)
+        e.dataTransfer.effectAllowed = 'move'
       },
-      onDragEnd: () => { setDragIndex(null); setDragOverIndex(null) }
+      onDragOver: (e: React.DragEvent) => {
+        if (dragIndex === null && !isQueueDrag(e.dataTransfer)) return
+        e.preventDefault()
+        e.stopPropagation()
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+        setDropIndex(e.clientY > r.top + r.height / 2 ? index + 1 : index)
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const at = dropIndex ?? index
+        if (dragIndex !== null) {
+          // Moving within the queue: "insert before slot `at`" → final index.
+          const to = at > dragIndex ? at - 1 : at
+          if (to !== dragIndex) onReorder(dragIndex, to)
+        } else {
+          const payload = readQueueDrag(e.dataTransfer)
+          if (payload) onDropItem(payload, at)
+        }
+        setDragIndex(null)
+        setDropIndex(null)
+      },
+      onDragEnd: () => { setDragIndex(null); setDropIndex(null) }
+    }
+    // Keyboard alternative to dragging: Alt+↑/↓ moves the focused row. Handled
+    // here, on the row, so it never reaches the global Alt+↑/↓ (which moves the
+    // item that is on screen).
+    const moveWithKeys = (e: React.KeyboardEvent): boolean => {
+      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.target !== e.currentTarget) return false
+      e.preventDefault()
+      e.stopPropagation()
+      const to = e.key === 'ArrowUp' ? index - 1 : index + 1
+      if (to >= 0 && to < queue.length) onReorder(index, to)
+      return true
     }
     const rowClass = [
       'queue-row',
@@ -252,7 +317,11 @@ export default function ServiceQueue({
       active ? 'queue-row--active' : 'queue-row--compact',
       played ? 'queue-row--played' : '',
       isNext ? 'queue-row--next' : '',
-      index === dragOverIndex && dragIndex !== index ? 'queue-row--drag-over' : ''
+      dragIndex === index ? 'queue-row--dragging' : '',
+      // The insertion line is painted on the row (no extra element), so nothing
+      // shifts or re-mounts under the pointer while a drag is in flight.
+      dropIndex === index ? 'queue-row--drop-before' : '',
+      dropIndex === queue.length && index === queue.length - 1 ? 'queue-row--drop-after' : ''
     ].filter(Boolean).join(' ')
 
     if (!active) {
@@ -268,11 +337,14 @@ export default function ServiceQueue({
           title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
           onClick={() => onSelect(index)}
           onKeyDown={(e) => {
+            if (moveWithKeys(e)) return
             if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
               e.preventDefault()
               onSelect(index)
             }
           }}
+          onKeyDownCapture={menuBind.onKeyDownCapture}
+          onContextMenu={menuBind.onContextMenu}
           {...dragProps}
         >
           <span className="queue-row-icon" aria-hidden="true">
@@ -307,11 +379,14 @@ export default function ServiceQueue({
         title="Go to this item to read it — use Restart to project it again from the top"
         onClick={() => onSelect(index)}
         onKeyDown={(e) => {
+          if (moveWithKeys(e)) return
           if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
             e.preventDefault()
             onSelect(index)
           }
         }}
+        onKeyDownCapture={menuBind.onKeyDownCapture}
+        onContextMenu={menuBind.onContextMenu}
         {...dragProps}
       >
         <div className="queue-item-meta">
@@ -341,6 +416,7 @@ export default function ServiceQueue({
 
   return (
     <div className="service-queue">
+      {ctx.element}
       <div className="queue-header">
         <h2>Service Queue</h2>
         <div className="queue-file-actions">
@@ -354,9 +430,46 @@ export default function ServiceQueue({
       {openError && <div className="queue-open-error">{openError}</div>}
 
       {queue.length === 0 ? (
-        <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
+        <div
+          className={`queue-empty-drop${dropIndex === 0 ? ' is-over' : ''}`}
+          onDragOver={(e) => {
+            if (!isQueueDrag(e.dataTransfer)) return
+            e.preventDefault()
+            setDropIndex(0)
+          }}
+          onDragLeave={() => setDropIndex(null)}
+          onDrop={(e) => {
+            e.preventDefault()
+            const payload = readQueueDrag(e.dataTransfer)
+            if (payload) onDropItem(payload, 0)
+            setDropIndex(null)
+          }}
+        >
+          <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
+        </div>
       ) : (
-        <div className="queue-list">
+        <div
+          className="queue-list"
+          onDragOver={(e) => {
+            if (dragIndex === null && !isQueueDrag(e.dataTransfer)) return
+            e.preventDefault()
+            setDropIndex(queue.length)
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropIndex(null)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            if (dragIndex !== null) {
+              if (queue.length - 1 !== dragIndex) onReorder(dragIndex, queue.length - 1)
+            } else {
+              const payload = readQueueDrag(e.dataTransfer)
+              if (payload) onDropItem(payload, queue.length)
+            }
+            setDragIndex(null)
+            setDropIndex(null)
+          }}
+        >
           {groups.map((group) => (
             <div className="queue-section" key={group.label}>
               {showGroupHeaders && (
@@ -375,96 +488,34 @@ export default function ServiceQueue({
 
       {(projectionOpen || queue.length > 0) && (
         <div className="queue-live-bar">
-          <div
-            className="live-now"
-            title={
-              blanked && onScreen
-                ? 'Hidden from the congregation — this is what Show screen will bring back'
-                : monitor === 'screen'
-                  ? 'Exactly what the congregation is seeing right now'
-                  : 'What the stage monitor shows — the current slide and what Next will bring up'
-            }
-          >
-            <div className="live-now-head">
-              <div
-                className="monitor-switch"
-                role="tablist"
-                aria-label="Preview the main screen or the stage monitor"
-              >
-                <button
-                  role="tab"
-                  aria-selected={monitor === 'screen'}
-                  className={`monitor-switch-tab${monitor === 'screen' ? ' is-active' : ''}`}
-                  onClick={() => setMonitor('screen')}
-                  title="What the congregation sees on the main screen"
-                >
-                  <Monitor className="monitor-switch-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
-                  Main screen
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={monitor === 'stage'}
-                  className={`monitor-switch-tab${monitor === 'stage' ? ' is-active' : ''}`}
-                  onClick={() => setMonitor('stage')}
-                  title={
-                    stageOpen
-                      ? 'What the platform sees on the stage monitor — current slide plus what Next brings up'
-                      : 'Preview of the stage monitor (that window is currently closed)'
-                  }
-                >
-                  <MonitorPlay className="monitor-switch-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
-                  Stage
-                  <span
-                    className={`monitor-switch-dot${stageOpen ? ' is-live' : ''}`}
-                    title={stageOpen ? 'Stage monitor is open' : 'Stage monitor is closed'}
-                  />
-                </button>
-              </div>
-              {blanked && onScreen && !status && (
-                <span className="live-now-hidden-badge" title="The congregation sees black — this is what's loaded, ready to bring back">
-                  <EyeOff width={12} height={12} strokeWidth={2} aria-hidden="true" />
-                  Hidden from screen
-                </span>
-              )}
+          <PreviewLivePair
+            channels={channels}
+            outputs={outputs}
+            fontSize={fontSize}
+            stagedPayload={stagedPayload}
+            stagedTitle={stagedTitle}
+            nextPayload={nextPayload}
+            projectionOpen={projectionOpen}
+            canTake={canNext || !!stagedPayload}
+            onTake={onTake}
+            onUnstage={onUnstage}
+            onToggleBlank={onToggleBlank}
+            onClearChannel={onClearChannel}
+          />
+          {(orphaned || (readingAhead && !status)) && (
+            <div className="live-flags">
               {orphaned && (
                 <span className="live-now-hidden-badge live-now-hidden-badge--warn" title="This isn't tracked by any row in your queue — it was either removed while live, or projected without being queued">
                   Not in your queue
                 </span>
               )}
-              {readingAhead && !orphaned && !status && (
+              {readingAhead && !orphaned && (
                 <span className="live-now-hidden-badge" title="Still live, but past what was actually queued">
                   Reading ahead
                 </span>
               )}
-              {onScreen?.reference && !status && (
-                <span className="live-now-ref">
-                  {onScreen.label ? `${onScreen.label} · ` : ''}
-                  {onScreen.reference}
-                </span>
-              )}
             </div>
-            {status ? (
-              <div className="live-now-status">
-                <StatusIcon width={18} height={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>{status}</span>
-              </div>
-            ) : (
-              <div ref={liveTextRef} className="live-now-text" style={{ fontSize: `${liveFitRem}rem` }}>
-                <div className="live-now-text-inner">
-                  {onScreen?.marker && <span className="live-now-marker">{onScreen.marker}</span>}
-                  {onScreen?.text}
-                </div>
-              </div>
-            )}
-            {!status && monitor === 'stage' && (
-              <div className="live-next">
-                <div className="live-next-label">Next</div>
-                <div className="live-next-text">
-                  {onScreen?.nextText || 'End of this item — pick the next one from the queue'}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
           {showSlideJump && activeItem?.kind === 'song' && (
             <div className="live-slide-jump" role="tablist" aria-label="Jump to a verse or chorus">
               {activeItem.slides.map((s, i) => (

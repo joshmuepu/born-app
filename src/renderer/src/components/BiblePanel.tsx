@@ -1,4 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { verseMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
+import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { ChevronLeft, ChevronDown, X, BookOpen, Search, Check, Clock } from 'lucide-react'
 import type {
   BibleTranslation,
@@ -34,6 +39,8 @@ interface Props {
    *  Main's own instance doesn't pass this — its existing localStorage-backed
    *  behavior is untouched. */
   initialTranslation?: string
+  /** A chapter was opened in the reading pane (for back/forward history). */
+  onChapterOpened?: (v: { bookNum: number; chapter: number; verse: number }) => void
 }
 
 /** Search scope: the whole Bible (default), a testament, or one book —
@@ -57,10 +64,13 @@ export default function BiblePanel({
   onAddPassage,
   onProjectPassage,
   onTranslationChange,
-  initialTranslation
+  initialTranslation,
+  onChapterOpened
 }: Props) {
   const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
   const [translation, setTranslation] = useState(
     () => initialTranslation ?? (localStorage.getItem('born.bibleTranslation') || 'KJV')
@@ -110,6 +120,10 @@ export default function BiblePanel({
   // place, no drawer.
   const [browseSection, setBrowseSection] = useState<'all' | 'recent'>('all')
   const [browseBook, setBrowseBook] = useState<number | null>(null)
+  const [view, chooseView] = useBrowseView()
+  const [collapsed, setCollapsed] = useState(false)
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
+  useBackslashToggle(visible, toggleCollapsed)
 
   const [recentRefs, setRecentRefs] = useState<Array<{ reference: string; translation: string }>>([])
   const [recentLoaded, setRecentLoaded] = useState(false)
@@ -247,10 +261,14 @@ export default function BiblePanel({
   )
 
   /** Click a result: open the whole chapter, sitting on that verse (no projection). */
-  const openChapterAt = useCallback((bookNum: number, chapter: number, verse: number) => {
-    setShowSearch(false)
-    setBrowseAnchor({ bookNum, chapter, verse })
-  }, [])
+  const openChapterAt = useCallback(
+    (bookNum: number, chapter: number, verse: number) => {
+      setShowSearch(false)
+      setBrowseAnchor({ bookNum, chapter, verse })
+      onChapterOpened?.({ bookNum, chapter, verse })
+    },
+    [onChapterOpened]
+  )
 
   /** Click a "Recently Looked Up" chip: re-resolve the reference (translation
    *  may have changed since) and open it, same as any other browse entry. */
@@ -387,7 +405,28 @@ export default function BiblePanel({
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
-                title={`Put verse ${v.verse} on the screen`}
+                draggable
+                onDragStart={(e) =>
+                  startQueueDrag(e, { type: 'bible', reference: formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse) })
+                }
+                {...ctx.bind(() =>
+                  verseMenu(
+                    {
+                      reference: formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse),
+                      bookNum: focusVerse.bookNum,
+                      chapter: focusVerse.chapter,
+                      verse: v.verse,
+                      text: v.text
+                    },
+                    {
+                      actions,
+                      project,
+                      addToQueue: () => queueRef(formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse)),
+                      openChapter: false
+                    }
+                  )
+                )}
+                title={`Put verse ${v.verse} on the screen — or drag it into the queue`}
                 onClick={(e) => { project(); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -566,6 +605,10 @@ export default function BiblePanel({
                     className={`bible-verse${isLive(passage.bookNum, passage.chapter, v.verse) ? ' bible-verse--on-screen' : ''}`}
                     role="button"
                     tabIndex={0}
+                    draggable
+                    onDragStart={(e) =>
+                      startQueueDrag(e, { type: 'bible', reference: formatVerse(passage.bookNum, passage.chapter, v.verse) })
+                    }
                     title={`Open ${bookByNum(passage.bookNum)?.name ?? ''} ${passage.chapter} at verse ${v.verse}`}
                     onClick={(e) => { openChapterAt(passage.bookNum, passage.chapter, v.verse); e.currentTarget.blur() }}
                     onKeyDown={(e) => {
@@ -631,6 +674,18 @@ export default function BiblePanel({
                   className="bible-hit-body"
                   role="button"
                   tabIndex={0}
+                  draggable
+                  onDragStart={(e) => startQueueDrag(e, { type: 'bible', reference: h.reference })}
+                  {...ctx.bind(() =>
+                    verseMenu(
+                      { reference: h.reference, bookNum: h.bookNum, chapter: h.chapter, verse: h.verse, text: h.text },
+                      {
+                        actions,
+                        project: () => projectRef(h.reference),
+                        addToQueue: () => queueRef(h.reference)
+                      }
+                    )
+                  )}
                   title="Open the whole chapter at this verse"
                   onClick={(e) => { openChapterAt(h.bookNum, h.chapter, h.verse); e.currentTarget.blur() }}
                   onKeyDown={(e) => {
@@ -712,6 +767,7 @@ export default function BiblePanel({
               {OT_BOOKS.map((b) => (
                 <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
                   <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-name">{b.name}</span>
                   <span className="bible-browse-book-count">{b.chapters} ch</span>
                 </button>
               ))}
@@ -726,6 +782,7 @@ export default function BiblePanel({
               {NT_BOOKS.map((b) => (
                 <button key={b.num} className="bible-browse-book" onClick={() => setBrowseBook(b.num)} title={b.name}>
                   <span className="bible-browse-book-abbrev">{b.abbrev}</span>
+                  <span className="bible-browse-book-name">{b.name}</span>
                   <span className="bible-browse-book-count">{b.chapters} ch</span>
                 </button>
               ))}
@@ -753,7 +810,7 @@ export default function BiblePanel({
   )
 
   return (
-    <div className="bible-panel">
+    <div className="bible-panel" data-view={view}>
       <div className="panel-subtab-bar">
         <button className={`panel-subtab${tab === 'search' ? ' active' : ''}`} onClick={() => { setTab('search'); setShowSearch(true) }}>
           Search
@@ -761,9 +818,30 @@ export default function BiblePanel({
         <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => { setTab('browse'); setShowSearch(true) }}>
           Browse
         </button>
+        {tab === 'browse' && (
+          <span className="bible-view-toggle">
+            <ViewToggle view={view} onChange={chooseView} />
+          </span>
+        )}
       </div>
+      {ctx.element}
       <div className="bible-panel-main">
-        {readingView || (tab === 'search' ? searchView : browseView)}
+        <DrillShell
+          open={!!readingView}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          leftClassName="bible-left"
+          rightClassName="bible-right"
+          left={tab === 'search' ? searchView : browseView}
+          right={
+            readingView || (
+              <div className="drill-idle">
+                <BookOpen width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
+                <p>Pick a book and chapter, or look up a verse — the text opens here.</p>
+              </div>
+            )
+          }
+        />
       </div>
     </div>
   )

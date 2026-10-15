@@ -1,3 +1,9 @@
+import VirtualList, { type VirtualListHandle } from './VirtualList'
+import { startQueueDrag } from '../dragItem'
+import { useContextMenu } from './ContextMenu'
+import { songMenu } from '../contextMenus'
+import { useAppActions } from '../AppActions'
+import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
 import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown, Check, Plus } from 'lucide-react'
 import type { SongSummary, SongDetail, ReviewItem, ParsedSong, Songbook } from '../types'
@@ -17,6 +23,8 @@ interface Props {
   focusSongId?: number | null
   onAddSong: (song: SongDetail) => void
   onProjectSong: (song: SongDetail, slide?: number) => void
+  /** A song was opened in the lyrics pane (for back/forward history). */
+  onSongOpened?: (songId: number) => void
 }
 
 const MIN_QUERY_LEN = 2
@@ -41,7 +49,16 @@ function groupByLetter(list: SongSummary[]): Array<{ letter: string; items: Song
 
 const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
-export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, onProjectSong }: Props) {
+export default function SongsPanel({
+  visible,
+  onScreen,
+  focusSongId,
+  onAddSong,
+  onProjectSong,
+  onSongOpened
+}: Props) {
+  const actions = useAppActions()
+  const ctx = useContextMenu()
   const [tab, setTab] = useState<'search' | 'browse'>('search')
   const [browseSection, setBrowseSection] = useState<'all' | 'recent'>('all')
 
@@ -55,6 +72,10 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const [recentLoaded, setRecentLoaded] = useState(false)
 
   const [selected, setSelected] = useState<SongDetail | null>(null)
+  const [view, chooseView] = useBrowseView()
+  const [collapsed, setCollapsed] = useState(false)
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
+  useBackslashToggle(visible, toggleCollapsed)
   const [importMsg, setImportMsg] = useState<string | null>(null)
   const [importFailures, setImportFailures] = useState<Array<{ file: string; error: string }>>([])
   const [onlineQuery, setOnlineQuery] = useState<string | null>(null)
@@ -166,9 +187,13 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     }
   }, [query, songbookFilter])
 
-  const openSong = useCallback((id: number) => {
-    window.electronAPI.getSong(id).then(setSelected)
-  }, [])
+  const openSong = useCallback(
+    (id: number) => {
+      window.electronAPI.getSong(id).then(setSelected)
+      onSongOpened?.(id)
+    },
+    [onSongOpened]
+  )
 
   const clearRecent = useCallback(() => {
     window.electronAPI.clearRecentSongs().then(() => setRecentSongs([]))
@@ -316,20 +341,37 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     </>
   )
 
-  const letterRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const allListRef = useRef<HTMLDivElement | null>(null)
+  const allListRef = useRef<VirtualListHandle | null>(null)
   const allGroups = useMemo(() => (allSongs ? groupByLetter(allSongs) : []), [allSongs])
   const availableLetters = useMemo(() => new Set(allGroups.map((g) => g.letter)), [allGroups])
+  // The A-Z list is windowed: a flat run of letter-header rows and song rows
+  // (song pairs in the card grid). Only the rows near the viewport are in the
+  // DOM, so a 1,000+ song library opens and scrolls without building it all.
+  type AllRow =
+    | { kind: 'head'; letter: string }
+    | { kind: 'songs'; letter: string; songs: SongSummary[] }
+  const allRows = useMemo<AllRow[]>(() => {
+    const per = view === 'grid' ? 2 : 1
+    const rows: AllRow[] = []
+    for (const g of allGroups) {
+      rows.push({ kind: 'head', letter: g.letter })
+      for (let i = 0; i < g.items.length; i += per) {
+        rows.push({ kind: 'songs', letter: g.letter, songs: g.items.slice(i, i + per) })
+      }
+    }
+    return rows
+  }, [allGroups, view])
+  const letterIndex = useMemo(() => {
+    const m = new Map<string, number>()
+    allRows.forEach((r, i) => {
+      if (r.kind === 'head') m.set(r.letter, i)
+    })
+    return m
+  }, [allRows])
+  const [currentLetter, setCurrentLetter] = useState('')
   const jumpToLetter = (letter: string): void => {
-    // Not scrollIntoView: its sticky-aware scroll math lands a few rows past
-    // this letter's own sticky header (position: sticky, top: 0), scrolling
-    // the first song's title out of view behind it. Computing the offset
-    // directly against the scroll container is exact regardless of how the
-    // browser treats the sticky element. (Ported from v1-ui-audit-help.)
-    const container = allListRef.current
-    const header = letterRefs.current[letter]
-    if (!container || !header) return
-    container.scrollTop += header.getBoundingClientRect().top - container.getBoundingClientRect().top
+    const i = letterIndex.get(letter)
+    if (i !== undefined) allListRef.current?.scrollToIndex(i, { align: 'start' })
   }
 
   /** A song row shared by search results, the all-songs browse list, and
@@ -342,7 +384,18 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const renderSongRow = (s: SongSummary): ReactElement => {
     const showSnippet = s.matchedInTitle === false && !!s.matchSlide
     return (
-      <div className="song-row" key={s.id}>
+      <div
+        className={`song-row${selected?.id === s.id ? ' song-row--selected' : ''}`}
+        key={s.id}
+        draggable
+        onDragStart={(e) => startQueueDrag(e, { type: 'song', songId: s.id })}
+        {...ctx.bind(() =>
+          songMenu(
+            { id: s.id, title: s.title },
+            { actions, project: () => projectSong(s.id), addToQueue: () => queueSong(s.id) }
+          )
+        )}
+      >
         <div className="song-row-body" role="button" tabIndex={0} onClick={() => openSong(s.id)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSong(s.id) } }}
         >
@@ -389,8 +442,255 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     )
   }
 
+  const detailView = selected && (
+        <div className="song-detail">
+          <div className="song-detail-head">
+            <button className="browse-back" onClick={() => setSelected(null)}>
+              <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Songs
+            </button>
+            <div className="song-detail-title">
+              {selected.title}
+              {selected.author ? <span className="song-detail-author"> · {selected.author}</span> : null}
+              <SongKeyPicker songKey={selected.songKey} onChange={handleUpdateKey} />
+            </div>
+            <div className="result-actions">
+              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); e.currentTarget.blur() }}>
+                + Queue
+              </button>
+              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
+                Project
+              </button>
+              {selected.source === 'import' && (
+                <button
+                  className="btn-danger btn-sm song-delete-btn"
+                  onClick={() => handleDelete(selected.id, selected.title)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+
+          {selected.provenance && (
+            <div className="song-provenance">
+              {selected.provenance.url ? (
+                <a href={selected.provenance.url} target="_blank" rel="noreferrer">
+                  {selected.provenance.label}
+                </a>
+              ) : (
+                selected.provenance.label
+              )}
+            </div>
+          )}
+
+          {selected.slides.length > 1 && (
+            <div className="song-jump-row">
+              {selected.slides.map((s, i) => {
+                const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
+                return (
+                  <button
+                    key={i}
+                    className={`song-jump-chip${live ? ' is-live' : ''}`}
+                    onClick={(e) => {
+                      projectSlide(i)
+                      e.currentTarget.blur()
+                    }}
+                    title={live ? `Repeat ${s.label}` : `Jump to ${s.label}`}
+                  >
+                    {s.label}
+                    {live && <span className="song-jump-chip-dot" aria-hidden="true" />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="song-slides">
+            {selected.slides.map((s, i) => {
+              const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
+              return (
+                <div
+                  key={i}
+                  className={`song-slide${live ? ' song-slide--on-screen' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  title="Put this slide on the screen"
+                  onClick={(e) => {
+                    onProjectSong(selected, i)
+                    e.currentTarget.blur()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onProjectSong(selected, i)
+                      e.currentTarget.blur()
+                    }
+                  }}
+                >
+                  <div className="song-slide-head">
+                    <div className="song-slide-label">{s.label}</div>
+                    {live && <span className="on-screen-tag">On screen</span>}
+                  </div>
+                  <div className="song-slide-text">{s.text}</div>
+                  <button
+                    className="btn-secondary btn-sm song-slide-project"
+                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
+                  >
+                    {live ? 'Restart here' : 'Project'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+  )
+
+  const searchView = (
+        <div className="songs-search">
+          <div className="songs-search-bar">
+            <div className="search-input-wrap">
+              <Search className="search-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
+              <input
+                className="search-input"
+                placeholder="Search titles & lyrics…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery('') } }}
+                autoFocus
+              />
+              {query && (
+                <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
+              )}
+            </div>
+          </div>
+
+          {searched && <div className="results-count">{resultCountLabel(results.length)}</div>}
+
+          <div className="songs-list">
+            {!searched && (
+              <div className="songs-search-empty">
+                {query.trim().length > 0 ? (
+                  <p>Keep typing — search needs at least {MIN_QUERY_LEN} letters.</p>
+                ) : (
+                  <>
+                    <p className="songs-search-empty-hint">
+                      Search by title or a lyric you remember — or{' '}
+                      <button className="songs-inline-link" onClick={() => setTab('browse')}>browse all songs</button>.
+                    </p>
+                    {recentLoaded && recentSongs.length > 0 && (
+                      <div className="songs-recent-chips">
+                        <div className="songs-recent-chips-label"><Clock width={12} height={12} strokeWidth={2} /> RECENTLY PLAYED</div>
+                        <div className="songs-recent-chips-row">
+                          {recentSongs.map((s) => (
+                            <button key={s.id} className="songs-recent-chip" onClick={() => openSong(s.id)}>
+                              {s.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
+            {searched && results.map((s) => renderSongRow(s))}
+            {searched && (
+              <button className="hymnary-check-link" onClick={() => setOnlineQuery(query.trim())}>
+                Check online for &ldquo;{query.trim()}&rdquo; →
+              </button>
+            )}
+          </div>
+        </div>
+  )
+
+  const browseView = (
+        <div className="songs-browse">
+          <div className="song-browse-hub">
+            <button
+              className={`song-browse-hub-card${browseSection === 'all' ? ' active' : ''}`}
+              onClick={() => setBrowseSection('all')}
+            >
+              <div className="song-browse-hub-icon"><ListMusic width={16} height={16} strokeWidth={2} /></div>
+              <div className="song-browse-hub-title">All Songs</div>
+              <div className="song-browse-hub-sub">A–Z{allSongs ? ` · ${allSongs.length}` : ''}</div>
+            </button>
+            <button
+              className={`song-browse-hub-card${browseSection === 'recent' ? ' active' : ''}`}
+              onClick={() => setBrowseSection('recent')}
+            >
+              <div className="song-browse-hub-icon"><Clock width={16} height={16} strokeWidth={2} /></div>
+              <div className="song-browse-hub-title">Recently Played</div>
+              <div className="song-browse-hub-sub">What you used last{recentLoaded ? ` · ${recentSongs.length}` : ''}</div>
+            </button>
+          </div>
+
+          {browseSection === 'recent' ? (
+            <div className="songs-list">
+              {recentLoaded && recentSongs.length === 0 && (
+                <div className="songs-empty">Nothing played yet this session.</div>
+              )}
+              {recentSongs.length > 0 && (
+                <div className="songs-recent-clear-row">
+                  <button className="songs-inline-link" onClick={clearRecent}>Clear</button>
+                </div>
+              )}
+              {recentSongs.map((s) => renderSongRow(s))}
+            </div>
+          ) : allLoading || allSongs === null ? (
+            <div className="songs-empty">Loading…</div>
+          ) : (
+            <div className="songs-browse-body">
+              <div className="songs-all-wrap">
+                <VirtualList
+                  ref={allListRef}
+                  className="songs-all-list"
+                  items={allRows}
+                  estimateSize={view === 'grid' ? 86 : 64}
+                  threshold={2000}
+                  gap={view === 'grid' ? 6 : 0}
+                  paddingStart={4}
+                  paddingEnd={12}
+                  itemKey={(r, i) => (r.kind === 'head' ? `h:${r.letter}` : `s:${r.songs[0].id}:${i}`)}
+                  onFirstVisible={(i, atEnd) =>
+                    // At the very end of the list the last letter is on screen even
+                    // though a shorter earlier letter still owns the top row.
+                    setCurrentLetter(
+                      (atEnd ? allRows[allRows.length - 1]?.letter : allRows[i]?.letter) ?? ''
+                    )
+                  }
+                  renderItem={(r) =>
+                    r.kind === 'head' ? (
+                      <div className="songs-letter-head">{r.letter}</div>
+                    ) : (
+                      <div className={`songs-vrow songs-vrow--${view}`}>
+                        {r.songs.map((s) => renderSongRow(s))}
+                      </div>
+                    )
+                  }
+                />
+              </div>
+              <div className="songs-azrail">
+                {ALPHABET.map((l) => (
+                  <button
+                    key={l}
+                    className={`songs-azrail-btn${availableLetters.has(l) ? '' : ' is-empty'}${currentLetter === l ? ' is-current' : ''}`}
+                    aria-current={currentLetter === l ? 'true' : undefined}
+                    disabled={!availableLetters.has(l)}
+                    onClick={() => jumpToLetter(l)}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+  )
+
   return (
-    <div className="songs-panel">
+    <div className="songs-panel" data-view={view}>
+      {ctx.element}
       <div className="panel-subtab-bar">
         <button className={`panel-subtab${tab === 'search' ? ' active' : ''}`} onClick={() => setTab('search')}>
           Search
@@ -398,6 +698,9 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
         <button className={`panel-subtab${tab === 'browse' ? ' active' : ''}`} onClick={() => setTab('browse')}>
           Browse
         </button>
+        <span className="songs-view-toggle">
+          <ViewToggle view={view} onChange={chooseView} />
+        </span>
         <div className="songs-songbook-menu" ref={songbookMenuRef}>
           <button
             className="btn-quiet btn-sm songs-import-btn"
@@ -542,229 +845,25 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             openSong(songId)
           }}
         />
-      ) : selected ? (
-        <div className="song-detail">
-          <div className="song-detail-head">
-            <button className="browse-back" onClick={() => setSelected(null)}>
-              <ChevronLeft width={14} height={14} strokeWidth={2.4} /> Songs
-            </button>
-            <div className="song-detail-title">
-              {selected.title}
-              {selected.author ? <span className="song-detail-author"> · {selected.author}</span> : null}
-              <SongKeyPicker songKey={selected.songKey} onChange={handleUpdateKey} />
-            </div>
-            <div className="result-actions">
-              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); e.currentTarget.blur() }}>
-                + Queue
-              </button>
-              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
-                Project
-              </button>
-              {selected.source === 'import' && (
-                <button
-                  className="btn-danger btn-sm song-delete-btn"
-                  onClick={() => handleDelete(selected.id, selected.title)}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-
-          {selected.provenance && (
-            <div className="song-provenance">
-              {selected.provenance.url ? (
-                <a href={selected.provenance.url} target="_blank" rel="noreferrer">
-                  {selected.provenance.label}
-                </a>
-              ) : (
-                selected.provenance.label
-              )}
-            </div>
-          )}
-
-          {selected.slides.length > 1 && (
-            <div className="song-jump-row">
-              {selected.slides.map((s, i) => {
-                const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
-                return (
-                  <button
-                    key={i}
-                    className={`song-jump-chip${live ? ' is-live' : ''}`}
-                    onClick={(e) => {
-                      projectSlide(i)
-                      e.currentTarget.blur()
-                    }}
-                    title={live ? `Repeat ${s.label}` : `Jump to ${s.label}`}
-                  >
-                    {s.label}
-                    {live && <span className="song-jump-chip-dot" aria-hidden="true" />}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="song-slides">
-            {selected.slides.map((s, i) => {
-              const live = !!onScreen && onScreen.songId === selected.id && onScreen.slideIndex === i
-              return (
-                <div
-                  key={i}
-                  className={`song-slide${live ? ' song-slide--on-screen' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  title="Put this slide on the screen"
-                  onClick={(e) => {
-                    onProjectSong(selected, i)
-                    e.currentTarget.blur()
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      onProjectSong(selected, i)
-                      e.currentTarget.blur()
-                    }
-                  }}
-                >
-                  <div className="song-slide-head">
-                    <div className="song-slide-label">{s.label}</div>
-                    {live && <span className="on-screen-tag">On screen</span>}
-                  </div>
-                  <div className="song-slide-text">{s.text}</div>
-                  <button
-                    className="btn-secondary btn-sm song-slide-project"
-                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
-                  >
-                    {live ? 'Restart here' : 'Project'}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ) : tab === 'search' ? (
-        <div className="songs-search">
-          <div className="songs-search-bar">
-            <div className="search-input-wrap">
-              <Search className="search-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
-              <input
-                className="search-input"
-                placeholder="Search titles & lyrics…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery('') } }}
-                autoFocus
-              />
-              {query && (
-                <button className="search-clear" onClick={() => setQuery('')} title="Clear (Esc)" aria-label="Clear search"><X width={13} height={13} strokeWidth={2.4} /></button>
-              )}
-            </div>
-          </div>
-
-          {searched && <div className="results-count">{resultCountLabel(results.length)}</div>}
-
-          <div className="songs-list">
-            {!searched && (
-              <div className="songs-search-empty">
-                {query.trim().length > 0 ? (
-                  <p>Keep typing — search needs at least {MIN_QUERY_LEN} letters.</p>
-                ) : (
-                  <>
-                    <p className="songs-search-empty-hint">
-                      Search by title or a lyric you remember — or{' '}
-                      <button className="songs-inline-link" onClick={() => setTab('browse')}>browse all songs</button>.
-                    </p>
-                    {recentLoaded && recentSongs.length > 0 && (
-                      <div className="songs-recent-chips">
-                        <div className="songs-recent-chips-label"><Clock width={12} height={12} strokeWidth={2} /> RECENTLY PLAYED</div>
-                        <div className="songs-recent-chips-row">
-                          {recentSongs.map((s) => (
-                            <button key={s.id} className="songs-recent-chip" onClick={() => openSong(s.id)}>
-                              {s.title}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-            {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
-            {searched && results.map((s) => renderSongRow(s))}
-            {searched && (
-              <button className="hymnary-check-link" onClick={() => setOnlineQuery(query.trim())}>
-                Check online for &ldquo;{query.trim()}&rdquo; →
-              </button>
-            )}
-          </div>
-        </div>
       ) : (
-        <div className="songs-browse">
-          <div className="song-browse-hub">
-            <button
-              className={`song-browse-hub-card${browseSection === 'all' ? ' active' : ''}`}
-              onClick={() => setBrowseSection('all')}
-            >
-              <div className="song-browse-hub-icon"><ListMusic width={16} height={16} strokeWidth={2} /></div>
-              <div className="song-browse-hub-title">All Songs</div>
-              <div className="song-browse-hub-sub">A–Z{allSongs ? ` · ${allSongs.length}` : ''}</div>
-            </button>
-            <button
-              className={`song-browse-hub-card${browseSection === 'recent' ? ' active' : ''}`}
-              onClick={() => setBrowseSection('recent')}
-            >
-              <div className="song-browse-hub-icon"><Clock width={16} height={16} strokeWidth={2} /></div>
-              <div className="song-browse-hub-title">Recently Played</div>
-              <div className="song-browse-hub-sub">What you used last{recentLoaded ? ` · ${recentSongs.length}` : ''}</div>
-            </button>
-          </div>
-
-          {browseSection === 'recent' ? (
-            <div className="songs-list">
-              {recentLoaded && recentSongs.length === 0 && (
-                <div className="songs-empty">Nothing played yet this session.</div>
-              )}
-              {recentSongs.length > 0 && (
-                <div className="songs-recent-clear-row">
-                  <button className="songs-inline-link" onClick={clearRecent}>Clear</button>
-                </div>
-              )}
-              {recentSongs.map((s) => renderSongRow(s))}
-            </div>
-          ) : allLoading || allSongs === null ? (
-            <div className="songs-empty">Loading…</div>
-          ) : (
-            <div className="songs-browse-body">
-              <div className="songs-all-list" ref={allListRef}>
-                {allGroups.map((g) => (
-                  <div key={g.letter}>
-                    <div
-                      className="songs-letter-head"
-                      ref={(el) => { letterRefs.current[g.letter] = el }}
-                    >
-                      {g.letter}
-                    </div>
-                    {g.items.map((s) => renderSongRow(s))}
-                  </div>
-                ))}
+        <DrillShell
+          open={!!selected}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          leftClassName="songs-left"
+          rightClassName="songs-right"
+          left={tab === 'search' ? searchView : browseView}
+          right={
+            selected ? (
+              detailView
+            ) : (
+              <div className="drill-idle">
+                <ListMusic width={28} height={28} strokeWidth={1.5} aria-hidden="true" />
+                <p>Pick a song — the lyrics and slides open here.</p>
               </div>
-              <div className="songs-azrail">
-                {ALPHABET.map((l) => (
-                  <button
-                    key={l}
-                    className={`songs-azrail-btn${availableLetters.has(l) ? '' : ' is-empty'}`}
-                    disabled={!availableLetters.has(l)}
-                    onClick={() => jumpToLetter(l)}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+            )
+          }
+        />
       )}
     </div>
   )

@@ -1,12 +1,12 @@
 # The mobile remote
 
-A phone or tablet, on the same WiFi as the BORN computer, can search and advance
+A phone or tablet, on the same WiFi as the Born Again computer, can search and advance
 slides from anywhere in the building — handy for a second contributor, or for
 walking the room while still controlling the queue.
 
 ## Connecting a phone, step by step
 
-1. On the BORN computer, click the **Remote** button (top of the window, phone
+1. On the Born Again computer, click the **Remote** button (top of the window, phone
    icon). A popover opens showing a QR code.
 
    ![The desktop Remote panel, showing a QR code and the remote's address.](../images/desktop-remote-qr-panel.png)
@@ -19,11 +19,11 @@ walking the room while still controlling the queue.
    are whose if more than one phone is contributing; it's not a login and nothing
    is saved to an account. You can tap **Skip for now** instead.
 4. You may also see a prompt to **"Add this to your Home Screen"** — doing so puts
-   a BORN icon on the phone for next time, so there's no QR code or typing needed
+   a Born Again icon on the phone for next time, so there's no QR code or typing needed
    again. **Skip for now** works fine too; you can always reopen it from the
    browser.
 
-**How to know it worked:** the phone shows the same queue BORN's main window does,
+**How to know it worked:** the phone shows the same queue Born Again's main window does,
 and the connection indicator (top of the phone screen) shows connected, not
 "Connecting…".
 

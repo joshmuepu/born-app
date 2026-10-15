@@ -1,18 +1,18 @@
 # A damaged database
 
-BORN checks its own local data — the sermon search index and the Bible/songs
+Born Again checks its own local data — the sermon search index and the Bible/songs
 library — for damage every time it starts.
 
 ## What happens if a file is damaged
 
 If either one is found corrupted (most often from the computer losing power or
-crashing mid-write), BORN:
+crashing mid-write), Born Again:
 
 1. **Keeps the damaged file** — it's renamed (e.g. `library.db.corrupt-<date>`),
    never deleted, in case support needs to look at it later.
 2. **Rebuilds a fresh copy automatically** — the Bible/songs library rebuilds
    immediately; the sermon search index rebuilds the same way it did the very
-   first time BORN ran, which needs an internet connection.
+   first time Born Again ran, which needs an internet connection.
 3. **Tells you, in plain language** — a warning appears in the footer (sermon
    data) or in the app-info popover reached by clicking the footer (library
    data): *"Your local [sermon / Bible/songs] data was damaged — it's been reset
@@ -31,10 +31,10 @@ The sermon index needs an internet connection to rebuild. If it's stuck showing
 time**, connect this computer to the internet and click **Retry** (next to that
 message in the footer).
 
-## Finding the damaged file, or BORN's data folder generally
+## Finding the damaged file, or Born Again's data folder generally
 
-Click the footer (bottom-left, shows "BORN v*version*") to open the app-info
-popover, then **Open data folder**. This opens the exact folder holding BORN's
+Click the footer (bottom-left, shows "Born Again v*version*") to open the app-info
+popover, then **Open data folder**. This opens the exact folder holding Born Again's
 settings and local databases — including any `.corrupt-<date>` file kept from a
 past recovery — in the file manager, ready to send to whoever handles tech
 support if they ask for it.

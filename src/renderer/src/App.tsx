@@ -1,5 +1,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Flame, Eye, EyeOff, X } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import BornMark from './components/BornMark'
+import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
+import { ToastHost, useToasts } from './components/Toasts'
+import SermonModeStrip from './components/SermonModeStrip'
+import SavedPanel from './components/SavedPanel'
+import PanelResizer from './components/PanelResizer'
+import { useUiScale, type UiScaleChoice } from './uiScale'
+import { AppActionsContext, type AppActions } from './AppActions'
+import { useNavHistory, type NavEntry } from './navHistory'
+import { reinsertAt, removeById, moveBackTo, mergeRestore } from './queueUndo'
+import type { Favorite } from './favorites'
+import { isQueueDrag, readQueueDrag, type QueueDragPayload } from './dragItem'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -41,6 +53,11 @@ export type OnScreenLoc =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
   | { kind: 'song'; songId: number; slideIndex: number }
   | null
+
+/** Service queue panel width (px). */
+const QUEUE_MIN = 280
+const QUEUE_MAX = 560
+const QUEUE_DEFAULT = 360
 
 type TopTab = 'sermons' | 'bible' | 'songs'
 type SermonsSubTab = 'search' | 'browse'
@@ -156,7 +173,54 @@ export default function App() {
   const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
+  const { choice: uiScale, setChoice: setUiScale } = useUiScale()
+  // Queue panel: open during a service (anything queued or projecting),
+  // collapsed otherwise — until the operator chooses, which is remembered.
+  const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
+    try {
+      const v = localStorage.getItem('born.queuePanel')
+      return v === 'open' || v === 'closed' ? v : null
+    } catch {
+      return null
+    }
+  })
+  // Queue panel width: draggable edge, remembered. Default ~360, never wider
+  // than half the window so the browse side always keeps room.
+  const [queueWidth, setQueueWidth] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem('born.queueWidth'))
+      return Number.isFinite(v) && v >= QUEUE_MIN ? v : QUEUE_DEFAULT
+    } catch {
+      return QUEUE_DEFAULT
+    }
+  })
+  const [resizingQueue, setResizingQueue] = useState(false)
+  const resizeTimer = useRef(0)
+  const [winWidth, setWinWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const onResize = (): void => setWinWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor(winWidth * 0.5)))
+  const queueW = Math.min(Math.max(queueWidth, QUEUE_MIN), queueMax)
+  const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen
+  const toggleQueue = useCallback(() => {
+    const next = queueOpen ? 'closed' : 'open'
+    setQueueChoice(next)
+    try {
+      localStorage.setItem('born.queuePanel', next)
+    } catch {
+      /* ignore */
+    }
+  }, [queueOpen])
   const [sermonsTab, setSermonsTab] = useState<SermonsSubTab>('search')
+  const [browseModeRequest, setBrowseModeRequest] = useState<{
+    tab: 'date' | 'series' | 'location' | 'recent'
+    nonce: number
+  } | null>(null)
   /** Song the Songs panel should have open (for the follow-along view). */
   const [focusSongId, setFocusSongId] = useState<number | null>(null)
   /** Chapter the Bible panel should show when the operator is previewing a queue
@@ -175,7 +239,7 @@ export default function App() {
    *  and auto-recovered at startup, so the status line can say exactly
    *  that instead of a generic "needs an internet connection" message. */
   const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
-  const { theme, toggle: toggleTheme } = useTheme()
+  const { theme, toggle: toggleTheme, contrast, toggleContrast } = useTheme()
 
   // Channels beyond Main (Phase 5) — each with its own label, persisted
   // translation, and outputs. Empty for every user who hasn't added one.
@@ -456,6 +520,7 @@ export default function App() {
       if (queueIndex != null) {
         setPlayedIds((prev) => (prev.has(item.id) ? prev : new Set(prev).add(item.id)))
       }
+      setStagedId((cur) => (cur === item.id ? null : cur))
       setIsScreenBlanked(false)
       setBiblePreview(null) // projecting anything ends a queue-item preview
       if (item.kind === 'song') setFocusSongId(item.songId)
@@ -542,21 +607,39 @@ export default function App() {
   // tail for them), so fetchAdjacentSlide correctly resolves to null there —
   // "end of item" stays accurate for songs.
   const [nextPreviewText, setNextPreviewText] = useState<string | undefined>(undefined)
+  const [nextFlowPayload, setNextFlowPayload] = useState<SlidePayload | null>(null)
+  // The queue item the operator has staged for the Preview pane by clicking its
+  // row. Staging only ever changes Preview; nothing goes live until it's taken.
+  const [stagedId, setStagedId] = useState<string | null>(null)
   useEffect(() => {
     const p = projected
     if (!p) {
       setNextPreviewText(undefined)
+      setNextFlowPayload(null)
       return
     }
     const loaded = p.item.slides[p.slide + 1]?.text
     if (loaded !== undefined) {
       setNextPreviewText(loaded)
+      setNextFlowPayload(slidePayload(p.item, p.slide + 1))
       return
     }
     setNextPreviewText(undefined)
+    setNextFlowPayload(null)
     fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current).then((ext) => {
       if (projectedRef.current !== p) return // stale — a newer projection landed first
       setNextPreviewText(ext?.slide.text)
+      setNextFlowPayload(
+        ext
+          ? {
+              kind: p.item.kind,
+              text: ext.slide.text,
+              label: ext.slide.label,
+              reference: ext.slide.reference,
+              marker: ext.slide.marker
+            }
+          : null
+      )
     })
   }, [projected])
 
@@ -725,7 +808,10 @@ export default function App() {
   const handleSelectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) followForItem(item, true)
+      if (item) {
+        setStagedId(item.id)
+        followForItem(item, true)
+      }
     },
     [followForItem]
   )
@@ -767,12 +853,195 @@ export default function App() {
   )
 
   const handleRemoveFromQueue = useCallback(
-    (index: number) => mutateQueue((q) => q.filter((_, i) => i !== index)),
-    [mutateQueue]
+    (index: number) => {
+      const before = queueRef.current
+      const item = before[index]
+      if (!item) return
+      mutateQueue((q) => q.filter((_, i) => i !== index))
+      pushToast({
+        message: `Removed “${itemTitle(item)}” from the queue`,
+        actionLabel: 'Undo',
+        // Puts just this item back where it was (anything added or moved since
+        // stays); if it was live it is re-linked by id.
+        onAction: () => mutateQueue((q) => reinsertAt(q, item, index))
+      })
+    },
+    [mutateQueue, pushToast]
   )
+  /** Resolve something dragged in from a browse pane into a queue item and
+   *  insert it at `index`. Insert only: it never projects, and a live item that
+   *  ends up shifted is re-linked by id (mutateQueue → repointProjected). */
+  const handleDropToQueue = useCallback(
+    async (payload: QueueDragPayload, index: number) => {
+      let item: QueueItem | null = null
+      try {
+        if (payload.type === 'quote') {
+          item = quoteToItem(payload.quote)
+          window.electronAPI.noteSermonUsed(payload.quote)
+        } else if (payload.type === 'bible') {
+          const res = await window.electronAPI.lookupPassage(payload.reference, bibleTranslation)
+          if (res && !('error' in (res as object))) item = passageToItem(res as ResolvedPassage)
+        } else if (payload.type === 'song') {
+          const song = await window.electronAPI.getSong(payload.songId)
+          if (song) {
+            item = songToItem(song as SongDetail)
+            window.electronAPI.noteSongUsed(payload.songId)
+          }
+        }
+      } catch {
+        item = null
+      }
+      if (!item) {
+        pushToast({ message: "Couldn't add that to the queue." })
+        return
+      }
+      const placed = item
+      const before = queueRef.current
+      const at = Math.max(0, Math.min(index, before.length))
+      mutateQueue((q) => [...q.slice(0, at), placed, ...q.slice(at)])
+      pushToast({
+        message: `Added “${itemTitle(placed)}” to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => removeById(q, placed.id))
+      })
+    },
+    [bibleTranslation, mutateQueue, pushToast]
+  )
+  // ── Back / forward history across the drill-down ───────────────────────────
+  // Every time the operator opens a sermon, a chapter or a song it is noted;
+  // Alt+←/→, the mouse's back/forward buttons or the header chevrons walk it.
+  // Going back only *navigates* (re-opens the thing) — it never projects.
+  const applyNav = useCallback((entry: NavEntry) => {
+    if (entry.kind === 'sermon') {
+      setTopTab('sermons')
+      setSermonsTab('search')
+      setFollowSermon({ sermonId: entry.sermonId, anchorRef: entry.anchorRef })
+    } else if (entry.kind === 'bible') {
+      setTopTab('bible')
+      setBiblePreview({ bookNum: entry.bookNum, chapter: entry.chapter, verse: entry.verse })
+    } else {
+      // A song can be deleted from the library after it was opened; say so
+      // instead of landing on an empty pane.
+      window.electronAPI
+        .getSong(entry.songId)
+        .then((song) => {
+          if (!song) {
+            pushToast({ message: 'That song is no longer in the library.', timeoutMs: 3500 })
+            return
+          }
+          setTopTab('songs')
+          // Re-opening the same song that is already focused must still re-open it.
+          setFocusSongId(null)
+          window.setTimeout(() => setFocusSongId(entry.songId), 0)
+        })
+        .catch(() => {})
+    }
+  }, [pushToast])
+  const {
+    record: recordNav,
+    back: navBack,
+    forward: navForward,
+    canBack: canNavBack,
+    canForward: canNavForward
+  } = useNavHistory(applyNav)
+
+  // A sermon opened from a search result / a favorite / the palette lands as
+  // the follow view — note it.
+  useEffect(() => {
+    if (followSermon) {
+      recordNav({ kind: 'sermon', sermonId: followSermon.sermonId, anchorRef: followSermon.anchorRef })
+    }
+  }, [followSermon?.sermonId, followSermon?.anchorRef, recordNav]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const el = e.target as HTMLElement | null
+      const typing =
+        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+      if (typing) return
+      e.preventDefault()
+      if (e.key === 'ArrowLeft') navBack()
+      else navForward()
+    }
+    const onMouse = (e: MouseEvent): void => {
+      if (e.button === 3) {
+        e.preventDefault()
+        navBack()
+      } else if (e.button === 4) {
+        e.preventDefault()
+        navForward()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mouseup', onMouse)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mouseup', onMouse)
+    }
+  }, [navBack, navForward])
+
+  // Favorites / recents slide-over, and the actions panels' context menus use.
+  const [savedOpen, setSavedOpen] = useState(false)
+  const openSermonAt = useCallback((sermonId: number, anchorRef: string) => {
+    setTopTab('sermons')
+    setSermonsTab('search')
+    setFollowSermon({ sermonId, anchorRef })
+  }, [])
+  const openVerseAt = useCallback((v: { bookNum: number; chapter: number; verse: number }) => {
+    setTopTab('bible')
+    setBiblePreview(v)
+    recordNav({ kind: 'bible', ...v })
+  }, [recordNav])
+  const openSongById = useCallback((songId: number) => {
+    setTopTab('songs')
+    setFocusSongId(songId)
+  }, [])
+  const addNextInQueue = useCallback(
+    (payload: QueueDragPayload) => {
+      const live = projectedRef.current?.queueIndex
+      void handleDropToQueue(payload, (live ?? -1) + 1)
+    },
+    [handleDropToQueue]
+  )
+  const addFavoriteToQueue = useCallback(
+    (f: Favorite) => {
+      const at = queueRef.current.length
+      if (f.kind === 'sermon') void handleDropToQueue({ type: 'quote', quote: f.quote }, at)
+      else if (f.kind === 'verse') void handleDropToQueue({ type: 'bible', reference: f.reference }, at)
+      else void handleDropToQueue({ type: 'song', songId: f.songId }, at)
+    },
+    [handleDropToQueue]
+  )
+  const appActions = useMemo<AppActions>(
+    () => ({
+      addNext: addNextInQueue,
+      openSermon: openSermonAt,
+      openVerse: openVerseAt,
+      openSong: openSongById,
+      notify: (message) => {
+        pushToast({ message, timeoutMs: 2500 })
+      }
+    }),
+    [addNextInQueue, openSermonAt, openVerseAt, openSongById, pushToast]
+  )
+
   const handleReorder = useCallback(
-    (from: number, to: number) => mutateQueue((q) => reorder(q, from, to)),
-    [mutateQueue]
+    (from: number, to: number) => {
+      const before = queueRef.current
+      const item = before[from]
+      if (!item || from === to) return
+      mutateQueue((q) => reorder(q, from, to))
+      pushToast({
+        message: `Moved “${itemTitle(item)}”`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => moveBackTo(q, item.id, from))
+      })
+    },
+    [mutateQueue, pushToast]
   )
 
   // ── Projection window / stage / blank ──────────────────────────────────────
@@ -803,6 +1072,22 @@ export default function App() {
     setIsScreenBlanked(b)
     window.electronAPI.setBlankScreen(b)
   }, [isScreenBlanked])
+
+  // Preview/Live pair inputs. A staged item that has left the queue simply
+  // stops being staged.
+  const stagedItem = stagedId ? (serviceQueue.find((it) => it.id === stagedId) ?? null) : null
+  const stagedPayload = stagedItem ? slidePayload(stagedItem, 0) : null
+  const previewNextPayload =
+    nextFlowPayload ?? (!projected && serviceQueue[0] ? slidePayload(serviceQueue[0], 0) : null)
+  const handleTake = useCallback(() => {
+    const q = queueRef.current
+    const idx = stagedId ? q.findIndex((it) => it.id === stagedId) : -1
+    if (idx >= 0) {
+      handleProjectFromQueue(idx)
+    } else {
+      handleNext()
+    }
+  }, [stagedId, handleProjectFromQueue, handleNext])
 
   const handleFontSizeChange = useCallback((delta: number) => {
     setFontSize((prev) => {
@@ -998,6 +1283,94 @@ export default function App() {
     [mutateQueue, playedIds, activeQueueIndex, bibleTranslation]
   )
 
+  // ── Command palette (Ctrl/Cmd+K): one search for everything + app actions ──
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+        return
+      }
+      // Ctrl/Cmd+Z undoes the newest undo toast — but never steals the
+      // shortcut from a text field, where it means "undo typing".
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+        const el = e.target as HTMLElement | null
+        const typing =
+          !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+        if (!typing && undoLatest()) e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undoLatest])
+
+  const paletteCommands = useMemo<PaletteCommand[]>(() => {
+    const cmds: PaletteCommand[] = [
+      { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
+      { id: 'go-bible', label: 'Go to Bible', keywords: 'scripture verse', run: () => setTopTab('bible') },
+      { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
+      {
+        id: 'search-sermons',
+        label: 'Search sermons',
+        keywords: 'find quote word phrase',
+        hint: '/',
+        run: () => {
+          setTopTab('sermons')
+          setSermonsTab('search')
+          setFollowSermon(null)
+          window.setTimeout(() => document.getElementById('born-search-input')?.focus(), 0)
+        }
+      },
+      { id: 'queue', label: queueOpen ? 'Hide the service queue' : 'Show the service queue', keywords: 'panel', run: toggleQueue },
+      { id: 'theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', keywords: 'theme appearance', run: toggleTheme },
+      { id: 'contrast', label: contrast ? 'Turn off high contrast' : 'Turn on high contrast', keywords: 'accessibility', run: toggleContrast },
+      { id: 'projection', label: projectionOpen ? 'Close projection' : 'Open projection', keywords: 'screen display output', hint: 'Ctrl+Shift+W', run: handleToggleProjection },
+      { id: 'stage', label: stageOpen ? 'Close stage monitor' : 'Open stage monitor', run: handleToggleStage },
+      ...([
+        ['auto', 'Interface size: automatic for this screen'],
+        [1, 'Interface size: 100%'],
+        [1.25, 'Interface size: 125%'],
+        [1.5, 'Interface size: 150%'],
+        [1.75, 'Interface size: 175%']
+      ] as Array<[UiScaleChoice, string]>)
+        .filter(([c]) => c !== uiScale)
+        .map(([c, label]) => ({
+          id: `ui-scale-${c}`,
+          label,
+          keywords: 'zoom bigger smaller larger text display scale size',
+          run: () => setUiScale(c)
+        })),
+      { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
+      { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
+    ]
+    if (projectionOpen) {
+      cmds.push({
+        id: 'blank',
+        label: isScreenBlanked ? 'Show the screen' : 'Hide the screen',
+        keywords: 'blank black out',
+        hint: 'Esc',
+        run: handleToggleBlank
+      })
+    }
+    return cmds
+  }, [
+    queueOpen,
+    toggleQueue,
+    theme,
+    toggleTheme,
+    contrast,
+    toggleContrast,
+    projectionOpen,
+    handleToggleProjection,
+    stageOpen,
+    handleToggleStage,
+    isScreenBlanked,
+    handleToggleBlank,
+    uiScale,
+    setUiScale
+  ])
+
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
   useEffect(() => {
@@ -1008,7 +1381,7 @@ export default function App() {
     }
 
     const onKey = (e: KeyboardEvent): void => {
-      if (showAlertDialog) return
+      if (showAlertDialog || paletteOpen) return
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
@@ -1093,6 +1466,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [
     showAlertDialog,
+    paletteOpen,
     showShortcuts,
     projectionOpen,
     searchResults,
@@ -1131,51 +1505,130 @@ export default function App() {
     window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
   }, [])
 
+  /** Everything a destructive queue action changes, so Undo can put it all
+   *  back — including un-hiding the screen if (and only if) the action hid it. */
+  const snapshotService = useCallback(
+    () => ({
+      queue: queueRef.current,
+      played: playedIds,
+      projected: projectedRef.current,
+      follow: followSermon,
+      staged: stagedId
+    }),
+    [playedIds, followSermon, stagedId]
+  )
+  const restoreService = useCallback(
+    (snap: ReturnType<typeof snapshotService>, unblank: boolean, liveAtAction: unknown) => {
+      // The old queue comes back; anything added since stays, after it.
+      const merged = mergeRestore(snap.queue, queueRef.current)
+      queueRef.current = merged
+      setServiceQueue(merged)
+      setPlayedIds(snap.played)
+      setFollowSermon(snap.follow)
+      setStagedId(snap.staged)
+      // What is on the screen is only put back if nothing has been put up
+      // since the action — otherwise Undo would change what the congregation
+      // sees (or point the operator window at something that is not live).
+      const liveUnchanged = projectedRef.current === liveAtAction
+      if (liveUnchanged) {
+        projectedRef.current = snap.projected
+        setProjected(snap.projected)
+        if (unblank && projectionOpenRef.current && isScreenBlankedRef.current) {
+          setIsScreenBlanked(false)
+          window.electronAPI.setBlankScreen(false)
+        }
+      } else if (snap.projected) {
+        // Re-link the live item to its restored row by id, nothing more.
+        const live = projectedRef.current
+        if (live) {
+          const idx = merged.findIndex((it) => it.id === live.item.id)
+          const relinked = { ...live, queueIndex: idx === -1 ? null : idx }
+          projectedRef.current = relinked
+          setProjected(relinked)
+        }
+      }
+    },
+    []
+  )
+
   const handleNewService = useCallback(() => {
     if (serviceQueue.length === 0) {
       setFollowSermon(null)
       return
     }
-    if (window.confirm('Clear the current queue and start a new service?')) {
-      setServiceQueue([])
-      projectedRef.current = null
-      setProjected(null)
-      setFollowSermon(null)
-      setPlayedIds(new Set())
-      // setProjected(null) above only clears this window's own idea of
-      // what's live — it sends nothing to the actual projection window, so
-      // without this, the congregation screen keeps showing whatever was up
-      // before "New service" while the operator's own status bar says
-      // "Nothing on screen yet," which is simply false. Blank the real
-      // output to match what the operator is being told.
-      if (projectionOpen && !isScreenBlanked) {
-        setIsScreenBlanked(true)
-        window.electronAPI.setBlankScreen(true)
-      }
+    // Something is on the congregation's screen right now: starting over would
+    // black it out, so that one still asks first. Otherwise it just happens,
+    // and Undo (toast, or Ctrl/Cmd+Z) brings the whole queue back.
+    const liveNow = projectionOpen && !isScreenBlanked && projectedRef.current !== null
+    if (liveNow && !window.confirm('Something is on the screen right now. Clear the queue, hide the screen and start a new service?')) {
+      return
     }
-  }, [serviceQueue.length, projectionOpen, isScreenBlanked])
+    const snap = snapshotService()
+    const count = serviceQueue.length
+    setServiceQueue([])
+    queueRef.current = []
+    projectedRef.current = null
+    setProjected(null)
+    setFollowSermon(null)
+    setPlayedIds(new Set())
+    setStagedId(null)
+    // setProjected(null) above only clears this window's own idea of
+    // what's live — it sends nothing to the actual projection window, so
+    // without this, the congregation screen keeps showing whatever was up
+    // before "New service" while the operator's own status bar says
+    // "Nothing on screen yet," which is simply false. Blank the real
+    // output to match what the operator is being told.
+    let blankedByUs = false
+    if (projectionOpen && !isScreenBlanked) {
+      blankedByUs = true
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+    }
+    pushToast({
+      message: `Started a new service — ${count} item${count === 1 ? '' : 's'} cleared`,
+      actionLabel: 'Undo',
+      onAction: () => restoreService(snap, blankedByUs, null)
+    })
+  }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
   const handleSaveService = useCallback(async () => {
     const ok = await window.electronAPI.saveService(serviceQueue)
     if (ok) refreshRecents()
   }, [serviceQueue, refreshRecents])
 
-  const loadServiceItems = useCallback((loaded: unknown[]) => {
-    setServiceQueue(migrateQueue(loaded))
-    projectedRef.current = null
-    setProjected(null)
-    setFollowSermon(null)
-    setPlayedIds(new Set())
-    // setProjected(null) only clears this window's own idea of what's live —
-    // it sends nothing to the real projection window. Opening a different
-    // service while something is still up would otherwise leave the
-    // congregation looking at the old service's content while the operator's
-    // own status bar claims there's nothing on screen.
-    if (projectionOpenRef.current && !isScreenBlankedRef.current) {
-      setIsScreenBlanked(true)
-      window.electronAPI.setBlankScreen(true)
-    }
-  }, [])
+  const loadServiceItems = useCallback(
+    (loaded: unknown[]) => {
+      const snap = snapshotService()
+      const hadItems = snap.queue.length > 0
+      const items = migrateQueue(loaded)
+      setServiceQueue(items)
+      queueRef.current = items
+      projectedRef.current = null
+      setProjected(null)
+      setFollowSermon(null)
+      setPlayedIds(new Set())
+      setStagedId(null)
+      // setProjected(null) only clears this window's own idea of what's live —
+      // it sends nothing to the real projection window. Opening a different
+      // service while something is still up would otherwise leave the
+      // congregation looking at the old service's content while the operator's
+      // own status bar claims there's nothing on screen.
+      let blankedByUs = false
+      if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+        blankedByUs = true
+        setIsScreenBlanked(true)
+        window.electronAPI.setBlankScreen(true)
+      }
+      if (hadItems) {
+        pushToast({
+          message: `Opened a service (${items.length} item${items.length === 1 ? '' : 's'}) — your previous queue was replaced`,
+          actionLabel: 'Undo',
+          onAction: () => restoreService(snap, blankedByUs, null)
+        })
+      }
+    },
+    [snapshotService, restoreService, pushToast]
+  )
 
   // Shown under the queue toolbar when Open/Import can't read or parse a
   // file — a damaged or empty .born file otherwise fails with nothing
@@ -1362,19 +1815,50 @@ export default function App() {
   }, [projected, projectionOpen, isScreenBlanked])
 
   return (
+    <AppActionsContext.Provider value={appActions}>
     <div className="app">
       <header className="app-header">
         <button
           className="app-logo-born"
           onClick={handleNewService}
-          title="BORN — back to the start screen"
+          title="Born Again — back to the start screen"
         >
-          B
-          <Flame className="app-logo-flame" width={17} height={17} strokeWidth={0} fill="currentColor" aria-hidden="true" />
-          RN
+          <BornMark size={26} />
+          <span className="app-logo-word">
+            <b>Born</b> <span>Again</span>
+          </span>
         </button>
 
         <div className="header-actions">
+          <div className="nav-history" role="group" aria-label="History">
+            <button
+              className="btn-icon"
+              onClick={navBack}
+              disabled={!canNavBack}
+              title="Back to what you had open (Alt+←)"
+              aria-label="Back"
+            >
+              <ChevronLeft width={16} height={16} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+            <button
+              className="btn-icon"
+              onClick={navForward}
+              disabled={!canNavForward}
+              title="Forward (Alt+→)"
+              aria-label="Forward"
+            >
+              <ChevronRight width={16} height={16} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
+          <button
+            className="palette-trigger"
+            onClick={() => setPaletteOpen(true)}
+            title="Search everything and run actions"
+          >
+            <Search width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+            <span>Search everything</span>
+            <kbd>{/Mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
+          </button>
           <button
             className="btn-icon"
             onClick={toggleTheme}
@@ -1387,7 +1871,16 @@ export default function App() {
               <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             )}
           </button>
-          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the BORN manual (F1)">
+          <button
+            className={`btn-icon${contrast ? ' btn-toggle-on' : ''}`}
+            onClick={toggleContrast}
+            aria-pressed={contrast}
+            title={contrast ? 'High contrast is on' : 'Turn on high contrast'}
+            aria-label="High contrast"
+          >
+            <Contrast width={16} height={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the Born Again manual (F1)">
             Help
           </button>
           <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
@@ -1503,7 +1996,7 @@ export default function App() {
           {updateStage === 'idle' && (
             <>
               <span>
-                <strong>BORN {update.latest}</strong> is available — you have {update.current}.
+                <strong>Born Again {update.latest}</strong> is available — you have {update.current}.
               </span>
               <span className="update-banner-actions">
                 {update.asset ? (
@@ -1524,7 +2017,7 @@ export default function App() {
 
           {updateStage === 'downloading' && (
             <>
-              <span>Downloading BORN {update.latest}… {updatePct}%</span>
+              <span>Downloading Born Again {update.latest}… {updatePct}%</span>
               <span className="update-progress">
                 <span className="update-progress-fill" style={{ width: `${updatePct}%` }} />
               </span>
@@ -1534,7 +2027,7 @@ export default function App() {
           {updateStage === 'ready' && (
             <>
               <span>
-                <strong>BORN {update.latest}</strong> is ready. It installs when you restart — BORN closes and reopens on the new version.
+                <strong>Born Again {update.latest}</strong> is ready. It installs when you restart — Born Again closes and reopens on the new version.
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={handleRestartToUpdate}>
@@ -1547,20 +2040,20 @@ export default function App() {
             </>
           )}
 
-          {updateStage === 'installing' && <span>Installing — BORN will restart…</span>}
+          {updateStage === 'installing' && <span>Installing — Born Again will restart…</span>}
 
           {updateStage === 'manual' && (
             <>
               <span>
                 {navigator.platform.startsWith('Mac')
-                  ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen BORN.'
+                  ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen Born Again.'
                   : navigator.platform.startsWith('Win')
-                    ? 'The installer is running — click through it, then reopen BORN.'
-                    : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
+                    ? 'The installer is running — click through it, then reopen Born Again.'
+                    : 'The new AppImage is in your file manager — replace the old one and reopen Born Again.'}
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
-                  Quit BORN
+                  Quit Born Again
                 </button>
               </span>
             </>
@@ -1584,18 +2077,76 @@ export default function App() {
 
       <main className="app-main">
         <div className="search-panel">
-          <div className="panel-tab-bar">
-            <button className={`panel-tab panel-tab--sermons${topTab === 'sermons' ? ' active' : ''}`} onClick={() => setTopTab('sermons')}>Sermons</button>
-            <button className={`panel-tab panel-tab--bible${topTab === 'bible' ? ' active' : ''}`} onClick={() => setTopTab('bible')}>Bible</button>
-            <button className={`panel-tab panel-tab--songs${topTab === 'songs' ? ' active' : ''}`} onClick={() => setTopTab('songs')}>Songs</button>
-          </div>
-
+          <nav className="app-rail" aria-label="Sections">
+            {([
+              ['sermons', 'Sermons', Mic2],
+              ['bible', 'Bible', BookOpen],
+              ['songs', 'Songs', Music2]
+            ] as const).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
+                onClick={() => setTopTab(id)}
+                aria-current={topTab === id ? 'page' : undefined}
+              >
+                <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+            <span className="rail-spacer" />
+            <button
+              className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
+              onClick={() => setSavedOpen((v) => !v)}
+              aria-pressed={savedOpen}
+              title="Favorites and recents"
+            >
+              <Star width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Saved</span>
+            </button>
+            <button
+              className="rail-btn rail-btn--open"
+              onClick={handleOpenService}
+              title="Open a saved service file"
+            >
+              <FolderOpen width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Open</span>
+            </button>
+            <button
+              className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
+              onClick={toggleQueue}
+              onDragOver={(e) => {
+                if (isQueueDrag(e.dataTransfer)) e.preventDefault()
+              }}
+              onDragEnter={(e) => {
+                // Hovering a dragged item over the Queue button opens the panel
+                // so the exact slot can be chosen.
+                if (isQueueDrag(e.dataTransfer) && !queueOpen) setQueueChoice('open')
+              }}
+              onDrop={(e) => {
+                const payload = readQueueDrag(e.dataTransfer)
+                if (!payload) return
+                e.preventDefault()
+                void handleDropToQueue(payload, queueRef.current.length)
+              }}
+              aria-pressed={queueOpen}
+              title={queueOpen ? 'Hide the service queue' : 'Show the service queue'}
+            >
+              <ListOrdered width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+              <span>Queue</span>
+              {serviceQueue.length > 0 && <em className="rail-badge">{serviceQueue.length}</em>}
+            </button>
+          </nav>
+          <div className="search-main">
           <div className="panel-view" hidden={topTab !== 'sermons'}>
-            <div className="panel-subtab-bar">
-              <button className={`panel-subtab${sermonsTab === 'search' ? ' active' : ''}`} onClick={() => setSermonsTab('search')}>Search</button>
-              <button className={`panel-subtab${sermonsTab === 'browse' ? ' active' : ''}`} onClick={() => setSermonsTab('browse')}>Browse</button>
-            </div>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
+              <SermonModeStrip
+                active="search"
+                onSelect={(m) => {
+                  if (m === 'search') return
+                  setSermonsTab('browse')
+                  setBrowseModeRequest({ tab: m, nonce: Date.now() })
+                }}
+              />
               {followSermon ? (
                 <SermonFollowView
                   sermonId={followSermon.sermonId}
@@ -1632,6 +2183,9 @@ export default function App() {
             </div>
             <div className="panel-view" hidden={sermonsTab !== 'browse'}>
               <BrowsePanel
+                onGoSearch={() => setSermonsTab('search')}
+                onSermonOpened={(sm) => recordNav({ kind: 'sermon', sermonId: sm.id, anchorRef: '' })}
+                modeRequest={browseModeRequest}
                 visible={topTab === 'sermons' && sermonsTab === 'browse'}
                 onScreen={onScreenLoc?.kind === 'quote' ? onScreenLoc : null}
                 onAddToQueue={handleAddQuote}
@@ -1648,6 +2202,7 @@ export default function App() {
               onAddPassage={handleAddPassage}
               onProjectPassage={handleProjectPassage}
               onTranslationChange={setBibleTranslation}
+              onChapterOpened={(v) => recordNav({ kind: 'bible', ...v })}
             />
           </div>
 
@@ -1658,11 +2213,41 @@ export default function App() {
               focusSongId={focusSongId}
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
+              onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
             />
+          </div>
           </div>
         </div>
 
-        <div className="queue-panel">
+        <div
+          className={`queue-panel${queueOpen ? '' : ' is-collapsed'}${resizingQueue ? ' is-resizing' : ''}`}
+          aria-hidden={!queueOpen}
+          style={{ ['--queue-w' as string]: `${queueW}px` }}
+        >
+          {queueOpen && (
+            <PanelResizer
+              label="Resize the service queue"
+              width={queueW}
+              min={QUEUE_MIN}
+              max={queueMax}
+              defaultWidth={QUEUE_DEFAULT}
+              onChange={(px) => {
+                // Resizing must track the pointer exactly, so the open/close
+                // width animation is switched off while it is happening.
+                setResizingQueue(true)
+                window.clearTimeout(resizeTimer.current)
+                resizeTimer.current = window.setTimeout(() => setResizingQueue(false), 350)
+                setQueueWidth(px)
+              }}
+              onCommit={(px) => {
+                try {
+                  localStorage.setItem('born.queueWidth', String(px))
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+          )}
           <ServiceQueue
             queue={serviceQueue}
             playedIds={playedIds}
@@ -1697,6 +2282,17 @@ export default function App() {
             recents={recents}
             onOpenRecent={handleOpenRecent}
             openError={openError}
+            channels={channels}
+            outputs={outputs}
+            fontSize={fontSize}
+            stagedPayload={stagedPayload}
+            stagedTitle={stagedItem ? itemTitle(stagedItem) : null}
+            nextPayload={previewNextPayload}
+            onTake={handleTake}
+            onUnstage={() => setStagedId(null)}
+            onToggleBlank={handleToggleBlank}
+            onClearChannel={(id) => window.electronAPI.clearChannel(id)}
+            onDropItem={handleDropToQueue}
           />
         </div>
       </main>
@@ -1761,10 +2357,16 @@ export default function App() {
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
+              <div><dt><kbd>\</kbd></dt><dd>Slide the browse columns away / back</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Undo the last queue change</dd></div>
+              <div><dt><kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Back / forward through what you opened</dd></div>
+              <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> on a queue row</dt><dd>Move that row up / down</dd></div>
+              <div><dt><kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd></dt><dd>Open the right-click menu on the focused item</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
-              <div><dt><kbd>F1</kbd></dt><dd>Open / close the BORN manual</dd></div>
+              <div><dt><kbd>F1</kbd></dt><dd>Open / close the Born Again manual</dd></div>
             </dl>
             <div className="modal-actions">
               <button className="btn-primary" onClick={() => setShowShortcuts(false)}>Close</button>
@@ -1850,6 +2452,37 @@ export default function App() {
           )
         })()}
 
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={paletteCommands}
+        translation={bibleTranslation}
+        onOpenSermon={(q) => {
+          setTopTab('sermons')
+          setSermonsTab('search')
+          setFollowSermon({ sermonId: q.sermonId, anchorRef: q.paragraphRef })
+        }}
+        onOpenSong={(id) => {
+          setTopTab('songs')
+          setFocusSongId(id)
+        }}
+        onOpenVerse={(v) => {
+          setTopTab('bible')
+          setBiblePreview(v)
+        }}
+      />
+
+      <SavedPanel
+        open={savedOpen}
+        onClose={() => setSavedOpen(false)}
+        onOpenSermon={openSermonAt}
+        onOpenVerse={openVerseAt}
+        onOpenSong={openSongById}
+        onAddFavorite={addFavoriteToQueue}
+      />
+
+      <ToastHost toasts={toasts} onDismiss={dismissToast} />
+
       <footer className="status-bar">
         <div className="status-trigger-wrap">
           <button
@@ -1858,7 +2491,7 @@ export default function App() {
             onClick={() => setStatusPopoverOpen((v) => !v)}
             title="App info"
           >
-            BORN v{appVersion || '—'}
+            Born Again v{appVersion || '—'}
             {update?.hasUpdate && updateDismissed && <span className="status-trigger-dot" />}
           </button>
           {statusPopoverOpen && (
@@ -1902,7 +2535,7 @@ export default function App() {
               <div className="status-popover-row">
                 <button
                   className="btn-secondary btn-sm"
-                  title="Open the folder holding BORN's local data — useful if support asks for it"
+                  title="Open the folder holding Born Again's local data — useful if support asks for it"
                   onClick={() => window.electronAPI.openDataFolder()}
                 >
                   Open data folder
@@ -1941,7 +2574,23 @@ export default function App() {
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Resume</button>
           </>
         ) : null}
+        <div className="status-live" aria-live="polite">
+          <span className={`status-chip${projectionOpen ? (isScreenBlanked ? ' is-blank' : ' is-live') : ''}`}>
+            <span className="status-chip-dot" aria-hidden="true" />
+            {projectionOpen ? (isScreenBlanked ? 'Screen hidden' : 'On air') : 'Projection off'}
+          </span>
+          {stageOpen && <span className="status-chip">Stage monitor</span>}
+          {displayInfo && (
+            <span className="status-chip" title={displayInfo.targetName ?? undefined}>
+              {displayInfo.displays.length} display{displayInfo.displays.length === 1 ? '' : 's'}
+            </span>
+          )}
+          <span className="status-chip">
+            {serviceQueue.length} in queue
+          </span>
+        </div>
       </footer>
     </div>
+    </AppActionsContext.Provider>
   )
 }

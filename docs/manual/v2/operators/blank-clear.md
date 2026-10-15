@@ -13,9 +13,10 @@ nothing" signal, readable at a glance even if you can't tell colors apart.
 ![The Hide screen / Show screen button in its amber "hidden" state — solid amber fill, crossed-out eye icon, and the "Show screen" label.](../images/operator-hide-screen-amber.png)
 
 This is the button to reach for between items, or any time you want the room's
-attention off the screen — it's deliberately the one thing in BORN that's always in
-the same place every service. There's no separate "Clear" button — **Hide screen**
-is how you clear the congregation's view between items.
+attention off the screen — it's deliberately the one thing in Born Again that's always in
+the same place every service. The **Clear** button under the Preview and Live pictures in the queue panel does
+exactly the same thing as **Hide screen** (it becomes **Show** while hidden) — your
+place is kept either way.
 
 > **Hiding is not the same as closing the projection window.** Hiding just blacks
 > out the picture; whatever was on screen is still "loaded" and comes straight back
