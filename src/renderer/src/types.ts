@@ -79,8 +79,10 @@ export type SlideSource =
 
 /** One slide as pushed to the projection / stage windows. */
 export interface SlidePayload {
-  kind: 'quote' | 'bible' | 'song'
+  kind: 'quote' | 'bible' | 'song' | 'media'
   text: string
+  /** Picture slides only. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
   label?: string
   reference?: string
   marker?: string

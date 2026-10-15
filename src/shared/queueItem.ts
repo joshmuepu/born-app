@@ -42,8 +42,8 @@ export interface Slide {
    *  and a follow channel needs to know which page to show, not just which
    *  paragraph. */
   page?: number
-  /** Media slides only: which library picture this slide shows. */
-  media?: { mediaId: string }
+  /** Media slides only: which library picture this slide shows, and how. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
 }
 
 /** Which remote contributor added an item — absent for anything added
@@ -95,9 +95,16 @@ export interface SongItem extends QueueItemBase {
 export type MediaKind = 'image' | 'slideshow'
 export interface MediaItem extends QueueItemBase {
   kind: 'media'
+  /** The (first) picture. For a slideshow, `mediaIds` lists all of them in order. */
   mediaId: string
   mediaKind: MediaKind
   name: string
+  mediaIds?: string[]
+  fit?: 'fit' | 'fill' | 'stretch' | 'center'
+  /** Slideshow only. Seconds per picture; absent = manual (the safe default). */
+  autoAdvanceSec?: number
+  /** Slideshow only: start over after the last picture (auto-advance or Next). */
+  loop?: boolean
   /** Unknown `ext` fields from a newer writer, carried through a save unchanged. */
   _ext?: Record<string, unknown>
   /** Unknown top-level fields on the shell, carried through unchanged. */
@@ -269,16 +276,51 @@ export function quoteToItem(quote: Quote): QuoteItem {
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
+const FITS = ['fit', 'fill', 'stretch', 'center']
+
+/** Slides for a media item, rebuilt from its ids (names are only for display). */
+export function mediaSlides(ids: string[], fit?: MediaItem['fit'], names?: string[]): Slide[] {
+  return ids.map((id, i) => ({ text: names?.[i] ?? 'Picture', media: { mediaId: id, ...(fit && fit !== 'fit' ? { fit } : {}) } }))
+}
+
 /** The queue item for one library picture. */
-export function mediaToItem(rec: { id: string; name: string; animated?: boolean }): MediaItem {
+export function mediaToItem(rec: { id: string; name: string }): MediaItem {
   return {
     kind: 'media',
     id: makeId('media'),
     mediaId: rec.id,
     mediaKind: 'image',
     name: rec.name,
-    slides: [{ text: rec.name, media: { mediaId: rec.id } }]
+    slides: mediaSlides([rec.id], undefined, [rec.name])
   }
+}
+
+/** One queue item that steps through several pictures. Manual advance by default. */
+export function slideshowToItem(recs: Array<{ id: string; name: string }>, name?: string): MediaItem {
+  const nm = name?.trim() || (recs.length === 1 ? recs[0].name : `${recs[0].name} + ${recs.length - 1} more`)
+  return {
+    kind: 'media',
+    id: makeId('media'),
+    mediaId: recs[0].id,
+    mediaKind: 'slideshow',
+    name: nm,
+    mediaIds: recs.map((r) => r.id),
+    slides: mediaSlides(recs.map((r) => r.id), undefined, recs.map((r) => r.name))
+  }
+}
+
+/** A copy of `item` with new display settings; slides are rebuilt so the fit applies per slide. */
+export function withMediaSettings(
+  item: MediaItem,
+  patch: Partial<Pick<MediaItem, 'fit' | 'autoAdvanceSec' | 'loop' | 'name'>>
+): MediaItem {
+  const next: MediaItem = { ...item, ...patch }
+  if ('autoAdvanceSec' in patch && !patch.autoAdvanceSec) delete next.autoAdvanceSec
+  if ('loop' in patch && !patch.loop) delete next.loop
+  if ('fit' in patch && (!patch.fit || patch.fit === 'fit')) delete next.fit
+  const ids = next.mediaIds ?? [next.mediaId]
+  next.slides = ids.map((id, i) => ({ text: item.slides[i]?.text ?? next.name, media: { mediaId: id, ...(next.fit ? { fit: next.fit } : {}) } }))
+  return next
 }
 
 /** Version of the `ext` envelope this build writes and understands. */
@@ -321,13 +363,19 @@ const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
   media: (e, ext) => {
     if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
     if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
-    const { v: _v, kind: _k, mediaId, mediaKind, name, ...extra } = ext
+    const { v: _v, kind: _k, mediaId, mediaKind, name, mediaIds, fit, autoAdvanceSec, loop, ...extra } = ext
     const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
     const nm = typeof name === 'string' ? name : 'Media'
+    const ids = Array.isArray(mediaIds) && mediaIds.length > 0 && mediaIds.every((x) => typeof x === 'string' && x) ? (mediaIds as string[]) : undefined
+    const fitV = typeof fit === 'string' && FITS.includes(fit) && fit !== 'fit' ? (fit as MediaItem['fit']) : undefined
     return {
       kind: 'media',
       id: typeof id === 'string' && id ? id : makeId('media'),
-      slides: [{ text: nm, media: { mediaId } }],
+      slides: mediaSlides(ids ?? [mediaId], fitV, ids ? ids.map(() => nm) : [nm]),
+      ...(ids ? { mediaIds: ids } : {}),
+      ...(fitV ? { fit: fitV } : {}),
+      ...(typeof autoAdvanceSec === 'number' && autoAdvanceSec > 0 && autoAdvanceSec < 3600 ? { autoAdvanceSec } : {}),
+      ...(loop === true ? { loop: true } : {}),
       source: source as MediaItem['source'],
       mediaId,
       mediaKind,
@@ -385,14 +433,13 @@ export function migrateQueue(raw: unknown): QueueItem[] {
 /** Can this item go on a screen in this build? (Unknown items and, until the
  *  media output exists, media items cannot.) */
 export function isProjectable(item: QueueItem): boolean {
-  if (item.kind === 'unknown' || item.kind === 'media') return false
+  if (item.kind === 'unknown') return false
   return item.slides.length > 0
 }
 
 /** What a queue row says when `isProjectable` is false. */
 export function unprojectableReason(item: QueueItem): string | null {
   if (item.kind === 'unknown') return item.label
-  if (item.kind === 'media') return 'Media is not available in this build yet'
   return item.slides.length === 0 ? 'Nothing to show' : null
 }
 
@@ -421,7 +468,18 @@ export function serializeItem(item: QueueItem): unknown {
         paragraphRef: ''
       },
       ...(item.source ? { source: item.source } : {}),
-      ext: { ...(item._ext ?? {}), v: EXT_VERSION, kind: 'media', mediaId: item.mediaId, mediaKind: item.mediaKind, name: item.name }
+      ext: {
+        ...(item._ext ?? {}),
+        v: EXT_VERSION,
+        kind: 'media',
+        mediaId: item.mediaId,
+        mediaKind: item.mediaKind,
+        name: item.name,
+        ...(item.mediaIds ? { mediaIds: item.mediaIds } : {}),
+        ...(item.fit ? { fit: item.fit } : {}),
+        ...(item.autoAdvanceSec ? { autoAdvanceSec: item.autoAdvanceSec } : {}),
+        ...(item.loop ? { loop: true } : {})
+      }
     }
   }
   return item

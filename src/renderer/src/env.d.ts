@@ -119,6 +119,7 @@ declare global {
       mediaRelinkPick: (id: string) => Promise<{ ok: boolean; message?: string; canceled?: boolean }>
       mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: { linkInPlace?: boolean; folderId?: string | null }) => Promise<import('../../shared/media').MediaImportResult>
       mediaReveal: (id: string) => Promise<boolean>
+      mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
       mediaPathsForFiles: (files: File[]) => string[]
       onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void) => () => void
 

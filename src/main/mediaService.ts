@@ -109,8 +109,13 @@ function registerMediaProtocol(): void {
       const parts = u.pathname.split('/').filter(Boolean)
       const l = getMediaLibrary()
       if (!l) return notFound
-      const id = u.hostname === 'thumb' || u.hostname === 'file' ? parts[0] : ''
+      const id = u.hostname === 'thumb' || u.hostname === 'file' || u.hostname === 'display' ? parts[0] : ''
       if (!/^m_[0-9a-f]{12}$/.test(id)) return notFound
+      if (u.hostname === 'display') {
+        const d = await l.display(id)
+        if (!d || !existsSync(d.path)) return notFound
+        return new Response(readFileSync(d.path), { headers: { 'content-type': d.type, 'cache-control': 'no-store' } })
+      }
       if (u.hostname === 'thumb') {
         const w = parts[1] === '960' ? 960 : 320
         const p = await l.thumbnail(id, w)
@@ -196,6 +201,15 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+  // Make sure a picture can be put on a screen right now (a large one gets its screen-sized copy built).
+  ipcMain.handle('media:prepare-display', async (_e, id: string) => {
+    const l = getMediaLibrary()
+    if (!l || typeof id !== 'string') return { ok: false, status: 'missing' as const }
+    const status = l.check(id)
+    if (status !== 'ok') return { ok: false, status }
+    const d = await l.display(id)
+    return d ? { ok: true, status } : { ok: false, status: 'unreadable' as const }
+  })
   ipcMain.handle('media:reveal', (_e, id: string) => {
     const l = getMediaLibrary()
     const rec = l?.get(id)
@@ -210,4 +224,12 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true }
     return l.relink(id, r.filePaths[0])
   })
+}
+
+/** For the Graphics (OBS/browser) output: resolves `/media/<id>/display` to a file. */
+export async function resolveMediaForHttp(id: string): Promise<{ path: string; type: string } | null> {
+  if (!/^m_[0-9a-f]{12}$/.test(id)) return null
+  const l = getMediaLibrary()
+  if (!l || l.check(id) !== 'ok') return null
+  return l.display(id)
 }

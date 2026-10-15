@@ -11,6 +11,13 @@ export type MediaType = 'image'
  *  is (for very large files) — BORN never modifies or deletes it. */
 export type MediaStorage = 'managed' | 'linked'
 
+/** How a picture sits on the screen. `fit` = whole picture, bars if needed (the safe default);
+ *  `fill` = covers the screen, edges may be cropped; `stretch` = distorts to the screen;
+ *  `center` = original size, centred, never scaled up. */
+export type MediaFit = 'fit' | 'fill' | 'stretch' | 'center'
+export const MEDIA_FITS: MediaFit[] = ['fit', 'fill', 'stretch', 'center']
+export const MEDIA_FIT_LABEL: Record<MediaFit, string> = { fit: 'Fit (whole picture)', fill: 'Fill (crop edges)', stretch: 'Stretch', center: 'Original size, centred' }
+
 export interface MediaRecord {
   id: string
   hash: string
@@ -102,7 +109,10 @@ export const MEDIA_LIMITS = {
   freeSpaceMarginBytes: 500 * 1024 * 1024,
   /** Soft-deleted items are purged this long after removal (undo window). */
   purgeAfterMs: 60 * 60 * 1000,
-  thumbWidths: [320, 960] as const
+  thumbWidths: [320, 960] as const,
+  /** Pictures bigger than this are shown from a screen-sized copy (never the raw file). */
+  displayMaxPixels: 10_000_000,
+  displayLongEdge: 3840
 } as const
 
 /** Extensions BORN will try, by what the bytes actually are (sniffed), not the name. */

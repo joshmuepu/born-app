@@ -249,8 +249,11 @@ export function getPresentationProfile(id: PresentationProfileId): PresentationP
  *  default, or adding a third profile and pointing a kind at it, is an edit
  *  here, never a renderer change (see buildGraphicsHTML in webRemote.ts,
  *  which ships every profile's CSS and switches between them by attribute). */
-export const DEFAULT_CONTENT_PROFILES: Record<'song' | 'bible' | 'quote', PresentationProfileId> = {
+export const DEFAULT_CONTENT_PROFILES: Record<'song' | 'bible' | 'quote' | 'media', PresentationProfileId> = {
   song: 'lower-third',
   bible: 'fullscreen',
-  quote: 'fullscreen'
+  quote: 'fullscreen',
+  // A picture is always a full frame. On a lower-third (camera overlay) output it is
+  // deliberately not drawn at all — see buildGraphicsScript.
+  media: 'fullscreen'
 }

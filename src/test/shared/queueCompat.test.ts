@@ -13,6 +13,7 @@ import {
   type UnknownItem
 } from '../../shared/queueItem'
 import { stepForward } from '../../shared/queueNav'
+import { mediaToItem, slideshowToItem, withMediaSettings } from '../../shared/queueItem'
 
 const song = { kind: 'song', id: 's1', songId: 7, title: 'Amazing Grace', slides: [{ text: 'Amazing grace' }, { text: 'How sweet' }] }
 const bible = { kind: 'bible', id: 'b1', translation: 'KJV', reference: 'John 3:16', bookNum: 43, chapter: 3, verseStart: 16, verseEnd: 16, slides: [{ text: 'For God so loved' }] }
@@ -183,9 +184,68 @@ describe('queue compat: the shell for newer kinds (media)', () => {
     expect(serializeItem(item)).toEqual(shell)
   })
 
-  it('media items are not projectable yet and never become a SlidePayload', () => {
+  it('a media item read back from a file is projectable and titled by its name', () => {
     const [m] = migrateQueue([serializeItem(media())])
-    expect(isProjectable(m)).toBe(false)
+    expect(isProjectable(m)).toBe(true)
+    expect(m.slides).toEqual([{ text: 'Welcome slide', media: { mediaId: 'm_abc' } }])
     expect(itemTitle(m as QueueItem)).toBe('Welcome slide')
+  })
+})
+
+describe('media queue items: pictures and slideshows', () => {
+  const recs = [
+    { id: 'm_000000000001', name: 'Welcome' },
+    { id: 'm_000000000002', name: 'Announcements' },
+    { id: 'm_000000000003', name: 'Offering' }
+  ]
+
+  it('one picture is one projectable slide that points at the library item', () => {
+    const it = mediaToItem(recs[0])
+    expect(it.kind).toBe('media')
+    expect(it.slides).toHaveLength(1)
+    expect(it.slides[0].media).toEqual({ mediaId: recs[0].id })
+    expect(isProjectable(it)).toBe(true)
+  })
+
+  it('a slideshow has one slide per picture, in order, and is manual by default', () => {
+    const it = slideshowToItem(recs)
+    expect(it.mediaKind).toBe('slideshow')
+    expect(it.slides.map((s) => s.media?.mediaId)).toEqual(recs.map((r) => r.id))
+    expect(it.autoAdvanceSec).toBeUndefined()
+    expect(it.loop).toBeUndefined()
+    expect(it.name).toBe('Welcome + 2 more')
+  })
+
+  it('settings survive a save and re-open: ids, order, fit, auto-advance and loop', () => {
+    let it = slideshowToItem(recs, 'Sunday announcements')
+    it = withMediaSettings(it, { fit: 'fill', autoAdvanceSec: 8, loop: true })
+    const [back] = migrateQueue(JSON.parse(JSON.stringify([serializeItem(it)]))) as MediaItem[]
+    expect(back.kind).toBe('media')
+    expect(back.mediaIds).toEqual(recs.map((r) => r.id))
+    expect(back.fit).toBe('fill')
+    expect(back.autoAdvanceSec).toBe(8)
+    expect(back.loop).toBe(true)
+    expect(back.slides.map((s) => s.media?.fit)).toEqual(['fill', 'fill', 'fill'])
+    expect(back.name).toBe('Sunday announcements')
+  })
+
+  it('clearing a setting removes it (back to the safe defaults)', () => {
+    const it = withMediaSettings(slideshowToItem(recs), { fit: 'stretch', autoAdvanceSec: 5, loop: true })
+    const cleared = withMediaSettings(it, { fit: 'fit', autoAdvanceSec: 0, loop: false })
+    expect(cleared.fit).toBeUndefined()
+    expect(cleared.autoAdvanceSec).toBeUndefined()
+    expect(cleared.loop).toBeUndefined()
+    expect(cleared.slides.every((s) => s.media && !('fit' in s.media))).toBe(true)
+  })
+
+  it('an out-of-range or hostile ext is ignored, not trusted', () => {
+    const shell = serializeItem(slideshowToItem(recs)) as Record<string, unknown>
+    Object.assign(shell.ext as object, { autoAdvanceSec: -5, fit: 'explode', loop: 'yes', mediaIds: [1, 2] })
+    const [it] = migrateQueue([shell]) as MediaItem[]
+    expect(it.autoAdvanceSec).toBeUndefined()
+    expect(it.fit).toBeUndefined()
+    expect(it.loop).toBeUndefined()
+    expect(it.mediaIds).toBeUndefined()
+    expect(it.slides).toHaveLength(1)
   })
 })

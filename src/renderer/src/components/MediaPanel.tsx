@@ -58,13 +58,14 @@ const STATUS_TEXT: Record<Exclude<MediaStatus, 'ok'>, string> = {
 interface Props {
   visible: boolean
   onAddToQueue: (items: MediaRecord[]) => void
+  onAddSlideshow: (items: MediaRecord[]) => void
   pushToast: (t: ToastSpec) => void
   /** Open this item in the right pane (from the palette or the queue). */
   focusId?: string | null
   onFocused?: () => void
 }
 
-export default function MediaPanel({ visible, onAddToQueue, pushToast, focusId, onFocused }: Props): JSX.Element {
+export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, pushToast, focusId, onFocused }: Props): JSX.Element {
   const actions = useAppActions()
   const [view, setView] = useBrowseView()
   const [collapsed, setCollapsed] = useState(false)
@@ -230,7 +231,9 @@ export default function MediaPanel({ visible, onAddToQueue, pushToast, focusId, 
     },
     [status, onAddToQueue, actions]
   )
-  const targets = useCallback((r: MediaRecord): MediaRecord[] => (checked.has(r.id) ? items.filter((i) => checked.has(i.id)) : [r]), [checked, items])
+  /** The ticked pictures in the order they were ticked (the order of a slideshow). */
+  const orderedChecked = useCallback((): MediaRecord[] => [...checked].map((id) => items.find((i) => i.id === id)).filter((x): x is MediaRecord => !!x), [checked, items])
+  const targets = useCallback((r: MediaRecord): MediaRecord[] => (checked.has(r.id) ? orderedChecked() : [r]), [checked, items])
 
   const itemMenu = (r: MediaRecord): MenuItem[] => {
     const t = targets(r)
@@ -346,6 +349,7 @@ export default function MediaPanel({ visible, onAddToQueue, pushToast, focusId, 
     return (
       <div
         key={r.id}
+        data-media-id={r.id}
         className={`media-card${isSel ? ' selected' : ''}${checked.has(r.id) ? ' checked' : ''}${st ? ' has-problem' : ''}`}
         role="option"
         aria-selected={isSel}
@@ -379,6 +383,7 @@ export default function MediaPanel({ visible, onAddToQueue, pushToast, focusId, 
     return (
       <div
         key={r.id}
+        data-media-id={r.id}
         className={`media-row${isSel ? ' selected' : ''}${st ? ' has-problem' : ''}`}
         role="option"
         aria-selected={isSel}
@@ -476,7 +481,8 @@ export default function MediaPanel({ visible, onAddToQueue, pushToast, focusId, 
           {checked.size > 1 && (
             <span className="media-multi">
               {checked.size} selected
-              <button className="btn-quiet btn-sm" onClick={() => addToQueue(items.filter((i) => checked.has(i.id)))}><Plus size={13} /> Queue</button>
+              <button className="btn-quiet btn-sm" onClick={() => addToQueue(orderedChecked())}><Plus size={13} /> Each to queue</button>
+              <button className="btn-quiet btn-sm" onClick={() => onAddSlideshow(orderedChecked().filter((i) => !status.has(i.id)))}><ImageIcon size={13} /> As one slideshow</button>
               <button className="btn-quiet btn-sm" onClick={() => void remove([...checked])}><Trash2 size={13} /> Remove</button>
             </span>
           )}

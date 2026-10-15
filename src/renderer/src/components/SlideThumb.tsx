@@ -71,7 +71,14 @@ export default function SlideThumb({
             : emptyLabel
       }
     >
-      {slide && !hidden ? (
+      {slide && !hidden && slide.kind === 'media' && slide.media ? (
+        <img
+          className={`slide-thumb-pic slide-thumb-pic--${slide.media.fit ?? 'fit'}`}
+          src={`born-media://thumb/${slide.media.mediaId}/960`}
+          alt=""
+          draggable={false}
+        />
+      ) : slide && !hidden ? (
         <div
           key={pulse}
           className={`slide-thumb-stage slide-thumb--${slide.kind}`}

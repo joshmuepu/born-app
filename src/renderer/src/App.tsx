@@ -40,7 +40,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, slideshowToItem, withMediaSettings, type MediaItem } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -107,9 +107,13 @@ export function slideSource(item: QueueItem, s: Slide): SlideSource | undefined 
 }
 
 function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
-  if (item.kind === 'media' || item.kind === 'unknown') return null
+  if (item.kind === 'unknown') return null
   const s = item.slides[slide]
   if (!s) return null
+  if (item.kind === 'media') {
+    if (!s.media) return null
+    return { kind: 'media', text: item.mediaIds && item.mediaIds.length > 1 ? `${item.name} — ${slide + 1} of ${item.mediaIds.length}` : item.name, media: s.media }
+  }
   return {
     kind: item.kind,
     text: s.text,
@@ -507,6 +511,17 @@ export default function App() {
     ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
+      // A picture is only ever put up if its file is there and readable right now. If not, nothing on
+      // the screen changes and the operator is told why (see also Preflight).
+      if (item.kind === 'media') {
+        const mid = item.slides[slide]?.media?.mediaId
+        const r = mid ? await window.electronAPI.mediaPrepareDisplay(mid) : { ok: false, status: 'missing' }
+        if (!r.ok) {
+          const why = r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
+          pushToast({ message: `Can't show “${item.name}” — ${why}. The screen was not changed.`, timeoutMs: 9000 })
+          return
+        }
+      }
       await ensureProjectionOpen()
 
       // Private copy so Next/Prev flow-through never mutates the queued item.
@@ -533,7 +548,7 @@ export default function App() {
         slide + 1 < stored.slides.length ? slidePayload(stored, slide + 1) : null
       window.electronAPI.updateStage(payload, nextPayload)
     },
-    [ensureProjectionOpen]
+    [ensureProjectionOpen, pushToast]
   )
 
   // Next / Prev walk the current item's slides; past either end they flow into
@@ -571,6 +586,11 @@ export default function App() {
           await doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
           return true
         }
+        // A looping slideshow wraps instead of running out.
+        if (p.item.kind === 'media' && p.item.loop && p.item.slides.length > 1) {
+          await doProject(p.item, dir === 'next' ? 0 : p.item.slides.length - 1, p.queueIndex)
+          return true
+        }
 
         if (dir === 'next') {
           const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
@@ -593,6 +613,24 @@ export default function App() {
 
   const handleNext = useCallback(() => advance('next'), [advance])
   const handlePrev = useCallback(() => advance('prev'), [advance])
+
+  // Slideshow auto-advance. It only ever runs for a slideshow the operator has taken, and it stops the
+  // moment anything else goes up, the screen is hidden, or the operator steps manually (every change
+  // of what is live restarts or cancels the timer).
+  useEffect(() => {
+    const p = projected
+    if (!p || p.item.kind !== 'media' || isScreenBlanked) return
+    const sec = p.item.autoAdvanceSec
+    if (!sec || p.item.slides.length < 2) return
+    const last = p.slide >= p.item.slides.length - 1
+    if (last && !p.item.loop) return
+    const t = window.setTimeout(() => {
+      const cur = projectedRef.current
+      if (!cur || cur.item.id !== p.item.id || cur.slide !== p.slide) return
+      void doProject(p.item, last ? 0 : p.slide + 1, p.queueIndex, { head: p.head, tail: p.tail })
+    }, sec * 1000)
+    return () => window.clearTimeout(t)
+  }, [projected, isScreenBlanked, doProject])
 
   useEffect(() => window.electronAPI.onQueueNavigate((dir) => advance(dir)), [advance])
 
@@ -932,6 +970,34 @@ export default function App() {
     [mutateQueue, pushToast]
   )
   const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
+
+  /** A slideshow of several library pictures as one queue item. */
+  const handleAddSlideshow = useCallback(
+    (recs: Array<{ id: string; name: string }>) => {
+      if (recs.length === 0) return
+      const it = slideshowToItem(recs)
+      mutateQueue((q) => [...q, it])
+      pushToast({
+        message: `Added slideshow “${it.name}” (${recs.length} pictures) to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => removeById(q, it.id))
+      })
+      recs.forEach((r) => void window.electronAPI.mediaMarkUsed(r.id))
+    },
+    [mutateQueue, pushToast]
+  )
+
+  /** Change how a queued picture/slideshow is shown (fit, auto-advance, loop). Only edits the queue
+   *  entry: whatever is live right now keeps using the copy it was taken with. */
+  const handleMediaSettings = useCallback(
+    (index: number, patch: Partial<Pick<MediaItem, 'fit' | 'autoAdvanceSec' | 'loop'>>) => {
+      const it = queueRef.current[index]
+      if (!it || it.kind !== 'media') return
+      mutateQueue((q) => q.map((x) => (x.id === it.id && x.kind === 'media' ? withMediaSettings(x, patch) : x)))
+    },
+    [mutateQueue]
+  )
   // ── Back / forward history across the drill-down ───────────────────────────
   // Every time the operator opens a sermon, a chapter or a song it is noted;
   // Alt+←/→, the mouse's back/forward buttons or the header chevrons walk it.
@@ -2248,6 +2314,7 @@ export default function App() {
             <MediaPanel
               visible={topTab === 'media'}
               onAddToQueue={handleAddMediaToQueue}
+              onAddSlideshow={handleAddSlideshow}
               pushToast={pushToast}
               focusId={mediaFocusId}
               onFocused={() => setMediaFocusId(null)}
@@ -2307,6 +2374,7 @@ export default function App() {
             stageOpen={stageOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
+            onMediaSettings={handleMediaSettings}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}

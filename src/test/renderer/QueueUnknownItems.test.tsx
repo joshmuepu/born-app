@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ServiceQueue from '../../renderer/src/components/ServiceQueue'
-import { migrateQueue, serializeItem, NEWER_VERSION_LABEL, UNREADABLE_LABEL } from '../../shared/queueItem'
+import { migrateQueue, serializeItem, NEWER_VERSION_LABEL, UNREADABLE_LABEL, slideshowToItem } from '../../shared/queueItem'
 
 const noop = (): void => {}
 function props(over: Record<string, unknown> = {}) {
@@ -47,5 +47,17 @@ describe('the real queue panel with unknown, malformed and media items', () => {
     render(<ServiceQueue {...p} queue={q} />)
     fireEvent.click(screen.getAllByText('Remove')[1])
     expect(p.onRemove).toHaveBeenCalledWith(1)
+  })
+
+  it('a picture row offers Project; a slideshow row offers fit, auto-advance and loop in its menu', () => {
+    const p = props()
+    const show = slideshowToItem([{ id: 'm_000000000001', name: 'A' }, { id: 'm_000000000002', name: 'B' }], 'Announcements')
+    const onMediaSettings = vi.fn()
+    render(<ServiceQueue {...p} onMediaSettings={onMediaSettings} queue={[show]} />)
+    expect(screen.getByText('Project')).toBeTruthy()
+    expect(screen.getByText(/2 pictures · by hand/)).toBeTruthy()
+    fireEvent.contextMenu(document.querySelector('.queue-row') as HTMLElement)
+    fireEvent.click(screen.getByText('Advance every 5 s'))
+    expect(onMediaSettings).toHaveBeenCalledWith(0, { autoAdvanceSec: 5 })
   })
 })

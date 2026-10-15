@@ -103,6 +103,21 @@ export default function ProjectionApp() {
     return <div className="projection-idle">{alertBanner}</div>
   }
 
+  if (slide.kind === 'media' && slide.media) {
+    return (
+      <div className="projection-active projection-media">
+        <img
+          key={slide.media.mediaId}
+          className={`projection-pic projection-pic--${slide.media.fit ?? 'fit'}`}
+          src={`born-media://display/${slide.media.mediaId}`}
+          alt=""
+          draggable={false}
+        />
+        {alertBanner}
+      </div>
+    )
+  }
+
   return (
     <div className={`projection-active projection-${slide.kind}`}>
       {slide.label && <div className="projection-label">{slide.label}</div>}

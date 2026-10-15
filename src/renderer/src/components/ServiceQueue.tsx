@@ -75,6 +75,8 @@ interface Props {
   /** Something dragged in from a browse pane was dropped at `index`. Never
    *  changes what is live — it only inserts. */
   onDropItem?: (payload: QueueDragPayload, index: number) => void
+  /** Change a queued picture's display settings (never what is live). */
+  onMediaSettings?: (index: number, patch: { fit?: 'fit' | 'fill' | 'stretch' | 'center'; autoAdvanceSec?: number; loop?: boolean }) => void
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -154,7 +156,8 @@ export default function ServiceQueue({
   onUnstage = () => {},
   onToggleBlank = () => {},
   onClearChannel = () => {},
-  onDropItem = () => {}
+  onDropItem = () => {},
+  onMediaSettings
 }: Props) {
   const actions = useAppActions()
   const ctx = useContextMenu()
@@ -251,6 +254,32 @@ export default function ServiceQueue({
   }))
   const showGroupHeaders = groups.length > 1
 
+  const mediaMenu = (item: QueueItem, index: number): MenuItem[] => {
+    if (item.kind !== 'media' || !onMediaSettings) return []
+    const check = (on: boolean): string => (on ? '✓ ' : '')
+    const fit = item.fit ?? 'fit'
+    const fits: Array<['fit' | 'fill' | 'stretch' | 'center', string]> = [['fit', 'Fit — whole picture'], ['fill', 'Fill — crop edges'], ['stretch', 'Stretch'], ['center', 'Original size, centred']]
+    const out: MenuItem[] = fits.map(([f, label], i) => ({
+      id: 'fit-' + f,
+      label: check(fit === f) + label,
+      separatorBefore: i === 0,
+      onSelect: () => onMediaSettings(index, { fit: f })
+    }))
+    if (item.slides.length > 1) {
+      const secs = [0, 3, 5, 8, 15]
+      secs.forEach((s, i) =>
+        out.push({
+          id: 'auto-' + s,
+          label: check((item.autoAdvanceSec ?? 0) === s) + (s === 0 ? 'Advance by hand' : `Advance every ${s} s`),
+          separatorBefore: i === 0,
+          onSelect: () => onMediaSettings(index, { autoAdvanceSec: s })
+        })
+      )
+      out.push({ id: 'loop', label: check(!!item.loop) + 'Loop (start over after the last)', onSelect: () => onMediaSettings(index, { loop: !item.loop }) })
+    }
+    return out
+  }
+
   const queueMenu = (item: QueueItem, index: number): MenuItem[] => {
     const ref = item.slides[0]?.reference ?? itemTitle(item)
     const playableItem = isProjectable(item)
@@ -269,7 +298,8 @@ export default function ServiceQueue({
         separatorBefore: true,
         onSelect: () => void copyText(ref).then((ok) => actions.notify(ok ? 'Copied the reference' : "Couldn't copy"))
       },
-      { id: 'remove', label: 'Remove from queue', danger: true, onSelect: () => onRemove(index) }
+      ...mediaMenu(item, index),
+      { id: 'remove', label: 'Remove from queue', danger: true, separatorBefore: true, onSelect: () => onRemove(index) }
     ]
   }
 
@@ -376,6 +406,16 @@ export default function ServiceQueue({
             </div>
             {detail && <div className="queue-row-detail">{detail}</div>}
             {!playable && whyNot && item.kind !== 'unknown' && <div className="queue-row-detail">{whyNot}</div>}
+            {item.kind === 'media' && (
+              <div className="queue-row-detail">
+                {[
+                  item.slides.length > 1 ? `${item.slides.length} pictures` : 'Picture',
+                  item.slides.length > 1 ? (item.autoAdvanceSec ? `auto ${item.autoAdvanceSec} s` : 'by hand') : null,
+                  item.loop ? 'loop' : null,
+                  item.fit && item.fit !== 'fit' ? item.fit : null
+                ].filter(Boolean).join(' · ')}
+              </div>
+            )}
             {item.kind === 'unknown' && (
               <div className="queue-row-detail">
                 {item.reason === 'newer' ? 'Kept in the file — open it with the newer version.' : 'Kept as it was — it may be damaged.'}

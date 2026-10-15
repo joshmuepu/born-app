@@ -15,7 +15,7 @@ import { randomUUID } from 'crypto'
 import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
-import { getMediaLibrary, closeMediaLibrary, registerMediaIpc } from './mediaService'
+import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -55,6 +55,7 @@ import {
   setGraphicsAutoProfile,
   graphicsClientCount,
   setAutomationToken,
+  setMediaResolver,
   buildRemoteConnectionInfo,
   listAdapters,
   getConnectedPhoneCount,
@@ -189,7 +190,9 @@ const isDev = process.env.NODE_ENV === 'development'
 
 /** One slide on the projector: quote text, a Bible verse, or a song section. */
 export interface SlidePayload {
-  kind: 'quote' | 'bible' | 'song'
+  kind: 'quote' | 'bible' | 'song' | 'media'
+  /** Picture slides only. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
   text: string
   label?: string
   reference?: string
@@ -1113,14 +1116,15 @@ function onDisplayLayoutChanged(reason: string): void {
 
 function toGraphicsSlide(
   slide: SlidePayload | null
-): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind'] } | null {
+): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media'] } | null {
   if (!slide) return null
   return {
     text: slide.text,
     label: slide.label,
     marker: slide.marker,
     reference: slide.reference,
-    kind: slide.kind
+    kind: slide.kind,
+    ...(slide.media ? { media: slide.media } : {})
   }
 }
 
@@ -1240,6 +1244,8 @@ async function deriveFollowSlide(
   slide: SlidePayload,
   followChannelId: ChannelId
 ): Promise<SlidePayload | null> {
+  // A picture has no language: a following channel simply shows the same picture.
+  if (slide.kind === 'media') return slide
   if (!slide.source) return null
 
   if (slide.source.kind === 'bible') {
@@ -2781,6 +2787,7 @@ app.whenReady().then(async () => {
   getDb()
   getLibraryDb()
   getMediaLibrary()
+  setMediaResolver(resolveMediaForHttp)
   registerMediaIpc(() => mainWindow)
   createMainWindow()
 

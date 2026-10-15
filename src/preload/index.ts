@@ -87,7 +87,9 @@ export type SlideSource =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
 
 export interface SlidePayload {
-  kind: 'quote' | 'bible' | 'song'
+  kind: 'quote' | 'bible' | 'song' | 'media'
+  /** Picture slides only. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
   text: string
   label?: string
   reference?: string
@@ -353,6 +355,7 @@ const api = {
   mediaRelinkPick: (id: string): Promise<unknown> => ipcRenderer.invoke('media:relink-pick', id),
   mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-buffer', name, bytes, opts),
   mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
+  mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
   mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {

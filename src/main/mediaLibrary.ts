@@ -595,9 +595,9 @@ export class MediaLibrary {
         }
       }
       if (!this.db.prepare('SELECT 1 FROM media_items WHERE hash = ? AND id <> ? AND deleted_at IS NULL').get(r.hash, r.id)) {
-        for (const w of MEDIA_LIMITS.thumbWidths) {
+        for (const w of [...MEDIA_LIMITS.thumbWidths, 'display' as const]) {
           for (const e of ['jpg', 'png'] as const) {
-            try { unlinkSync(this.thumbPath(r.hash, w, e)) } catch { /* not there */ }
+            try { unlinkSync(typeof w === 'number' ? this.thumbPath(r.hash, w, e) : join(this.thumbsDir, `${r.hash}-display.${e}`)) } catch { /* not there */ }
           }
         }
       }
@@ -684,6 +684,36 @@ export class MediaLibrary {
       } catch { /* not cacheable */ }
     })
     return result
+  }
+
+  /**
+   * The file to put on a screen. Small pictures are shown from the original;
+   * anything over ~10 megapixels (or an animated picture's first frame? no — animated
+   * pictures are always shown from the original so they play) is shown from a cached
+   * screen-sized copy, so a 50-megapixel photo never has to be decoded on the projector.
+   * Returns null if the file cannot be shown.
+   */
+  async display(id: string): Promise<{ path: string; type: string } | null> {
+    const rec = this.get(id)
+    if (!rec) return null
+    const src = this.resolvePath(rec)
+    if (!src || !existsSync(src)) return null
+    const type = MIME[rec.ext] ?? 'application/octet-stream'
+    if (rec.animated || rec.width * rec.height <= MEDIA_LIMITS.displayMaxPixels) return { path: src, type }
+    for (const e of ['jpg', 'png'] as const) {
+      const p = join(this.thumbsDir, `${rec.hash}-display.${e}`)
+      if (existsSync(p)) return { path: p, type: e === 'png' ? 'image/png' : 'image/jpeg' }
+    }
+    const dec = await this.decoder.decode(src, [MEDIA_LIMITS.displayLongEdge])
+    if (!dec.ok || dec.thumbs.length === 0) return null
+    const t = dec.thumbs[0]
+    const p = join(this.thumbsDir, `${rec.hash}-display.${t.ext}`)
+    try {
+      writeBuffer(p, t.data)
+    } catch {
+      return null
+    }
+    return { path: p, type: t.ext === 'png' ? 'image/png' : 'image/jpeg' }
   }
 
   /** Remove temp files left by a crash mid-import. Safe to call at startup. */

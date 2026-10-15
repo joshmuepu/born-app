@@ -19,7 +19,7 @@ export interface ObservabilityChannel {
   id: string
   label: string
   current: {
-    kind: 'quote' | 'bible' | 'song'
+    kind: 'quote' | 'bible' | 'song' | 'media'
     text: string
     label?: string
     reference?: string

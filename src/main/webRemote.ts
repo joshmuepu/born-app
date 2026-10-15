@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { networkInterfaces } from 'os'
-import { existsSync, readFileSync } from 'fs'
+import { createReadStream, existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { WebSocketServer, WebSocket } from 'ws'
@@ -33,7 +33,9 @@ export interface WebRemoteSlide {
   /** Drives a Graphics destination's auto-profile treatment — absent for a
    *  slide built before this existed, which just falls back to whatever
    *  profile the destination had fixed. */
-  kind?: 'quote' | 'bible' | 'song'
+  kind?: 'quote' | 'bible' | 'song' | 'media'
+  /** Picture slides: which library picture, and how it sits. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
   /** This channel follows another, had no translation for this content, and
    *  fell back to English — purely informational, carried through to the
    *  automation API's state endpoint so an external tool can show it too. */
@@ -509,6 +511,12 @@ function cssDecl(rec: Record<string, string>): string {
  *  `profileId`) — this script just applies whatever it's told, by setting
  *  that id as a `data-profile` attribute every profile's CSS is scoped
  *  under, so switching treatment is one attribute write, never a reload. */
+/** Set by the main process: turns a library picture id into a file to serve. */
+let mediaResolver: ((id: string) => Promise<{ path: string; type: string } | null>) | null = null
+export function setMediaResolver(fn: (id: string) => Promise<{ path: string; type: string } | null>): void {
+  mediaResolver = fn
+}
+
 function buildGraphicsScript(id: string): string {
   const eventsPath = `/output/graphics/${encodeURIComponent(id)}/events`
   const transitions = Object.fromEntries(
@@ -523,6 +531,7 @@ function buildGraphicsScript(id: string): string {
   var refEl = document.getElementById('reference');
   var refDetailEl = document.getElementById('reference-detail');
   var discEl = document.getElementById('disconnected');
+  var picEl = document.getElementById('pic');
   var TRANSITIONS = ${JSON.stringify(transitions)};
   var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
 
@@ -541,11 +550,23 @@ function buildGraphicsScript(id: string): string {
 
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
+    picEl.style.display = 'none'; picEl.removeAttribute('src');
     if (!payload || !payload.slide || payload.blanked) {
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       return;
     }
     var s = payload.slide;
+    if (s.kind === 'media') {
+      // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
+      // overlay) output nothing is drawn, so a picture never covers the camera by accident.
+      labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
+      if (stageEl.dataset.profile === 'fullscreen' && s.media && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
+        picEl.className = 'fit-' + (s.media.fit || 'fit');
+        picEl.src = '/media/' + s.media.mediaId + '/display';
+        picEl.style.display = 'block';
+      }
+      return;
+    }
     labelEl.textContent = s.label || '';
     textInnerEl.innerHTML = (s.marker ? '<span id="marker">' + esc(s.marker) + '</span>' : '') + esc(s.text);
     var ref = splitReference(s.reference);
@@ -628,6 +649,9 @@ function buildGraphicsHTML(id: string): string {
   #stage { position: relative; height: 100vh; }
   #text-inner { width: 100%; }
 ${profileCSS}
+  #pic { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
+  #pic.fit-fit { object-fit: contain; } #pic.fit-fill { object-fit: cover; }
+  #pic.fit-stretch { object-fit: fill; } #pic.fit-center { object-fit: none; }
   #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
     font-weight: 600; letter-spacing: 0.05em; display: none; }
 </style>
@@ -641,6 +665,7 @@ ${profileCSS}
     <div id="reference-detail"></div>
   </div>
 </div>
+<img id="pic" alt=""/>
 <div id="disconnected">RECONNECTING…</div>
 <script>${buildGraphicsScript(id)}</script>
 </body>
@@ -717,6 +742,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end(buf)
     } else {
       res.writeHead(404)
+      res.end()
+    }
+    return
+  }
+
+  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/display$/.exec(path)
+  if (picMatch && req.method === 'GET') {
+    try {
+      const f = mediaResolver ? await mediaResolver(picMatch[1]) : null
+      if (!f) {
+        res.writeHead(404)
+        res.end()
+        return
+      }
+      res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-store' })
+      createReadStream(f.path).pipe(res)
+    } catch {
+      res.writeHead(500)
       res.end()
     }
     return
