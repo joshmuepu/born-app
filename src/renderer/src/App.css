@@ -1085,52 +1085,6 @@ mark.hl {
   border-radius: var(--r-md);
 }
 
-/* ── Panel tab bar (Search / Browse switcher) ────────────── */
-
-.panel-tab-bar {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  margin-bottom: 0;
-}
-
-.panel-tab {
-  flex: 1;
-  padding: 8px 4px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
-}
-
-.panel-tab:hover {
-  color: var(--text-primary);
-}
-
-.panel-tab--sermons.active {
-  color: var(--sermons);
-  border-bottom-color: var(--sermons);
-}
-.panel-tab--bible.active {
-  color: var(--bible);
-  border-bottom-color: var(--bible);
-}
-.panel-tab--songs.active {
-  color: var(--songs);
-  border-bottom-color: var(--songs);
-}
-
-.panel-tab:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* Sermons sub-tabs (Search / Browse) */
 .panel-subtab-bar {
   display: flex;
