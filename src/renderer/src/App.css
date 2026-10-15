@@ -244,7 +244,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-ui);
   font-size: 14px;
-  height: 100vh;
+  height: calc(100vh / var(--ui-zoom, 1));
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -254,7 +254,7 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh / var(--ui-zoom, 1));
 }
 
 .app-header {
@@ -505,7 +505,9 @@ body {
 }
 
 .queue-panel {
-  width: 320px;
+  --queue-w: 360px;
+  position: relative;
+  width: var(--queue-w);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -520,7 +522,7 @@ body {
   visibility: hidden;
   transition: width var(--dur-slow) cubic-bezier(.65, 0, .35, 1), opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-slow);
 }
-.queue-panel > * { min-width: 320px; }
+.queue-panel > :not(.panel-resizer) { min-width: var(--queue-w); }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 
@@ -968,7 +970,7 @@ mark.hl {
   border-radius: var(--r-lg);
   padding: 24px;
   width: 400px;
-  max-width: 90vw;
+  max-width: calc(90vw / var(--ui-zoom, 1));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1037,8 +1039,8 @@ mark.hl {
  * unlike the narrow 400px default tuned for a single input + two buttons. */
 .channel-operator-modal {
   width: 720px;
-  max-width: 92vw;
-  max-height: 86vh;
+  max-width: calc(92vw / var(--ui-zoom, 1));
+  max-height: calc(86vh / var(--ui-zoom, 1));
 }
 .channel-operator-body {
   flex: 1;
@@ -1180,7 +1182,7 @@ mark.hl {
    * plus a bottom margin, capped so it also doesn't balloon on a tall
    * screen. The scrollable body below is what actually handles overflow;
    * this is just the outer limit. */
-  max-height: min(640px, calc(100vh - 88px));
+  max-height: min(640px, calc(calc(100vh / var(--ui-zoom, 1)) - 88px));
   padding: 6px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -1631,9 +1633,9 @@ mark.hl {
  * having to. */
 .screens-manager-modal {
   width: 760px;
-  max-width: 92vw;
+  max-width: calc(92vw / var(--ui-zoom, 1));
   height: 600px;
-  max-height: 85vh;
+  max-height: calc(85vh / var(--ui-zoom, 1));
   padding: 0;
   overflow: hidden;
 }
@@ -2235,9 +2237,9 @@ kbd {
 
 .help-modal {
   width: 920px;
-  max-width: 94vw;
+  max-width: calc(94vw / var(--ui-zoom, 1));
   height: 680px;
-  max-height: 90vh;
+  max-height: calc(90vh / var(--ui-zoom, 1));
   padding: 0;
   overflow: hidden;
 }
@@ -2439,8 +2441,8 @@ kbd {
   cursor: zoom-out;
 }
 .help-lightbox img {
-  max-width: 92vw;
-  max-height: 86vh;
+  max-width: calc(92vw / var(--ui-zoom, 1));
+  max-height: calc(86vh / var(--ui-zoom, 1));
   border-radius: var(--r-sm);
 }
 .help-lightbox-hint {
@@ -2542,3 +2544,5 @@ kbd {
 .nav-history { display: inline-flex; gap: 2px; }
 .nav-history .btn-icon:disabled { opacity: 0.45; }
 .rail-btn--saved.active { color: var(--accent); }
+
+.queue-panel.is-resizing { transition: none; }

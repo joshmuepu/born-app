@@ -4,7 +4,7 @@
   top: 52px;
   bottom: 30px;
   left: 68px;
-  width: min(380px, calc(100vw - 80px));
+  width: min(380px, calc(calc(100vw / var(--ui-zoom, 1)) - 80px));
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);

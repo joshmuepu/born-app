@@ -5,13 +5,13 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 12vh;
+  padding-top: calc(12vh / var(--ui-zoom, 1));
   background: var(--scrim);
   animation: palette-fade var(--dur-base) var(--ease-out);
 }
 .palette {
-  width: min(680px, calc(100vw - 32px));
-  max-height: 70vh;
+  width: min(680px, calc(calc(100vw / var(--ui-zoom, 1)) - 32px));
+  max-height: calc(70vh / var(--ui-zoom, 1));
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);

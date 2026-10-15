@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { currentUiZoom } from '../uiScale'
 import './ContextMenu.css'
 
 export interface MenuItem {
@@ -36,9 +37,13 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    // Pointer coordinates are screen pixels; with the interface zoomed, CSS
+    // lengths are multiplied, so measure and place in the same (screen) space
+    // and convert the final position back to CSS pixels.
+    const z = currentUiZoom()
     const r = el.getBoundingClientRect()
-    const left = Math.max(4, Math.min(x, window.innerWidth - r.width - 4))
-    const top = Math.max(4, Math.min(y, window.innerHeight - r.height - 4))
+    const left = Math.max(4, Math.min(x, window.innerWidth - r.width - 4)) / z
+    const top = Math.max(4, Math.min(y, window.innerHeight - r.height - 4)) / z
     setPos({ left, top })
     el.focus()
   }, [x, y])
@@ -123,7 +128,8 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
         )
       })}
     </div>,
-    document.body
+    // Inside the zoomed app root (not <body>) so the menu scales with the UI.
+    document.getElementById('root') ?? document.body
   )
 }
 

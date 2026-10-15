@@ -5,6 +5,8 @@ import CommandPalette, { type PaletteCommand } from './components/CommandPalette
 import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
 import SavedPanel from './components/SavedPanel'
+import PanelResizer from './components/PanelResizer'
+import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
 import type { Favorite } from './favorites'
@@ -50,6 +52,11 @@ export type OnScreenLoc =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
   | { kind: 'song'; songId: number; slideIndex: number }
   | null
+
+/** Service queue panel width (px). */
+const QUEUE_MIN = 280
+const QUEUE_MAX = 560
+const QUEUE_DEFAULT = 360
 
 type TopTab = 'sermons' | 'bible' | 'songs'
 type SermonsSubTab = 'search' | 'browse'
@@ -167,6 +174,7 @@ export default function App() {
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
+  const { choice: uiScale, setChoice: setUiScale } = useUiScale()
   // Queue panel: open during a service (anything queued or projecting),
   // collapsed otherwise — until the operator chooses, which is remembered.
   const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
@@ -177,6 +185,26 @@ export default function App() {
       return null
     }
   })
+  // Queue panel width: draggable edge, remembered. Default ~360, never wider
+  // than half the window so the browse side always keeps room.
+  const [queueWidth, setQueueWidth] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem('born.queueWidth'))
+      return Number.isFinite(v) && v >= QUEUE_MIN ? v : QUEUE_DEFAULT
+    } catch {
+      return QUEUE_DEFAULT
+    }
+  })
+  const [resizingQueue, setResizingQueue] = useState(false)
+  const resizeTimer = useRef(0)
+  const [winWidth, setWinWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const onResize = (): void => setWinWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor(winWidth * 0.5)))
+  const queueW = Math.min(Math.max(queueWidth, QUEUE_MIN), queueMax)
   const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen
   const toggleQueue = useCallback(() => {
     const next = queueOpen ? 'closed' : 'open'
@@ -1286,6 +1314,20 @@ export default function App() {
       { id: 'contrast', label: contrast ? 'Turn off high contrast' : 'Turn on high contrast', keywords: 'accessibility', run: toggleContrast },
       { id: 'projection', label: projectionOpen ? 'Close projection' : 'Open projection', keywords: 'screen display output', hint: 'Ctrl+Shift+W', run: handleToggleProjection },
       { id: 'stage', label: stageOpen ? 'Close stage monitor' : 'Open stage monitor', run: handleToggleStage },
+      ...([
+        ['auto', 'Interface size: automatic for this screen'],
+        [1, 'Interface size: 100%'],
+        [1.25, 'Interface size: 125%'],
+        [1.5, 'Interface size: 150%'],
+        [1.75, 'Interface size: 175%']
+      ] as Array<[UiScaleChoice, string]>)
+        .filter(([c]) => c !== uiScale)
+        .map(([c, label]) => ({
+          id: `ui-scale-${c}`,
+          label,
+          keywords: 'zoom bigger smaller larger text display scale size',
+          run: () => setUiScale(c)
+        })),
       { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
       { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
     ]
@@ -1311,7 +1353,9 @@ export default function App() {
     stageOpen,
     handleToggleStage,
     isScreenBlanked,
-    handleToggleBlank
+    handleToggleBlank,
+    uiScale,
+    setUiScale
   ])
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
@@ -2145,7 +2189,35 @@ export default function App() {
           </div>
         </div>
 
-        <div className={`queue-panel${queueOpen ? '' : ' is-collapsed'}`} aria-hidden={!queueOpen}>
+        <div
+          className={`queue-panel${queueOpen ? '' : ' is-collapsed'}${resizingQueue ? ' is-resizing' : ''}`}
+          aria-hidden={!queueOpen}
+          style={{ ['--queue-w' as string]: `${queueW}px` }}
+        >
+          {queueOpen && (
+            <PanelResizer
+              label="Resize the service queue"
+              width={queueW}
+              min={QUEUE_MIN}
+              max={queueMax}
+              defaultWidth={QUEUE_DEFAULT}
+              onChange={(px) => {
+                // Resizing must track the pointer exactly, so the open/close
+                // width animation is switched off while it is happening.
+                setResizingQueue(true)
+                window.clearTimeout(resizeTimer.current)
+                resizeTimer.current = window.setTimeout(() => setResizingQueue(false), 350)
+                setQueueWidth(px)
+              }}
+              onCommit={(px) => {
+                try {
+                  localStorage.setItem('born.queueWidth', String(px))
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+          )}
           <ServiceQueue
             queue={serviceQueue}
             playedIds={playedIds}
