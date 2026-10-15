@@ -167,7 +167,7 @@ function VirtualListInner<T>(
       else lo = mid + 1
     }
     const index = Number(rowsEls[lo].dataset.index ?? lo)
-    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 2
+    const atEnd = laidOut && el.scrollTop + el.clientHeight >= el.scrollHeight - 2
     const key = atEnd ? -2 - index : index
     if (key !== firstVisible.current) {
       firstVisible.current = key
