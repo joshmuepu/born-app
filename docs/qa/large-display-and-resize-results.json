@@ -1,0 +1,92 @@
+[
+ {
+  "name": "default: no zoom at 1280 wide",
+  "ok": true,
+  "detail": "{\"iw\":1280,\"ih\":772,\"zoom\":\"1\",\"rootZoom\":\"\",\"docH\":772,\"docW\":1280,\"app\":772,\"queueW\":360,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "default queue width is 360",
+  "ok": true,
+  "detail": "{\"q\":360}"
+ },
+ {
+  "name": "choice 1.25: applied, fits the window with no scroll",
+  "ok": true,
+  "detail": "{\"iw\":1280,\"ih\":772,\"zoom\":\"1.25\",\"rootZoom\":\"1.25\",\"docH\":772,\"docW\":1280,\"app\":772,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "choice 1.25: projection window untouched",
+  "ok": true,
+  "detail": "{\"p0\":{\"iw\":2560,\"ih\":1440,\"rootZoom\":\"\",\"vz\":\"\"},\"pz\":{\"iw\":2560,\"ih\":1440,\"rootZoom\":\"\",\"vz\":\"\"}}"
+ },
+ {
+  "name": "choice 1.75: applied, fits the window with no scroll",
+  "ok": true,
+  "detail": "{\"iw\":1280,\"ih\":772,\"zoom\":\"1.75\",\"rootZoom\":\"1.75\",\"docH\":772,\"docW\":1280,\"app\":772,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "choice 1.75: projection window untouched",
+  "ok": true,
+  "detail": "{\"p0\":{\"iw\":2560,\"ih\":1440,\"rootZoom\":\"\",\"vz\":\"\"},\"pz\":{\"iw\":2560,\"ih\":1440,\"rootZoom\":\"\",\"vz\":\"\"}}"
+ },
+ {
+  "name": "auto at 1920x1080 -> 1",
+  "ok": true,
+  "detail": "{\"iw\":1920,\"ih\":1080,\"zoom\":\"1\",\"rootZoom\":\"\",\"docH\":1080,\"docW\":1920,\"app\":1080,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "auto at 2560x1440 -> 1.25",
+  "ok": true,
+  "detail": "{\"iw\":2560,\"ih\":1440,\"zoom\":\"1.25\",\"rootZoom\":\"1.25\",\"docH\":1440,\"docW\":2560,\"app\":1440,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "auto at 3008x1692 -> 1.5",
+  "ok": true,
+  "detail": "{\"iw\":3008,\"ih\":1692,\"zoom\":\"1.5\",\"rootZoom\":\"1.5\",\"docH\":1692,\"docW\":3008,\"app\":1692,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "auto at 3840x2160 -> 1.75",
+  "ok": true,
+  "detail": "{\"iw\":3840,\"ih\":2160,\"zoom\":\"1.75\",\"rootZoom\":\"1.75\",\"docH\":2160,\"docW\":3840,\"app\":2160,\"queueW\":0,\"queueVar\":\"360px\"}"
+ },
+ {
+  "name": "resize handle present and focusable",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "dragging the edge 60px left makes the queue 60px wider",
+  "ok": true,
+  "detail": "{\"q\":420}"
+ },
+ {
+  "name": "width is remembered across a reload",
+  "ok": true,
+  "detail": "{\"q\":420}"
+ },
+ {
+  "name": "Home goes to the minimum (280)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "End goes to the maximum (<= 560 and <= half the window)",
+  "ok": true,
+  "detail": "{\"iw\":1280,\"ih\":772,\"zoom\":\"1\",\"rootZoom\":\"\",\"docH\":772,\"docW\":1280,\"app\":772,\"queueW\":560,\"queueVar\":\"560px\"}"
+ },
+ {
+  "name": "Enter resets to 360",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Preview/Live thumbnails scale with the panel",
+  "ok": true,
+  "detail": "{\"min\":96,\"max\":236}"
+ },
+ {
+  "name": "context menu opens at the pointer at 150% (within 6px)",
+  "ok": true,
+  "detail": "{\"menu\":{\"x\":155,\"y\":379,\"width\":433.9921875,\"height\":273},\"click\":{\"x\":154,\"y\":378}}"
+ }
+]

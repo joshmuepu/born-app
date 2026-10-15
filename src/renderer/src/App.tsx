@@ -9,6 +9,7 @@ import PanelResizer from './components/PanelResizer'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
+import { reinsertAt, removeById, moveBackTo, mergeRestore } from './queueUndo'
 import type { Favorite } from './favorites'
 import { isQueueDrag, readQueueDrag, type QueueDragPayload } from './dragItem'
 import SearchBar from './components/SearchBar'
@@ -860,8 +861,9 @@ export default function App() {
       pushToast({
         message: `Removed “${itemTitle(item)}” from the queue`,
         actionLabel: 'Undo',
-        // Restores the exact order; if the item was live it is re-linked by id.
-        onAction: () => mutateQueue(() => before)
+        // Puts just this item back where it was (anything added or moved since
+        // stays); if it was live it is re-linked by id.
+        onAction: () => mutateQueue((q) => reinsertAt(q, item, index))
       })
     },
     [mutateQueue, pushToast]
@@ -901,7 +903,7 @@ export default function App() {
         message: `Added “${itemTitle(placed)}” to the queue`,
         actionLabel: 'Undo',
         timeoutMs: 5000,
-        onAction: () => mutateQueue(() => before)
+        onAction: () => mutateQueue((q) => removeById(q, placed.id))
       })
     },
     [bibleTranslation, mutateQueue, pushToast]
@@ -919,12 +921,23 @@ export default function App() {
       setTopTab('bible')
       setBiblePreview({ bookNum: entry.bookNum, chapter: entry.chapter, verse: entry.verse })
     } else {
-      setTopTab('songs')
-      // Re-opening the same song that is already focused must still re-open it.
-      setFocusSongId(null)
-      window.setTimeout(() => setFocusSongId(entry.songId), 0)
+      // A song can be deleted from the library after it was opened; say so
+      // instead of landing on an empty pane.
+      window.electronAPI
+        .getSong(entry.songId)
+        .then((song) => {
+          if (!song) {
+            pushToast({ message: 'That song is no longer in the library.', timeoutMs: 3500 })
+            return
+          }
+          setTopTab('songs')
+          // Re-opening the same song that is already focused must still re-open it.
+          setFocusSongId(null)
+          window.setTimeout(() => setFocusSongId(entry.songId), 0)
+        })
+        .catch(() => {})
     }
-  }, [])
+  }, [pushToast])
   const {
     record: recordNav,
     back: navBack,
@@ -1025,7 +1038,7 @@ export default function App() {
         message: `Moved “${itemTitle(item)}”`,
         actionLabel: 'Undo',
         timeoutMs: 5000,
-        onAction: () => mutateQueue(() => before)
+        onAction: () => mutateQueue((q) => moveBackTo(q, item.id, from))
       })
     },
     [mutateQueue, pushToast]
@@ -1505,17 +1518,34 @@ export default function App() {
     [playedIds, followSermon, stagedId]
   )
   const restoreService = useCallback(
-    (snap: ReturnType<typeof snapshotService>, unblank: boolean) => {
-      queueRef.current = snap.queue
-      setServiceQueue(snap.queue)
-      projectedRef.current = snap.projected
-      setProjected(snap.projected)
+    (snap: ReturnType<typeof snapshotService>, unblank: boolean, liveAtAction: unknown) => {
+      // The old queue comes back; anything added since stays, after it.
+      const merged = mergeRestore(snap.queue, queueRef.current)
+      queueRef.current = merged
+      setServiceQueue(merged)
       setPlayedIds(snap.played)
       setFollowSermon(snap.follow)
       setStagedId(snap.staged)
-      if (unblank && projectionOpenRef.current) {
-        setIsScreenBlanked(false)
-        window.electronAPI.setBlankScreen(false)
+      // What is on the screen is only put back if nothing has been put up
+      // since the action — otherwise Undo would change what the congregation
+      // sees (or point the operator window at something that is not live).
+      const liveUnchanged = projectedRef.current === liveAtAction
+      if (liveUnchanged) {
+        projectedRef.current = snap.projected
+        setProjected(snap.projected)
+        if (unblank && projectionOpenRef.current && isScreenBlankedRef.current) {
+          setIsScreenBlanked(false)
+          window.electronAPI.setBlankScreen(false)
+        }
+      } else if (snap.projected) {
+        // Re-link the live item to its restored row by id, nothing more.
+        const live = projectedRef.current
+        if (live) {
+          const idx = merged.findIndex((it) => it.id === live.item.id)
+          const relinked = { ...live, queueIndex: idx === -1 ? null : idx }
+          projectedRef.current = relinked
+          setProjected(relinked)
+        }
       }
     },
     []
@@ -1557,7 +1587,7 @@ export default function App() {
     pushToast({
       message: `Started a new service — ${count} item${count === 1 ? '' : 's'} cleared`,
       actionLabel: 'Undo',
-      onAction: () => restoreService(snap, blankedByUs)
+      onAction: () => restoreService(snap, blankedByUs, null)
     })
   }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
@@ -1593,7 +1623,7 @@ export default function App() {
         pushToast({
           message: `Opened a service (${items.length} item${items.length === 1 ? '' : 's'}) — your previous queue was replaced`,
           actionLabel: 'Undo',
-          onAction: () => restoreService(snap, blankedByUs)
+          onAction: () => restoreService(snap, blankedByUs, null)
         })
       }
     },

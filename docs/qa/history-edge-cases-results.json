@@ -1,0 +1,52 @@
+[
+ {
+  "name": "three places visited",
+  "ok": true,
+  "detail": "{\"wA\":{\"tab\":\"Sermons\",\"sermon\":\"Influence\"},\"wB\":{\"tab\":\"Bible\",\"sermon\":\"John 3 · KJV\",\"bible\":\"John 3 · KJV\"},\"wC\":{\"tab\":\"Songs\",\"sermon\":\"John 3 · KJV\",\"bible\":\"John 3 · KJV\",\"song\":\"A Brand New Touch+ Add key\"}}"
+ },
+ {
+  "name": "back enabled, forward disabled at the end",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Alt+Left goes back to the Bible chapter",
+  "ok": true,
+  "detail": "{\"tab\":\"Bible\",\"sermon\":\"John 3 · KJV\",\"bible\":\"John 3 · KJV\",\"song\":\"A Brand New Touch+ Add key\"}"
+ },
+ {
+  "name": "Alt+Left again goes back to the sermon",
+  "ok": true,
+  "detail": "{\"tab\":\"Sermons\",\"sermon\":\"Influence\",\"bible\":\"Influence\",\"song\":\"A Brand New Touch+ Add key\"}"
+ },
+ {
+  "name": "forward is now available",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Alt+Right goes forward to the chapter",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "navigating history never put anything on the screen",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Alt+Left in the palette input is left to the text field",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "history still works after queue edits",
+  "ok": true,
+  "detail": "{\"tab\":\"Sermons\",\"sermon\":\"Influence\",\"bible\":\"Influence\",\"song\":\"A Brand New Touch+ Add key\"}"
+ },
+ {
+  "name": "mouse back button navigates",
+  "ok": true,
+  "detail": "{\"tab\":\"Sermons\",\"sermon\":\"Influence\",\"bible\":\"Influence\",\"song\":\"A Brand New Touch+ Add key\"}"
+ }
+]

@@ -1,0 +1,92 @@
+[
+ {
+  "name": "queue has 3 items",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "an item is live",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 4a\",\"text\":\"So glad to be here this mornin\",\"blanked\":false}"
+ },
+ {
+  "name": "remove shows an undo toast",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Ctrl+Z inside the search box does not undo the queue change",
+  "ok": true,
+  "detail": "rows 2"
+ },
+ {
+  "name": "Ctrl+Z inside the search box is left to the text field",
+  "ok": true,
+  "detail": "\"hello faith\""
+ },
+ {
+  "name": "toast is still there to click",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Ctrl+Z outside a text field undoes the removal",
+  "ok": true,
+  "detail": "rows 3"
+ },
+ {
+  "name": "undo did not change what is live",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 4a\",\"text\":\"So glad to be here this mornin\",\"blanked\":false}"
+ },
+ {
+  "name": "removing the live item leaves the screen as it was",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 4a\",\"text\":\"So glad to be here this mornin\",\"blanked\":false}"
+ },
+ {
+  "name": "undo returns the live item to the queue, still live",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "New service asks before clearing a live queue",
+  "ok": true,
+  "detail": "Something is on the screen right now. Clear the queue, hide the screen and start a new service?"
+ },
+ {
+  "name": "Cancel leaves queue and screen exactly as they were",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "after confirming, queue is empty and the screen is hidden",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "Undo restores the queue and un-hides the screen",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 4a\",\"text\":\"So glad to be here this mornin\",\"blanked\":false}"
+ },
+ {
+  "name": "New with the screen hidden needs no confirm",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "something else is now live",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 2b\",\"text\":\"But—but this was on the street\",\"blanked\":false}"
+ },
+ {
+  "name": "Undo of New service does not change what is on the screen now",
+  "ok": true,
+  "detail": "{\"ref\":\"Influence · 63-0112 · 2b\",\"text\":\"But—but this was on the street\",\"blanked\":false}"
+ },
+ {
+  "name": "...but the old queue is back",
+  "ok": true,
+  "detail": "rows 3"
+ }
+]
