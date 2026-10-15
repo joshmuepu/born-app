@@ -2,7 +2,7 @@
 // Run: env -u ELECTRON_RUN_AS_NODE <electron binary> .   (from this folder)
 const { app, BrowserWindow } = require('electron'); const fs = require('fs'); const path = require('path')
 const dir = path.resolve(__dirname, '..')
-const KEY = ['01-library', '03-queue-preview-live', '08-preflight', '09-phone-remote', '07-alert-lowerthird-timer']
+const KEY = ['01-library', '03-queue-preview-live', '08-preflight', '09-phone-remote', '07-alert-lowerthird-timer', '14-youtube-queue', '15-youtube-preflight']
 let win = null, cur = ''
 app.whenReady().then(async () => {
   fs.mkdirSync(path.join(dir, 'png'), { recursive: true })

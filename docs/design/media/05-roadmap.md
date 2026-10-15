@@ -1,5 +1,9 @@
 # 5. Roadmap
 
+> **Approved by the owner, 2026-10-15** — see [README](README.md#approved-by-the-owner). Phase 1 is now
+> split into **1a** and **1b**; library files are **copied by default**; YouTube is added as **2a**.
+> The tables below are updated; where an earlier answer was reversed it is marked.
+
 Part of the [media design package](README.md). Written for the owner.
 
 Effort uses **S** (days), **M** (1–2 weeks), **L** (3–5 weeks), **XL** (6+ weeks) for one developer
@@ -28,7 +32,35 @@ Answer the risky questions with throwaway prototypes **before** committing. ~M t
 | S7 File compat | What do v1 and current v2 do with an unknown `kind` in `.born`? | Safe-skip proven or sibling-file plan |
 | S8 Unify types | Merge the three duplicated `SlidePayload` types | Typecheck clean |
 
-## Phase 1 — "Pictures, video, backgrounds" (the smallest useful, safe version)
+## Phase 1a — "Pictures, backgrounds, safety" (approved; spikes 1, 3, 4 not required)
+
+**Scope:** media library (import by drag/drop and picker, folders, tags, favorites, search, thumbnails,
+missing-file relink, duplicate detection); **copy into a managed library by default**, with **link in
+place** for very large files (with a clear "this file lives at … and must stay there" state); images
+and slideshows (manual/timed); still **backgrounds**; **PDF import** (`pdfjs-dist`); **preflight**;
+**panic key**; stage-monitor content for images; `.born` with media references; unsupported files show a
+clear message and never become a broken item.
+**Effort:** M–L · **Risk:** low–medium · **Test:** library, import, relink, preflight, `.born` compat
+(spike 8 first).
+
+## Phase 1b — "Video and audio" (only after spikes 1–4 and 7 pass)
+
+**Scope:** MP4/H.264 + AAC video; MP3/AAC/FLAC/Ogg/Opus audio; motion backgrounds; **playback bar**
+(play/pause, seek, loop, volume, fade, in/out, "when it ends"); Live readback; stalled-video watchdog;
+phone **Play/Pause live media only**; stage-monitor time left. **No FFmpeg.**
+**Effort:** L · **Risk:** medium–high until the spikes report.
+
+## Phase 2a — YouTube items (after 1b; only if spike 9 passes)
+
+Paste-a-link, online badge, online preflight with fallback per item, Test play, Play/Pause/Blank only
+from the phone. **Why after 1b:** it reuses the playback bar, Preview/Live readback, panic and
+preflight, is the riskiest type (network, a third party's rules, an app identity), and needs a local
+fallback to exist. **Effort:** M. **Risk:** medium–high (policy and origin/identity). See
+[06-youtube.md](06-youtube.md).
+
+## (superseded) Phase 1 — "Pictures, video, backgrounds"
+
+The original single Phase 1 below is kept for history; 1a/1b above replace it.
 
 **Scope**
 - Media library: import (drag/drop + picker), folders, tags, favorites, search, thumbnails, missing-file
@@ -112,3 +144,6 @@ live captions engine, social-wall, MIDI. Revisit after Phase 3 with real church 
 | 11 | Where do motion backgrounds come from? | **Ship ~12 original loops** (we make them) so there is no third-party licence question. |
 | 12 | Do we add music/track licensing logic? | **No** — notes and reports only; no legal claims. |
 | 13 | Does v1 get any of this? | **No** — v2-only (parity doc records "intentionally different"). |
+| 14 | YouTube videos? | **Owner: yes, if possible** — embedded player only; Phase 2a after 1b; see [06](06-youtube.md). |
+| 15 | "Link in place" size threshold | **Recommend 2 GB**, always offered below it too. *Open.* |
+| 16 | YouTube alerts: re-layout (A) or stage-only (B)? | **A for emergencies, B for routine**; needs counsel. *Open.* |

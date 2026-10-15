@@ -22,6 +22,8 @@ original gradients — no stock photos.
 
 ## The screens
 
+Screens 13–16 were added with the [YouTube design](06-youtube.md); the numbering is by creation, not by order.
+
 | # | Screen | What to look at | Themes shown |
 |---|---|---|---|
 | 01 | **Media library — grid** ([png](mockups/png/01-library.dark.png), [html](mockups/01-library.html)) | Folders, Smart views (Needs attention), tags, search + type filters, grid/list switch, drop zone with a watched folder, thumbnails with length and loop badges, a **missing** card, the queue on the right | dark · light · contrast |
@@ -35,6 +37,10 @@ original gradients — no stock photos.
 | 09 | **Phone remote** ([png](mockups/png/09-phone-remote.dark.png), [html](mockups/09-phone-remote.html)) | Portrait (transport + Blank, no scrubbing), landscape, and the **reconnecting** state | dark · light · contrast |
 | 10 | **Stage monitor** ([png](mockups/png/10-stage-monitor.dark.png), [html](mockups/10-stage-monitor.html)) | Time left in huge type, progress, Next / Then, amber "from the booth" cue, clock and elapsed | dark |
 | 11 | **Slides import** ([png](mockups/png/11-slides-import.dark.png), [html](mockups/11-slides-import.html)) | Step bar, page thumbnails, fidelity warning, slideshow vs separate pictures | dark |
+| 13 | **Add a YouTube video** ([png](mockups/png/13-youtube-add.dark.png), [html](mockups/13-youtube-add.html)) | Paste a link, found/embeddable chips, start/stop, muted always, fallback, ads notice, error variants | dark |
+| 14 | **YouTube in the queue** ([png](mockups/png/14-youtube-queue.dark.png), [html](mockups/14-youtube-queue.html)) | *Online* badge, Preview is a picture, Test play, fallback | dark · light · contrast |
+| 15 | **Preflight with YouTube** ([png](mockups/png/15-youtube-preflight.dark.png), [html](mockups/15-youtube-preflight.html)) | Online checks, can't-verify-offline, embedding-off with fallback, ads notice | dark · light · contrast |
+| 16 | **YouTube playback bar and failures** ([png](mockups/png/16-youtube-playbar.dark.png), [html](mockups/16-youtube-playbar.html)) | Playing, buffering, stalled, error 101/150, error 153, offline | dark |
 | 12 | **Failure states** ([png](mockups/png/12-failure-states.dark.png), [html](mockups/12-failure-states.html)) | Stalled video, missing file, unsupported format, projector unplugged, low memory, and the **panic** key | dark |
 
 ## Honest notes about the mockups

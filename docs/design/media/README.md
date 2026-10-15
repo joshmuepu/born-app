@@ -1,9 +1,30 @@
 # Born Again — projecting anything: media design package
 
-**Status: research and design only, for owner review.** No application code was changed. Branch
-`v2-media-design`, docs only. Nothing is merged, tagged or released.
+**Status: design APPROVED by the owner (see below). Docs only — no application code written.** Branch
+`v2-media-design`. Nothing is merged, tagged or released.
 
 Written for the owner (not an engineer). Dates: research done 2026-10-15.
+
+
+## Approved by the owner
+
+**Date:** 2026-10-15 (recorded in the session that followed the review; the owner's decisions are
+quoted from their instruction).
+
+| # | Decision | Effect on this package |
+|---|---|---|
+| 1 | **Media is a fourth top-level area** with its own colour, *subject to the automated contrast test* | `--ba-media` stays proposed until `themeContrast.test.ts` passes for dark, light and high-contrast |
+| 2 | **Library files are COPIED into a managed library by default**, with an optional **"link in place"** for very large files | **Reverses** the earlier recommendation (reference by default) in [03 §2.1](03-product-design.md#21-getting-media-in) and roadmap question 2. Adds disk-space, duplicate and "link in place" handling to Phase 1a |
+| 3 | **First release:** MP4 (H.264 + AAC) video; MP3/AAC/FLAC/Ogg/Opus audio; common image formats. Unsupported files show a **clear message, never a broken item**. **No FFmpeg bundling in phase 1** | Matches the design; conversion stays Phase 2+ |
+| 4 | **Phone remote: Play/Pause live media only** (no seek, no starting sound) | Matches [03 §7](03-product-design.md#7-remote-and-automation) |
+| 5 | **Phase 1 is split:** **1a** = library, images, slideshows, backgrounds, PDF import, preflight, panic key; **1b** = video/audio and the playback bar, *after the spikes pass* | Roadmap updated |
+| 6 | **YouTube videos supported if possible** | New: [06 · YouTube](06-youtube.md); lands after 1b |
+
+**Still open** (owner's call, my recommendations in the roadmap): the "link in place" size threshold;
+whether to confirm with counsel the questions in [06 §10C](06-youtube.md#10-rights-and-terms--for-the-january-commercialization-checklist);
+the YouTube alert-handling choice ([06 §6](06-youtube.md#6-layers-and-alerts)); whether a YouTube
+*search* (needs the Data API and its terms) is wanted later; and the results of the nine spikes, which
+decide whether 1b and YouTube proceed as designed.
 
 ## The package
 
@@ -15,6 +36,7 @@ Written for the owner (not an engineer). Dates: research done 2026-10-15.
 | [03 · Product design](03-product-design.md) | The media model, library, playback, Channels/Destinations/layers, safety, remote, sharing, technical feasibility, rights, accessibility |
 | [04 · Visual design](04-visual-design.md) | Index of the 12 mockup screens |
 | [05 · Roadmap](05-roadmap.md) | Phases, spikes, tests, open questions with recommended answers |
+| [06 · YouTube](06-youtube.md) | YouTube items within YouTube's rules: flow, preflight, ads, failures, terms |
 | [mockups/](mockups/) | HTML + PNG mockups (open `mockups/png/` first) |
 | [spikes/codec-check/](spikes/codec-check/) | The one measurement taken: what this app's Electron can play |
 

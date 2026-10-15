@@ -83,9 +83,12 @@ MediaItem { id, kind:'media', mediaId, mediaKind, name, slides[], playback:{ loo
 | **From a queue file** | Opening a `.born` with a media bundle offers to add its media ([§8](#8-sharing-and-portability)) |
 | **Generated** | Countdowns, lower thirds, alerts, QR — made in the designer ([04](04-visual-design.md)); stored as small templates, not files |
 
-By default Born Again **keeps the original where it is** and records a reference (fast, no duplication,
-no surprise disk use). One switch — *Copy into the Born Again library* — makes managed copies, which is
-the safe choice for a single dedicated booth computer. The mockup shows both
+> **Updated after owner approval (2026-10-15):** the default is now the *opposite* of what was first
+> proposed here. **Files are copied into a managed library by default**, with an optional **"link in
+> place"** for very large files. The original paragraph is kept below for context.
+
+Originally proposed: Born Again **keeps the original where it is** and records a reference (fast, no
+duplication, no surprise disk use), with one switch — *Copy into the Born Again library* — for managed copies. The mockup shows both
 ([`01-library`](mockups/png/01-library.dark.png), [`02-library-states`](mockups/png/02-library-states.dark.png)).
 
 ### 2.2 Organising and finding
