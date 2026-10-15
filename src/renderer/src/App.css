@@ -320,33 +320,6 @@ body {
 
 /* Grouped cluster of projector controls — always in the same spot so a
    volunteer's muscle memory holds during a live service. */
-.screen-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background-color: var(--bg-primary);
-}
-
-.text-size-control {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.text-size-label {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin-right: 2px;
-}
-
-.text-size-control .btn-sm {
-  min-width: 30px;
-  font-weight: 700;
-  text-align: center;
-}
 
 /* A button whose label is preceded by a Lucide icon (back arrows, "Books",
    etc.) — one shared alignment rule so icon + label always sit the same way. */
@@ -977,23 +950,6 @@ mark.hl {
 
 /* ── Alert button ────────────────────────────────────────── */
 
-.btn-alert {
-  padding: 6px 16px;
-  border: 1px solid var(--gold-border);
-  border-radius: var(--r-sm);
-  background-color: transparent;
-  color: var(--gold);
-  cursor: pointer;
-  font-size: var(--text-base);
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color var(--dur-fast) var(--ease-out);
-}
-
-.btn-alert:hover {
-  background-color: var(--tint-gold);
-}
-
 /* ── Modal ───────────────────────────────────────────────── */
 
 .modal-overlay {
@@ -1120,7 +1076,6 @@ mark.hl {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-
 /* ── Search input wrap ────────────────────────────────────
    Sermon's autocomplete dropdown moved to SermonPanel.css. */
 
@@ -1184,54 +1139,9 @@ mark.hl {
 /* ── Status copy button ─────────────────────────────────────
    Sermon's loading spinner/keyframes moved to SermonPanel.css. */
 
-.status-copy {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: var(--text-xs);
-  padding: 2px 4px;
-  border-radius: var(--r-sm);
-}
-
-.status-copy:hover {
-  color: var(--accent);
-  background: var(--bg-hover);
-}
-
 /* ── Display picker / fallback banner ─────────────────────── */
 
 /* "which screen" + "open projection" travel together — same spot every time. */
-.projection-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 10px;
-  margin-left: 2px;
-  border-left: 1px solid var(--border);
-}
-
-.display-picker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.display-picker .language-select {
-  max-width: 190px;
-  text-overflow: ellipsis;
-}
-
-.display-picker-label,
-.display-status {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.display-status--warn {
-  color: var(--gold);
-}
 
 /* ── Screens popover ─────────────────────────────────────── */
 .screens-menu {
@@ -1301,10 +1211,7 @@ mark.hl {
   letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
-.screens-refresh {
-  width: 24px;
-  height: 24px;
-}
+
 .screens-popover-head-actions {
   display: flex;
   align-items: center;

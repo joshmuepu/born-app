@@ -106,7 +106,7 @@ Proposed (replaces today's header + 2 tab rows + footer):
 
 ## 5. Drill-down ("Finder") pattern
 
-**Prototype, real data, read-only:** run the dev build (isolated profile as in the audit) and press
+**Prototype, real data, read-only** *(removed from the tree in batch 2 — the shipped Browse replaces it; it lives in git history at `582029a`)*: run the dev build (isolated profile as in the audit) and press
 `Ctrl+Alt+Shift+D`, or open the app URL with `?proto=drilldown`. Project/Queue buttons only show a toast.
 Screens: `prototype/01-years.png … 05-reading-full.png`.
 

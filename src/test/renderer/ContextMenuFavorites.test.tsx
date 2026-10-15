@@ -47,6 +47,11 @@ describe('ContextMenu', () => {
     fireEvent.contextMenu(screen.getByTestId('target'), { clientX: 20, clientY: 20 })
     expect(screen.getByRole('menu')).toBeDefined()
     const menu = screen.getByRole('menu')
+    // nothing is highlighted on open, so an immediate Enter runs nothing
+    fireEvent.keyDown(menu, { key: 'Enter' })
+    expect(a).not.toHaveBeenCalled()
+    expect(screen.queryByRole('menu')).not.toBeNull()
+    fireEvent.keyDown(menu, { key: 'ArrowDown' })
     fireEvent.keyDown(menu, { key: 'ArrowDown' })
     fireEvent.keyDown(menu, { key: 'Enter' })
     expect(b).toHaveBeenCalledOnce()

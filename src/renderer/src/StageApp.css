@@ -196,12 +196,6 @@ body {
   color: #7a7a7a;
 }
 
-.stage-idle {
-  font-size: clamp(1rem, 1.6vw, 1.6rem);
-  color: #555;
-  text-align: center;
-}
-
 /* "Next" is a clearly separate band along the bottom — the platform can see at a
    glance what's current vs what's coming. */
 .stage-next {
@@ -233,13 +227,6 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.stage-next-text--empty {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(0.9rem, 1.4vw, 1.4rem);
-  font-style: italic;
-  color: #666;
-}
-
 .stage-next-ref {
   margin-top: 8px;
   font-size: clamp(0.75rem, 1.1vw, 1.1rem);
