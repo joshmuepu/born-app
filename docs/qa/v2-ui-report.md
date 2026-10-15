@@ -196,3 +196,140 @@ synthetic events (the browser's real drag gesture was not scripted); performance
 
 Installer icons (`build/icons`), the Bonjour/mDNS service name "BORN Remote", `productName`/`appId`,
 the macOS app bundle name, update-check wording that names the v1 product, and `app.setName`.
+
+
+---
+
+# Stabilization round (before merge)
+
+Branch `v2-ui-born-again`. Parity check run first: `origin/main` is still only the docs-only commit
+`74ededf`, already merged into this branch in batch 2. Nothing merged to `v2-channels`, nothing tagged or
+released; v1/`main` untouched; v2 identity (`2.0.0-dev.1`, `com.joshmuepu.born.v2dev`, ports, data dir, tag gate)
+unchanged; nothing under `docs/commercial` touched.
+
+All hands-on checks below drove the **real running app** (Electron dev build, isolated profile
+`BORN_USER_DATA_DIR`, port 4317) through CDP with Playwright: real mouse input, real keyboard, real HTTP calls,
+WebKit and Chrome. Raw results are in `docs/qa/*-results*.json`.
+
+## 1. Regression pass on v2's own features — 43 checks
+
+| Area | Result |
+|---|---|
+| Screens popover (Congregation / Stage / Graphics, text size, Manage…) | pass |
+| Outputs & Channels, all four tabs render | pass |
+| Clear name (rename a display, then clear it) | pass |
+| Channels: add, set translation (FRLSG), Follow Main | pass |
+| Follow sync: Main John 3:16 KJV → follower shows the French verse in its own translation | pass |
+| Preview/Live channel tabs show that channel's live item | pass |
+| Graphics browser destination: page receives the live slide over SSE, no script errors | pass |
+| Presentation Profiles: Full-screen ↔ Lower third | **fixed** |
+| Blank clears the Graphics page; destination suppress/un-suppress clears and restores only it | pass |
+| Status tab reports destinations | pass |
+| Remote popover shows the address; "Remote connection check" reports server, port, adapters | pass |
+| Automation API: state readable; token required → 401 without, 200 with header or `?token=`; real `POST` next / prev / blank / show / clear (204); unversioned `/api/automation` still works | pass |
+| Help viewer: 20 pages, all with content, no broken image, F1 toggles | pass |
+
+**Found and fixed:** changing a Graphics output's profile updated settings but did not re-send the current frame, so an
+open Graphics page (OBS) kept the old layout until the next slide. It now switches at once. This behaviour predates the
+UI pass (it is in `v2-channels`); `src/main/index.ts` `setOutputProfile` / `setOutputAutoProfile` now call
+`pushGraphicsForChannel`.
+
+## 2. Real drag and drop — 20 checks (real mouse down/move/up, not synthetic events)
+
+Sermon paragraph → between two queue rows, → end of list; queue row → top, → below the next row; Bible verse → row;
+song → top; with an item **live**: drop-add before it, reorder, drag the live row itself; keyboard: `Alt+↑`, "Add next in
+queue" lands right after the live row. After every step the live output was byte-identical and the active row still
+tracked the same item.
+
+**Found and fixed:** the insertion line was an inserted element, which shifted layout under the pointer and could make
+the browser drop nothing (`dragend` without `drop`). It is now painted on the row itself (`::before`/`::after`), no layout
+change. Also: undo toasts no longer intercept the pointer except on their two buttons.
+
+## 3. A-Z jump — 656 checks (grid and list × dark, light, high-contrast dark, high-contrast light)
+
+Every letter: its header lands at the very top of the list (or the list end), the first song under it is fully visible,
+and the rail highlights that letter; manual scrolling at four offsets keeps the rail on the letter of the first visible row.
+Headers are ordinary rows (no sticky header exists to hide a target, which is the v1 bug's cause).
+
+**Found and fixed:** the floating letter pill from batch 2 sat on top of the first row's Queue/Project buttons — replaced by
+a highlight in the A-Z rail; at the very end of the list a short last letter (Z) was never highlighted — now it is.
+Unit tests: scroll maths of the fully-mounted list, first-visible/at-end reporting, jump-to-header offset, rail highlight.
+
+## 4. Resizable queue panel — 18 checks (with item 5)
+
+Drag the left edge or focus it (`role="separator"`) and use `←/→` (Shift = 64 px), `Home`/`End`, `Enter` (reset);
+double-click resets. Min 280, default 360, max min(560, half the window); remembered across reloads. The Preview/Live
+thumbnails measure 96 px at the minimum and 236 px at the maximum. The open/close width animation is switched off while
+resizing so the edge tracks the pointer. 6 unit tests.
+
+## 5. Large displays
+
+The control UI scales by **CSS zoom on the app root**: automatic by window width (≥2200 → 125 %, ≥2800 → 150 %,
+≥3400 → 175 %), or chosen from the command palette ("Interface size: …"), remembered. At 2560×1440, 3008×1692 and
+3840×2160 the layout fills the window with no scroll; pointer maths (context menu position, edge dragging) is corrected
+for the zoom (150 %: menu opens within 1 px of the pointer). A high OS display scale already lowers the CSS width, so a
+2560 panel at 200 % stays at 100 %.
+
+**Tried and rejected:** Chromium/webContents zoom. It is stored per origin and the projection output shares the origin, so
+it also zoomed the projector (measured: the output window reported zoom 1.25). The projection window was verified
+untouched at 125 % and 175 %. 9 unit tests.
+
+## 6. Phone remote — 64 checks
+
+Chrome and WebKit (Playwright WebKit 18.2) × phone portrait 390×844, phone landscape 844×390, tablet portrait 820×1180,
+tablet landscape 1180×820 × dark and light: loads, no horizontal overflow, shows the live verse, no console errors; with
+the network cut it says "Reconnecting…" and recovers when it returns.
+
+**Found and fixed:** in the tablet/landscape layout the connection state was a tiny grey dot (no words, colour only). It
+now reads "Connected" / "Reconnecting…" (announced politely) in both layouts.
+**What "Preview/Live" is on the remote:** the existing red **ON SCREEN NOW** card plus the dashed **NEXT** box (text, not
+thumbnails) — the thumbnail pair is desktop-only.
+
+## 7. Undo and history edge cases — 18 + 10 checks, 7 unit tests
+
+- `Ctrl/Cmd+Z` inside the search box edits text and does not undo the queue; outside a field it undoes the latest toast.
+- Removing the live item and undoing never changes the output; "New" with something live asks first (Cancel changes nothing;
+  confirm + Undo restores the queue and un-hides the screen).
+- **Found and fixed:** Undo of New/Open restored the whole old *projected* state and un-hid the screen even if the
+  operator had put something else up in the meantime, and it replaced the queue wholesale (dropping later additions).
+  Undo now re-inserts/removes/moves only the one item by id, merges restored queues with later additions, and touches the
+  screen only if nothing was put up since.
+- History (`Alt+←/→`, mouse buttons, chevrons): sermon → chapter → song and back/forward land correctly, never project, are
+  ignored inside text fields, survive queue edits. A song deleted from the library reports it instead of an empty pane.
+
+## 8. Dependency note
+
+`docs/design/dependency-notes.md` (not under `docs/commercial`): `@tanstack/react-virtual` 3.13.12 and
+`@tanstack/virtual-core` 3.13.12, MIT, renderer-only, ~12 kB.
+
+## Also found by the audit re-run
+
+- High-contrast **light** inherited black text on the danger button (a high-contrast selector matches both base themes and
+  the light block did not override `--on-danger`) → fixed; the contrast test now builds the cascade the same way and would
+  have caught it.
+- The Channels "Following" chip (hard-coded lavender) and the ‹ Back button's edge were weak in light themes → tokens.
+- 156 audits re-run with projection open and channels present: **0 findings**.
+
+## Tests
+
+`npm run typecheck` clean. `npm test`: **59 files, 870 tests passing** (842 before this round). Manual screenshots
+regenerated; manual text updated (queue width, interface size, undo wording, A-Z).
+
+## Not tested
+
+Real iPhone/iPad Safari, real Android Chrome, real touch hardware, Windows and Linux, a screen reader, a physical
+projector or capture card (the projection window was opened on this machine's displays), OBS itself (the Graphics page
+was loaded in WebKit/Chrome), Stream Deck/Companion hardware (the HTTP API was called directly), slow real hardware
+(CPU throttling only), 4K physical displays (emulated viewport sizes).
+
+## Check by hand (about 15 minutes)
+
+1. **Real phone:** open the remote on your phone over Wi-Fi in portrait and landscape; tap Next/Prev/Blank; switch tabs;
+   turn Wi-Fi off for ten seconds and on again (should say Reconnecting… then Connected); add to home screen.
+2. **Real projector / second display:** project a sermon paragraph, a verse and a song; hide/show; confirm the text size
+   and layout are exactly as before and that changing the **interface size** or queue width does not change the projection.
+3. **Touch screen** (if the booth has one): drag a paragraph into the queue, drag-reorder rows, right-click equivalent
+   (long-press), resize the queue edge.
+4. **Windows:** window controls, `Ctrl+K`, `Ctrl+Z`, `Alt+←/→`, the mouse back/forward buttons, high display scaling.
+5. **Screen reader (VoiceOver/NVDA):** the rail, the Preview/Live pair, the toast "Undo", the queue resize separator.
+6. **OBS:** add the Graphics URL as a Browser Source; switch Full-screen ↔ Lower third while something is live.
