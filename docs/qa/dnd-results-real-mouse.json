@@ -1,0 +1,102 @@
+[
+ {
+  "name": "queue starts with the two chosen rows",
+  "ok": true,
+  "detail": "[\"63-0112 · 1 \",\"63-0112 · 4a\"]"
+ },
+ {
+  "name": "sermon paragraph dragged between the two rows",
+  "ok": true,
+  "detail": "{\"got\":[\"63-0112 · 1 \",\"63-0112 · 6a\",\"63-0112 · 4a\"],\"want\":[\"63-0112 · 1 \",\"63-0112 · 6a\",\"63-0112 · 4a\"]}"
+ },
+ {
+  "name": "undo toast offered",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "dropped at the end of the queue (4 rows, first three unchanged)",
+  "ok": true,
+  "detail": "[\"63-0112 · 1 \",\"63-0112 · 6a\",\"63-0112 · 4a\",\"63-0112 · 11\"]"
+ },
+ {
+  "name": "reorder by drag moved the last row to the top",
+  "ok": true,
+  "detail": "[\"63-0112 · 11\",\"63-0112 · 1 \",\"63-0112 · 6a\",\"63-0112 · 4a\"]"
+ },
+ {
+  "name": "reorder by drag moved the top row below the next one",
+  "ok": true,
+  "detail": "[\"63-0112 · 1 \",\"63-0112 · 11\",\"63-0112 · 6a\",\"63-0112 · 4a\"]"
+ },
+ {
+  "name": "Bible verse dragged into the queue at index 1",
+  "ok": true,
+  "detail": "[\"Influence|63-0112 · 1  —   Mornin\",\"John 3:3 · KJV|Jesus answered and said \",\"Influence|63-0112 · 11a  —  For in\",\"Influence|63-0112 · 6a  —  I was l\",\"Influence|63-0112 · 4a  —  So glad\"]"
+ },
+ {
+  "name": "song dragged into the queue",
+  "ok": true,
+  "detail": "5->6"
+ },
+ {
+  "name": "song landed at the top",
+  "ok": true,
+  "detail": "[\"'Tis True|Key of F  —  'Tis true, \",\"Influence|63-0112 · 1  —   Mornin\",\"John 3:3 · KJV|Jesus answered and said \"]"
+ },
+ {
+  "name": "an item is live",
+  "ok": true,
+  "detail": "{\"text\":\"Jesus answered and said unto him, Verily\",\"ref\":\"John 3:3 · KJV\",\"blanked\":false}"
+ },
+ {
+  "name": "live output unchanged after a drop-add",
+  "ok": true,
+  "detail": "{\"text\":\"Jesus answered and said unto him, Verily\",\"ref\":\"John 3:3 · KJV\",\"blanked\":false}"
+ },
+ {
+  "name": "the live row is still the same item after items were inserted before it",
+  "ok": true,
+  "detail": "{\"activeBefore\":[\"John 3:3 · KJV\"],\"activeAfter\":[\"John 3:3 · KJV\"]}"
+ },
+ {
+  "name": "live output unchanged after reordering",
+  "ok": true,
+  "detail": "{\"text\":\"Jesus answered and said unto him, Verily\",\"ref\":\"John 3:3 · KJV\",\"blanked\":false}"
+ },
+ {
+  "name": "live row still tracks the same item after reorder",
+  "ok": true,
+  "detail": "[\"John 3:3 · KJV\"]"
+ },
+ {
+  "name": "dragging the live row itself moves it and it stays live",
+  "ok": true,
+  "detail": "{\"liveIdx\":1,\"liveIdx2\":0}"
+ },
+ {
+  "name": "Alt+ArrowUp moves the focused row up",
+  "ok": true,
+  "detail": "{\"kb0\":[\"John 3:3 · KJV|Jesus answered and said \",\"Influence|63-0112 · 1  —   Mornin\",\"Influence|63-0112 · 11a  —  For in\",\"'Tis True|Key of F  —  'Tis true, \",\"Influence|63-0112 · 6a  —  I was l\",\"Influence|63-0112 · 4a  —  So glad\"],\"kb1\":[\"John 3:3 · KJV|Jesus answered and said \",\"Influence|63-0112 · 11a  —  For in\",\"Influence|63-0112 · 1  —   Mornin\",\"'Tis True|Key of F  —  'Tis true, \",\"Influence|63-0112 · 6a  —  I was l\",\"Influence|63-0112 · 4a  —  So glad\"]}"
+ },
+ {
+  "name": "live output unchanged after keyboard reorder",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "\"Add next in queue\" inserts right after the live row",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "inserted item sits directly after the live item",
+  "ok": true,
+  "detail": "{\"kbq\":0,\"kbTitles\":[\"John 3:3 · KJV|Jesus answered and said \",\"Influence|63-0112 · 6a  —  I was l\",\"Influence|63-0112 · 11a  —  For in\",\"Influence|63-0112 · 1  —   Mornin\",\"'Tis True|Key of F  —  'Tis true, \",\"Influence|63-0112 · 6a  —  I was l\",\"Influence|63-0112 · 4a  —  So glad\"]}"
+ },
+ {
+  "name": "live output still unchanged",
+  "ok": true,
+  "detail": ""
+ }
+]

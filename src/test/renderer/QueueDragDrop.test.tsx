@@ -52,7 +52,7 @@ describe('queue drop targets and keyboard reorder', () => {
     render(<ServiceQueue {...p} queue={[song('a', 'Alpha'), song('b', 'Beta'), song('c', 'Gamma')]} />)
     const target = rows()[1]
     fireEvent.dragOver(target, { dataTransfer: dt(), clientY: 0 })
-    expect(document.querySelector('.queue-drop-line')).not.toBeNull()
+    expect(target.classList.contains('queue-row--drop-before')).toBe(true)
     fireEvent.drop(target, { dataTransfer: dt(), clientY: 0 })
     expect(p.onDropItem).toHaveBeenCalledWith(payload, 1)
     expect(p.onProject).not.toHaveBeenCalled()

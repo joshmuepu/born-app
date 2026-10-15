@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
 import PreviewLivePair from './PreviewLivePair'
@@ -317,7 +317,11 @@ export default function ServiceQueue({
       active ? 'queue-row--active' : 'queue-row--compact',
       played ? 'queue-row--played' : '',
       isNext ? 'queue-row--next' : '',
-      dragIndex === index ? 'queue-row--dragging' : ''
+      dragIndex === index ? 'queue-row--dragging' : '',
+      // The insertion line is painted on the row (no extra element), so nothing
+      // shifts or re-mounts under the pointer while a drag is in flight.
+      dropIndex === index ? 'queue-row--drop-before' : '',
+      dropIndex === queue.length && index === queue.length - 1 ? 'queue-row--drop-after' : ''
     ].filter(Boolean).join(' ')
 
     if (!active) {
@@ -475,16 +479,10 @@ export default function ServiceQueue({
                 </div>
               )}
               <div className="queue-section-items">
-                {group.indices.map((index) => (
-                  <Fragment key={queue[index].id}>
-                    {dropIndex === index && <div className="queue-drop-line" aria-hidden="true" />}
-                    {renderRow(queue[index], index)}
-                  </Fragment>
-                ))}
+                {group.indices.map((index) => renderRow(queue[index], index))}
               </div>
             </div>
           ))}
-          {dropIndex === queue.length && <div className="queue-drop-line" aria-hidden="true" />}
         </div>
       )}
 

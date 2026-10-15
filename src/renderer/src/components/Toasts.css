@@ -12,7 +12,9 @@
 }
 .toast {
   position: relative;
-  pointer-events: auto;
+  /* The toast itself never blocks what is under it (a drag, a click on a
+     paragraph); only its two buttons take the pointer. */
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -29,6 +31,7 @@
 }
 .toast-msg { flex: 1; font-size: var(--text-base); }
 .toast-action {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -44,6 +47,7 @@
 }
 .toast-action:hover { background: var(--accent-hover); }
 .toast-close {
+  pointer-events: auto;
   display: grid;
   place-items: center;
   width: 28px;

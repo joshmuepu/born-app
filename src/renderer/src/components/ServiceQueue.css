@@ -434,14 +434,24 @@
 }
 .live-now-hidden-badge--warn { border-color: var(--warn); color: var(--warn); }
 
-/* Drop targets: an accent insertion line, and a highlighted empty queue. */
-.queue-drop-line {
+/* Drop targets: an accent insertion line painted on the row itself, so a drag
+   never changes layout under the pointer. */
+.queue-row { position: relative; }
+.queue-row--drop-before::before,
+.queue-row--drop-after::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
   height: 3px;
-  margin: 1px 4px;
   border-radius: 2px;
   background: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  pointer-events: none;
+  z-index: 2;
 }
+.queue-row--drop-before::before { top: -3px; }
+.queue-row--drop-after::after { bottom: -3px; }
 .queue-row--dragging { opacity: 0.5; }
 .queue-empty-drop { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .queue-empty-drop.is-over {
