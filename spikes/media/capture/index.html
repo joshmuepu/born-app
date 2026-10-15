@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><title>BORN live-input test (spike)</title>
+<style>body{font:14px/1.4 system-ui,"Segoe UI",sans-serif;margin:24px;background:#0f0f12;color:#f4f2ee;max-width:1000px}
+button,select{font:600 14px system-ui;padding:8px 14px;border-radius:8px;border:1px solid #3a3a42;background:#1e1e23;color:#f4f2ee;margin:4px 6px 4px 0}
+button.pri{background:#9a80e6;color:#120d1e}video{width:480px;background:#000;display:block;margin-top:10px}pre{background:#16161a;padding:12px;border-radius:8px;white-space:pre-wrap}</style></head><body>
+<h1 style="font-size:20px;margin:0 0 4px">BORN live-input test</h1>
+<p style="color:#b2afaa">Lists cameras and capture cards (including “NDI Virtual Input”), opens one at 1080p30, and reports the real resolution, frame rate and start-up time. It does not record or upload anything.</p>
+<div><button class="pri" id="list">1. List devices</button><select id="dev"></select><button id="open">2. Open selected</button><button id="screen">Test screen/window capture</button><button id="copy">Copy results</button></div>
+<video id="v" muted autoplay playsinline></video><pre id="out">…</pre>
+<script>
+const $=id=>document.getElementById(id), log=[]; const say=t=>{log.push(t);$('out').textContent=log.join('\n')}
+say('Platform: '+navigator.platform+' | '+navigator.userAgent)
+$('list').onclick=async()=>{
+  try{ const s=await navigator.mediaDevices.getUserMedia({video:true}); s.getTracks().forEach(t=>t.stop()) }catch(e){ say('Permission/open error: '+e.name+' '+e.message) }
+  const ds=(await navigator.mediaDevices.enumerateDevices()); $('dev').innerHTML=''
+  ds.filter(d=>d.kind==='videoinput').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||'(unnamed video input)';$('dev').append(o)})
+  say('Devices: '+JSON.stringify(ds.map(d=>d.kind+': '+(d.label||'(no label)'))))
+}
+$('open').onclick=async()=>{
+  const id=$('dev').value; const label=$('dev').selectedOptions[0]?.textContent; const t0=performance.now()
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{deviceId:id?{exact:id}:undefined,width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false})
+    $('v').srcObject=s; const tr=s.getVideoTracks()[0], st=tr.getSettings(); let n=0,first=null,t1=performance.now()
+    const cb=(now,md)=>{ if(first===null)first=Math.round(performance.now()-t0); n++; $('v').requestVideoFrameCallback(cb)}; $('v').requestVideoFrameCallback(cb)
+    await new Promise(r=>setTimeout(r,4000)); const fps=(n/((performance.now()-t1)/1000)).toFixed(1)
+    say('OPEN OK: '+label+' | settings '+st.width+'x'+st.height+' @'+(st.frameRate||'?')+' | measured '+fps+' fps | first frame '+first+' ms | caps '+JSON.stringify({w:tr.getCapabilities?.().width,h:tr.getCapabilities?.().height,fps:tr.getCapabilities?.().frameRate}))
+  }catch(e){ say('OPEN FAILED: '+label+' | '+e.name+': '+e.message) }
+}
+$('screen').onclick=async()=>{ try{ const s=await navigator.mediaDevices.getDisplayMedia({video:true}); $('v').srcObject=s; const st=s.getVideoTracks()[0].getSettings(); say('SCREEN CAPTURE OK '+st.width+'x'+st.height) }catch(e){ say('SCREEN CAPTURE FAILED: '+e.name+': '+e.message) } }
+$('copy').onclick=()=>navigator.clipboard.writeText($('out').textContent).catch(()=>{})
+</script></body></html>

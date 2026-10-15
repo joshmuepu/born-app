@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><title>OBS / Graphics browser-source media test</title>
+<style>body{margin:0;background:#101018;color:#fff;font:20px/1.4 system-ui,Segoe UI,sans-serif;padding:20px}
+.row{display:flex;gap:16px;align-items:center;margin:10px 0}video{width:320px;height:180px;background:#000}.PASS{color:#4cc17f}.FAIL{color:#ff5b61}.WAIT{color:#f0983e}</style></head><body>
+<h2 style="margin:0">Browser-source media test <span id="where" style="font-weight:400;font-size:14px;color:#aaa"></span></h2>
+<p style="margin:4px 0;color:#bbb">Put this page in an OBS “Browser” source (or open it in a browser). Each line plays muted for 4 s.</p>
+<div id="rows"></div><pre id="out" style="font-size:13px;color:#ccc"></pre>
+<script>
+const base = location.origin + '/compat/clips/'
+const FILES = [['h264-720p30.mp4','H.264 MP4'],['h264-1080p30.mp4','H.264 + AAC MP4'],['h264-4k30.mp4','H.264 4K'],['hevc-1080p30.mp4','HEVC'],['vp9-1080p30.webm','VP9 WebM'],['vp8-720p30.webm','VP8 WebM'],['av1-1080p30.webm','AV1 WebM']]
+document.getElementById('where').textContent = '— loaded from ' + location.host + ' — ' + navigator.userAgent.replace(/^Mozilla\/5.0 /,'').slice(0,90)
+const out = []
+async function go(){ for (const [f,l] of FILES){
+  const row=document.createElement('div'); row.className='row'; const v=document.createElement('video'); v.muted=true; v.loop=true; v.playsInline=true
+  const s=document.createElement('span'); s.className='WAIT'; s.textContent=l+' …'; row.append(v,s); document.getElementById('rows').append(row)
+  let err=''; v.onerror=()=>{err=v.error?('error '+v.error.code):'error'}
+  const t0=performance.now(); v.src=base+f
+  try{ await v.play(); await new Promise(r=>setTimeout(r,2800)); const q=v.getVideoPlaybackQuality?v.getVideoPlaybackQuality():{droppedVideoFrames:'?',totalVideoFrames:'?'}
+    const ok=v.currentTime>1.5 && v.videoWidth>0; s.className=ok?'PASS':'FAIL'; s.textContent=l+' — '+(ok?'plays':'stuck')+' ('+v.videoWidth+'x'+v.videoHeight+', t='+v.currentTime.toFixed(1)+'s, dropped '+q.droppedVideoFrames+'/'+q.totalVideoFrames+')'; out.push(l+': '+s.textContent)
+  }catch(e){ s.className='FAIL'; s.textContent=l+' — FAILED '+(err||e.message); out.push(s.textContent) }
+  v.pause() }
+  document.getElementById('out').textContent='RESULTS\n'+out.join('\n') }
+go()
+</script></body></html>

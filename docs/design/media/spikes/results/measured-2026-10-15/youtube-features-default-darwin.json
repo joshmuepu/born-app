@@ -1,0 +1,455 @@
+{
+ "when": "2026-10-15T15:00:19.125Z",
+ "electron": "33.4.11",
+ "chrome": "130.0.6723.191",
+ "policy": "default",
+ "results": [
+  {
+   "name": "F1 invalid id (not found)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/aaaaaaaaaaa?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "164ms api-ready",
+     "418ms onReady",
+     "418ms onError 150"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "aaaaaaaaaaa",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "auth",
+      "backgroundable": false,
+      "cpn": "ukIiHZFo3ZvuuMoX",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMI4Kbvt6S8lwMViNOUCR0oxxJ5ygEE39EWuQ==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 6167,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "F2 malformed id",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/x?enablejsapi=1&playsinline=1&mute=1&origin=http%3A%2F%2Floc",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "149ms api-ready",
+     "410ms onReady",
+     "430ms onError 2",
+     "430ms state -1"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "author": "",
+      "title": "",
+      "isPlayable": true,
+      "errorCode": "api.invalidparam",
+      "backgroundable": false,
+      "cpn": "ewTRtR4VQnP3OudX",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMI6cmCu6S8lwMVpr2uBR0dfTUQygEEssd5ow==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 6152,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "F3 start=20 end=26 (should stop ~26s)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&start=20&end=",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "158ms api-ready",
+     "430ms onReady",
+     "441ms state -1",
+     "441ms state 3",
+     "548ms state -1",
+     "872ms state 3",
+     "896ms state 1",
+     "6906ms state 0"
+    ],
+    "final": {
+     "pos": 26.000409,
+     "st": 0,
+     "dur": 214,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "FOrQarLbK6LYut0PppCjMA",
+      "cpn": "XixxaKvjyBlK5afm",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwiytaq-pLyXAxUirK4FHSbICAbKAQSIBs1f",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 14161,
+     "pos": 26.000409,
+     "st": 0,
+     "dur": 214
+    }
+   }
+  },
+  {
+   "name": "F4 24/7 live stream id (duration semantics)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/jfKfPfyJRdk?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "135ms api-ready",
+     "400ms onReady",
+     "400ms onError 150"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "jfKfPfyJRdk",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "auth",
+      "backgroundable": false,
+      "cpn": "qshtqH6yb7RSFBeM",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMIhomBxaS8lwMV-iOzAB2XrRdoygEEZ9zH_Q==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 8137,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "F5 autoplay=1 muted",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&autoplay=1&or",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "152ms api-ready",
+     "466ms onReady",
+     "820ms state 1"
+    ],
+    "final": {
+     "pos": 7.365595990463257,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "K-rQasPFMLOMut0P4avjuQs",
+      "cpn": "QPUrLARrSLc13Lli",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwiDh6vJpLyXAxUzhq4FHeHVOLfKAQSY6MoY",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 8154,
+     "pos": 7.365595990463257,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "F6 autoplay=1 UNMUTED (mute=0)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&autoplay=1&origin=ht",
+     "referer": "http://localhost:65207/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65207",
+    "scriptLoaded": true,
+    "events": [
+     "134ms api-ready",
+     "388ms onReady",
+     "702ms state 1"
+    ],
+    "final": {
+     "pos": 7.42757591607666,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "M-rQaonkNoqny_sP6cefyQg",
+      "cpn": "uQEC4_A-H2VcWLGX",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwjJyZnNpLyXAxWK03IJHenjJ4nKAQTwDDMP",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": false
+    },
+    "lastSample": {
+     "t": 8136,
+     "pos": 7.42757591607666,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "F7 offline (network emulation)",
+   "r": {
+    "events": [
+     "145ms api-ready",
+     "407ms onReady",
+     "418ms state -1",
+     "419ms state 3",
+     "734ms state 1"
+    ],
+    "scriptLoaded": true,
+    "final": {
+     "pos": 7.45893394468689,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "POrQatToIv-Kut0PpIbR4Qw",
+      "cpn": "P3Q6e_Fzj-Ufe-NQ",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwjU9qrRpLyXAxV_ha4FHSRDNMzKAQRiHwWH",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    }
+   }
+  },
+  {
+   "name": "F8 two independent embeds, same video, 55 s",
+   "diffsSeconds": [
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13,
+    0.13
+   ],
+   "note": "positive = window A ahead of B; each window started ~1 s apart"
+  },
+  {
+   "name": "F9 oEmbed",
+   "valid": {
+    "status": 200,
+    "body": "{\"title\":\"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)\",\"author_name\":\"Rick Astley\",\"author_url\":\"https://www.youtube.com/@RickAstleyYT\",\"type\":\"video\",\"height\":113,\"width\":200"
+   },
+   "notFound": {
+    "status": 400,
+    "body": "Bad Request"
+   },
+   "liveStream": {
+    "status": 200,
+    "body": "{\"title\":\"lofi hip hop radio \\ud83d\\udcda beats to relax/study to\",\"author_name\":\"Lofi Girl\",\"author_url\":\"https://www.youtube.com/@LofiGirl\",\"type\":\"video\",\"height\":150,\"width\":200,\"version\":\"1.0\",\"p"
+   },
+   "malformed": {
+    "status": 400,
+    "body": "Bad Request"
+   }
+  },
+  {
+   "name": "F10 Google sign-in page in default Electron window",
+   "url": "https://accounts.google.com/v3/signin/identifier?service=youtube&flowName=WebLiteSignIn&flowEntry=Se",
+   "text": "Sign in\n\nto continue to YouTube\n\nEmail or phone\n\nForgot email?\n\nNot your computer? Use Guest mode to sign in privately. Learn more about using Guest mode\n\nNext\nCreate account\nAfrikaans\nazərbaycan\nbosanski\ncatalà\nČeština\nCymraeg\nDansk\nDeutsch\neesti\nEnglish (United Kingdom)\nEnglish (United States)\nEspañol (España)\nEspañol (Latinoamérica)\neuskara\nFilipino\nFrançais (Canada)\nFrançais (France)\nGaeilge\ngalego\nHrvatski\nIndonesia\nisiZulu\níslenska\nItaliano\nKiswahili\nlatviešu\nlietuvių\nmagyar\nMelayu\nNederla"
+  }
+ ]
+}

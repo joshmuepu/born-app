@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>sync</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}video{width:100vw;height:100vh;object-fit:contain}</style>
+<video id="v" loop playsinline></video>
+<script>
+const { ipcRenderer } = require('electron')
+const q = new URLSearchParams(location.search); const role = q.get('role'), mode = q.get('mode'), src = q.get('src')
+const v = document.getElementById('v'); v.src = src; v.preload = 'auto'; v.muted = role !== 'main'; v.volume = 0.02
+const samples = []; let n = 0, corrections = 0, seeks = 0, master = null
+const DUR = () => v.duration || 30
+const wrap = (d, p) => ((d + p / 2) % p + p) % p - p / 2
+function onFrame(now, md) {
+  n++
+  if (n % 15 === 0) { const wall = performance.timeOrigin + (md.presentationTime || now); samples.push([wall, md.mediaTime]); ipcRenderer.send('sample', role, wall, md.mediaTime) }
+  v.requestVideoFrameCallback(onFrame)
+}
+v.requestVideoFrameCallback(onFrame)
+ipcRenderer.on('go', () => v.play())
+ipcRenderer.on('master', (_e, m) => { master = m })
+// follower correction (mode "corrected"): ask the main process for the master's latest (wall,pos) every 1s
+setInterval(() => {
+  if (mode !== 'corrected' || role === 'main' || !master || v.paused) return
+  const expected = master.pos + (Date.now() - master.wall) / 1000
+  const drift = wrap(v.currentTime - expected, DUR())      // + = we are ahead
+  const a = Math.abs(drift)
+  if (a > 0.5) { v.currentTime = (expected % DUR() + DUR()) % DUR(); seeks++; v.playbackRate = 1 }
+  else if (a > 0.04) { v.playbackRate = 1 - Math.max(-0.05, Math.min(0.05, drift * 0.6)); corrections++ }
+  else v.playbackRate = 1
+}, 1000)
+setInterval(() => { const qd = v.getVideoPlaybackQuality(); ipcRenderer.send('stats', role, { dropped: qd.droppedVideoFrames, total: qd.totalVideoFrames, corrections, seeks, rate: v.playbackRate }) }, 5000)
+v.addEventListener('loadedmetadata', () => ipcRenderer.send('ready', role, v.duration))
+</script>

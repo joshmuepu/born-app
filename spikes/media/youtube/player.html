@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>yt</title>
+<style>html,body{margin:0;background:#000}iframe{width:100vw;height:100vh;border:0}</style>
+<div id="host"></div><div id="log" style="position:fixed;left:0;top:0;color:#0f0;font:11px monospace;z-index:9;pointer-events:none"></div>
+<script>
+const q = new URLSearchParams(location.search)
+const id = q.get('id') || 'dQw4w9WgXcQ', refpol = q.get('refpol') || '', originParam = q.get('origin') === '1', mute = q.get('mute') !== '0',
+  start = q.get('start'), end = q.get('end'), autoplay = q.get('autoplay') === '1', secs = +(q.get('secs') || 8), apiMode = q.get('api') || 'iframe' // 'iframe' | 'none'
+const R = { href: location.href, origin: location.origin, events: [], t0: Date.now(), samples: [], final: null, scriptLoaded: false }
+const ev = (n, d) => { R.events.push({ t: Date.now() - R.t0, n, d: d === undefined ? undefined : JSON.parse(JSON.stringify(d)) }); document.getElementById('log').textContent = R.events.slice(-4).map(e => e.n + ' ' + (e.d ?? '')).join(' | ') }
+window.__R = R
+let url = 'https://www.youtube.com/embed/' + id + '?enablejsapi=1&playsinline=1' + (mute ? '&mute=1' : '') + (autoplay ? '&autoplay=1' : '') + (start ? '&start=' + start : '') + (end ? '&end=' + end : '') + (originParam ? '&origin=' + encodeURIComponent(location.origin) : '')
+const f = document.createElement('iframe'); f.id = 'ytp'; f.src = url; f.allow = 'autoplay; encrypted-media'; if (refpol) f.referrerPolicy = refpol
+document.getElementById('host').append(f); R.iframeSrc = url; R.refpol = refpol
+const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.onerror = () => ev('api-script-error'); document.head.append(s)
+let P
+window.onYouTubeIframeAPIReady = () => {
+  R.scriptLoaded = true; ev('api-ready')
+  P = new YT.Player('ytp', { events: {
+    onReady: () => { ev('onReady'); if (!autoplay) { try { P.mute(); P.playVideo() } catch (e) { ev('play-throw', e.message) } } },
+    onStateChange: e => ev('state', e.data),
+    onError: e => ev('onError', e.data),
+    onAutoplayBlocked: () => ev('autoplayBlocked') } })
+  const iv = setInterval(() => { try { R.samples.push({ t: Date.now() - R.t0, pos: P.getCurrentTime && P.getCurrentTime(), st: P.getPlayerState && P.getPlayerState(), dur: P.getDuration && P.getDuration() }) } catch {} }, 500)
+  setTimeout(() => { clearInterval(iv); try { R.final = { pos: P.getCurrentTime(), st: P.getPlayerState(), dur: P.getDuration(), data: P.getVideoData && P.getVideoData(), muted: P.isMuted && P.isMuted() } } catch (e) { R.final = { err: e.message } } R.done = true }, secs * 1000)
+}
+window.__cmd = (name, ...a) => { try { return P[name](...a) } catch (e) { return 'ERR ' + e.message } }
+</script>

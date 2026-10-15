@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BORN media compatibility test (spike)</title>
+<style>
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;margin:24px;background:#0f0f12;color:#f4f2ee;max-width:1100px}
+h1{font-size:20px;margin:0 0 4px}p{color:#b2afaa;margin:4px 0 14px}
+button{font:600 14px system-ui;padding:9px 16px;border-radius:8px;border:1px solid #3a3a42;background:#9a80e6;color:#120d1e;cursor:pointer;margin-right:8px}
+button.sec{background:#1e1e23;color:#f4f2ee}
+table{border-collapse:collapse;width:100%;margin-top:16px}td,th{border-bottom:1px solid #26262c;padding:6px 8px;text-align:left;vertical-align:top}
+th{color:#8a8782;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.PASS{color:#4cc17f;font-weight:700}.FAIL{color:#ff5b61;font-weight:700}.WARN{color:#f0983e;font-weight:700}.SKIP{color:#8a8782}
+code,pre{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}pre{background:#16161a;padding:12px;border-radius:8px;white-space:pre-wrap}
+#drop{border:1.5px dashed #3a3a42;border-radius:10px;padding:14px;margin-top:14px;color:#b2afaa}#drop.over{border-color:#4fc3b8;color:#4fc3b8}
+video{width:160px;height:90px;background:#000;display:block}
+</style></head><body>
+<h1>BORN media compatibility test</h1>
+<p>Plays each test file silently for about 3 seconds and reports what this computer can actually do. Nothing is uploaded.
+Press <b>Run all tests</b>, wait ~1 minute, press <b>Copy results</b>, and paste the text back. You can also drop your own videos
+(for example phone or screen recordings) onto the box.</p>
+<div><button id="run">Run all tests</button><button id="copy" class="sec">Copy results</button><span id="status"></span></div>
+<div id="drop">Drop your own video or audio files here to test them too (they stay on this computer).</div>
+<h2 style="font-size:15px;margin-top:20px">This computer</h2><pre id="env">…</pre>
+<table><thead><tr><th>File</th><th>What it is</th><th>Result</th><th>Size</th><th>Duration</th><th>Dropped frames</th><th>First frame</th><th>Decode (MediaCapabilities)</th><th>Detail</th></tr></thead><tbody id="rows"></tbody></table>
+<h2 style="font-size:15px;margin-top:20px">Results to paste back</h2><pre id="out">(run the tests first)</pre>
+<script>
+const CLIPS = [
+ ['clips/h264-720p30.mp4','video','H.264 720p30 MP4 (the safe format)','video/mp4; codecs="avc1.4d401f"',1280,720,30,1e6],
+ ['clips/h264-1080p30.mp4','video','H.264 1080p30 + AAC MP4','video/mp4; codecs="avc1.640028, mp4a.40.2"',1920,1080,30,2e6],
+ ['clips/h264-1080p60.mp4','video','H.264 1080p60 MP4','video/mp4; codecs="avc1.640032"',1920,1080,60,3e6],
+ ['clips/h264-4k30.mp4','video','H.264 4K 30fps MP4','video/mp4; codecs="avc1.640033"',3840,2160,30,6e6],
+ ['clips/hevc-1080p30.mp4','video','HEVC (H.265) 1080p30 MP4 — iPhone default','video/mp4; codecs="hvc1.1.6.L120.B0"',1920,1080,30,5e6],
+ ['clips/hevc-1080p30.mov','video','HEVC in a QuickTime .mov — iPhone-style file','video/quicktime; codecs="hvc1.1.6.L120.B0"',1920,1080,30,5e6],
+ ['clips/hevc-4k30.mp4','video','HEVC (H.265) 4K30 MP4','video/mp4; codecs="hvc1.1.6.L153.B0"',3840,2160,30,10e6],
+ ['clips/h264-1080p30.mov','video','H.264 in a QuickTime .mov','video/quicktime',1920,1080,30,2e6],
+ ['clips/prores422-720p30.mov','video','Apple ProRes 422 .mov (editor export)','video/quicktime; codecs="apcn"',1280,720,30,1e8],
+ ['clips/vp9-1080p30.webm','video','VP9 + Opus WebM','video/webm; codecs="vp9, opus"',1920,1080,30,2e6],
+ ['clips/vp8-720p30.webm','video','VP8 WebM','video/webm; codecs="vp8"',1280,720,30,1e6],
+ ['clips/av1-1080p30.webm','video','AV1 WebM','video/webm; codecs="av01.0.05M.08"',1920,1080,30,2e6],
+ ['clips/h264-720p30.mkv','video','H.264 in Matroska .mkv','video/x-matroska',1280,720,30,1e6],
+ ['clips/portrait-1080x1920.mp4','video','Vertical (portrait) phone-style H.264 video','video/mp4; codecs="avc1.640028"',1080,1920,30,2e6],
+ ['clips/screenrec.mov','video','Screen recording (.mov, macOS QuickTime/screencapture) — optional','video/quicktime',1920,1080,30,2e6,'optional'],
+ ['clips/truncated.mp4','video','Damaged file: an H.264 MP4 cut off part-way','video/mp4',1280,720,30,1e6],
+ ['clips/zero-bytes.mp4','video','Damaged file: empty (0 bytes) .mp4','video/mp4',1280,720,30,1e6],
+ ['clips/not-a-video.mp4','video','Wrong file: a text file named .mp4','video/mp4',1280,720,30,1e6],
+ ['clips/audio-only.mp4','video','Audio-only file named .mp4 (no picture)','video/mp4',1280,720,30,1e6],
+ ['clips/tone-aac.m4a','audio','AAC .m4a audio','audio/mp4; codecs="mp4a.40.2"'],
+ ['clips/tone.flac','audio','FLAC audio','audio/flac'],
+ ['clips/tone.wav','audio','WAV audio','audio/wav'],
+ ['clips/opus.webm','audio','Opus WebM audio','audio/webm; codecs="opus"'],
+];
+const $ = id => document.getElementById(id); const results = []; let rowsEl = $('rows')
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+async function env() {
+  let gpu = 'unknown'
+  try { const c = document.createElement('canvas'); const gl = c.getContext('webgl'); const e = gl.getExtension('WEBGL_debug_renderer_info'); gpu = gl.getParameter(e.UNMASKED_RENDERER_WEBGL) } catch {}
+  return { when: new Date().toISOString(), userAgent: navigator.userAgent, platform: navigator.platform, cores: navigator.hardwareConcurrency, memoryGB: navigator.deviceMemory || 'n/a', gpu,
+    screens: screen.width + 'x' + screen.height + ' @' + devicePixelRatio + 'x', electron: (navigator.userAgent.match(/Electron\/([\d.]+)/) || [])[1] || 'not Electron (browser)' }
+}
+async function caps(type, w, h, fps, br, kind) {
+  try {
+    const cfg = kind === 'audio' ? { type: 'file', audio: { contentType: type } } : { type: 'file', video: { contentType: type, width: w, height: h, framerate: fps, bitrate: br } }
+    const r = await navigator.mediaCapabilities.decodingInfo(cfg)
+    return (r.supported ? 'yes' : 'NO') + (r.supported ? (r.smooth ? ', smooth' : ', NOT smooth') + (r.powerEfficient ? ', hardware' : ', software') : '')
+  } catch (e) { return 'n/a' }
+}
+const ERR = { 1: 'loading was stopped', 2: 'network problem reading the file', 3: 'the file is damaged or cannot be decoded', 4: 'this format is not supported' }
+async function testOne(url, kind, label, type, w, h, fps, br, size, optional) {
+  if (optional) { try { const h = await fetch(url, { method: 'HEAD' }); if (!h.ok) throw 0 } catch { return { file: url.split('/').pop(), label, kind, result: 'SKIP', detail: 'file not present', size: '', duration: '', dropped: '', first: '', caps: '' } } }
+  const row = { file: url.split('/').pop(), label, kind, result: 'FAIL', detail: '', size: size || '', duration: '', dropped: '', first: '', caps: '' }
+  row.caps = type ? await caps(type, w, h, fps, br, kind) : 'n/a'
+  const el = document.createElement(kind === 'audio' ? 'audio' : 'video'); el.muted = true; el.preload = 'auto'; el.playsInline = true
+  if (kind !== 'audio') { el.style.cssText = 'position:fixed;right:8px;bottom:8px;width:240px;height:135px;background:#000;z-index:9'; document.body.appendChild(el) }
+  const t0 = performance.now(); let first = null, err = null
+  el.addEventListener('error', () => { err = el.error ? ('code ' + el.error.code + ' — ' + (ERR[el.error.code] || '') + (el.error.message ? ' [' + el.error.message + ']' : '')) : 'error' })
+  if (el.requestVideoFrameCallback) el.requestVideoFrameCallback(() => { first = Math.round(performance.now() - t0) })
+  el.src = url
+  try {
+    await Promise.race([new Promise((res, rej) => { el.addEventListener('loadedmetadata', res, { once: true }); el.addEventListener('error', () => rej(new Error(err || 'load error')), { once: true }) }), sleep(8000).then(() => { throw new Error('timeout loading metadata') })])
+    row.duration = isFinite(el.duration) ? el.duration.toFixed(1) + 's' : '?'
+    if (kind !== 'audio') row.detail = el.videoWidth + 'x' + el.videoHeight
+    await el.play()
+    await sleep(3200)
+    const adv = el.currentTime
+    const q = el.getVideoPlaybackQuality ? el.getVideoPlaybackQuality() : null
+    if (q) row.dropped = q.droppedVideoFrames + ' / ' + q.totalVideoFrames
+    row.first = first != null ? first + ' ms' : (kind === 'audio' ? '' : 'none')
+    if (adv < 1.5) { row.result = 'FAIL'; row.detail += ' stuck at ' + adv.toFixed(2) + 's' }
+    else if (kind !== 'audio' && el.videoWidth === 0) { row.result = 'FAIL'; row.detail += ' audio only, no picture' }
+    else if (q && q.totalVideoFrames > 0 && q.droppedVideoFrames / q.totalVideoFrames > 0.05) { row.result = 'WARN'; row.detail += ' dropped >5% of frames' }
+    else row.result = 'PASS'
+  } catch (e) { row.result = 'FAIL'; row.detail = (err || e.message) }
+  el.pause(); el.removeAttribute('src'); el.load(); el.remove()
+  return row
+}
+function render(row) {
+  const tr = document.createElement('tr')
+  tr.innerHTML = '<td><code>' + row.file + '</code></td><td>' + row.label + '</td><td class="' + row.result + '">' + row.result + '</td><td>' + row.size + '</td><td>' + row.duration + '</td><td>' + row.dropped + '</td><td>' + row.first + '</td><td>' + row.caps + '</td><td>' + row.detail + '</td>'
+  rowsEl.appendChild(tr)
+}
+function summary(e) {
+  const lines = ['BORN media compatibility test — ' + e.when, 'OS/UA: ' + e.userAgent, 'cores=' + e.cores + ' mem=' + e.memoryGB + 'GB gpu=' + e.gpu + ' screen=' + e.screens + ' engine=' + e.electron, '']
+  for (const r of results) lines.push([r.result.padEnd(4), r.file.padEnd(28), (r.duration || '').padEnd(7), 'dropped ' + (r.dropped || '-'), 'first ' + (r.first || '-'), 'decode: ' + r.caps, r.detail].join(' | '))
+  return lines.join('\n')
+}
+let ENV
+async function runAll() {
+  $('run').disabled = true; rowsEl.innerHTML = ''; results.length = 0; ENV = await env(); $('env').textContent = JSON.stringify(ENV, null, 1)
+  for (let i = 0; i < CLIPS.length; i++) {
+    const c = CLIPS[i]; $('status').textContent = ' testing ' + (i + 1) + '/' + CLIPS.length + ' ' + c[0]
+    const r = await testOne(c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], '', c[8]); results.push(r); render(r)
+  }
+  $('status').textContent = ' done'; $('out').textContent = summary(ENV); $('run').disabled = false
+  window.__RESULT = { env: ENV, results }
+}
+$('run').onclick = runAll
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText($('out').textContent); $('status').textContent = ' copied' } catch { const r = document.createRange(); r.selectNode($('out')); getSelection().removeAllRanges(); getSelection().addRange(r); $('status').textContent = ' select + Ctrl+C' } }
+const dz = $('drop'); ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over') })); ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over') }))
+dz.addEventListener('drop', async e => {
+  ENV = ENV || await env()
+  for (const f of e.dataTransfer.files) {
+    const kind = f.type.startsWith('audio') || /\.(mp3|m4a|flac|wav|ogg|opus|aac)$/i.test(f.name) ? 'audio' : 'video'
+    const url = URL.createObjectURL(f); const r = await testOne(url, kind, 'Your file', f.type || null, 1920, 1080, 30, 5e6, (f.size / 1048576).toFixed(1) + ' MB'); r.file = f.name
+    results.push(r); render(r)
+  }
+  $('out').textContent = summary(ENV)
+})
+if (new URLSearchParams(location.search).has('auto')) runAll()
+</script></body></html>

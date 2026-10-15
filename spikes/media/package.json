@@ -1,0 +1,10 @@
+{
+  "name": "born-media-spikes",
+  "private": true,
+  "version": "0.0.0",
+  "description": "THROWAWAY media spikes. Not part of the shipped app.",
+  "scripts": {
+    "spike:overnight": "node overnight.js",
+    "spike:overnight:smoke": "node overnight.js --smoke --hidden"
+  }
+}
