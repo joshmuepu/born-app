@@ -77,6 +77,7 @@ interface Props {
    *  changes what is live — it only inserts. */
   onDropItem?: (payload: QueueDragPayload, index: number) => void
   /** Change a queued picture's display settings (never what is live). */
+  onPreflight?: () => void
   onMediaSettings?: (index: number, patch: { fit?: 'fit' | 'fill' | 'stretch' | 'center'; autoAdvanceSec?: number; loop?: boolean }) => void
 }
 
@@ -159,6 +160,7 @@ export default function ServiceQueue({
   onClearChannel = () => {},
   onDropItem = () => {},
   onMediaSettings,
+  onPreflight,
   background
 }: Props) {
   const actions = useAppActions()
@@ -490,6 +492,7 @@ export default function ServiceQueue({
           <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
           <button className="btn-quiet btn-sm" onClick={onImportService} title="Combine one or more saved service files into the current queue">Import</button>
           <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
+          {onPreflight && <button className="btn-quiet btn-sm" onClick={onPreflight} title="Check that everything in this service is ready to show" disabled={queue.length === 0}>Check</button>}
         </div>
       </div>
 

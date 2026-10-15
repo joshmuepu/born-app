@@ -68,6 +68,8 @@ export interface AppSettings {
   automationToken: string | null
   /** Still backgrounds behind text, per destination and per channel. */
   mediaBackgrounds: import('../shared/media').BackgroundSettings
+  /** The library picture shown by the logo key (Ctrl/Cmd+Shift+L). */
+  mediaLogoId?: string | null
 }
 
 const DEFAULTS: AppSettings = {

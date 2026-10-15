@@ -385,3 +385,37 @@ describe('media.db migrations', () => {
     }
   })
 })
+
+describe('media library: the pre-service check (preflight)', () => {
+  it('a healthy picture passes and has its screen-sized copy ready', async () => {
+    const r = ok(await lib.importFile(fx('tiny.jpg')))
+    const pf = await lib.preflight(r.item.id)
+    expect(pf).toMatchObject({ status: 'ok', deep: 'ok', width: 64, height: 48 })
+    expect(pf.notes.join(' ')).toMatch(/Small/)
+  })
+  it('catches a same-size silently damaged managed file that stat alone cannot', async () => {
+    const r = ok(await lib.importFile(fx('tiny.jpg')))
+    const p = lib.resolvePath(r.item)!
+    const b = readFileSync(p); b[200] ^= 0xff; writeFileSync(p, b)
+    expect(lib.check(r.item.id)).toBe('ok')
+    const pf = await lib.preflight(r.item.id)
+    expect(pf.deep).toBe('damaged')
+  })
+  it('reports a missing file and a file that no longer decodes', async () => {
+    const r = ok(await lib.importFile(fx('tiny.png')))
+    rmSync(lib.resolvePath(r.item)!)
+    expect((await lib.preflight(r.item.id)).status).toBe('missing')
+    const orig = join(dir, 'x.jpg'); copyFileSync(fx('tiny.jpg'), orig)
+    const l = ok(await lib.importFile(orig, { linkInPlace: true }))
+    const st = statSync(orig)
+    const b = readFileSync(orig); b[b.length - 1] = 0; b[b.length - 2] = 0; writeFileSync(orig, b) // same size, end marker gone
+    const later = new Date(st.mtimeMs + 5000)
+    utimesSync(orig, later, later)
+    expect((await lib.preflight(l.item.id)).status).toBe('changed') // the edit is noticed by its modified time
+    utimesSync(orig, st.atime, st.mtime) // …unless something put the time back: then only opening it can tell
+    expect((await lib.preflight(l.item.id)).deep).toBe('undecodable')
+  })
+  it('an unknown id is reported, not thrown', async () => {
+    expect((await lib.preflight('m_000000000000')).status).toBe('missing')
+  })
+})

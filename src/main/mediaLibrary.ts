@@ -42,6 +42,7 @@ import {
   type MediaErrorCode,
   type MediaFolder,
   type MediaImportResult,
+  type MediaPreflightResult,
   type MediaRecord,
   type MediaStatus,
   type MediaStorage
@@ -646,6 +647,54 @@ export class MediaLibrary {
     if (!p || !existsSync(p)) return false
     return (await hashFile(p)) === rec.hash
   }
+  /**
+   * The full "will this show tonight?" check for one picture: is the file there, is it still
+   * byte-for-byte what was imported, does it decode as a picture, and is it a sensible size for
+   * a screen. Builds the screen-sized copy of a large picture as part of the check.
+   */
+  async preflight(id: string): Promise<MediaPreflightResult> {
+    const rec = this.get(id)
+    const base: MediaPreflightResult = { id, name: rec?.name ?? 'Missing picture', status: 'missing', deep: 'skipped', width: rec?.width ?? 0, height: rec?.height ?? 0, bytes: rec?.bytes ?? 0, storage: rec?.storage ?? null, notes: [] }
+    if (!rec) return { ...base, notes: ['This picture is no longer in the library.'] }
+    const status = this.check(id)
+    if (status !== 'ok') return { ...base, status }
+    const path = this.resolvePath(rec)
+    if (!path) return { ...base, status: 'unreadable' }
+    const out: MediaPreflightResult = { ...base, status: 'ok', deep: 'ok' }
+    // 1. still the same bytes? (catches a half-copied or silently damaged file that is the right size)
+    if (rec.storage === 'managed' && !rec.convertedFrom) {
+      try {
+        if ((await hashFile(path)) !== rec.hash) {
+          out.deep = 'damaged'
+          out.notes.push('The file no longer matches what was added (it may be damaged). Add the picture again from the original.')
+          return out
+        }
+      } catch {
+        return { ...out, status: 'unreadable', deep: 'skipped' }
+      }
+    }
+    // 2. does it really open?
+    const dec = await this.decoder.decode(path, [64])
+    if (!dec.ok) {
+      out.deep = 'undecodable'
+      out.notes.push('This file will not open as a picture.')
+      return out
+    }
+    // 3. sensible for a screen?
+    const px = rec.width * rec.height
+    if (px > MEDIA_LIMITS.warnPixels) out.notes.push(`Very large (${(px / 1e6).toFixed(0)} megapixels): a screen-sized copy is used.`)
+    if (rec.width < 960 && rec.height < 540) out.notes.push(`Small (${rec.width}×${rec.height}): it will look soft on a full-screen projector. Consider "Original size, centred".`)
+    if (rec.animated) out.notes.push('Animated: it plays and loops on screen.')
+    if (rec.storage === 'linked') out.notes.push('Linked in place: the original must stay where it is (and its drive plugged in).')
+    // 4. make sure the screen-sized copy exists now, not at the moment of Take
+    const d = await this.display(id)
+    if (!d) {
+      out.deep = 'undecodable'
+      out.notes.push('A screen-sized copy could not be made.')
+    }
+    return out
+  }
+
   /** Re-point a missing linked item at a file that has the same bytes (a "relink"). */
   async relink(id: string, newPath: string): Promise<{ ok: boolean; message?: string }> {
     const rec = this.get(id)

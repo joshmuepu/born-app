@@ -23,6 +23,7 @@ import BiblePanel from './components/BiblePanel'
 import ChannelSermonsPanel from './components/ChannelSermonsPanel'
 import SongsPanel from './components/SongsPanel'
 import MediaPanel from './components/MediaPanel'
+import Preflight from './components/Preflight'
 import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
@@ -480,7 +481,10 @@ export default function App() {
       setProjected(null)
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
-    const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
+    const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => {
+      blankEpoch.current += 1 // any blank/unblank from Esc, the phone or the API cancels a take still loading
+      setIsScreenBlanked(blank)
+    })
     return () => {
       unProj()
       unStage()
@@ -502,6 +506,11 @@ export default function App() {
     }
   }, [])
 
+  /** Bumped every time the screen is blanked or un-blanked by anyone. A take that was still
+   *  loading (e.g. a big picture) when that happened is dropped, so Esc can never be
+   *  undone a moment later by something that was already on its way. */
+  const blankEpoch = useRef(0)
+
   const doProject = useCallback(
     async (
       item: QueueItem,
@@ -511,6 +520,7 @@ export default function App() {
     ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
+      const epoch = blankEpoch.current
       // A picture is only ever put up if its file is there and readable right now. If not, nothing on
       // the screen changes and the operator is told why (see also Preflight).
       if (item.kind === 'media') {
@@ -523,6 +533,7 @@ export default function App() {
         }
       }
       await ensureProjectionOpen()
+      if (blankEpoch.current !== epoch) return // the screen was blanked while this was loading: honour that
 
       // Private copy so Next/Prev flow-through never mutates the queued item.
       const stored: QueueItem = { ...item, slides: item.slides.map((s) => ({ ...s })) }
@@ -970,7 +981,20 @@ export default function App() {
     [mutateQueue, pushToast]
   )
   const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
+  const [preflightOpen, setPreflightOpen] = useState(false)
+  /** Ctrl/Cmd+Shift+L: put the church logo on screen (or just black if none is set). */
+  const showLogo = useCallback(async () => {
+    const id = await window.electronAPI.mediaLogoGet()
+    if (!id) {
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+      pushToast({ message: 'No logo is set, so the screen was blanked. In Media, open a picture and choose “Use as the church logo”.', timeoutMs: 8000 })
+      return
+    }
+    await doProject(mediaToItem({ id, name: 'Logo' }), 0, null)
+  }, [doProject, pushToast])
   const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
+  useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
   useEffect(() => {
     const load = (): void => {
       void window.electronAPI.mediaBackgroundsGet().then((b) => setMainBackground(b.congregationMain)).catch(() => setMainBackground(null))
@@ -1166,6 +1190,7 @@ export default function App() {
   }, [stageOpen])
 
   const handleToggleBlank = useCallback(() => {
+    blankEpoch.current += 1
     const b = !isScreenBlanked
     setIsScreenBlanked(b)
     window.electronAPI.setBlankScreen(b)
@@ -1408,6 +1433,8 @@ export default function App() {
       { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
       { id: 'go-bible', label: 'Go to Bible', keywords: 'scripture verse', run: () => setTopTab('bible') },
       { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
+      { id: 'preflight', label: "Check that tonight's service is ready", keywords: 'preflight check ready missing files problems', run: () => setPreflightOpen(true) },
+      { id: 'logo', label: 'Show the church logo', keywords: 'panic blank logo', hint: 'Ctrl+Shift+L', run: () => void showLogo() },
       { id: 'go-media', label: 'Go to Media', keywords: 'pictures photos images slides library backgrounds', run: () => setTopTab('media') },
       { id: 'media-add', label: 'Add pictures to the library…', keywords: 'import photos images media', run: () => { setTopTab('media'); void window.electronAPI.mediaPickAndImport({}) } },
       {
@@ -1504,6 +1531,11 @@ export default function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === 'w') {
         e.preventDefault()
         handleToggleProjection()
+        return
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault()
+        void showLogo()
         return
       }
       if (mod && e.key === 'Enter') {
@@ -2383,6 +2415,7 @@ export default function App() {
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
             onMediaSettings={handleMediaSettings}
+            onPreflight={() => setPreflightOpen(true)}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}
@@ -2565,6 +2598,8 @@ export default function App() {
             </div>
           )
         })()}
+
+      <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} />
 
       <CommandPalette
         open={paletteOpen}

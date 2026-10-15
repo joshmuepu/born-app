@@ -194,3 +194,17 @@ export function resolveBackground(
   }
   return null
 }
+
+/** One picture's result from the pre-service check (see MediaLibrary.preflight). */
+export interface MediaPreflightResult {
+  id: string
+  name: string
+  status: MediaStatus
+  /** `damaged` = the bytes no longer match what was imported; `undecodable` = it will not open as a picture. */
+  deep: 'ok' | 'damaged' | 'undecodable' | 'skipped'
+  width: number
+  height: number
+  bytes: number
+  storage: MediaStorage | null
+  notes: string[]
+}

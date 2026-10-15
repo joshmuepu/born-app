@@ -722,6 +722,9 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
       // actually attached to, so the shortcut could never close Stage while
       // Stage had focus (e.g. fullscreen and covering everything else).
       win.close()
+    } else if (mod && input.shift && input.key.toLowerCase() === 'l') {
+      event.preventDefault()
+      sendToMain('shortcut:logo') // the operator window decides (it knows the logo picture)
     } else if (!mod && !input.alt && input.key.toLowerCase() === 'b') {
       event.preventDefault()
       setChannelBlank('main', !channels.get('main')!.blanked)
@@ -2173,6 +2176,12 @@ function resyncAllOutputs(): void {
   pushLive()
   sendToMain('media:backgrounds-changed', getSettingsSafe().mediaBackgrounds)
 }
+ipcMain.handle('media:logo-get', () => getSettingsSafe().mediaLogoId ?? null)
+ipcMain.handle('media:logo-set', (_e, id: string | null) => {
+  if (id !== null && !/^m_[0-9a-f]{12}$/.test(String(id))) return false
+  updateSettings({ mediaLogoId: id })
+  return true
+})
 ipcMain.handle('media:backgrounds-get', () => ({
   settings: getSettingsSafe().mediaBackgrounds,
   // what the main congregation output uses right now (for the Preview thumbnail)

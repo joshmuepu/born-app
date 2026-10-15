@@ -126,7 +126,11 @@ declare global {
       onMediaBackgroundsChanged: (cb: () => void) => () => void
       mediaPickPdf: () => Promise<{ canceled: boolean; name?: string; bytes?: ArrayBuffer; error?: string }>
       mediaTestSetPdf: (path: string) => Promise<boolean>
+      mediaLogoGet: () => Promise<string | null>
+      mediaLogoSet: (id: string | null) => Promise<boolean>
+      onLogoShortcut: (cb: () => void) => () => void
       mediaReveal: (id: string) => Promise<boolean>
+      mediaPreflight: (ids: string[]) => Promise<import('../../shared/media').MediaPreflightResult[]>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
       mediaPathsForFiles: (files: File[]) => string[]
       onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void) => () => void

@@ -736,6 +736,7 @@ function Detail({
         </div>
       </div>
       <UseAsBackground r={r} problem={!!problem} notify={notify} />
+      <LogoRow r={r} problem={!!problem} notify={notify} />
       <div className="media-folder-row">
         <label htmlFor="media-folder-select">Folder</label>
         <select id="media-folder-select" value={r.folderId ?? ''} onChange={(e) => void window.electronAPI.mediaMove([r.id], e.target.value || null).then(onChanged)}>
@@ -773,6 +774,31 @@ function UseAsBackground({ r, problem, notify }: { r: MediaRecord; problem: bool
         <button className="btn-quiet btn-sm" onClick={() => void apply()} disabled={problem || !target}>Set background</button>
       </div>
       {using.length > 0 && <div className="media-usebg-now">Currently the background of: {using.map((t) => t.label).join(', ')}</div>}
+    </div>
+  )
+}
+
+function LogoRow({ r, problem, notify }: { r: MediaRecord; problem: boolean; notify: (m: string) => void }): JSX.Element {
+  const [logoId, setLogoId] = useState<string | null>(null)
+  useEffect(() => { void window.electronAPI.mediaLogoGet().then(setLogoId) }, [r.id])
+  const isLogo = logoId === r.id
+  return (
+    <div className="media-usebg">
+      <label>Church logo</label>
+      <div className="media-usebg-row">
+        <button
+          className="btn-quiet btn-sm"
+          disabled={problem}
+          onClick={async () => {
+            await window.electronAPI.mediaLogoSet(isLogo ? null : r.id)
+            setLogoId(isLogo ? null : r.id)
+            notify(isLogo ? 'Logo cleared' : 'This picture is now the church logo (Ctrl/Cmd+Shift+L)')
+          }}
+        >
+          {isLogo ? 'This is the logo — clear' : 'Use as the church logo'}
+        </button>
+        {isLogo && <span className="media-usebg-now">Shown by Ctrl/Cmd+Shift+L</span>}
+      </div>
     </div>
   )
 }

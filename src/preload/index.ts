@@ -368,7 +368,15 @@ const api = {
   mediaPickPdf: (): Promise<{ canceled: boolean; name?: string; bytes?: ArrayBuffer; error?: string }> => ipcRenderer.invoke('media:pick-pdf'),
   /** Test-only: honoured only when BORN_TEST_ALLOW_SET_PDF or BORN_TEST_PICK_PDF is set in the environment. */
   mediaTestSetPdf: (path: string): Promise<boolean> => ipcRenderer.invoke('media:test-set-pdf', path),
+  mediaLogoGet: (): Promise<string | null> => ipcRenderer.invoke('media:logo-get'),
+  mediaLogoSet: (id: string | null): Promise<boolean> => ipcRenderer.invoke('media:logo-set', id),
+  onLogoShortcut: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on('shortcut:logo', h)
+    return () => ipcRenderer.removeListener('shortcut:logo', h)
+  },
   mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
+  mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
   mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),

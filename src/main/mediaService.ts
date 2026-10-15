@@ -202,6 +202,14 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     }
   })
   // Make sure a picture can be put on a screen right now (a large one gets its screen-sized copy built).
+  ipcMain.handle('media:preflight', async (_e, ids: string[]) => {
+    const l = getMediaLibrary()
+    if (!l || !Array.isArray(ids)) return []
+    const uniq = [...new Set(ids.filter((x) => typeof x === 'string'))].slice(0, 2000)
+    const out = []
+    for (const id of uniq) out.push(await l.preflight(id))
+    return out
+  })
   ipcMain.handle('media:prepare-display', async (_e, id: string) => {
     const l = getMediaLibrary()
     if (!l || typeof id !== 'string') return { ok: false, status: 'missing' as const }
