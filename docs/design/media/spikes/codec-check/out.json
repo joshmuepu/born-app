@@ -1,0 +1,58 @@
+{
+ "video": {
+  "mp4 h264 baseline": "probably",
+  "mp4 h264 high": "probably",
+  "mp4 h264+aac": "probably",
+  "mp4 hevc main": "probably",
+  "mp4 hev1": "probably",
+  "webm vp8": "probably",
+  "webm vp9": "probably",
+  "webm vp9+opus": "probably",
+  "mp4 av1": "probably",
+  "webm av1": "probably",
+  "mov prores": "no",
+  "mov (container only)": "no",
+  "mkv": "no",
+  "ogg theora": "no",
+  "mpeg-ts": "no",
+  "avi": "no"
+ },
+ "audio": {
+  "mp3": "probably",
+  "aac m4a": "probably",
+  "wav": "maybe",
+  "flac": "probably",
+  "ogg vorbis": "probably",
+  "opus": "probably",
+  "ac3": "no",
+  "eac3": "no"
+ },
+ "webcodecs": {
+  "h264": "err VideoDecoder is not defined",
+  "hevc": "err VideoDecoder is not defined",
+  "vp9": "err VideoDecoder is not defined",
+  "av1": "err VideoDecoder is not defined",
+  "vp8": "err VideoDecoder is not defined"
+ },
+ "mse": {
+  "mp4 h264 baseline": true,
+  "mp4 h264 high": true,
+  "mp4 h264+aac": true,
+  "mp4 hevc main": true,
+  "mp4 hev1": true,
+  "webm vp8": true,
+  "webm vp9": true,
+  "webm vp9+opus": true,
+  "mp4 av1": true,
+  "webm av1": true,
+  "mov prores": false,
+  "mov (container only)": false,
+  "mkv": false,
+  "ogg theora": false,
+  "mpeg-ts": false,
+  "avi": false
+ },
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) codec/33.4.11 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36",
+ "pictureInPicture": true,
+ "setSinkId": "function"
+}
