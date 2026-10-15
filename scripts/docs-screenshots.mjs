@@ -31,7 +31,7 @@ const port = Number(process.argv.find((a) => a.startsWith('--port='))?.split('='
 async function findMainTarget() {
   const res = await fetch(`http://localhost:${port}/json`)
   const targets = await res.json()
-  const main = targets.find((t) => t.type === 'page' && t.title === 'BORN — Branham or Nothing')
+  const main = targets.find((t) => t.type === 'page' && t.title === 'Born Again')
   if (!main) throw new Error(`No BORN page target found on port ${port} — is the dev instance running?`)
   return main.webSocketDebuggerUrl
 }

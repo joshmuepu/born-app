@@ -24,7 +24,7 @@ function reasonMessage(reason: string, copyright?: string): string {
   switch (reason) {
     case 'not-public-domain':
     case 'copyrighted':
-      return `This version isn't public domain${copyright ? ` (listed as "${copyright}")` : ''} — BORN only imports text that's genuinely free to use, so this one can't be added.`
+      return `This version isn't public domain${copyright ? ` (listed as "${copyright}")` : ''} — Born Again only imports text that's genuinely free to use, so this one can't be added.`
     case 'blocked':
       return "The source site is temporarily blocking automated requests — wait a moment and try again."
     case 'no-text-on-file':

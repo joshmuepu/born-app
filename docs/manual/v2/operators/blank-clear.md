@@ -13,7 +13,7 @@ nothing" signal, readable at a glance even if you can't tell colors apart.
 ![The Hide screen / Show screen button in its amber "hidden" state — solid amber fill, crossed-out eye icon, and the "Show screen" label.](../images/operator-hide-screen-amber.png)
 
 This is the button to reach for between items, or any time you want the room's
-attention off the screen — it's deliberately the one thing in BORN that's always in
+attention off the screen — it's deliberately the one thing in Born Again that's always in
 the same place every service. There's no separate "Clear" button — **Hide screen**
 is how you clear the congregation's view between items.
 

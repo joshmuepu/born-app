@@ -1,8 +1,18 @@
 # What's new in v2 (vs. v1)
 
-If your church has used BORN before, everything you already know still works the
+If your church has used Born Again before, everything you already know still works the
 same way: search, queue, project, Hide/Show screen, the mobile remote. v2 adds the
 following on top — nothing was removed.
+
+## A new name and a calmer layout
+
+The app is now called **Born Again**. The look is new too: a left rail for
+**Sermons / Bible / Songs**, a service queue that slides away when you don't need
+it, and the same drill-down everywhere — pick on the left, read and project on the
+right. Press **Ctrl+K** (**⌘K** on a Mac) to search everything from one box. There
+is also a **high-contrast** button next to the light/dark toggle, and the phone
+remote follows your phone's light or dark setting. Everything from before is still
+there.
 
 ## Channels — a second language, running alongside the main service
 
@@ -13,7 +23,7 @@ second language](setup/channels.md).
 
 ## Graphics output — feed a livestream the same words the room sees
 
-A new output type, separate from the Congregation/Stage windows: a web page BORN
+A new output type, separate from the Congregation/Stage windows: a web page Born Again
 generates that OBS (or anything else that can show a web page) can display as an
 overlay. See [Graphics output & OBS](setup/graphics-obs.md).
 

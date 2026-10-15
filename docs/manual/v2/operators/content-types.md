@@ -2,7 +2,7 @@
 
 ## Sermons (quote search)
 
-Click the **Sermons** tab. Type a word or phrase into the search box
+Click **Sermons** on the left rail, then **Search**. Type a word or phrase into the search box
 ("*Search for a word or phrase — e.g. Holy Spirit*") and press Enter. Every
 matching word is highlighted in the results so you can tell at a glance why a
 result matched.
@@ -20,18 +20,34 @@ the screen immediately, or **Add to Queue** to line it up for later.
 **How to know it worked:** the quote's text appears on the Congregation screen,
 matching what the result card showed.
 
+## Browsing sermons
+
+Click **Browse** (next to **Search**) to find a sermon without typing. Choose **Date**,
+**Series**, **Location** or **Recently Played**, then pick down through the levels —
+year, month, day. The sermons appear on the **left**, and the sermon you pick opens
+in the large pane on the **right**, so the list stays beside the text and you can
+switch sermons without going back.
+
+- **Grid or list:** the two buttons at the top right switch between cards and
+  compact rows. Born Again remembers your choice for Sermons, Bible and Songs.
+- **More room for the text:** click the small handle between the two panes (or press
+  the **\\** key) to slide the left side away; click it again to bring it back.
+- **Small windows:** the two panes become one column, with a **Back** button.
+
+Each paragraph has its own **+ Queue** and **Project** buttons.
+
 ## Bible
 
-Click the **Bible** tab. There are two sub-tabs: **Search** and **Browse**.
+Click **Bible** on the left rail. There are two sub-tabs: **Search** and **Browse**.
 
 ### Search
 
 Type into the box — it understands two kinds of input at once:
 
-- **A reference**, like `John 3:16` or `John 3:16-18` — BORN recognizes this as
+- **A reference**, like `John 3:16` or `John 3:16-18` — Born Again recognizes this as
   you type and shows **"Recognized as John 3:16"** underneath, then looks the
   passage up directly.
-- **A word or phrase**, like `faith` — if what you typed isn't a reference, BORN
+- **A word or phrase**, like `faith` — if what you typed isn't a reference, Born Again
   searches the text of every verse instead, with three modes next to the box:
   **Phrase** (the exact wording), **All words** (every word, any order), **Any
   word** (any one of the words). A dropdown next to it limits the search to
@@ -49,23 +65,28 @@ this one will show its own translation of the same verse; see
 
 Click **Browse** to flip through the Bible without typing anything: **All Books**
 (Old & New Testament, by abbreviation) or **Recently Looked Up**. Click a book,
-then a chapter number, to open the reading view — **← Books** returns to the
-chapter grid.
+then a chapter number — the chapter opens in the large pane on the right while the
+book and chapter picker stays on the left (the **\\** key or the handle between them
+slides the picker away). The grid/list buttons switch the book picker between
+abbreviations and full names.
 
 ![The Bible Browse tab: a grid of Old and New Testament book abbreviations.](../images/operator-bible-browse.png)
 
 Every verse shown has its own **+ Queue** / **Project** buttons.
 
 **How to know it worked:** the verse number and text on the Congregation screen
-match the reference shown in BORN.
+match the reference shown in Born Again.
 
 ## Songs
 
-Click the **Songs** tab and type part of the title or a lyric into **"Search
+Click **Songs** on the left rail and type part of the title or a lyric into **"Search
 titles & lyrics…"**. Each result shows the song's verses, chorus, and bridge
 labelled separately, and its key when known. **+ Queue** / **Project** work the
 same as everywhere else — projecting a song starts at its first labelled section;
 use **Back**/**Next** to move through the rest.
+
+The song you pick opens on the right with a row of section buttons (Verse 1, Chorus…)
+above its slides, while the list stays on the left.
 
 ![Songs search results with a song's labelled sections (Verse 1, Chorus, etc.).](../images/operator-songs-search.png)
 

@@ -1,7 +1,7 @@
 # Connecting & naming displays
 
 In **Screens → Manage… → Displays**, you'll find two sections: **Congregation
-screen** and **Stage monitor**. Each lists every display BORN can currently see,
+screen** and **Stage monitor**. Each lists every display Born Again can currently see,
 plus an **Automatic** option.
 
 ![The Displays tab, with real external monitors listed under Congregation screen and Stage monitor.](../images/operator-manage-displays-tab.png)
@@ -50,8 +50,8 @@ Two warnings can appear on a display row or in the popover:
 
 | Warning | What it means | What to do |
 |---|---|---|
-| *"&lsquo;Name&rsquo; not detected — using &lt;X&gt; instead"* | A display you named isn't connected right now, so BORN fell back to a different screen. | Check the cable, or re-pick the display once it's reconnected. |
-| *"Two identical displays connected — confirm this is the right one"* | You have two of the exact same monitor model/resolution connected, and BORN can't tell them apart beyond left-to-right position — it picked one, but a reboot or a different plug order could silently pick the other one next time. | Confirm visually (Identify helps), and consider using different monitor models for roles you need to always land correctly. |
+| *"&lsquo;Name&rsquo; not detected — using &lt;X&gt; instead"* | A display you named isn't connected right now, so Born Again fell back to a different screen. | Check the cable, or re-pick the display once it's reconnected. |
+| *"Two identical displays connected — confirm this is the right one"* | You have two of the exact same monitor model/resolution connected, and Born Again can't tell them apart beyond left-to-right position — it picked one, but a reboot or a different plug order could silently pick the other one next time. | Confirm visually (Identify helps), and consider using different monitor models for roles you need to always land correctly. |
 
 If a display genuinely isn't showing up in the list at all, click the troubleshoot
 (?) icon that appears next to a missing named display after a couple of misses, or

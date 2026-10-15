@@ -37,7 +37,7 @@ translation, with no one needing to drive it separately.
 
 If that channel's translation has no version of the current content (a sermon
 quote not yet translated into that language, or a Bible translation missing that
-verse), BORN shows the **English** version instead and marks it with a visible
+verse), Born Again shows the **English** version instead and marks it with a visible
 fallback note, both in the Screens popover and on this channel's own Graphics
 output — it never shows a blank slide.
 

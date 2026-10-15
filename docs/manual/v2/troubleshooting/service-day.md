@@ -1,15 +1,15 @@
 # On service day
 
 Quick symptom → fix, written for the operator at the console mid-service. If
-you're the person who sets BORN up rather than runs it day to day, also see
+you're the person who sets Born Again up rather than runs it day to day, also see
 [Setup warnings explained](setup-warnings.md) for the exact wording of every
-warning BORN can show.
+warning Born Again can show.
 
 ## "I see nothing on the Congregation screen at all"
 
 1. Is the TV/projector actually on, and on the **right input/source**? This is the
-   single most common cause and has nothing to do with BORN.
-2. In BORN, does the button near the top say **Open projection**, or does it show
+   single most common cause and has nothing to do with Born Again.
+2. In Born Again, does the button near the top say **Open projection**, or does it show
    Hide/Show-screen controls already? If it still says "Open projection," click it
    — the screen stays black until something is actually projected, which is
    normal, but the *window* itself has to be opened first.
@@ -36,13 +36,13 @@ displays](../setup/displays.md).
   check Screens → Manage… → Status for a **"No viewer connected"** warning on that
   output — see [Setup warnings explained](setup-warnings.md).
 - If OBS was closed and reopened mid-service: reselect the Browser source and
-  check its URL still matches what Manage → Outputs shows; if BORN's network
+  check its URL still matches what Manage → Outputs shows; if Born Again's network
   address changed (e.g. the computer reconnected to WiFi), the URL may need
   re-copying.
 
-## BORN says local data "was damaged"
+## Born Again says local data "was damaged"
 
-This is handled automatically — BORN quarantines the damaged file and rebuilds a
+This is handled automatically — Born Again quarantines the damaged file and rebuilds a
 fresh copy on its own. See [A damaged database](data-recovery.md) for exactly
 what happened and what, if anything, you need to do.
 

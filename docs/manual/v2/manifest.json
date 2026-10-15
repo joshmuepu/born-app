@@ -5,7 +5,7 @@
       "id": "start",
       "title": "Start Here",
       "pages": [
-        { "id": "start-here", "title": "What BORN is", "file": "start-here.md" },
+        { "id": "start-here", "title": "What Born Again is", "file": "start-here.md" },
         { "id": "whats-new", "title": "What's new in v2", "file": "whats-new.md" }
       ]
     },
@@ -25,7 +25,7 @@
       "id": "setup",
       "title": "Setup & Admin",
       "pages": [
-        { "id": "installing", "title": "Installing BORN", "file": "setup/installing.md" },
+        { "id": "installing", "title": "Installing Born Again", "file": "setup/installing.md" },
         { "id": "displays", "title": "Connecting & naming displays", "file": "setup/displays.md" },
         { "id": "channels", "title": "Channels & a second language", "file": "setup/channels.md" },
         { "id": "graphics-obs", "title": "Graphics output & OBS", "file": "setup/graphics-obs.md" },

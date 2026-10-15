@@ -625,7 +625,7 @@ function createMainWindow(): void {
     height: 800,
     minWidth: 1040,
     minHeight: 640,
-    title: 'BORN — Branham or Nothing',
+    title: 'Born Again',
     backgroundColor: themeBackground(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

@@ -1,6 +1,6 @@
 # Graphics output & OBS
 
-A **Graphics output** is a web page BORN generates showing whatever is currently
+A **Graphics output** is a web page Born Again generates showing whatever is currently
 live on a channel — not a screen you look at directly, but a feed other software
 can display. The most common use is **OBS Studio**, free streaming/recording
 software, which can show that page as an overlay on top of your camera feed so a
@@ -17,7 +17,7 @@ into OBS.
 
 - **Copy** (clipboard icon) copies that URL.
 - **Preview** (monitor icon) shows what the output actually looks like, right
-  inside BORN, without opening OBS.
+  inside Born Again, without opening OBS.
 - The eye icon **stops this output from reflecting Main** ("Clear just this
   output" in its tooltip), without touching what Main itself is showing
   anywhere else. Click again ("Show again") to bring it back.
@@ -33,27 +33,27 @@ into OBS.
    installation is a normal next/next/finish installer on both Mac and Windows.
 2. In the **Sources** panel (usually bottom-center), click the **+** button.
 3. Choose **Browser** from the list.
-4. Give it a name (e.g. "BORN captions") and click **OK**.
+4. Give it a name (e.g. "Born Again captions") and click **OK**.
 5. In the properties window that opens, paste the Graphics output URL you copied
-   from BORN into the **URL** field.
-6. Set **Width** to `1920` and **Height** to `1080` — BORN's Graphics output is
+   from Born Again into the **URL** field.
+6. Set **Width** to `1920` and **Height** to `1080` — Born Again's Graphics output is
    designed against that canvas and scales correctly at it.
 7. Click **OK**.
 
 *Screenshots of this OBS flow were not captured in this session — scripting OBS's
 own UI needs macOS Accessibility permission for the automation tool driving this
 session, which wasn't available. The steps above are still verified: OBS is a
-standard Browser source like any other, and BORN's Graphics output is a plain web
-page — nothing BORN-specific is involved in these steps once the URL is pasted
+standard Browser source like any other, and Born Again's Graphics output is a plain web
+page — nothing specific to this app is involved in these steps once the URL is pasted
 in.*
 
 **How to know it worked:** the source in OBS shows whatever is currently live on
-that channel in BORN — project something in BORN and watch it appear in OBS within
+that channel in Born Again — project something in Born Again and watch it appear in OBS within
 a second or two.
 
 *(Also not captured — see above. The Graphics output's own rendering is already
 verified in [Adding a Graphics output](#adding-a-graphics-output) above, in
-BORN's own Preview, which renders the exact same page a Browser source would.)*
+Born Again's own Preview, which renders the exact same page a Browser source would.)*
 
 ### Full-screen vs. Lower third
 

@@ -6,7 +6,7 @@ sound desk.*
 ## Before people arrive
 
 1. Turn on the Congregation screen (and Stage monitor, if used) **first**.
-2. Open BORN.
+2. Open Born Again.
 3. If nothing was projecting last time: click **Open projection** (top of the
    window). The Congregation screen should go to a plain black screen — that's
    correct, it means it's ready and showing nothing yet.
@@ -41,4 +41,4 @@ is showing.
 | It's on the wrong screen | Open the **Screens** menu (top right) → check which display Congregation is set to |
 | A warning dot/line appears near a channel or display | Open **Screens → Manage…** — the exact message tells you what to do (see [Troubleshooting](../troubleshooting/service-day.md)) |
 
-Full manual: press **F1** inside BORN, any time.
+Full manual: press **F1** inside Born Again, any time.

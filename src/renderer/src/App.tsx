@@ -1609,7 +1609,7 @@ export default function App() {
           {updateStage === 'idle' && (
             <>
               <span>
-                <strong>BORN {update.latest}</strong> is available — you have {update.current}.
+                <strong>Born Again {update.latest}</strong> is available — you have {update.current}.
               </span>
               <span className="update-banner-actions">
                 {update.asset ? (
@@ -1630,7 +1630,7 @@ export default function App() {
 
           {updateStage === 'downloading' && (
             <>
-              <span>Downloading BORN {update.latest}… {updatePct}%</span>
+              <span>Downloading Born Again {update.latest}… {updatePct}%</span>
               <span className="update-progress">
                 <span className="update-progress-fill" style={{ width: `${updatePct}%` }} />
               </span>
@@ -1640,7 +1640,7 @@ export default function App() {
           {updateStage === 'ready' && (
             <>
               <span>
-                <strong>BORN {update.latest}</strong> is ready. It installs when you restart — BORN closes and reopens on the new version.
+                <strong>Born Again {update.latest}</strong> is ready. It installs when you restart — Born Again closes and reopens on the new version.
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={handleRestartToUpdate}>
@@ -1653,20 +1653,20 @@ export default function App() {
             </>
           )}
 
-          {updateStage === 'installing' && <span>Installing — BORN will restart…</span>}
+          {updateStage === 'installing' && <span>Installing — Born Again will restart…</span>}
 
           {updateStage === 'manual' && (
             <>
               <span>
                 {navigator.platform.startsWith('Mac')
-                  ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen BORN.'
+                  ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen Born Again.'
                   : navigator.platform.startsWith('Win')
-                    ? 'The installer is running — click through it, then reopen BORN.'
-                    : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
+                    ? 'The installer is running — click through it, then reopen Born Again.'
+                    : 'The new AppImage is in your file manager — replace the old one and reopen Born Again.'}
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
-                  Quit BORN
+                  Quit Born Again
                 </button>
               </span>
             </>
@@ -1891,10 +1891,12 @@ export default function App() {
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
+              <div><dt><kbd>\</kbd></dt><dd>Slide the browse columns away / back</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
-              <div><dt><kbd>F1</kbd></dt><dd>Open / close the BORN manual</dd></div>
+              <div><dt><kbd>F1</kbd></dt><dd>Open / close the Born Again manual</dd></div>
             </dl>
             <div className="modal-actions">
               <button className="btn-primary" onClick={() => setShowShortcuts(false)}>Close</button>
@@ -2052,7 +2054,7 @@ export default function App() {
               <div className="status-popover-row">
                 <button
                   className="btn-secondary btn-sm"
-                  title="Open the folder holding BORN's local data — useful if support asks for it"
+                  title="Open the folder holding Born Again's local data — useful if support asks for it"
                   onClick={() => window.electronAPI.openDataFolder()}
                 >
                   Open data folder

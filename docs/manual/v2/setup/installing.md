@@ -1,10 +1,10 @@
-# Installing BORN
+# Installing Born Again
 
 ## What you need before you start
 
 - A Windows 10/11 (64-bit) or macOS 11+ computer — this will be the one dedicated
-  "BORN computer" at the sound/media desk.
-- A few minutes of internet access to download it (BORN itself runs fully offline
+  "Born Again computer" at the sound/media desk.
+- A few minutes of internet access to download it (Born Again itself runs fully offline
   afterward — it doesn't need internet during a service).
 
 ## Download and install
@@ -16,16 +16,16 @@
 2. Run the installer like any other program.
 3. **The first time you open it**, your operating system will warn that it's from
    an "unidentified developer" (Mac) or show a Windows SmartScreen warning. This is
-   expected — BORN is free and unsigned, not a sign of a problem. The download page
+   expected — Born Again is free and unsigned, not a sign of a problem. The download page
    has the current one-time steps to allow it; in general terms, this is the same
    "I trust this" override every unsigned app needs once on first launch (Mac:
    right-click → Open; Windows: More info → Run anyway) — if those exact words
    don't match what you see, follow the download page's instructions instead of
    this manual, since OS warning dialogs change wording across versions more often
    than this manual does.
-4. Open BORN. You should see the **New service** start screen.
+4. Open Born Again. You should see the **New service** start screen.
 
-**How to know it worked:** BORN opens to the New service screen (or your last
+**How to know it worked:** Born Again opens to the New service screen (or your last
 service, if this isn't the first run) with no error dialog.
 
 ## Next steps
