@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
+import VirtualList from './VirtualList'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import type {
   Quote,
@@ -247,6 +248,21 @@ export default function BrowsePanel({
     </div>
   )
 
+  // One row per page of each paragraph ("1a", "1b" …) — the same split the
+  // projector uses, so a row can never differ from what goes on screen.
+  const paragraphSlides = useMemo(
+    () =>
+      paragraphs.flatMap((q) =>
+        quoteToItem(q).slides.map((s, slideIndex) => ({
+          q,
+          slideIndex,
+          marker: s.marker ?? q.paragraphRef,
+          text: s.text
+        }))
+      ),
+    [paragraphs]
+  )
+
   const renderParagraphs = (): JSX.Element => (
     <div className="browse-paragraphs">
       <div className="browse-back-row">
@@ -259,49 +275,43 @@ export default function BrowsePanel({
       {loadingParagraphs ? (
         <div className="browse-loading">Loading paragraphs…</div>
       ) : (
-        <div className="browse-list">
-          {paragraphs.flatMap((q) =>
-            // One paragraph per row, not per source row — see the Props note
-            // on onSendToProjection.
-            quoteToItem(q).slides.map((s, slideIndex) => {
-              const marker = s.marker ?? q.paragraphRef
-              // Exact match, not refsOverlap: this list is already one row per
-              // page ("1a", "1b", …), so refsOverlap's numeric-only comparison
-              // (it ignores the letter suffix) would mark every page of the
-              // same paginated paragraph as on-screen at once.
-              const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
-              return (
-                <div
-                  key={`${q.paragraphRef}:${slideIndex}`}
-                  className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
-                >
-                  <div className="browse-para-ref">
-                    {marker}
-                    {live && <span className="on-screen-tag">On screen</span>}
-                  </div>
-                  <div className="browse-para-text">{s.text}</div>
-                  <div className="browse-para-actions">
-                    <button
-                      className="btn-secondary btn-sm"
-                      onClick={() => onAddToQueue(q)}
-                    >
-                      + Queue
-                    </button>
-                    <button
-                      className="btn-primary btn-sm"
-                      onClick={() => onSendToProjection(q, slideIndex)}
-                    >
-                      Project
-                    </button>
-                  </div>
+        <VirtualList
+          className="browse-list browse-list--virtual"
+          items={paragraphSlides}
+          estimateSize={128}
+          threshold={400}
+          gap={2}
+          paddingStart={8}
+          paddingEnd={24}
+          itemKey={(p) => `${p.q.paragraphRef}:${p.slideIndex}`}
+          renderItem={({ q, slideIndex, marker, text }) => {
+            // Exact match, not refsOverlap: this list is already one row per
+            // page ("1a", "1b", …), so refsOverlap's numeric-only comparison
+            // (it ignores the letter suffix) would mark every page of the
+            // same paginated paragraph as on-screen at once.
+            const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
+            return (
+              <div className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
+                <div className="browse-para-ref">
+                  {marker}
+                  {live && <span className="on-screen-tag">On screen</span>}
                 </div>
-              )
-            })
-          )}
-          {paragraphs.length === 0 && !loadingParagraphs && (
-            <div className="browse-empty">No paragraphs found</div>
-          )}
-        </div>
+                <div className="browse-para-text">{text}</div>
+                <div className="browse-para-actions">
+                  <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>
+                    + Queue
+                  </button>
+                  <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q, slideIndex)}>
+                    Project
+                  </button>
+                </div>
+              </div>
+            )
+          }}
+        />
+      )}
+      {paragraphs.length === 0 && !loadingParagraphs && (
+        <div className="browse-empty">No paragraphs found</div>
       )}
     </div>
   )

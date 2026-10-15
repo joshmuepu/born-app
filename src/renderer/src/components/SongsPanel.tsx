@@ -1,3 +1,4 @@
+import VirtualList, { type VirtualListHandle } from './VirtualList'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
 import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown, Check, Plus } from 'lucide-react'
@@ -321,20 +322,37 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     </>
   )
 
-  const letterRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const allListRef = useRef<HTMLDivElement | null>(null)
+  const allListRef = useRef<VirtualListHandle | null>(null)
   const allGroups = useMemo(() => (allSongs ? groupByLetter(allSongs) : []), [allSongs])
   const availableLetters = useMemo(() => new Set(allGroups.map((g) => g.letter)), [allGroups])
+  // The A-Z list is windowed: a flat run of letter-header rows and song rows
+  // (song pairs in the card grid). Only the rows near the viewport are in the
+  // DOM, so a 1,000+ song library opens and scrolls without building it all.
+  type AllRow =
+    | { kind: 'head'; letter: string }
+    | { kind: 'songs'; letter: string; songs: SongSummary[] }
+  const allRows = useMemo<AllRow[]>(() => {
+    const per = view === 'grid' ? 2 : 1
+    const rows: AllRow[] = []
+    for (const g of allGroups) {
+      rows.push({ kind: 'head', letter: g.letter })
+      for (let i = 0; i < g.items.length; i += per) {
+        rows.push({ kind: 'songs', letter: g.letter, songs: g.items.slice(i, i + per) })
+      }
+    }
+    return rows
+  }, [allGroups, view])
+  const letterIndex = useMemo(() => {
+    const m = new Map<string, number>()
+    allRows.forEach((r, i) => {
+      if (r.kind === 'head') m.set(r.letter, i)
+    })
+    return m
+  }, [allRows])
+  const [currentLetter, setCurrentLetter] = useState('')
   const jumpToLetter = (letter: string): void => {
-    // Not scrollIntoView: its sticky-aware scroll math lands a few rows past
-    // this letter's own sticky header (position: sticky, top: 0), scrolling
-    // the first song's title out of view behind it. Computing the offset
-    // directly against the scroll container is exact regardless of how the
-    // browser treats the sticky element. (Ported from v1-ui-audit-help.)
-    const container = allListRef.current
-    const header = letterRefs.current[letter]
-    if (!container || !header) return
-    container.scrollTop += header.getBoundingClientRect().top - container.getBoundingClientRect().top
+    const i = letterIndex.get(letter)
+    if (i !== undefined) allListRef.current?.scrollToIndex(i, { align: 'start' })
   }
 
   /** A song row shared by search results, the all-songs browse list, and
@@ -593,18 +611,29 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
             <div className="songs-empty">Loading…</div>
           ) : (
             <div className="songs-browse-body">
-              <div className="songs-all-list" ref={allListRef}>
-                {allGroups.map((g) => (
-                  <div key={g.letter} className="songs-group">
-                    <div
-                      className="songs-letter-head"
-                      ref={(el) => { letterRefs.current[g.letter] = el }}
-                    >
-                      {g.letter}
-                    </div>
-                    {g.items.map((s) => renderSongRow(s))}
-                  </div>
-                ))}
+              <div className="songs-all-wrap">
+                {currentLetter && <div className="songs-letter-pill" aria-hidden="true">{currentLetter}</div>}
+                <VirtualList
+                  ref={allListRef}
+                  className="songs-all-list"
+                  items={allRows}
+                  estimateSize={view === 'grid' ? 86 : 64}
+                  threshold={2000}
+                  gap={view === 'grid' ? 6 : 0}
+                  paddingStart={4}
+                  paddingEnd={12}
+                  itemKey={(r, i) => (r.kind === 'head' ? `h:${r.letter}` : `s:${r.songs[0].id}:${i}`)}
+                  onFirstVisible={(i) => setCurrentLetter(allRows[i]?.letter ?? '')}
+                  renderItem={(r) =>
+                    r.kind === 'head' ? (
+                      <div className="songs-letter-head">{r.letter}</div>
+                    ) : (
+                      <div className={`songs-vrow songs-vrow--${view}`}>
+                        {r.songs.map((s) => renderSongRow(s))}
+                      </div>
+                    )
+                  }
+                />
               </div>
               <div className="songs-azrail">
                 {ALPHABET.map((l) => (

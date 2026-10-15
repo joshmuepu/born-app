@@ -508,3 +508,8 @@
 .browse-date-results .browse-list {
   overflow-y: auto;
 }
+
+/* Windowed paragraph list: it is its own scroller inside the right pane. */
+.browse-right { overflow: hidden; }
+.browse-right .browse-paragraphs { flex: 1; min-height: 0; padding-bottom: 0; display: flex; flex-direction: column; }
+.browse-list--virtual { display: block; flex: 1; min-height: 0; padding: 0; gap: 0; }

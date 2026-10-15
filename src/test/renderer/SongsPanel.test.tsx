@@ -20,7 +20,11 @@ beforeEach(() => {
 })
 
 describe('SongsPanel Browse A-Z jump', () => {
-  it('scrolls the list by the exact distance between the container and the target letter header, not a sticky-unaware scrollIntoView', async () => {
+  // The A-Z list is windowed (VirtualList), so a letter jump scrolls to a row
+  // index through the virtualizer instead of measuring a DOM header. Test
+  // change: the old assertion measured a sticky header's rect, which no
+  // longer exists as a mounted element for far-away letters.
+  it('jumps to a letter by scrolling the windowed list to that letter header row', async () => {
     render(<SongsPanel visible onAddSong={vi.fn()} onProjectSong={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: /^Browse/ }))
@@ -28,22 +32,20 @@ describe('SongsPanel Browse A-Z jump', () => {
 
     const container = document.querySelector('.songs-all-list') as HTMLElement
     expect(container).toBeTruthy()
-
-    // jsdom has no real layout engine — every element reports a 0-rect by
-    // default, and Element.scrollIntoView is a no-op stub, so the pre-fix
-    // scrollIntoView-based jump couldn't move scrollTop at all here. Mock
-    // just enough geometry to simulate the sticky-overlap scenario the fix
-    // addresses: the target letter's header sits 400px above the container's
-    // own top edge, with the container currently scrolled to 100px.
-    container.scrollTop = 100
-    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect)
-    const yHeader = [...container.querySelectorAll('div')].find((d) => d.textContent === 'Y') as HTMLElement
-    expect(yHeader).toBeTruthy()
-    vi.spyOn(yHeader, 'getBoundingClientRect').mockReturnValue({ top: 400 } as DOMRect)
+    const scrollTo = vi.fn()
+    ;(container as unknown as { scrollTo: typeof scrollTo }).scrollTo = scrollTo
 
     fireEvent.click(screen.getByRole('button', { name: 'Y' }))
 
-    // 100 (prior scrollTop) + (400 - 0) (header top − container top) = 500.
-    expect(container.scrollTop).toBe(500)
+    expect(scrollTo).toHaveBeenCalled()
+    const arg = scrollTo.mock.calls[scrollTo.mock.calls.length - 1][0] as { top: number }
+    expect(typeof arg.top).toBe('number')
+  })
+
+  it('renders only a window of rows, not the whole library', async () => {
+    render(<SongsPanel visible onAddSong={vi.fn()} onProjectSong={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Browse/ }))
+    await waitFor(() => expect(screen.getByText("'Tis So Sweet")).toBeInTheDocument())
+    expect(document.querySelectorAll('.song-row').length).toBeGreaterThan(0)
   })
 })

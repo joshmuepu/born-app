@@ -6,6 +6,7 @@ import { refsOverlap } from '../../../shared/paragraphRef'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import './SermonPanel.css'
 import { getRecentSearches } from '../recentSearches'
+import VirtualList from './VirtualList'
 
 interface Props {
   results: Quote[]
@@ -176,8 +177,16 @@ export default function ResultsList({
   return (
     <div className="results-panel">
       <div className="results-count">{resultCountLabel(results.length)}</div>
-      <div className="results-list">
-        {results.map((quote, index) => {
+      <VirtualList
+        className="results-list results-list--virtual"
+        items={results}
+        estimateSize={132}
+        threshold={200}
+        gap={8}
+        paddingStart={10}
+        paddingEnd={10}
+        itemKey={(q, i) => `${q.sermonId}:${q.paragraphRef}:${i}`}
+        renderItem={(quote) => {
           const live =
             !!onScreen &&
             onScreen.sermonId === quote.sermonId &&
@@ -185,7 +194,7 @@ export default function ResultsList({
           const mode = quote.matchType ?? 'all'
           const { snippet, moreCount } = smartSnippet(bodyOf(quote.text), query, mode)
           return (
-          <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
+          <div className={`result-item${live ? ' result-item--on-screen' : ''}`}>
             <div
               className="result-body"
               role="button"
@@ -229,8 +238,8 @@ export default function ResultsList({
             </div>
           </div>
           )
-        })}
-      </div>
+        }}
+      />
     </div>
   )
 }

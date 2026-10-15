@@ -485,3 +485,15 @@
   margin: -2px -2px 0;
   padding: 2px 2px 0;
 }
+
+/* Windowed lists: the scroller itself owns the padding via the virtualizer. */
+.results-list--virtual,
+.follow-list--virtual {
+  display: block;
+  padding: 0;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+}
+.results-list--virtual { padding-inline: 10px; }
+.follow-list--virtual { padding-inline: 12px; }
