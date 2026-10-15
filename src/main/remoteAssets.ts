@@ -526,7 +526,8 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
   .sidebar-spacer{flex:1}
   .sidebar .blank{width:84px; min-height:60px; padding:12px 0; border-radius:14px; background:rgba(227,179,65,0.12); border:1.5px solid rgba(227,179,65,0.4); color:var(--warn); font-size:13px; font-weight:800; margin-bottom:16px}
   .sidebar .blank.active{background:var(--warn); color:var(--warn-ink)}
-  .sidebar .led{width:7px; height:7px; border-radius:50%; background:var(--ok)}
+  .sidebar .conn{flex-direction:column; gap:5px; font-size:10px; text-align:center; margin-bottom:6px}
+  .sidebar .conn .led{width:8px; height:8px}
 
   /* No bottom tab bar on tablet (the sidebar is the nav), so the phone
    * offset above isn't needed here — but the sidebar itself is a persistent
@@ -678,7 +679,7 @@ export function buildAppBody(): string {
   <div id="phoneShell">
     <div class="topbar">
       <div class="brand"><svg viewBox="-30 -40 60 80" aria-hidden="true"><path d="M0,-36 C4,-22 24,-10 24,8 C24,23 13,33 0,33 C-13,33 -24,23 -24,8 C-24,-2 -19,-10 -13,-17 C-12,-9 -8,-5 -4,-6 C-6,-17 -5,-28 0,-36 Z" fill="currentColor"/><path d="M0,8 C5,14 9,18 9,22 C9,26 5,29 0,29 C-5,29 -9,26 -9,22 C-9,18 -4,14 0,8 Z" fill="var(--bg)"/></svg><span><b>Born</b> Again</span></div>
-      <div class="conn bad" id="conn-p"><span class="led"></span><span class="connLabel">Connecting…</span></div>
+      <div class="conn bad" id="conn-p" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="transport">
       <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
@@ -708,7 +709,7 @@ export function buildAppBody(): string {
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
       <div class="sidebar-spacer"></div>
       <button class="blank" id="blank-t">Blank</button>
-      <div class="led" id="conn-t" title="Connecting…"></div>
+      <div class="conn bad" id="conn-t" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="tablet-main">
       <div class="list-pane" id="tabletList"></div>
@@ -1094,7 +1095,7 @@ function pollUntilOnScreen(done){
 function setConn(ok){
   var p = $('conn-p'); var t = $('conn-t');
   if(p){ p.className = 'conn ' + (ok ? 'ok' : 'bad'); p.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
-  if(t){ t.style.background = ok ? 'var(--ok)' : 'var(--text3)'; t.title = ok ? 'Connected' : 'Reconnecting…'; }
+  if(t){ t.className = 'conn ' + (ok ? 'ok' : 'bad'); t.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
 }
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){
