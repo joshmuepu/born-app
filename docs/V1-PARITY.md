@@ -62,3 +62,12 @@ v2's code from v1's), not an individual port. Confirmed: `595a728`
 | DEF-02 / `84afc39` | A legacy `fontSize: 3` got realigned to the honest 4.5 in memory but never written back to disk | fix | **ported** | `c08577a` |
 | DEF-03 / `96e7048` | "Check for updates" had no timeout — a slow/stalled connection could hang "Checking…" forever | fix | **ported** | `7e9bb6d` |
 | Queue song-import (`ba5d893`…`79bdafb`) | Offers to add a shared queue's songs that aren't yet in the local library, with a review step for new/conflicting songs | feature | **not ported** | see `docs/notes/v2-queue-song-import.md` — v2's songbooks (per-Channel) and its still-single shared queue raise real design questions this wasn't built to answer |
+
+## v2-only (nothing to port from v1): the `.born` compat shell (Media 1a, Step 1)
+
+| Item | Detail |
+|---|---|
+| What | v2 now keeps unknown/newer/damaged queue items (never drops or crashes), and writes new item kinds (media) as a quote-shaped "compat shell" carrying the real data under `ext`. |
+| Why it matters to v1 | v1.13.0 (`main`, identical `migrateQueue`) opens such a file **without crashing** — verified in the real app — showing the shell as a quote row; its autosave preserves `ext`. v1 would still **crash its queue screen** on an *unknown top-level kind with slides* (`KIND_ICON[item.kind]` undefined, `ServiceQueue.tsx`); v2 never writes those. |
+| Optional v1 hotfix | Two lines in v1 (`KIND_ICON[item.kind] ?? FallbackIcon` and a default `itemTitle` branch) would make v1 safe against any future kind. Owner's decision; v1 was not touched. |
+| v2 status | **intentionally different** (v2-only feature) |
