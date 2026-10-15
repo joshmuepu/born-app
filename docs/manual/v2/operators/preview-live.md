@@ -23,12 +23,26 @@ If you have more than one channel, tabs above the pictures let you look at each 
 channel that follows Main says so under the pictures, and its destinations
 (Congregation, Stage, Graphics) show a dot for connected or not.
 
+## Make the queue wider (or narrower)
+
+Drag the thin edge between the browse area and the queue panel, or click it and use the
+**←** / **→** keys (**Shift** for bigger steps, **Home** / **End** for the limits, **Enter** to
+go back to the default). The width is remembered, and the Preview and Live pictures grow
+with it.
+
+## Bigger interface on a big screen
+
+On a large monitor (2560 pixels wide and up) Born Again makes its own controls larger
+automatically; the projection output is never affected. To choose a size yourself, press
+**Ctrl+K** (**⌘K**) and pick **Interface size: …**.
+
 ## Undo
 
 Removing a queue item, moving one, starting a new service, opening a service file or
 dropping something into the queue shows a toast at the bottom with **Undo** and a shrinking
 bar. Click **Undo** or press **Ctrl+Z** (**⌘Z**) before it goes. Hovering over the toast
-pauses the countdown. If something is on the screen, **New** still asks first.
+pauses the countdown. Undo only brings back what you removed or replaced; it never changes what is on the
+screen right now. If something is on the screen, **New** still asks first.
 
 ## Drag it in
 

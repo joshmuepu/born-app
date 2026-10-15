@@ -85,6 +85,9 @@ labelled separately, and its key when known. **+ Queue** / **Project** work the
 same as everywhere else — projecting a song starts at its first labelled section;
 use **Back**/**Next** to move through the rest.
 
+In the A–Z list the letter strip on the right jumps straight to a letter — that letter's first
+song lands at the top, fully visible — and highlights the letter you are currently at.
+
 The song you pick opens on the right with a row of section buttons (Verse 1, Chorus…)
 above its slides, while the list stays on the left.
 

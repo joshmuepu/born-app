@@ -19,8 +19,11 @@ function block(selector: string): Record<string, string> {
 
 const dark = block(":root,\n:root[data-theme='dark']")
 const light = block(":root[data-theme='light']")
-const contrastDark = { ...dark, ...block(":root[data-contrast='true'],\n:root[data-contrast='true'][data-theme='dark']") }
-const contrastLight = { ...light, ...block(":root[data-contrast='true'][data-theme='light']") }
+// The first high-contrast selector (:root[data-contrast='true']) matches BOTH base
+// themes, so it sits under the light overrides in the real cascade too.
+const contrastGeneric = block(":root[data-contrast='true'],\n:root[data-contrast='true'][data-theme='dark']")
+const contrastDark = { ...dark, ...contrastGeneric }
+const contrastLight = { ...light, ...contrastGeneric, ...block(":root[data-contrast='true'][data-theme='light']") }
 
 type RGB = [number, number, number]
 function hex(v: string): RGB {

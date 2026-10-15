@@ -160,6 +160,7 @@
   --on-accent: #ffffff;
   --live: #9a0010;
   --danger: #8f0a14;
+  --on-danger: #ffffff;
   --ok: #0a5028;
   --warn: #7a3d00;
   --sermons: #000000;
@@ -1402,8 +1403,8 @@ mark.hl {
   font-family: var(--font-mono);
 }
 .screens-chip-follow {
-  background: rgba(139, 111, 209, 0.18);
-  color: #c3b2f0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
 }
 .screens-chip-live {
   background: color-mix(in srgb, var(--live) 15%, transparent);
@@ -2526,6 +2527,7 @@ kbd {
   .language-select,
   .modal-input,
   .search-input,
+  .btn-nav:not(.btn-nav--next),
   .browse-month-pill:not(:disabled),
   .bible-browse-chapter,
   .bible-browse-book,
