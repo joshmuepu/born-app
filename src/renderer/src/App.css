@@ -2579,3 +2579,34 @@ kbd {
   color: rgba(255, 255, 255, 0.7);
   font-size: var(--text-sm);
 }
+
+/* ── Header: command palette trigger ───────────────────────── */
+.palette-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  min-width: 190px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color var(--tap), color var(--tap);
+}
+.palette-trigger:hover { color: var(--text-primary); border-color: var(--accent); }
+.palette-trigger span { flex: 1; text-align: left; }
+.palette-trigger kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+@media (max-width: 1100px) {
+  .palette-trigger { min-width: 0; padding: 0 10px; }
+  .palette-trigger span, .palette-trigger kbd { display: none; }
+}

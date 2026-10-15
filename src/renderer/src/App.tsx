@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered } from 'lucide-react'
 import BornMark from './components/BornMark'
+import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -157,6 +158,7 @@ export default function App() {
   const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
+  const [paletteOpen, setPaletteOpen] = useState(false)
   // Queue panel: open during a service (anything queued or projecting),
   // collapsed otherwise — until the operator chooses, which is remembered.
   const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
@@ -1019,6 +1021,69 @@ export default function App() {
     [mutateQueue, playedIds, activeQueueIndex, bibleTranslation]
   )
 
+  // ── Command palette (Ctrl/Cmd+K): one search for everything + app actions ──
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const paletteCommands = useMemo<PaletteCommand[]>(() => {
+    const cmds: PaletteCommand[] = [
+      { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
+      { id: 'go-bible', label: 'Go to Bible', keywords: 'scripture verse', run: () => setTopTab('bible') },
+      { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
+      {
+        id: 'search-sermons',
+        label: 'Search sermons',
+        keywords: 'find quote word phrase',
+        hint: '/',
+        run: () => {
+          setTopTab('sermons')
+          setSermonsTab('search')
+          setFollowSermon(null)
+          window.setTimeout(() => document.getElementById('born-search-input')?.focus(), 0)
+        }
+      },
+      { id: 'queue', label: queueOpen ? 'Hide the service queue' : 'Show the service queue', keywords: 'panel', run: toggleQueue },
+      { id: 'theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', keywords: 'theme appearance', run: toggleTheme },
+      { id: 'contrast', label: contrast ? 'Turn off high contrast' : 'Turn on high contrast', keywords: 'accessibility', run: toggleContrast },
+      { id: 'projection', label: projectionOpen ? 'Close projection' : 'Open projection', keywords: 'screen display output', hint: 'Ctrl+Shift+W', run: handleToggleProjection },
+      { id: 'stage', label: stageOpen ? 'Close stage monitor' : 'Open stage monitor', run: handleToggleStage },
+      { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
+      { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
+    ]
+    if (projectionOpen) {
+      cmds.push({
+        id: 'blank',
+        label: isScreenBlanked ? 'Show the screen' : 'Hide the screen',
+        keywords: 'blank black out',
+        hint: 'Esc',
+        run: handleToggleBlank
+      })
+    }
+    return cmds
+  }, [
+    queueOpen,
+    toggleQueue,
+    theme,
+    toggleTheme,
+    contrast,
+    toggleContrast,
+    projectionOpen,
+    handleToggleProjection,
+    stageOpen,
+    handleToggleStage,
+    isScreenBlanked,
+    handleToggleBlank
+  ])
+
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
   useEffect(() => {
@@ -1029,7 +1094,7 @@ export default function App() {
     }
 
     const onKey = (e: KeyboardEvent): void => {
-      if (showAlertDialog) return
+      if (showAlertDialog || paletteOpen) return
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
@@ -1114,6 +1179,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [
     showAlertDialog,
+    paletteOpen,
     showShortcuts,
     projectionOpen,
     searchResults,
@@ -1397,6 +1463,15 @@ export default function App() {
         </button>
 
         <div className="header-actions">
+          <button
+            className="palette-trigger"
+            onClick={() => setPaletteOpen(true)}
+            title="Search everything and run actions"
+          >
+            <Search width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+            <span>Search everything</span>
+            <kbd>{/Mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
+          </button>
           <button
             className="btn-icon"
             onClick={toggleTheme}
@@ -1904,6 +1979,26 @@ export default function App() {
             </div>
           )
         })()}
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={paletteCommands}
+        translation={bibleTranslation}
+        onOpenSermon={(q) => {
+          setTopTab('sermons')
+          setSermonsTab('search')
+          setFollowSermon({ sermonId: q.sermonId, anchorRef: q.paragraphRef })
+        }}
+        onOpenSong={(id) => {
+          setTopTab('songs')
+          setFocusSongId(id)
+        }}
+        onOpenVerse={(v) => {
+          setTopTab('bible')
+          setBiblePreview(v)
+        }}
+      />
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">
