@@ -1,4 +1,5 @@
 import VirtualList, { type VirtualListHandle } from './VirtualList'
+import { startQueueDrag } from '../dragItem'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactElement } from 'react'
 import { ChevronLeft, X, Search, ListMusic, Clock, ChevronDown, Check, Plus } from 'lucide-react'
@@ -365,7 +366,12 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const renderSongRow = (s: SongSummary): ReactElement => {
     const showSnippet = s.matchedInTitle === false && !!s.matchSlide
     return (
-      <div className={`song-row${selected?.id === s.id ? ' song-row--selected' : ''}`} key={s.id}>
+      <div
+        className={`song-row${selected?.id === s.id ? ' song-row--selected' : ''}`}
+        key={s.id}
+        draggable
+        onDragStart={(e) => startQueueDrag(e, { type: 'song', songId: s.id })}
+      >
         <div className="song-row-body" role="button" tabIndex={0} onClick={() => openSong(s.id)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSong(s.id) } }}
         >

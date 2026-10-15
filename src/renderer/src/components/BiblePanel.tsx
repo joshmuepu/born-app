@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { startQueueDrag } from '../dragItem'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import { ChevronLeft, ChevronDown, X, BookOpen, Search, Check, Clock } from 'lucide-react'
 import type {
@@ -392,7 +393,11 @@ export default function BiblePanel({
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
-                title={`Put verse ${v.verse} on the screen`}
+                draggable
+                onDragStart={(e) =>
+                  startQueueDrag(e, { type: 'bible', reference: formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse) })
+                }
+                title={`Put verse ${v.verse} on the screen — or drag it into the queue`}
                 onClick={(e) => { project(); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -571,6 +576,10 @@ export default function BiblePanel({
                     className={`bible-verse${isLive(passage.bookNum, passage.chapter, v.verse) ? ' bible-verse--on-screen' : ''}`}
                     role="button"
                     tabIndex={0}
+                    draggable
+                    onDragStart={(e) =>
+                      startQueueDrag(e, { type: 'bible', reference: formatVerse(passage.bookNum, passage.chapter, v.verse) })
+                    }
                     title={`Open ${bookByNum(passage.bookNum)?.name ?? ''} ${passage.chapter} at verse ${v.verse}`}
                     onClick={(e) => { openChapterAt(passage.bookNum, passage.chapter, v.verse); e.currentTarget.blur() }}
                     onKeyDown={(e) => {
@@ -636,6 +645,8 @@ export default function BiblePanel({
                   className="bible-hit-body"
                   role="button"
                   tabIndex={0}
+                  draggable
+                  onDragStart={(e) => startQueueDrag(e, { type: 'bible', reference: h.reference })}
                   title="Open the whole chapter at this verse"
                   onClick={(e) => { openChapterAt(h.bookNum, h.chapter, h.verse); e.currentTarget.blur() }}
                   onKeyDown={(e) => {

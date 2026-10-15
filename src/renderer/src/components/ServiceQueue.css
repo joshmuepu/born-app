@@ -439,3 +439,19 @@
   color: var(--text-secondary);
 }
 .live-now-hidden-badge--warn { border-color: var(--warn); color: var(--warn); }
+
+/* Drop targets: an accent insertion line, and a highlighted empty queue. */
+.queue-drop-line {
+  height: 3px;
+  margin: 1px 4px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.queue-row--dragging { opacity: 0.5; }
+.queue-empty-drop { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.queue-empty-drop.is-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -8px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}

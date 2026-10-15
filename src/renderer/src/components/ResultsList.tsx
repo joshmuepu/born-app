@@ -7,6 +7,7 @@ import { resultCountLabel } from '../../../shared/searchLimits'
 import './SermonPanel.css'
 import { getRecentSearches } from '../recentSearches'
 import VirtualList from './VirtualList'
+import { startQueueDrag } from '../dragItem'
 
 interface Props {
   results: Quote[]
@@ -194,7 +195,11 @@ export default function ResultsList({
           const mode = quote.matchType ?? 'all'
           const { snippet, moreCount } = smartSnippet(bodyOf(quote.text), query, mode)
           return (
-          <div className={`result-item${live ? ' result-item--on-screen' : ''}`}>
+          <div
+            className={`result-item${live ? ' result-item--on-screen' : ''}`}
+            draggable
+            onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote })}
+          >
             <div
               className="result-body"
               role="button"

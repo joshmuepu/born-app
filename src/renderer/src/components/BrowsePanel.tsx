@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { ChevronLeft, X, CalendarDays, BookOpen, MapPin, Clock } from 'lucide-react'
 import VirtualList from './VirtualList'
+import { startQueueDrag } from '../dragItem'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import type {
   Quote,
@@ -291,7 +292,11 @@ export default function BrowsePanel({
             // same paginated paragraph as on-screen at once.
             const live = !!onScreen && onScreen.sermonId === q.sermonId && onScreen.paragraphRef === marker
             return (
-              <div className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
+              <div
+                className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}
+                draggable
+                onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote: q })}
+              >
                 <div className="browse-para-ref">
                   {marker}
                   {live && <span className="on-screen-tag">On screen</span>}

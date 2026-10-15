@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered } from 'lucide-react'
 import BornMark from './components/BornMark'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
+import { ToastHost, useToasts } from './components/Toasts'
+import { isQueueDrag, readQueueDrag, type QueueDragPayload } from './dragItem'
 import SearchBar from './components/SearchBar'
 import ResultsList from './components/ResultsList'
 import SermonFollowView from './components/SermonFollowView'
@@ -159,6 +161,7 @@ export default function App() {
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
   // Queue panel: open during a service (anything queued or projecting),
   // collapsed otherwise — until the operator chooses, which is remembered.
   const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
@@ -812,12 +815,74 @@ export default function App() {
   )
 
   const handleRemoveFromQueue = useCallback(
-    (index: number) => mutateQueue((q) => q.filter((_, i) => i !== index)),
-    [mutateQueue]
+    (index: number) => {
+      const before = queueRef.current
+      const item = before[index]
+      if (!item) return
+      mutateQueue((q) => q.filter((_, i) => i !== index))
+      pushToast({
+        message: `Removed “${itemTitle(item)}” from the queue`,
+        actionLabel: 'Undo',
+        // Restores the exact order; if the item was live it is re-linked by id.
+        onAction: () => mutateQueue(() => before)
+      })
+    },
+    [mutateQueue, pushToast]
+  )
+  /** Resolve something dragged in from a browse pane into a queue item and
+   *  insert it at `index`. Insert only: it never projects, and a live item that
+   *  ends up shifted is re-linked by id (mutateQueue → repointProjected). */
+  const handleDropToQueue = useCallback(
+    async (payload: QueueDragPayload, index: number) => {
+      let item: QueueItem | null = null
+      try {
+        if (payload.type === 'quote') {
+          item = quoteToItem(payload.quote)
+          window.electronAPI.noteSermonUsed(payload.quote)
+        } else if (payload.type === 'bible') {
+          const res = await window.electronAPI.lookupPassage(payload.reference, bibleTranslation)
+          if (res && !('error' in (res as object))) item = passageToItem(res as ResolvedPassage)
+        } else if (payload.type === 'song') {
+          const song = await window.electronAPI.getSong(payload.songId)
+          if (song) {
+            item = songToItem(song as SongDetail)
+            window.electronAPI.noteSongUsed(payload.songId)
+          }
+        }
+      } catch {
+        item = null
+      }
+      if (!item) {
+        pushToast({ message: "Couldn't add that to the queue." })
+        return
+      }
+      const placed = item
+      const before = queueRef.current
+      const at = Math.max(0, Math.min(index, before.length))
+      mutateQueue((q) => [...q.slice(0, at), placed, ...q.slice(at)])
+      pushToast({
+        message: `Added “${itemTitle(placed)}” to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue(() => before)
+      })
+    },
+    [bibleTranslation, mutateQueue, pushToast]
   )
   const handleReorder = useCallback(
-    (from: number, to: number) => mutateQueue((q) => reorder(q, from, to)),
-    [mutateQueue]
+    (from: number, to: number) => {
+      const before = queueRef.current
+      const item = before[from]
+      if (!item || from === to) return
+      mutateQueue((q) => reorder(q, from, to))
+      pushToast({
+        message: `Moved “${itemTitle(item)}”`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue(() => before)
+      })
+    },
+    [mutateQueue, pushToast]
   )
 
   // ── Projection window / stage / blank ──────────────────────────────────────
@@ -1066,11 +1131,20 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen((v) => !v)
+        return
+      }
+      // Ctrl/Cmd+Z undoes the newest undo toast — but never steals the
+      // shortcut from a text field, where it means "undo typing".
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+        const el = e.target as HTMLElement | null
+        const typing =
+          !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+        if (!typing && undoLatest()) e.preventDefault()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [undoLatest])
 
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const cmds: PaletteCommand[] = [
@@ -1256,51 +1330,113 @@ export default function App() {
     window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
   }, [])
 
+  /** Everything a destructive queue action changes, so Undo can put it all
+   *  back — including un-hiding the screen if (and only if) the action hid it. */
+  const snapshotService = useCallback(
+    () => ({
+      queue: queueRef.current,
+      played: playedIds,
+      projected: projectedRef.current,
+      follow: followSermon,
+      staged: stagedId
+    }),
+    [playedIds, followSermon, stagedId]
+  )
+  const restoreService = useCallback(
+    (snap: ReturnType<typeof snapshotService>, unblank: boolean) => {
+      queueRef.current = snap.queue
+      setServiceQueue(snap.queue)
+      projectedRef.current = snap.projected
+      setProjected(snap.projected)
+      setPlayedIds(snap.played)
+      setFollowSermon(snap.follow)
+      setStagedId(snap.staged)
+      if (unblank && projectionOpenRef.current) {
+        setIsScreenBlanked(false)
+        window.electronAPI.setBlankScreen(false)
+      }
+    },
+    []
+  )
+
   const handleNewService = useCallback(() => {
     if (serviceQueue.length === 0) {
       setFollowSermon(null)
       return
     }
-    if (window.confirm('Clear the current queue and start a new service?')) {
-      setServiceQueue([])
-      projectedRef.current = null
-      setProjected(null)
-      setFollowSermon(null)
-      setPlayedIds(new Set())
-      // setProjected(null) above only clears this window's own idea of
-      // what's live — it sends nothing to the actual projection window, so
-      // without this, the congregation screen keeps showing whatever was up
-      // before "New service" while the operator's own status bar says
-      // "Nothing on screen yet," which is simply false. Blank the real
-      // output to match what the operator is being told.
-      if (projectionOpen && !isScreenBlanked) {
-        setIsScreenBlanked(true)
-        window.electronAPI.setBlankScreen(true)
-      }
+    // Something is on the congregation's screen right now: starting over would
+    // black it out, so that one still asks first. Otherwise it just happens,
+    // and Undo (toast, or Ctrl/Cmd+Z) brings the whole queue back.
+    const liveNow = projectionOpen && !isScreenBlanked && projectedRef.current !== null
+    if (liveNow && !window.confirm('Something is on the screen right now. Clear the queue, hide the screen and start a new service?')) {
+      return
     }
-  }, [serviceQueue.length, projectionOpen, isScreenBlanked])
+    const snap = snapshotService()
+    const count = serviceQueue.length
+    setServiceQueue([])
+    queueRef.current = []
+    projectedRef.current = null
+    setProjected(null)
+    setFollowSermon(null)
+    setPlayedIds(new Set())
+    setStagedId(null)
+    // setProjected(null) above only clears this window's own idea of
+    // what's live — it sends nothing to the actual projection window, so
+    // without this, the congregation screen keeps showing whatever was up
+    // before "New service" while the operator's own status bar says
+    // "Nothing on screen yet," which is simply false. Blank the real
+    // output to match what the operator is being told.
+    let blankedByUs = false
+    if (projectionOpen && !isScreenBlanked) {
+      blankedByUs = true
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+    }
+    pushToast({
+      message: `Started a new service — ${count} item${count === 1 ? '' : 's'} cleared`,
+      actionLabel: 'Undo',
+      onAction: () => restoreService(snap, blankedByUs)
+    })
+  }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
   const handleSaveService = useCallback(async () => {
     const ok = await window.electronAPI.saveService(serviceQueue)
     if (ok) refreshRecents()
   }, [serviceQueue, refreshRecents])
 
-  const loadServiceItems = useCallback((loaded: unknown[]) => {
-    setServiceQueue(migrateQueue(loaded))
-    projectedRef.current = null
-    setProjected(null)
-    setFollowSermon(null)
-    setPlayedIds(new Set())
-    // setProjected(null) only clears this window's own idea of what's live —
-    // it sends nothing to the real projection window. Opening a different
-    // service while something is still up would otherwise leave the
-    // congregation looking at the old service's content while the operator's
-    // own status bar claims there's nothing on screen.
-    if (projectionOpenRef.current && !isScreenBlankedRef.current) {
-      setIsScreenBlanked(true)
-      window.electronAPI.setBlankScreen(true)
-    }
-  }, [])
+  const loadServiceItems = useCallback(
+    (loaded: unknown[]) => {
+      const snap = snapshotService()
+      const hadItems = snap.queue.length > 0
+      const items = migrateQueue(loaded)
+      setServiceQueue(items)
+      queueRef.current = items
+      projectedRef.current = null
+      setProjected(null)
+      setFollowSermon(null)
+      setPlayedIds(new Set())
+      setStagedId(null)
+      // setProjected(null) only clears this window's own idea of what's live —
+      // it sends nothing to the real projection window. Opening a different
+      // service while something is still up would otherwise leave the
+      // congregation looking at the old service's content while the operator's
+      // own status bar claims there's nothing on screen.
+      let blankedByUs = false
+      if (projectionOpenRef.current && !isScreenBlankedRef.current) {
+        blankedByUs = true
+        setIsScreenBlanked(true)
+        window.electronAPI.setBlankScreen(true)
+      }
+      if (hadItems) {
+        pushToast({
+          message: `Opened a service (${items.length} item${items.length === 1 ? '' : 's'}) — your previous queue was replaced`,
+          actionLabel: 'Undo',
+          onAction: () => restoreService(snap, blankedByUs)
+        })
+      }
+    },
+    [snapshotService, restoreService, pushToast]
+  )
 
   // Shown under the queue toolbar when Open/Import can't read or parse a
   // file — a damaged or empty .born file otherwise fails with nothing
@@ -1748,6 +1884,20 @@ export default function App() {
             <button
               className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
               onClick={toggleQueue}
+              onDragOver={(e) => {
+                if (isQueueDrag(e.dataTransfer)) e.preventDefault()
+              }}
+              onDragEnter={(e) => {
+                // Hovering a dragged item over the Queue button opens the panel
+                // so the exact slot can be chosen.
+                if (isQueueDrag(e.dataTransfer) && !queueOpen) setQueueChoice('open')
+              }}
+              onDrop={(e) => {
+                const payload = readQueueDrag(e.dataTransfer)
+                if (!payload) return
+                e.preventDefault()
+                void handleDropToQueue(payload, queueRef.current.length)
+              }}
               aria-pressed={queueOpen}
               title={queueOpen ? 'Hide the service queue' : 'Show the service queue'}
             >
@@ -1875,6 +2025,7 @@ export default function App() {
             onUnstage={() => setStagedId(null)}
             onToggleBlank={handleToggleBlank}
             onClearChannel={(id) => window.electronAPI.clearChannel(id)}
+            onDropItem={handleDropToQueue}
           />
         </div>
       </main>
@@ -2049,6 +2200,8 @@ export default function App() {
           setBiblePreview(v)
         }}
       />
+
+      <ToastHost toasts={toasts} onDismiss={dismissToast} />
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

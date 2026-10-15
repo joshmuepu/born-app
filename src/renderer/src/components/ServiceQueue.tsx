@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
 import PreviewLivePair from './PreviewLivePair'
+import { isQueueDrag, readQueueDrag, type QueueDragPayload } from '../dragItem'
 import { itemTitle } from '../../../shared/queueItem'
 import StartScreen from './StartScreen'
 import './ServiceQueue.css'
@@ -69,6 +70,9 @@ interface Props {
   onUnstage?: () => void
   onToggleBlank?: () => void
   onClearChannel?: (channelId: string) => void
+  /** Something dragged in from a browse pane was dropped at `index`. Never
+   *  changes what is live — it only inserts. */
+  onDropItem?: (payload: QueueDragPayload, index: number) => void
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -143,10 +147,13 @@ export default function ServiceQueue({
   onTake = () => {},
   onUnstage = () => {},
   onToggleBlank = () => {},
-  onClearChannel = () => {}
+  onClearChannel = () => {},
+  onDropItem = () => {}
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  // Where a drop would land (0..queue.length), for both an item being reordered
+  // and one dragged in from a browse pane. Shown as an insertion line.
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
   // Brief feedback when Prev/Next genuinely has nowhere to go (the true start
   // of the service, or the true end of all available content) — flow-through
   // means that's rare, so a silent no-op reads as broken rather than "you're
@@ -243,15 +250,44 @@ export default function ServiceQueue({
     const Icon = KIND_ICON[item.kind]
     const dragProps = {
       draggable: true,
-      onDragStart: () => setDragIndex(index),
-      onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverIndex(index) },
-      onDragLeave: () => setDragOverIndex(null),
-      onDrop: () => {
-        if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
-        setDragIndex(null)
-        setDragOverIndex(null)
+      onDragStart: (e: React.DragEvent) => {
+        setDragIndex(index)
+        e.dataTransfer.effectAllowed = 'move'
       },
-      onDragEnd: () => { setDragIndex(null); setDragOverIndex(null) }
+      onDragOver: (e: React.DragEvent) => {
+        if (dragIndex === null && !isQueueDrag(e.dataTransfer)) return
+        e.preventDefault()
+        e.stopPropagation()
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+        setDropIndex(e.clientY > r.top + r.height / 2 ? index + 1 : index)
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const at = dropIndex ?? index
+        if (dragIndex !== null) {
+          // Moving within the queue: "insert before slot `at`" → final index.
+          const to = at > dragIndex ? at - 1 : at
+          if (to !== dragIndex) onReorder(dragIndex, to)
+        } else {
+          const payload = readQueueDrag(e.dataTransfer)
+          if (payload) onDropItem(payload, at)
+        }
+        setDragIndex(null)
+        setDropIndex(null)
+      },
+      onDragEnd: () => { setDragIndex(null); setDropIndex(null) }
+    }
+    // Keyboard alternative to dragging: Alt+↑/↓ moves the focused row. Handled
+    // here, on the row, so it never reaches the global Alt+↑/↓ (which moves the
+    // item that is on screen).
+    const moveWithKeys = (e: React.KeyboardEvent): boolean => {
+      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.target !== e.currentTarget) return false
+      e.preventDefault()
+      e.stopPropagation()
+      const to = e.key === 'ArrowUp' ? index - 1 : index + 1
+      if (to >= 0 && to < queue.length) onReorder(index, to)
+      return true
     }
     const rowClass = [
       'queue-row',
@@ -259,7 +295,7 @@ export default function ServiceQueue({
       active ? 'queue-row--active' : 'queue-row--compact',
       played ? 'queue-row--played' : '',
       isNext ? 'queue-row--next' : '',
-      index === dragOverIndex && dragIndex !== index ? 'queue-row--drag-over' : ''
+      dragIndex === index ? 'queue-row--dragging' : ''
     ].filter(Boolean).join(' ')
 
     if (!active) {
@@ -275,6 +311,7 @@ export default function ServiceQueue({
           title={played ? 'Already shown — click to go to it' : 'Go to this item to read it — use Project to put it on screen'}
           onClick={() => onSelect(index)}
           onKeyDown={(e) => {
+            if (moveWithKeys(e)) return
             if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
               e.preventDefault()
               onSelect(index)
@@ -314,6 +351,7 @@ export default function ServiceQueue({
         title="Go to this item to read it — use Restart to project it again from the top"
         onClick={() => onSelect(index)}
         onKeyDown={(e) => {
+          if (moveWithKeys(e)) return
           if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
             e.preventDefault()
             onSelect(index)
@@ -361,9 +399,46 @@ export default function ServiceQueue({
       {openError && <div className="queue-open-error">{openError}</div>}
 
       {queue.length === 0 ? (
-        <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
+        <div
+          className={`queue-empty-drop${dropIndex === 0 ? ' is-over' : ''}`}
+          onDragOver={(e) => {
+            if (!isQueueDrag(e.dataTransfer)) return
+            e.preventDefault()
+            setDropIndex(0)
+          }}
+          onDragLeave={() => setDropIndex(null)}
+          onDrop={(e) => {
+            e.preventDefault()
+            const payload = readQueueDrag(e.dataTransfer)
+            if (payload) onDropItem(payload, 0)
+            setDropIndex(null)
+          }}
+        >
+          <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
+        </div>
       ) : (
-        <div className="queue-list">
+        <div
+          className="queue-list"
+          onDragOver={(e) => {
+            if (dragIndex === null && !isQueueDrag(e.dataTransfer)) return
+            e.preventDefault()
+            setDropIndex(queue.length)
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropIndex(null)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            if (dragIndex !== null) {
+              if (queue.length - 1 !== dragIndex) onReorder(dragIndex, queue.length - 1)
+            } else {
+              const payload = readQueueDrag(e.dataTransfer)
+              if (payload) onDropItem(payload, queue.length)
+            }
+            setDragIndex(null)
+            setDropIndex(null)
+          }}
+        >
           {groups.map((group) => (
             <div className="queue-section" key={group.label}>
               {showGroupHeaders && (
@@ -373,10 +448,16 @@ export default function ServiceQueue({
                 </div>
               )}
               <div className="queue-section-items">
-                {group.indices.map((index) => renderRow(queue[index], index))}
+                {group.indices.map((index) => (
+                  <Fragment key={queue[index].id}>
+                    {dropIndex === index && <div className="queue-drop-line" aria-hidden="true" />}
+                    {renderRow(queue[index], index)}
+                  </Fragment>
+                ))}
               </div>
             </div>
           ))}
+          {dropIndex === queue.length && <div className="queue-drop-line" aria-hidden="true" />}
         </div>
       )}
 

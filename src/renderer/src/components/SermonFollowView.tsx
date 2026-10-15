@@ -5,6 +5,7 @@ import { refsOverlap } from '../../../shared/paragraphRef'
 import { quoteToItem } from '../../../shared/queueItem'
 import { highlight } from '../highlight'
 import VirtualList from './VirtualList'
+import { startQueueDrag } from '../dragItem'
 import './SermonPanel.css'
 import type { HighlightMode } from '../../../shared/searchHighlight'
 
@@ -162,7 +163,9 @@ export default function SermonFollowView({
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
-                title="Put this paragraph on the screen"
+                draggable
+                onDragStart={(e) => startQueueDrag(e, { type: 'quote', quote: fs.quote })}
+                title="Put this paragraph on the screen — or drag it into the queue"
                 onClick={(e) => { onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
