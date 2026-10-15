@@ -1,0 +1,53 @@
+{
+ "mode": "free",
+ "seconds": 900,
+ "stats": {
+  "stage": {
+   "dropped": 0,
+   "total": 26931,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  },
+  "main": {
+   "dropped": 0,
+   "total": 26905,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  },
+  "graphics": {
+   "dropped": 0,
+   "total": 26931,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  }
+ },
+ "drift": {
+  "stage": {
+   "samples": 1768,
+   "meanAbsMs": 439.1,
+   "p95AbsMs": 819,
+   "maxAbsMs": 868,
+   "firstMs": 19
+  },
+  "graphics": {
+   "samples": 1777,
+   "meanAbsMs": 442.7,
+   "p95AbsMs": 846.1,
+   "maxAbsMs": 889,
+   "firstMs": 20.8
+  }
+ },
+ "trend": {
+  "stage": {
+   "startMs": 23.4,
+   "endMs": 849
+  },
+  "graphics": {
+   "startMs": 19,
+   "endMs": 876.2
+  }
+ }
+}
