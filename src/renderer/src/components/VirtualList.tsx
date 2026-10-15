@@ -157,9 +157,9 @@ function VirtualListInner<T>(
     if (rowsEls.length === 0) return
     // Not laid out yet (hidden panel / no layout engine): the top row is first.
     const laidOut = rowsEls[rowsEls.length - 1].offsetTop > 0
-    const top = laidOut ? el.scrollTop : -1
+    const top = el.scrollTop
     let lo = 0
-    let hi = rowsEls.length - 1
+    let hi = laidOut ? rowsEls.length - 1 : 0
     while (lo < hi) {
       const mid = (lo + hi) >> 1
       const r = rowsEls[mid]
