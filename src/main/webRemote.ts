@@ -473,14 +473,14 @@ function buildHTML(): string {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<meta name="theme-color" content="#0d1117"/>
+<meta name="theme-color" content="#08080a"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="BORN"/>
+<meta name="apple-mobile-web-app-title" content="Born Again"/>
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-icon" href="/icon-180.png"/>
 <link rel="icon" href="/icon-192.png"/>
-<title>BORN Remote</title>
+<title>Born Again Remote</title>
 <link rel="stylesheet" href="/app.css"/>
 </head>
 <body>

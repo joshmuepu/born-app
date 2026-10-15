@@ -2610,3 +2610,32 @@ kbd {
   .palette-trigger { min-width: 0; padding: 0 10px; }
   .palette-trigger span, .palette-trigger kbd { display: none; }
 }
+
+/* ── Status bar: what's live, at a glance ──────────────────── */
+.status-live {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.status-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+.status-chip.is-live { color: var(--live); font-weight: 700; letter-spacing: 0.04em; }
+.status-chip.is-live .status-chip-dot { background: var(--live); }
+.status-chip.is-blank { color: var(--warn); font-weight: 600; }
+.status-chip.is-blank .status-chip-dot { background: var(--warn); }
+@media (max-width: 900px) {
+  .status-live .status-chip:nth-child(n+3) { display: none; }
+}

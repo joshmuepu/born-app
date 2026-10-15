@@ -2091,6 +2091,21 @@ export default function App() {
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Resume</button>
           </>
         ) : null}
+        <div className="status-live" aria-live="polite">
+          <span className={`status-chip${projectionOpen ? (isScreenBlanked ? ' is-blank' : ' is-live') : ''}`}>
+            <span className="status-chip-dot" aria-hidden="true" />
+            {projectionOpen ? (isScreenBlanked ? 'Screen hidden' : 'On air') : 'Projection off'}
+          </span>
+          {stageOpen && <span className="status-chip">Stage monitor</span>}
+          {displayInfo && (
+            <span className="status-chip" title={displayInfo.targetName ?? undefined}>
+              {displayInfo.displays.length} display{displayInfo.displays.length === 1 ? '' : 's'}
+            </span>
+          )}
+          <span className="status-chip">
+            {serviceQueue.length} in queue
+          </span>
+        </div>
       </footer>
     </div>
   )
