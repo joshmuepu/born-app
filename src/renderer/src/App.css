@@ -38,12 +38,12 @@
   --text-secondary: #b2afaa;
   --text-tertiary: #8a8782;
   --border: #26262c;
-  --border-strong: #3a3a42;
+  --border-strong: #6a6a72; /* component boundaries: >= 3:1 on every surface */
 
   --danger: #ff5b61;      /* reserved for actual errors/destructive actions — never decorative */
   --ok: #4cc17f;
   --warn: #f0983e;
-  --on-danger: #ffffff;
+  --on-danger: #1c0507;
 
   /* Content identity — tabs, badges, queue-item borders. Never on a
      button, so it's never confused with an action. */
@@ -87,14 +87,14 @@
   --text-secondary: #55503f;
   --text-tertiary: #6d6755;
   --border: #e3ddcf;
-  --border-strong: #cfc7b5;
+  --border-strong: #7d7868;
 
   --danger: #c22530;
   --ok: #1b7544;
   --warn: #9a520c;
   --on-danger: #ffffff;
 
-  --sermons: #7d745a;
+  --sermons: #6f6650;
   --sermons-wash: rgba(125, 116, 90, 0.10);
   --on-sermons: #ffffff;
   --bible: #38703f;
@@ -109,7 +109,7 @@
 
   --gold: #86581a;
   --gold-border: #6b4718;
-  --live: #d3202a;
+  --live: #c01c26;
   --scrim: rgba(20, 16, 8, 0.4);
   --shadow-sm: 0 1px 2px rgba(20, 16, 8, 0.08);
   --shadow-md: 0 8px 24px rgba(20, 16, 8, 0.1);
@@ -134,7 +134,11 @@
   --accent: #c9b6ff;
   --accent-hover: #ffffff;
   --on-accent: #000000;
-  --live: #ff6b6b;
+  --live: #ff8585;
+  --danger: #ff9494;
+  --on-danger: #000000;
+  --ok: #6fe39c;
+  --warn: #ffb84d;
   --sermons: #ffffff;
   --bible: #8dff9f;
   --songs: #ffcf70;
@@ -154,7 +158,10 @@
   --accent: #3b1f9a;
   --accent-hover: #000000;
   --on-accent: #ffffff;
-  --live: #b00010;
+  --live: #9a0010;
+  --danger: #8f0a14;
+  --ok: #0a5028;
+  --warn: #7a3d00;
   --sermons: #000000;
   --bible: #0b4a1a;
   --songs: #5c3a00;
@@ -2592,4 +2599,35 @@ kbd {
 .status-chip.is-blank .status-chip-dot { background: var(--warn); }
 @media (max-width: 900px) {
   .status-live .status-chip:nth-child(n+3) { display: none; }
+}
+
+/* ── Control boundaries ───────────────────────────────────────────────────
+   WCAG 1.4.11: the edge of an input, select or button that is identified by
+   its edge must be >= 3:1 against what it sits on. Hairline --border is for
+   layout dividers only; interactive controls use --border-strong. Scoped
+   with :root .app so it wins over per-component rules regardless of load order. */
+:root .app :is(
+  .btn-secondary,
+  .filter-toggle,
+  .screens-trigger,
+  .remote-trigger,
+  select,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  .language-select,
+  .modal-input,
+  .search-input,
+  .browse-month-pill:not(:disabled),
+  .bible-browse-chapter,
+  .bible-browse-book,
+  .song-jump-chip,
+  .song-browse-hub-card,
+  .bible-browse-hub-card,
+  .browse-year-cell,
+  .browse-cal-cell.has-sermons
+) {
+  border-color: var(--border-strong);
+}
+:root .app .browse-panel[data-view='grid'] .browse-list--grid .browse-item {
+  border-color: var(--border-strong);
 }

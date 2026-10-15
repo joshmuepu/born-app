@@ -37,7 +37,7 @@
 .browse-mode:hover { background: var(--bg-hover); color: var(--text-primary); }
 .browse-mode.active {
   background: var(--sermons-wash);
-  border-color: color-mix(in srgb, var(--sermons) 40%, transparent);
+  border-color: var(--sermons);
   color: var(--text-primary);
 }
 .browse-mode.active svg { color: var(--sermons); }

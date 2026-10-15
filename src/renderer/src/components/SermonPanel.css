@@ -186,7 +186,7 @@
 }
 .results-empty-hint {
   font-size: var(--text-base);
-  opacity: 0.8;
+  color: var(--text-secondary);
 }
 
 /* .results-count is shared (App.css) — Bible and Songs show the same label. */

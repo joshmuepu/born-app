@@ -206,8 +206,6 @@
   display: flex;
   gap: 4px;
   align-items: flex-start;
-  opacity: 0.6;
-  transition: opacity 0.1s;
 }
 .bible-verse:hover .bible-verse-actions,
 .bible-verse:focus-within .bible-verse-actions,
@@ -521,3 +519,7 @@
 .bible-panel[data-view='list'] .bible-browse-book-abbrev { display: none; }
 .bible-panel[data-view='list'] .bible-browse-book-name { display: inline; font-weight: 600; font-size: 0.9rem; }
 .bible-right .follow-list { padding-bottom: 32px; }
+
+@media (hover: none) {
+  .bible-verse-actions { opacity: 1; visibility: visible; }
+}

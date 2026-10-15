@@ -84,7 +84,6 @@
  * a key, without every keyless row (most of them, for a while) reading as
  * a warning. */
 .song-row-meta-nokey {
-  opacity: 0.65;
   font-style: italic;
 }
 
@@ -247,7 +246,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  opacity: 0.55;
+  opacity: 1;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 .song-slide:hover .song-slide-project,
@@ -912,3 +911,7 @@
   gap: 6px;
 }
 .songs-panel[data-view='grid'] .song-row-actions { justify-content: flex-start; }
+
+@media (hover: none) {
+  .song-slide-project { opacity: 1; }
+}

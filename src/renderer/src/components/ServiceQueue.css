@@ -214,7 +214,7 @@
  * view entirely, so a quick glance up the list still confirms "yes, we
  * already did that one" instead of just silently vanishing. */
 .queue-row--played {
-  opacity: 0.55;
+  opacity: 0.78;
 }
 .queue-row--played:hover {
   opacity: 0.85;
@@ -508,7 +508,6 @@
   font-size: var(--text-2xs);
   letter-spacing: 0.06em;
   color: var(--text-secondary);
-  opacity: 0.65;
 }
 .live-next-text {
   font-size: var(--text-sm);
@@ -572,7 +571,6 @@
 }
 .queue-upnext-key {
   color: var(--text-secondary);
-  opacity: 0.7;
 }
 
 .btn-nav {

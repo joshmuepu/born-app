@@ -20,8 +20,8 @@ export const APP_CSS = `
     --bg:#f4f1ea; --surface:#ffffff; --surface2:#f0ece3; --border:#e3ddcf;
     --text:#1a1814; --text2:#55503f; --text3:#6d6755;
     --accent:#5b3fb0; --accent-hover:#4a3294; --accent-ink:#ffffff;
-    --live:#d3202a; --warn:#9a520c; --warn-ink:#ffffff;
-    --sage:#38703f; --amber:#86581a; --stone:#7d745a;
+    --live:#c01c26; --warn:#9a520c; --warn-ink:#ffffff;
+    --sage:#38703f; --amber:#86581a; --stone:#6f6650;
     color-scheme:light;
   }
 }
