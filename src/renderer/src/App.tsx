@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
@@ -22,6 +22,7 @@ import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import ChannelSermonsPanel from './components/ChannelSermonsPanel'
 import SongsPanel from './components/SongsPanel'
+import MediaPanel from './components/MediaPanel'
 import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
@@ -39,7 +40,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -59,7 +60,7 @@ const QUEUE_MIN = 280
 const QUEUE_MAX = 560
 const QUEUE_DEFAULT = 360
 
-type TopTab = 'sermons' | 'bible' | 'songs'
+type TopTab = 'sermons' | 'bible' | 'songs' | 'media'
 type SermonsSubTab = 'search' | 'browse'
 
 interface Projected {
@@ -890,6 +891,9 @@ export default function App() {
             item = songToItem(song as SongDetail)
             window.electronAPI.noteSongUsed(payload.songId)
           }
+        } else if (payload.type === 'media') {
+          const rec = await window.electronAPI.mediaGet(payload.mediaId)
+          if (rec) item = mediaToItem(rec)
         }
       } catch {
         item = null
@@ -911,6 +915,23 @@ export default function App() {
     },
     [bibleTranslation, mutateQueue, pushToast]
   )
+  /** "Add to queue" from the Media area: appends, with an Undo. Never changes what is live. */
+  const handleAddMediaToQueue = useCallback(
+    (recs: Array<{ id: string; name: string; animated?: boolean }>) => {
+      if (recs.length === 0) return
+      const placed = recs.map((r) => mediaToItem(r))
+      mutateQueue((q) => [...q, ...placed])
+      pushToast({
+        message: placed.length === 1 ? `Added “${placed[0].name}” to the queue` : `Added ${placed.length} pictures to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => placed.reduce((acc, it) => removeById(acc, it.id), q))
+      })
+      recs.forEach((r) => void window.electronAPI.mediaMarkUsed(r.id))
+    },
+    [mutateQueue, pushToast]
+  )
+  const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
   // ── Back / forward history across the drill-down ───────────────────────────
   // Every time the operator opens a sermon, a chapter or a song it is noted;
   // Alt+←/→, the mouse's back/forward buttons or the header chevrons walk it.
@@ -1313,6 +1334,8 @@ export default function App() {
       { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
       { id: 'go-bible', label: 'Go to Bible', keywords: 'scripture verse', run: () => setTopTab('bible') },
       { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
+      { id: 'go-media', label: 'Go to Media', keywords: 'pictures photos images slides library backgrounds', run: () => setTopTab('media') },
+      { id: 'media-add', label: 'Add pictures to the library…', keywords: 'import photos images media', run: () => { setTopTab('media'); void window.electronAPI.mediaPickAndImport({}) } },
       {
         id: 'search-sermons',
         label: 'Search sermons',
@@ -2084,7 +2107,8 @@ export default function App() {
             {([
               ['sermons', 'Sermons', Mic2],
               ['bible', 'Bible', BookOpen],
-              ['songs', 'Songs', Music2]
+              ['songs', 'Songs', Music2],
+              ['media', 'Media', ImageIcon]
             ] as const).map(([id, label, Icon]) => (
               <button
                 key={id}
@@ -2217,6 +2241,16 @@ export default function App() {
               onAddSong={handleAddSong}
               onProjectSong={handleProjectSong}
               onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
+            />
+          </div>
+
+          <div className="panel-view" hidden={topTab !== 'media'}>
+            <MediaPanel
+              visible={topTab === 'media'}
+              onAddToQueue={handleAddMediaToQueue}
+              pushToast={pushToast}
+              focusId={mediaFocusId}
+              onFocused={() => setMediaFocusId(null)}
             />
           </div>
           </div>
@@ -2468,6 +2502,10 @@ export default function App() {
         onOpenSong={(id) => {
           setTopTab('songs')
           setFocusSongId(id)
+        }}
+        onOpenMedia={(id) => {
+          setTopTab('media')
+          setMediaFocusId(id)
         }}
         onOpenVerse={(v) => {
           setTopTab('bible')

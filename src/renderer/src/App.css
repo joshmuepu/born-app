@@ -59,6 +59,9 @@
   --screens: #5db4ea;      /* Ice Blue — Stage monitor / Screens menu only */
   --screens-wash: rgba(93, 180, 234, 0.15);
   --on-screens: #06131c;
+  --media: #4fc3b8;        /* Teal — the Media area (pictures; later video) */
+  --media-wash: rgba(79, 195, 184, 0.15);
+  --on-media: #04201d;
 
   --gold: #d49a4c;         /* update banner + alert accents — same Amber as Songs */
   --gold-border: #a8712e;
@@ -106,6 +109,9 @@
   --screens: #1a6aa0;
   --screens-wash: rgba(26, 106, 160, 0.10);
   --on-screens: #ffffff;
+  --media: #1b756d;
+  --media-wash: rgba(27, 117, 109, 0.10);
+  --on-media: #ffffff;
 
   --gold: #86581a;
   --gold-border: #6b4718;
@@ -143,6 +149,7 @@
   --bible: #8dff9f;
   --songs: #ffcf70;
   --screens: #8fd3ff;
+  --media: #7ff0e6;
 }
 :root[data-contrast='true'][data-theme='light'] {
   --bg-primary: #ffffff;
@@ -167,6 +174,7 @@
   --bible: #0b4a1a;
   --songs: #5c3a00;
   --screens: #004a80;
+  --media: #00504a;
 }
 
 :root {
@@ -471,6 +479,7 @@ body {
 .rail-btn--sermons.active { color: var(--sermons); box-shadow: inset 2px 0 0 var(--sermons); }
 .rail-btn--bible.active { color: var(--bible); box-shadow: inset 2px 0 0 var(--bible); }
 .rail-btn--songs.active { color: var(--songs); box-shadow: inset 2px 0 0 var(--songs); }
+.rail-btn--media.active { color: var(--media); box-shadow: inset 2px 0 0 var(--media); }
 .rail-btn--queue.active { color: var(--accent); }
 .rail-badge {
   position: absolute;

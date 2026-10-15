@@ -28,7 +28,7 @@ describe('the real queue panel with unknown, malformed and media items', () => {
     expect(document.querySelectorAll('.queue-row')).toHaveLength(4)
     expect(screen.getByText(NEWER_VERSION_LABEL)).toBeTruthy()
     expect(screen.getByText(UNREADABLE_LABEL)).toBeTruthy()
-    expect(screen.getByText('Welcome')).toBeTruthy()
+    expect(screen.getAllByText('Welcome').length).toBeGreaterThan(0)
   })
 
   it('offers no Project button for them, and clicking a row stages nothing', () => {

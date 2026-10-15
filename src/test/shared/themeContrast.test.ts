@@ -54,7 +54,7 @@ const themes: Array<[string, Record<string, string>, boolean]> = [
 
 const SURFACES = ['bg-primary', 'bg-secondary', 'bg-panel', 'bg-hover']
 const SURFACES_ALL = [...SURFACES, 'bg-active']
-const CONTENT = ['sermons', 'bible', 'songs', 'screens']
+const CONTENT = ['sermons', 'bible', 'songs', 'screens', 'media']
 
 describe.each(themes)('%s theme contrast', (_name, t, strong) => {
   const min = (aa: number, aaa: number): number => (strong ? aaa : aa)

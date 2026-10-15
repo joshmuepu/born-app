@@ -42,6 +42,8 @@ export interface Slide {
    *  and a follow channel needs to know which page to show, not just which
    *  paragraph. */
   page?: number
+  /** Media slides only: which library picture this slide shows. */
+  media?: { mediaId: string }
 }
 
 /** Which remote contributor added an item — absent for anything added
@@ -267,6 +269,18 @@ export function quoteToItem(quote: Quote): QuoteItem {
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
+/** The queue item for one library picture. */
+export function mediaToItem(rec: { id: string; name: string; animated?: boolean }): MediaItem {
+  return {
+    kind: 'media',
+    id: makeId('media'),
+    mediaId: rec.id,
+    mediaKind: 'image',
+    name: rec.name,
+    slides: [{ text: rec.name, media: { mediaId: rec.id } }]
+  }
+}
+
 /** Version of the `ext` envelope this build writes and understands. */
 export const EXT_VERSION = 1
 
@@ -309,10 +323,11 @@ const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
     if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
     const { v: _v, kind: _k, mediaId, mediaKind, name, ...extra } = ext
     const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
+    const nm = typeof name === 'string' ? name : 'Media'
     return {
       kind: 'media',
       id: typeof id === 'string' && id ? id : makeId('media'),
-      slides: [],
+      slides: [{ text: nm, media: { mediaId } }],
       source: source as MediaItem['source'],
       mediaId,
       mediaKind,

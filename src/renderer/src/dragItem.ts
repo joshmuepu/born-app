@@ -7,6 +7,7 @@ export type QueueDragPayload =
   | { type: 'quote'; quote: Quote }
   | { type: 'bible'; reference: string }
   | { type: 'song'; songId: number }
+  | { type: 'media'; mediaId: string }
 
 export const QUEUE_DRAG_MIME = 'application/x-born-queue-item'
 
@@ -29,7 +30,7 @@ export function readQueueDrag(dt: DataTransfer | null): QueueDragPayload | null 
     const raw = dt.getData(QUEUE_DRAG_MIME)
     if (!raw) return null
     const p = JSON.parse(raw) as QueueDragPayload
-    if (p && (p.type === 'quote' || p.type === 'bible' || p.type === 'song')) return p
+    if (p && (p.type === 'quote' || p.type === 'bible' || p.type === 'song' || (p.type === 'media' && typeof p.mediaId === 'string'))) return p
   } catch {
     /* not ours */
   }
@@ -39,5 +40,6 @@ export function readQueueDrag(dt: DataTransfer | null): QueueDragPayload | null 
 function payloadLabel(p: QueueDragPayload): string {
   if (p.type === 'quote') return `${p.quote.sermonTitle} ¶${p.quote.paragraphRef}`
   if (p.type === 'bible') return p.reference
+  if (p.type === 'media') return 'Picture'
   return `Song ${p.songId}`
 }

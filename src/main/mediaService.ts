@@ -5,8 +5,10 @@
  * index, tidies at start-up, and turns operator actions (a file dialog, a
  * drop) into library calls.
  */
-import { app, dialog, ipcMain, BrowserWindow } from 'electron'
-import { copyFileSync, existsSync, mkdirSync, statSync, statfsSync } from 'fs'
+import { app, dialog, ipcMain, BrowserWindow, protocol, net, shell } from 'electron'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { pathToFileURL } from 'url'
 import { join } from 'path'
 import { log } from './logger'
 import { checkAndRecoverDatabase } from './dbIntegrity'
@@ -14,6 +16,11 @@ import { MediaLibrary, type ImportOptions, type ListQuery } from './mediaLibrary
 import { MediaDbTooNewError } from './mediaSchema'
 import { electronMediaDecoder, disposeMediaDecoder } from './mediaDecoder'
 import { IMAGE_EXTENSIONS, MEDIA_MESSAGES, type MediaImportResult, type MediaRecord } from '../shared/media'
+
+// `born-media://thumb/<id>/<320|960>` and `born-media://file/<id>` — how the
+// renderer (and, in Step 4, the output windows) read library pictures without
+// ever being given a file path. Must be declared before the app is ready.
+protocol.registerSchemesAsPrivileged([{ scheme: 'born-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
 
 let lib: MediaLibrary | null = null
 let unavailable: string | null = null
@@ -92,7 +99,38 @@ function freeBytes(dir: string): number | null {
 
 const unavailableResult = (path = ''): MediaImportResult => ({ ok: false, code: 'library-unavailable', message: unavailable ?? MEDIA_MESSAGES['library-unavailable'], path })
 
+const CONTENT_TYPE: Record<string, string> = { jpg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif' }
+
+function registerMediaProtocol(): void {
+  protocol.handle('born-media', async (req) => {
+    const notFound = new Response('not found', { status: 404 })
+    try {
+      const u = new URL(req.url)
+      const parts = u.pathname.split('/').filter(Boolean)
+      const l = getMediaLibrary()
+      if (!l) return notFound
+      const id = u.hostname === 'thumb' || u.hostname === 'file' ? parts[0] : ''
+      if (!/^m_[0-9a-f]{12}$/.test(id)) return notFound
+      if (u.hostname === 'thumb') {
+        const w = parts[1] === '960' ? 960 : 320
+        const p = await l.thumbnail(id, w)
+        if (!p || !existsSync(p)) return notFound
+        return new Response(readFileSync(p), { headers: { 'content-type': p.endsWith('.png') ? 'image/png' : 'image/jpeg', 'cache-control': 'private, max-age=3600' } })
+      }
+      const rec = l.get(id)
+      const p = rec ? l.resolvePath(rec) : null
+      if (!rec || !p || !existsSync(p)) return notFound
+      const r = await net.fetch(pathToFileURL(p).href)
+      return new Response(r.body, { headers: { 'content-type': CONTENT_TYPE[rec.ext] ?? 'application/octet-stream', 'cache-control': 'no-store' } })
+    } catch (e) {
+      log.warn('born-media protocol error', e)
+      return notFound
+    }
+  })
+}
+
 export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
+  registerMediaProtocol()
   const need = <T>(fn: (l: MediaLibrary) => T, fallback: T): T => {
     const l = getMediaLibrary()
     return l ? fn(l) : fallback
@@ -143,6 +181,28 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
   ipcMain.handle('media:folder-create', (_e, name: string, parentId?: string | null) => need((l) => l.createFolder(name, parentId ?? null), null))
   ipcMain.handle('media:folder-rename', (_e, id: string, name: string) => need((l) => (l.renameFolder(id, name), true), false))
   ipcMain.handle('media:folder-delete', (_e, id: string) => need((l) => (l.deleteFolder(id), true), false))
+  // A picture pasted from the clipboard (e.g. a screenshot): written to a temp file, imported, temp removed.
+  ipcMain.handle('media:import-buffer', async (_e, name: string, bytes: ArrayBuffer, opts?: ImportOptions) => {
+    const l = getMediaLibrary()
+    if (!l) return unavailableResult()
+    if (!(bytes instanceof ArrayBuffer) && !ArrayBuffer.isView(bytes)) return { ok: false, code: 'io', message: MEDIA_MESSAGES.io, path: '' } as MediaImportResult
+    const dir = mkdtempSync(join(tmpdir(), 'born-paste-'))
+    try {
+      const safe = (name || 'Pasted picture.png').replace(/[^A-Za-z0-9._ -]/g, '_').slice(0, 80)
+      const p = join(dir, safe)
+      writeFileSync(p, Buffer.from(bytes as ArrayBuffer))
+      return await l.importFile(p, opts ?? {})
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+  ipcMain.handle('media:reveal', (_e, id: string) => {
+    const l = getMediaLibrary()
+    const rec = l?.get(id)
+    const p = rec && l ? l.resolvePath(rec) : null
+    if (p && existsSync(p)) shell.showItemInFolder(p)
+    return !!p
+  })
   ipcMain.handle('media:relink-pick', async (_e, id: string) => {
     const l = getMediaLibrary()
     if (!l) return { ok: false, message: unavailable ?? MEDIA_MESSAGES['library-unavailable'] }

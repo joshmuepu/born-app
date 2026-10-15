@@ -22,9 +22,11 @@ interface Props {
   onOpenSermon: (quote: Quote) => void
   onOpenSong: (songId: number) => void
   onOpenVerse: (v: { bookNum: number; chapter: number; verse: number }) => void
+  /** Navigation only: shows the picture in the Media library. */
+  onOpenMedia?: (id: string) => void
 }
 
-type Group = 'Actions' | 'Verse' | 'Sermons' | 'Songs' | 'Bible text'
+type Group = 'Actions' | 'Verse' | 'Sermons' | 'Songs' | 'Media' | 'Bible text'
 interface Item {
   id: string
   group: Group
@@ -34,7 +36,7 @@ interface Item {
   run: () => void
 }
 
-const GROUP_ORDER: Group[] = ['Verse', 'Actions', 'Sermons', 'Songs', 'Bible text']
+const GROUP_ORDER: Group[] = ['Verse', 'Actions', 'Sermons', 'Songs', 'Media', 'Bible text']
 
 function matches(c: PaletteCommand, q: string): boolean {
   const hay = `${c.label} ${c.keywords ?? ''}`.toLowerCase()
@@ -52,7 +54,8 @@ export default function CommandPalette({
   translation,
   onOpenSermon,
   onOpenSong,
-  onOpenVerse
+  onOpenVerse,
+  onOpenMedia
 }: Props): JSX.Element | null {
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -60,6 +63,7 @@ export default function CommandPalette({
   const [sermons, setSermons] = useState<Quote[]>([])
   const [songs, setSongs] = useState<SongSummary[]>([])
   const [bibleHits, setBibleHits] = useState<BibleSearchHit[]>([])
+  const [pictures, setPictures] = useState<Array<{ id: string; name: string; sub: string }>>([])
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -82,30 +86,38 @@ export default function CommandPalette({
       setSermons([])
       setSongs([])
       setBibleHits([])
+      setPictures([])
       setBusy(false)
       return
     }
     setBusy(true)
     const t = window.setTimeout(async () => {
       const api = window.electronAPI
-      const [v, sm, sg, bb] = await Promise.all([
+      const [v, sm, sg, bb, pics] = await Promise.all([
         api
           .lookupPassage(q, translation)
           .then((r) => (r && !(r as { error?: string }).error ? (r as ResolvedPassage) : null))
           .catch(() => null),
         q.length >= 3 ? api.searchSermons(q).catch(() => [] as Quote[]) : Promise.resolve([] as Quote[]),
         api.searchSongs(q).catch(() => [] as SongSummary[]),
-        q.length >= 4 ? api.searchBible(q, translation, 'phrase').catch(() => [] as BibleSearchHit[]) : Promise.resolve([] as BibleSearchHit[])
+        q.length >= 4 ? api.searchBible(q, translation, 'phrase').catch(() => [] as BibleSearchHit[]) : Promise.resolve([] as BibleSearchHit[]),
+        onOpenMedia
+          ? api
+              .mediaList({ search: q, limit: 6 })
+              .then((l) => l.map((m) => ({ id: m.id, name: m.name, sub: `${m.width}×${m.height}${m.tags.length ? ' · ' + m.tags.join(', ') : ''}` })))
+              .catch(() => [])
+          : Promise.resolve([])
       ])
       if (mine !== seq.current) return
       setVerse(v)
       setSermons(sm.slice(0, 6))
       setSongs(sg.slice(0, 6))
       setBibleHits(bb.slice(0, 5))
+      setPictures(pics)
       setBusy(false)
     }, 200)
     return () => window.clearTimeout(t)
-  }, [query, open, translation])
+  }, [query, open, translation, onOpenMedia])
 
   const items: Item[] = useMemo(() => {
     const out: Item[] = []
@@ -147,6 +159,9 @@ export default function CommandPalette({
         run: () => onOpenSong(s.id)
       })
     )
+    pictures.forEach((m) =>
+      out.push({ id: `media:${m.id}`, group: 'Media', title: m.name, sub: m.sub, hint: 'Open', run: () => onOpenMedia?.(m.id) })
+    )
     bibleHits.forEach((h) =>
       out.push({
         id: `bible:${h.reference}`,
@@ -159,7 +174,7 @@ export default function CommandPalette({
     )
     // Stable group order.
     return GROUP_ORDER.flatMap((g) => out.filter((i) => i.group === g))
-  }, [query, verse, commands, sermons, songs, bibleHits, onOpenSermon, onOpenSong, onOpenVerse])
+  }, [query, verse, commands, sermons, songs, bibleHits, pictures, onOpenSermon, onOpenSong, onOpenVerse, onOpenMedia])
 
   useEffect(() => {
     setCursor(0)

@@ -337,7 +337,7 @@ export default function ServiceQueue({
 
     if (!active) {
       const subtitle = itemSubtitle(item)
-      const preview = item.slides[0]?.text
+      const preview = item.kind === 'media' || item.kind === 'unknown' ? undefined : item.slides[0]?.text
       const detail = [subtitle, preview].filter(Boolean).join('  —  ')
       return (
         <div

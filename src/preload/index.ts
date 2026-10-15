@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 
 /** Which phone/role added something, from the remote's "Who's this?" picker
  *  — undefined when that phone skipped picking one. */
@@ -351,6 +351,10 @@ const api = {
   mediaFolderRename: (id: string, name: string): Promise<boolean> => ipcRenderer.invoke('media:folder-rename', id, name),
   mediaFolderDelete: (id: string): Promise<boolean> => ipcRenderer.invoke('media:folder-delete', id),
   mediaRelinkPick: (id: string): Promise<unknown> => ipcRenderer.invoke('media:relink-pick', id),
+  mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-buffer', name, bytes, opts),
+  mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
+  /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
+  mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {
     const h = (_e: IpcRendererEvent, p: { done: number; total: number; current: string }): void => cb(p)
     ipcRenderer.on('media:import-progress', h)
