@@ -642,7 +642,6 @@ export default function SongsPanel({
           ) : (
             <div className="songs-browse-body">
               <div className="songs-all-wrap">
-                {currentLetter && <div className="songs-letter-pill" aria-hidden="true">{currentLetter}</div>}
                 <VirtualList
                   ref={allListRef}
                   className="songs-all-list"
@@ -653,7 +652,13 @@ export default function SongsPanel({
                   paddingStart={4}
                   paddingEnd={12}
                   itemKey={(r, i) => (r.kind === 'head' ? `h:${r.letter}` : `s:${r.songs[0].id}:${i}`)}
-                  onFirstVisible={(i) => setCurrentLetter(allRows[i]?.letter ?? '')}
+                  onFirstVisible={(i, atEnd) =>
+                    // At the very end of the list the last letter is on screen even
+                    // though a shorter earlier letter still owns the top row.
+                    setCurrentLetter(
+                      (atEnd ? allRows[allRows.length - 1]?.letter : allRows[i]?.letter) ?? ''
+                    )
+                  }
                   renderItem={(r) =>
                     r.kind === 'head' ? (
                       <div className="songs-letter-head">{r.letter}</div>
@@ -669,7 +674,8 @@ export default function SongsPanel({
                 {ALPHABET.map((l) => (
                   <button
                     key={l}
-                    className={`songs-azrail-btn${availableLetters.has(l) ? '' : ' is-empty'}`}
+                    className={`songs-azrail-btn${availableLetters.has(l) ? '' : ' is-empty'}${currentLetter === l ? ' is-current' : ''}`}
+                    aria-current={currentLetter === l ? 'true' : undefined}
                     disabled={!availableLetters.has(l)}
                     onClick={() => jumpToLetter(l)}
                   >

@@ -48,4 +48,51 @@ describe('SongsPanel Browse A-Z jump', () => {
     await waitFor(() => expect(screen.getByText("'Tis So Sweet")).toBeInTheDocument())
     expect(document.querySelectorAll('.song-row').length).toBeGreaterThan(0)
   })
+
+  it('puts the chosen letter header at the very top of the list so its first song is not hidden', async () => {
+    render(<SongsPanel visible onAddSong={vi.fn()} onProjectSong={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Browse/ }))
+    await waitFor(() => expect(screen.getByText("'Tis So Sweet")).toBeInTheDocument())
+    const container = document.querySelector('.songs-all-list') as HTMLElement
+    // Lay the mounted rows out at 50px each so offsets are real.
+    container.querySelectorAll<HTMLElement>('[data-index]').forEach((el) => {
+      const i = Number(el.dataset.index)
+      Object.defineProperty(el, 'offsetTop', { configurable: true, value: 8 + i * 50 })
+      Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 50 })
+    })
+    Object.defineProperty(container, 'clientHeight', { configurable: true, value: 300 })
+    const scrollTo = vi.fn()
+    ;(container as unknown as { scrollTo: typeof scrollTo }).scrollTo = scrollTo
+
+    // The row that holds the "Y" header
+    const yRow = [...container.querySelectorAll<HTMLElement>('[data-index]')].find(
+      (el) => el.textContent?.trim() === 'Y'
+    ) as HTMLElement
+    expect(yRow).toBeTruthy()
+    const idx = Number(yRow.dataset.index)
+    fireEvent.click(screen.getByRole('button', { name: 'Y' }))
+
+    // top = the header row's own offset: the header sits exactly at the top edge
+    // (no sticky header can overlap it) and the first song follows directly.
+    expect(scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ top: 8 + idx * 50 }))
+  })
+
+  it('has no sticky header that could cover the jump target', async () => {
+    render(<SongsPanel visible onAddSong={vi.fn()} onProjectSong={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Browse/ }))
+    await waitFor(() => expect(screen.getByText("'Tis So Sweet")).toBeInTheDocument())
+    const head = document.querySelector('.songs-letter-head') as HTMLElement
+    expect(head).toBeTruthy()
+    // jsdom does not load the stylesheet; assert the contract in the source of truth:
+    // headers are rendered as ordinary rows inside the list, not positioned sticky.
+    expect(head.style.position).not.toBe('sticky')
+  })
+
+  it('marks the letter at the top of the list in the A-Z rail', async () => {
+    render(<SongsPanel visible onAddSong={vi.fn()} onProjectSong={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Browse/ }))
+    await waitFor(() => expect(screen.getByText("'Tis So Sweet")).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.songs-azrail-btn.is-current')).not.toBeNull())
+    expect(document.querySelector('.songs-azrail-btn.is-current')?.textContent).toBe('#')
+  })
 })

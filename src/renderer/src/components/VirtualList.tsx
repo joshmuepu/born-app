@@ -34,8 +34,9 @@ interface Props<T> {
   smoothFocus?: boolean
   paddingStart?: number
   paddingEnd?: number
-  /** Called with the first visible row's index whenever it changes. */
-  onFirstVisible?: (index: number) => void
+  /** Called with the first visible row's index whenever it changes (and, for
+   *  a fully-mounted list, whether the scroller is at its very end). */
+  onFirstVisible?: (index: number, atEnd?: boolean) => void
   /** Extra attributes for the scroller (role, aria-label, data-*). */
   scrollerProps?: React.HTMLAttributes<HTMLDivElement>
 }
@@ -145,10 +146,53 @@ function VirtualListInner<T>(
     }
   }, [start0])
 
+  // Fully-mounted lists have no virtualizer to say what is at the top, so work
+  // it out from the scroll position (rows are in normal flow, so a binary
+  // search over their offsets is exact and cheap).
+  const rafRef = useRef(0)
+  const reportPlainFirstVisible = (): void => {
+    const el = scrollerRef.current
+    if (!el || windowed || !onFirstVisibleRef.current) return
+    const rowsEls = el.querySelectorAll<HTMLElement>('[data-index]')
+    if (rowsEls.length === 0) return
+    // Not laid out yet (hidden panel / no layout engine): the top row is first.
+    const laidOut = rowsEls[rowsEls.length - 1].offsetTop > 0
+    const top = laidOut ? el.scrollTop : -1
+    let lo = 0
+    let hi = rowsEls.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      const r = rowsEls[mid]
+      if (r.offsetTop + r.offsetHeight > top + 1) hi = mid
+      else lo = mid + 1
+    }
+    const index = Number(rowsEls[lo].dataset.index ?? lo)
+    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 2
+    const key = atEnd ? -2 - index : index
+    if (key !== firstVisible.current) {
+      firstVisible.current = key
+      onFirstVisibleRef.current(index, atEnd)
+    }
+  }
+  const onPlainScroll = (): void => {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(reportPlainFirstVisible)
+  }
+  useEffect(() => {
+    if (!windowed) reportPlainFirstVisible()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowed, items.length])
+
   const scrollerStyle = { overflowY: 'auto' as const, position: 'relative' as const, ...scrollerProps?.style }
   if (!windowed) {
     return (
-      <div {...scrollerProps} ref={scrollerRef} className={className} style={scrollerStyle}>
+      <div
+        {...scrollerProps}
+        ref={scrollerRef}
+        className={className}
+        style={scrollerStyle}
+        onScroll={onPlainScroll}
+      >
         <div style={{ paddingTop: paddingStart, paddingBottom: paddingEnd }}>
           {items.map((item, i) => (
             <div

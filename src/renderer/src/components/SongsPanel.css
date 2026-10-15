@@ -600,6 +600,11 @@
   color: var(--border);
   cursor: default;
 }
+/* The letter whose songs are at the top of the list right now. */
+.songs-azrail-btn.is-current {
+  background: var(--accent);
+  color: var(--on-accent);
+}
 
 /* ── Songbook picker ──────────────────────────────────────────────────── */
 .songs-songbook-menu {
@@ -919,21 +924,6 @@
    a sticky header. */
 .songs-all-wrap { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .songs-all-wrap .songs-all-list { flex: 1; min-height: 0; padding: 0 8px; }
-.songs-letter-pill {
-  position: absolute;
-  top: 6px;
-  right: 12px;
-  z-index: 2;
-  min-width: 28px;
-  padding: 2px 8px;
-  text-align: center;
-  font-size: var(--text-xs);
-  font-weight: 800;
-  color: var(--on-accent);
-  background: var(--accent);
-  border-radius: var(--r-full);
-  pointer-events: none;
-}
 .songs-letter-head { position: static; }
 .songs-vrow--grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .songs-vrow--list { display: block; }
