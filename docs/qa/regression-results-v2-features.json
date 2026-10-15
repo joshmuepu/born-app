@@ -1,0 +1,260 @@
+[
+ {
+  "area": "Screens popover",
+  "name": "popover lists Congregation, Stage and Graphics",
+  "ok": true,
+  "detail": "SCREENS | All connected | Manage… | CONGREGATION | Turn on |  | Automatic |  | STAGE | Turn on | GRAPHICS | Add in Manage… | PROJECTED TEXT SIZE | − | 100% | +"
+ },
+ {
+  "area": "Screens popover",
+  "name": "Manage… entry point present",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Screens popover",
+  "name": "projected text size control present",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Outputs & Channels tabs",
+  "name": "Displays tab renders",
+  "ok": true,
+  "detail": "len 349"
+ },
+ {
+  "area": "Outputs & Channels tabs",
+  "name": "Channels tab renders",
+  "ok": true,
+  "detail": "len 175"
+ },
+ {
+  "area": "Outputs & Channels tabs",
+  "name": "Outputs tab renders",
+  "ok": true,
+  "detail": "len 141"
+ },
+ {
+  "area": "Outputs & Channels tabs",
+  "name": "Status tab renders",
+  "ok": true,
+  "detail": "len 156"
+ },
+ {
+  "area": "Clear name",
+  "name": "naming a display saves the name",
+  "ok": true,
+  "detail": "[\"Sanctuary Projector\"]"
+ },
+ {
+  "area": "Clear name",
+  "name": "Clear name removes it",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "a channel can be added",
+  "ok": true,
+  "detail": "[\"Main\",\"Francais\"]"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "translation can be set (FRLSG)",
+  "ok": true,
+  "detail": "{\"id\":\"channel-mv9e7b0b\",\"label\":\"Francais\",\"translation\":\"FRLSG\",\"songbookId\":\"default\",\"sync\":{\"syncMode\":\"follow\",\"linkedTo\":\"main\"}}"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "Follow Main sync can be set",
+  "ok": true,
+  "detail": "{\"syncMode\":\"follow\",\"linkedTo\":\"main\"}"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "Main shows John 3:16",
+  "ok": true,
+  "detail": "John 3:16 · KJV"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "the following channel shows the same verse in its own translation",
+  "ok": true,
+  "detail": "John 3:16 · FRLSG :: Car Dieu a tant aimé le monde qu’il a donné son Fils unique, afin que "
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "Preview/Live shows a tab per channel",
+  "ok": true,
+  "detail": "[\"Main\",\"Francais\"]"
+ },
+ {
+  "area": "Channels + follow sync",
+  "name": "switching tab shows that channel’s live item",
+  "ok": true,
+  "detail": "John 3:16 · FRLSG"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "a Graphics output can be added to Main",
+  "ok": true,
+  "detail": "{\"id\":\"graphics-mv9e7ht6\",\"channelId\":\"main\",\"kind\":\"browser\",\"url\":\"http://born-ui-dev.local:4317/output/graphics/graphics-mv9e7ht6\",\"profileId\":\"fullscreen\",\"autoProfile\":true,\"suppressed\":false}"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "Graphics page receives what is live (SSE)",
+  "ok": true,
+  "detail": "16For God so loved the world, that he gave his only begotten"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "Graphics page has no script errors",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "profile can be set to Lower third",
+  "ok": true,
+  "detail": "{\"p\":\"lower-third\",\"auto\":false}"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "Graphics page switches layout without reloading",
+  "ok": true,
+  "detail": "lower-third"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "blanking the screen clears the Graphics page",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "suppressing the Graphics destination clears only it",
+  "ok": true,
+  "detail": "graphics text: "
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "un-suppressing restores it",
+  "ok": true,
+  "detail": "16For God so loved the world, that he ga"
+ },
+ {
+  "area": "Graphics destination + profiles",
+  "name": "Status tab reports destinations",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "Remote popover shows the address",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "connection check reports the server and adapters",
+  "ok": true,
+  "detail": "Server: listening on port 4317 |  | Connected phones right now: 0 |  | mDNS name: born-ui-dev.local |  | Network adapters found: |  | → 10.0.0.124 (en0) |  | ma"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "automation state is readable without a token by default",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "automation state lists channels with current + blanked",
+  "ok": true,
+  "detail": "[\"main\",\"channel-mv9e7b0b\"]"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "a token is generated when required",
+  "ok": true,
+  "detail": "8bb872…"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "without the token the API refuses (401)",
+  "ok": true,
+  "detail": "401"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "with the token header it answers (200)",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "with ?token= it answers (200)",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "POST next advances what is live (real client call)",
+  "ok": true,
+  "detail": "John 3:16 · KJV -> John 3:17 · KJV"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "POST prev goes back",
+  "ok": true,
+  "detail": "John 3:16 · KJV"
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "POST blank/main blanks the screen",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "POST show/main brings it back",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "POST clear/main clears the channel",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "area": "Remote popover, diagnostics, automation API",
+  "name": "the unversioned /api/automation path still works",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Help viewer",
+  "name": "Help lists the manual pages including the new one",
+  "ok": true,
+  "detail": "20 pages"
+ },
+ {
+  "area": "Help viewer",
+  "name": "every manual page has content",
+  "ok": true,
+  "detail": "0 empty"
+ },
+ {
+  "area": "Help viewer",
+  "name": "no manual image is broken",
+  "ok": true,
+  "detail": "0 broken"
+ },
+ {
+  "area": "Help viewer",
+  "name": "F1 closes the manual",
+  "ok": true,
+  "detail": ""
+ }
+]

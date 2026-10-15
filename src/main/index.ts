@@ -628,6 +628,9 @@ function setOutputProfile(id: string, profileId: PresentationProfileId): void {
   setGraphicsProfile(id, profileId)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
+  // Re-send the current frame so an already-open Graphics page (OBS) switches
+  // layout now, not only when the next slide happens to arrive.
+  pushGraphicsForChannel(dest.config.channelId)
 }
 
 function setOutputAutoProfile(id: string, autoProfile: boolean): void {
@@ -637,6 +640,7 @@ function setOutputAutoProfile(id: string, autoProfile: boolean): void {
   setGraphicsAutoProfile(id, autoProfile)
   persistDestinationRouting()
   sendToMain('outputs:changed', outputsSnapshot())
+  pushGraphicsForChannel(dest.config.channelId)
 }
 
 // ── Windows ───────────────────────────────────────────────────────────────────
