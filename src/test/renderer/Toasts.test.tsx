@@ -51,11 +51,15 @@ describe('toasts', () => {
     const toast = screen.getByRole('status')
     await act(async () => {
       fireEvent.mouseEnter(toast)
+    })
+    await act(async () => {
       vi.advanceTimersByTime(5000)
     })
     expect(screen.getByText('Hold on')).toBeDefined()
     await act(async () => {
       fireEvent.mouseLeave(toast)
+    })
+    await act(async () => {
       vi.advanceTimersByTime(2100)
     })
     expect(screen.queryByText('Hold on')).toBeNull()
