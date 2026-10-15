@@ -68,6 +68,7 @@ interface Props {
   stagedPayload?: SlidePayload | null
   stagedTitle?: string | null
   nextPayload?: SlidePayload | null
+  background?: { mediaId: string; dim: number } | null
   onTake?: () => void
   onUnstage?: () => void
   onToggleBlank?: () => void
@@ -157,7 +158,8 @@ export default function ServiceQueue({
   onToggleBlank = () => {},
   onClearChannel = () => {},
   onDropItem = () => {},
-  onMediaSettings
+  onMediaSettings,
+  background
 }: Props) {
   const actions = useAppActions()
   const ctx = useContextMenu()
@@ -559,6 +561,7 @@ export default function ServiceQueue({
             stagedPayload={stagedPayload}
             stagedTitle={stagedTitle}
             nextPayload={nextPayload}
+            background={background}
             projectionOpen={projectionOpen}
             canTake={canNext || !!stagedPayload}
             onTake={onTake}

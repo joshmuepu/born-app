@@ -36,6 +36,8 @@ export interface WebRemoteSlide {
   kind?: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides: which library picture, and how it sits. */
   media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  /** Still background behind this slide's text (Full-screen outputs only). */
+  background?: { mediaId: string; dim: number }
   /** This channel follows another, had no translation for this content, and
    *  fell back to English — purely informational, carried through to the
    *  automation API's state endpoint so an external tool can show it too. */
@@ -532,6 +534,8 @@ function buildGraphicsScript(id: string): string {
   var refDetailEl = document.getElementById('reference-detail');
   var discEl = document.getElementById('disconnected');
   var picEl = document.getElementById('pic');
+  var bgEl = document.getElementById('bg');
+  var bgDimEl = document.getElementById('bgdim');
   var TRANSITIONS = ${JSON.stringify(transitions)};
   var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
 
@@ -551,11 +555,19 @@ function buildGraphicsScript(id: string): string {
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
     picEl.style.display = 'none'; picEl.removeAttribute('src');
+    bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
     if (!payload || !payload.slide || payload.blanked) {
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       return;
     }
     var s = payload.slide;
+    // Still background: only on a Full-screen output (a lower-third sits over a camera and must stay transparent).
+    if (s.background && s.kind !== 'media' && stageEl.dataset.profile === 'fullscreen' && /^m_[0-9a-f]{12}$/.test(s.background.mediaId)) {
+      bgEl.src = '/media/' + s.background.mediaId + '/display';
+      bgEl.style.display = 'block';
+      bgDimEl.style.background = 'rgba(0,0,0,' + (Math.max(0, Math.min(80, s.background.dim)) / 100) + ')';
+      bgDimEl.style.display = 'block';
+    }
     if (s.kind === 'media') {
       // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
       // overlay) output nothing is drawn, so a picture never covers the camera by accident.
@@ -649,6 +661,9 @@ function buildGraphicsHTML(id: string): string {
   #stage { position: relative; height: 100vh; }
   #text-inner { width: 100%; }
 ${profileCSS}
+  #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; }
+  #bgdim { position: fixed; inset: 0; display: none; z-index: 1; }
+  #stage { z-index: 2; }
   #pic { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
   #pic.fit-fit { object-fit: contain; } #pic.fit-fill { object-fit: cover; }
   #pic.fit-stretch { object-fit: fill; } #pic.fit-center { object-fit: none; }
@@ -665,6 +680,7 @@ ${profileCSS}
     <div id="reference-detail"></div>
   </div>
 </div>
+<img id="bg" alt=""/><div id="bgdim"></div>
 <img id="pic" alt=""/>
 <div id="disconnected">RECONNECTING…</div>
 <script>${buildGraphicsScript(id)}</script>

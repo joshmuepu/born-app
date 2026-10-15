@@ -77,6 +77,8 @@ export interface PreviewLivePairProps {
   stagedTitle: string | null
   /** What Next will bring up on Main (flow-through included). */
   nextPayload: SlidePayload | null
+  /** The main congregation output's still background (for the Preview thumbnail). */
+  background?: { mediaId: string; dim: number } | null
   projectionOpen: boolean
   canTake: boolean
   onTake: () => void
@@ -99,6 +101,7 @@ export default function PreviewLivePair({
   stagedPayload,
   stagedTitle,
   nextPayload,
+  background,
   projectionOpen,
   canTake,
   onTake,
@@ -117,7 +120,10 @@ export default function PreviewLivePair({
 
   const liveSlide = lc?.current ?? null
   const blanked = lc?.blanked ?? false
-  const previewSlide = isMain ? (stagedPayload ?? nextPayload ?? lc?.next ?? null) : (lc?.next ?? null)
+  // What the congregation screen will draw behind text: Preview shows it too, so what you stage is what you get.
+  const withBg = (s: SlidePayload | null): SlidePayload | null =>
+    s && s.kind !== 'media' && isMain && background && !s.background ? { ...s, background } : s
+  const previewSlide = withBg(isMain ? (stagedPayload ?? nextPayload ?? lc?.next ?? null) : (lc?.next ?? null))
   const staged = isMain && !!stagedPayload
 
   // Flash the LIVE frame when new content lands — the visual "it went out".

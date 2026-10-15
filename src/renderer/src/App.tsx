@@ -970,6 +970,14 @@ export default function App() {
     [mutateQueue, pushToast]
   )
   const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
+  const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
+  useEffect(() => {
+    const load = (): void => {
+      void window.electronAPI.mediaBackgroundsGet().then((b) => setMainBackground(b.congregationMain)).catch(() => setMainBackground(null))
+    }
+    load()
+    return window.electronAPI.onMediaBackgroundsChanged(load)
+  }, [])
 
   /** A slideshow of several library pictures as one queue item. */
   const handleAddSlideshow = useCallback(
@@ -2393,6 +2401,7 @@ export default function App() {
             stagedPayload={stagedPayload}
             stagedTitle={stagedItem ? itemTitle(stagedItem) : null}
             nextPayload={previewNextPayload}
+            background={mainBackground}
             onTake={handleTake}
             onUnstage={() => setStagedId(null)}
             onToggleBlank={handleToggleBlank}

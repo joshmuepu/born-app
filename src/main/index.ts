@@ -16,6 +16,7 @@ import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
+import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -193,6 +194,8 @@ export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  /** Still background behind text on this output (set per destination/channel). */
+  background?: { mediaId: string; dim: number }
   text: string
   label?: string
   reference?: string
@@ -441,7 +444,8 @@ function getSettingsSafe(): AppSettings {
         { destinationId: 'congregation', channelId: 'main', kind: 'window' },
         { destinationId: 'stage', channelId: 'main', kind: 'window' }
       ],
-      automationToken: null
+      automationToken: null,
+      mediaBackgrounds: { destinations: {}, channels: {} }
     }
   }
 }
@@ -470,7 +474,8 @@ function liveSnapshot(): Array<{
   return [...channels.values()].map((c) => ({
     id: c.id,
     label: c.label,
-    current: c.current,
+    // What the congregation output is really showing, background included.
+    current: c.current ? withBackground('congregation', c.id, c.current) : null,
     next: c.next,
     blanked: c.blanked
   }))
@@ -1114,9 +1119,28 @@ function onDisplayLayoutChanged(reason: string): void {
 // attachOperatorShortcuts and the remote's command dispatch use below instead
 // of reaching into a window directly.
 
+/** The still background that applies to one destination right now, or null. A missing or
+ *  unreadable picture never blocks the text: it is simply not drawn. */
+function backgroundFor(destinationId: string, channelId: ChannelId): { mediaId: string; dim: number } | null {
+  const b = resolveBackground(getSettingsSafe().mediaBackgrounds, destinationId, channelId, (c) => {
+    const s = channels.get(c)?.sync
+    return s && s.syncMode !== 'independent' && s.linkedTo ? s.linkedTo : null
+  })
+  if (!b) return null
+  return getMediaLibrary()?.check(b.mediaId) === 'ok' ? b : null
+}
+/** Text slides get their destination's background attached; pictures are the content layer
+ *  and cover it, so they never carry one. */
+function withBackground(destinationId: string, channelId: ChannelId, slide: SlidePayload): SlidePayload {
+  if (slide.kind === 'media') return slide
+  const b = backgroundFor(destinationId, channelId)
+  return b ? { ...slide, background: b } : slide
+}
+
 function toGraphicsSlide(
-  slide: SlidePayload | null
-): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media'] } | null {
+  slide: SlidePayload | null,
+  bg?: { mediaId: string; dim: number } | null
+): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media']; background?: SlidePayload['background'] } | null {
   if (!slide) return null
   return {
     text: slide.text,
@@ -1124,7 +1148,8 @@ function toGraphicsSlide(
     marker: slide.marker,
     reference: slide.reference,
     kind: slide.kind,
-    ...(slide.media ? { media: slide.media } : {})
+    ...(slide.media ? { media: slide.media } : {}),
+    ...(bg && slide.kind !== 'media' ? { background: bg } : {})
   }
 }
 
@@ -1139,7 +1164,7 @@ function pushGraphicsForChannel(channelId: ChannelId): void {
   for (const dest of destinationsFor(channelId)) {
     if (dest.config.kind === 'browser') {
       dest.send('graphics:update', {
-        slide: dest.suppressed ? null : toGraphicsSlide(channel.current),
+        slide: dest.suppressed ? null : toGraphicsSlide(channel.current, backgroundFor(dest.config.id, channelId)),
         blanked: channel.blanked || dest.suppressed
       })
     }
@@ -1156,7 +1181,7 @@ function syncDestination(dest: DestinationEntry): void {
   if (!channel) return
   const hidden = channel.blanked || dest.suppressed
   if (dest.config.id === 'congregation') {
-    if (channel.current && !dest.suppressed) dest.send('projection:show-slide', channel.current)
+    if (channel.current && !dest.suppressed) dest.send('projection:show-slide', withBackground('congregation', dest.config.channelId, channel.current))
     else dest.send('projection:clear')
     dest.send('projection:set-blank', hidden)
   } else if (dest.config.id === 'stage') {
@@ -1167,7 +1192,7 @@ function syncDestination(dest: DestinationEntry): void {
     dest.send('stage:set-blank', hidden)
   } else if (dest.config.kind === 'browser') {
     dest.send('graphics:update', {
-      slide: dest.suppressed ? null : toGraphicsSlide(channel.current),
+      slide: dest.suppressed ? null : toGraphicsSlide(channel.current, backgroundFor(dest.config.id, dest.config.channelId)),
       blanked: hidden
     })
   }
@@ -1324,7 +1349,7 @@ function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   channels.set(channelId, patchChannel(channel, { current: slide, blanked: false }))
   const congregation = destinations.get('congregation')
   if (congregation && congregation.config.channelId === channelId && !congregation.suppressed) {
-    congregation.send('projection:show-slide', slide)
+    congregation.send('projection:show-slide', withBackground('congregation', channelId, slide))
   }
   pushLive()
   // A fresh slide always un-blanks — keep the stage screen in step so it
@@ -1395,7 +1420,7 @@ ipcMain.on('projection:ready', () => {
   if (congregation) congregation.ready = true
   broadcastDisplayInfo()
   const channel = channels.get(congregation?.config.channelId ?? 'main')
-  if (channel?.current) sendToProjection('projection:show-slide', channel.current)
+  if (channel?.current) sendToProjection('projection:show-slide', withBackground('congregation', congregation?.config.channelId ?? 'main', channel.current))
   sendToProjection('projection:set-font-size', congregation?.fontSize ?? getSettingsSafe().fontSize)
   sendToProjection('projection:set-blank', channel?.blanked ?? false)
 })
@@ -2141,6 +2166,39 @@ ipcMain.on('channel:clear', (_event, channelId: ChannelId) => {
 
 ipcMain.handle('observability:snapshot', () => observabilitySnapshot())
 ipcMain.handle('live:snapshot', () => liveSnapshot())
+
+// ── Still backgrounds ──────────────────────────────────────────────────────────
+function resyncAllOutputs(): void {
+  for (const d of destinations.values()) syncDestination(d)
+  pushLive()
+  sendToMain('media:backgrounds-changed', getSettingsSafe().mediaBackgrounds)
+}
+ipcMain.handle('media:backgrounds-get', () => ({
+  settings: getSettingsSafe().mediaBackgrounds,
+  // what the main congregation output uses right now (for the Preview thumbnail)
+  congregationMain: backgroundFor('congregation', destinations.get('congregation')?.config.channelId ?? 'main')
+}))
+ipcMain.handle(
+  'media:background-set',
+  (_e, scope: 'destination' | 'channel', id: string, bg: { mediaId: string | null; dim?: number } | null) => {
+    if ((scope !== 'destination' && scope !== 'channel') || typeof id !== 'string') return false
+    const cur = getSettingsSafe().mediaBackgrounds ?? { destinations: {}, channels: {} }
+    const next = { destinations: { ...cur.destinations }, channels: { ...cur.channels } }
+    const bucket = scope === 'destination' ? next.destinations : next.channels
+    if (bg === null) delete bucket[id]
+    else {
+      const prev = bucket[id]
+      const entry: MediaBackground = {
+        mediaId: bg.mediaId === null || typeof bg.mediaId === 'string' ? bg.mediaId : null,
+        dim: clampDim(bg.dim ?? prev?.dim)
+      }
+      bucket[id] = entry
+    }
+    updateSettings({ mediaBackgrounds: next })
+    resyncAllOutputs()
+    return true
+  }
+)
 
 // ── Service file IPC ──────────────────────────────────────────────────────────
 

@@ -118,6 +118,12 @@ declare global {
       mediaFolderDelete: (id: string) => Promise<boolean>
       mediaRelinkPick: (id: string) => Promise<{ ok: boolean; message?: string; canceled?: boolean }>
       mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: { linkInPlace?: boolean; folderId?: string | null }) => Promise<import('../../shared/media').MediaImportResult>
+      mediaBackgroundsGet: () => Promise<{
+        settings: import('../../shared/media').BackgroundSettings
+        congregationMain: { mediaId: string; dim: number } | null
+      }>
+      mediaBackgroundSet: (scope: 'destination' | 'channel', id: string, bg: { mediaId: string | null; dim?: number } | null) => Promise<boolean>
+      onMediaBackgroundsChanged: (cb: () => void) => () => void
       mediaReveal: (id: string) => Promise<boolean>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
       mediaPathsForFiles: (files: File[]) => string[]

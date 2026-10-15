@@ -119,7 +119,13 @@ export default function ProjectionApp() {
   }
 
   return (
-    <div className={`projection-active projection-${slide.kind}`}>
+    <div className={`projection-active projection-${slide.kind}${slide.background ? ' has-bg' : ''}`}>
+      {slide.background && (
+        <div className="projection-bg" aria-hidden="true">
+          <img src={`born-media://display/${slide.background.mediaId}`} alt="" draggable={false} />
+          <div className="projection-bg-dim" style={{ background: `rgba(0,0,0,${slide.background.dim / 100})` }} />
+        </div>
+      )}
       {slide.label && <div className="projection-label">{slide.label}</div>}
       <div ref={textRef} className="projection-text" style={{ fontSize: `${fitFontSize}rem` }}>
         <div className="projection-text-inner">

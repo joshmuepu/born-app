@@ -84,6 +84,12 @@ export default function SlideThumb({
           className={`slide-thumb-stage slide-thumb--${slide.kind}`}
           style={{ transform: `scale(${scale})` }}
         >
+          {slide.background && (
+            <div className="st-bg" aria-hidden="true">
+              <img src={`born-media://thumb/${slide.background.mediaId}/960`} alt="" draggable={false} />
+              <div className="st-bg-dim" style={{ background: `rgba(0,0,0,${slide.background.dim / 100})` }} />
+            </div>
+          )}
           {slide.label && <div className="st-label">{slide.label}</div>}
           <div ref={textRef} className="st-text" style={{ fontSize: `${fitRem}rem` }}>
             <div className="st-text-inner">

@@ -14,8 +14,10 @@ import {
   Plus,
   Trash2,
   X,
-  Film
+  Film,
+  Layers
 } from 'lucide-react'
+import MediaBackgrounds, { useBackgroundTargets } from './MediaBackgrounds'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import VirtualList from './VirtualList'
 import { useContextMenu, type MenuItem } from './ContextMenu'
@@ -31,6 +33,7 @@ type Category =
   | { kind: 'favorites' }
   | { kind: 'recent' }
   | { kind: 'attention' }
+  | { kind: 'backgrounds' }
   | { kind: 'folder'; id: string }
   | { kind: 'tag'; tag: string }
 
@@ -439,6 +442,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
         {catBtn({ kind: 'favorites' }, <Star size={15} />, 'Favorites')}
         {catBtn({ kind: 'recent' }, <Clock size={15} />, 'Recently used')}
         {catBtn({ kind: 'attention' }, <AlertTriangle size={15} />, 'Needs attention', attentionCount || undefined)}
+        {catBtn({ kind: 'backgrounds' }, <Layers size={15} />, 'Backgrounds')}
         <div className="media-cats-head">
           Folders
           <button className="media-mini" onClick={() => setFolderEdit({ id: null, name: '' })} title="New folder" aria-label="New folder"><FolderPlus size={14} /></button>
@@ -513,7 +517,9 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
           </div>
         )}
 
-        {!available.ok ? (
+        {cat.kind === 'backgrounds' ? (
+          <MediaBackgrounds items={items} />
+        ) : !available.ok ? (
           <div className="media-empty"><AlertTriangle size={26} /><h3>The media library isn’t available</h3><p>{available.message}</p></div>
         ) : !loaded ? (
           <div className="media-empty"><p>Loading…</p></div>
@@ -677,6 +683,7 @@ function Detail({
           <datalist id="media-known-tags">{tags.map((t) => <option key={t.tag} value={t.tag} />)}</datalist>
         </div>
       </div>
+      <UseAsBackground r={r} problem={!!problem} notify={notify} />
       <div className="media-folder-row">
         <label htmlFor="media-folder-select">Folder</label>
         <select id="media-folder-select" value={r.folderId ?? ''} onChange={(e) => void window.electronAPI.mediaMove([r.id], e.target.value || null).then(onChanged)}>
@@ -687,6 +694,33 @@ function Detail({
         <button className="btn-quiet btn-sm" onClick={() => void window.electronAPI.mediaReveal(r.id)}><FolderOpen size={13} /> Show file</button>
         <button className="btn-quiet btn-sm" onClick={onRemove}><Trash2 size={13} /> Remove</button>
       </div>
+    </div>
+  )
+}
+
+function UseAsBackground({ r, problem, notify }: { r: MediaRecord; problem: boolean; notify: (m: string) => void }): JSX.Element {
+  const { targets, settings, reload } = useBackgroundTargets()
+  const [target, setTarget] = useState('')
+  useEffect(() => { if (!target && targets[0]) setTarget(`${targets[0].scope}:${targets[0].id}`) }, [targets, target])
+  const using = targets.filter((t) => (t.scope === 'destination' ? settings.destinations[t.id] : settings.channels[t.id])?.mediaId === r.id)
+  const apply = async (): Promise<void> => {
+    const t = targets.find((x) => `${x.scope}:${x.id}` === target)
+    if (!t) return
+    const cur = t.scope === 'destination' ? settings.destinations[t.id] : settings.channels[t.id]
+    await window.electronAPI.mediaBackgroundSet(t.scope, t.id, { mediaId: r.id, dim: cur?.dim })
+    notify(`Background set for ${t.label}`)
+    void reload()
+  }
+  return (
+    <div className="media-usebg">
+      <label htmlFor="media-usebg-target">Use as a background</label>
+      <div className="media-usebg-row">
+        <select id="media-usebg-target" value={target} onChange={(e) => setTarget(e.target.value)}>
+          {targets.map((t) => <option key={`${t.scope}:${t.id}`} value={`${t.scope}:${t.id}`}>{t.label}</option>)}
+        </select>
+        <button className="btn-quiet btn-sm" onClick={() => void apply()} disabled={problem || !target}>Set background</button>
+      </div>
+      {using.length > 0 && <div className="media-usebg-now">Currently the background of: {using.map((t) => t.label).join(', ')}</div>}
     </div>
   )
 }

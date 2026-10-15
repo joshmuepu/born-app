@@ -90,6 +90,8 @@ export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  /** Still background behind text on this output (set per destination/channel). */
+  background?: { mediaId: string; dim: number }
   text: string
   label?: string
   reference?: string
@@ -354,6 +356,15 @@ const api = {
   mediaFolderDelete: (id: string): Promise<boolean> => ipcRenderer.invoke('media:folder-delete', id),
   mediaRelinkPick: (id: string): Promise<unknown> => ipcRenderer.invoke('media:relink-pick', id),
   mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-buffer', name, bytes, opts),
+  mediaBackgroundsGet: (): Promise<{ settings: { destinations: Record<string, { mediaId: string | null; dim: number }>; channels: Record<string, { mediaId: string | null; dim: number }> }; congregationMain: { mediaId: string; dim: number } | null }> =>
+    ipcRenderer.invoke('media:backgrounds-get'),
+  mediaBackgroundSet: (scope: 'destination' | 'channel', id: string, bg: { mediaId: string | null; dim?: number } | null): Promise<boolean> =>
+    ipcRenderer.invoke('media:background-set', scope, id, bg),
+  onMediaBackgroundsChanged: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on('media:backgrounds-changed', h)
+    return () => ipcRenderer.removeListener('media:backgrounds-changed', h)
+  },
   mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */

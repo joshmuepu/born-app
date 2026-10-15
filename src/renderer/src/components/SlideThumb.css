@@ -96,3 +96,8 @@
 .slide-thumb-pic--fill { object-fit: cover; }
 .slide-thumb-pic--stretch { object-fit: fill; }
 .slide-thumb-pic--center { object-fit: none; }
+
+.st-bg { position: absolute; inset: 0; z-index: 0; }
+.st-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.st-bg-dim { position: absolute; inset: 0; }
+.slide-thumb-stage > :not(.st-bg) { z-index: 1; }

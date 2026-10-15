@@ -83,6 +83,8 @@ export interface SlidePayload {
   text: string
   /** Picture slides only. */
   media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  /** Still background behind text on this output (set per destination/channel). */
+  background?: { mediaId: string; dim: number }
   label?: string
   reference?: string
   marker?: string

@@ -149,3 +149,48 @@ export interface MediaLibraryInfo {
   trashed?: number
   freeBytes?: number | null
 }
+
+// ── Still backgrounds (behind sermon, Bible and song text) ─────────────────────
+
+/** `mediaId: null` means "explicitly no background here", which beats a channel default. */
+export interface MediaBackground {
+  mediaId: string | null
+  /** Darkening laid over the picture so text stays readable: 0 (none) – 80 (%). */
+  dim: number
+}
+export interface BackgroundSettings {
+  destinations: Record<string, MediaBackground>
+  channels: Record<string, MediaBackground>
+}
+export const DEFAULT_BACKGROUND_DIM = 35
+export const EMPTY_BACKGROUNDS: BackgroundSettings = { destinations: {}, channels: {} }
+
+export function clampDim(n: unknown): number {
+  const v = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : DEFAULT_BACKGROUND_DIM
+  return Math.max(0, Math.min(80, v))
+}
+
+/**
+ * Which background applies to one destination:
+ *   1. the destination's own setting (including an explicit "none"),
+ *   2. else its channel's default,
+ *   3. else, if that channel follows another, that channel's default (and so on).
+ * Returns null when nothing applies. Pure, so it is tested without Electron.
+ */
+export function resolveBackground(
+  s: BackgroundSettings | undefined,
+  destinationId: string,
+  channelId: string,
+  followOf: (channelId: string) => string | null
+): { mediaId: string; dim: number } | null {
+  if (!s) return null
+  const own = s.destinations?.[destinationId]
+  if (own) return own.mediaId ? { mediaId: own.mediaId, dim: clampDim(own.dim) } : null
+  let c: string | null = channelId
+  for (let hops = 0; c && hops < 6; hops++) {
+    const b = s.channels?.[c]
+    if (b) return b.mediaId ? { mediaId: b.mediaId, dim: clampDim(b.dim) } : null
+    c = followOf(c)
+  }
+  return null
+}
