@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto'
 import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
+import { getMediaLibrary, closeMediaLibrary, registerMediaIpc } from './mediaService'
 import {
   getBibleTranslations,
   lookupPassage,
@@ -2779,6 +2780,8 @@ app.whenReady().then(async () => {
   // the race between that first use and the renderer's own status check.
   getDb()
   getLibraryDb()
+  getMediaLibrary()
+  registerMediaIpc(() => mainWindow)
   createMainWindow()
 
   // Global, not per-window — works even if an output window's own
@@ -2961,6 +2964,7 @@ app.on('window-all-closed', () => {
   log.info('all windows closed — shutting down')
   closeDb()
   closeLibraryDb()
+  closeMediaLibrary()
   if (process.platform !== 'darwin') {
     app.quit()
   }

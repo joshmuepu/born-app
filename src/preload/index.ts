@@ -328,6 +328,35 @@ const api = {
     }
   ): Promise<Quote[]> => ipcRenderer.invoke('search:query', query, filters),
 
+  // Media library (Phase 1a)
+  mediaInfo: (): Promise<unknown> => ipcRenderer.invoke('media:info'),
+  mediaList: (q?: unknown): Promise<unknown[]> => ipcRenderer.invoke('media:list', q),
+  mediaGet: (id: string): Promise<unknown> => ipcRenderer.invoke('media:get', id),
+  mediaTags: (): Promise<Array<{ tag: string; count: number }>> => ipcRenderer.invoke('media:tags'),
+  mediaFolders: (): Promise<unknown[]> => ipcRenderer.invoke('media:folders'),
+  mediaCheckAll: (): Promise<Array<{ id: string; status: string }>> => ipcRenderer.invoke('media:check-all'),
+  mediaCheck: (id: string): Promise<string> => ipcRenderer.invoke('media:check', id),
+  mediaThumbPath: (id: string, width?: number): Promise<string | null> => ipcRenderer.invoke('media:thumb-path', id, width),
+  mediaImportPaths: (paths: string[], opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-paths', paths, opts),
+  mediaPickAndImport: (opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:pick-and-import', opts),
+  mediaRename: (id: string, name: string): Promise<boolean> => ipcRenderer.invoke('media:rename', id, name),
+  mediaFavorite: (id: string, fav: boolean): Promise<boolean> => ipcRenderer.invoke('media:favorite', id, fav),
+  mediaSetTags: (id: string, tags: string[]): Promise<boolean> => ipcRenderer.invoke('media:set-tags', id, tags),
+  mediaMove: (ids: string[], folderId: string | null): Promise<boolean> => ipcRenderer.invoke('media:move', ids, folderId),
+  mediaMarkUsed: (id: string): Promise<boolean> => ipcRenderer.invoke('media:mark-used', id),
+  mediaRemove: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('media:remove', ids),
+  mediaRestore: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:restore', ids),
+  mediaPurgeNow: (): Promise<{ purged: number; filesDeleted: number }> => ipcRenderer.invoke('media:purge-now'),
+  mediaFolderCreate: (name: string, parentId?: string | null): Promise<unknown> => ipcRenderer.invoke('media:folder-create', name, parentId),
+  mediaFolderRename: (id: string, name: string): Promise<boolean> => ipcRenderer.invoke('media:folder-rename', id, name),
+  mediaFolderDelete: (id: string): Promise<boolean> => ipcRenderer.invoke('media:folder-delete', id),
+  mediaRelinkPick: (id: string): Promise<unknown> => ipcRenderer.invoke('media:relink-pick', id),
+  onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {
+    const h = (_e: IpcRendererEvent, p: { done: number; total: number; current: string }): void => cb(p)
+    ipcRenderer.on('media:import-progress', h)
+    return () => ipcRenderer.removeListener('media:import-progress', h)
+  },
+
   // Autocomplete
   getAutocompleteSuggestions: (wordPart: string): Promise<string[]> =>
     ipcRenderer.invoke('autocomplete:suggestions', wordPart),

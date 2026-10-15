@@ -94,6 +94,31 @@ declare global {
       getDataRecoveryInfo: () => Promise<DataRecoveryInfo>
       openDataFolder: () => Promise<string>
 
+      // Media library (Phase 1a)
+      mediaInfo: () => Promise<import('../../shared/media').MediaLibraryInfo>
+      mediaList: (q?: unknown) => Promise<import('../../shared/media').MediaRecord[]>
+      mediaGet: (id: string) => Promise<import('../../shared/media').MediaRecord | null>
+      mediaTags: () => Promise<Array<{ tag: string; count: number }>>
+      mediaFolders: () => Promise<import('../../shared/media').MediaFolder[]>
+      mediaCheckAll: () => Promise<Array<{ id: string; status: import('../../shared/media').MediaStatus }>>
+      mediaCheck: (id: string) => Promise<import('../../shared/media').MediaStatus>
+      mediaThumbPath: (id: string, width?: number) => Promise<string | null>
+      mediaImportPaths: (paths: string[], opts?: { linkInPlace?: boolean; folderId?: string | null; tags?: string[] }) => Promise<{ results: import('../../shared/media').MediaImportResult[]; skipped: number }>
+      mediaPickAndImport: (opts?: { linkInPlace?: boolean; folderId?: string | null; folders?: boolean }) => Promise<{ canceled: boolean; results: import('../../shared/media').MediaImportResult[]; skipped: number }>
+      mediaRename: (id: string, name: string) => Promise<boolean>
+      mediaFavorite: (id: string, fav: boolean) => Promise<boolean>
+      mediaSetTags: (id: string, tags: string[]) => Promise<boolean>
+      mediaMove: (ids: string[], folderId: string | null) => Promise<boolean>
+      mediaMarkUsed: (id: string) => Promise<boolean>
+      mediaRemove: (ids: string[]) => Promise<boolean>
+      mediaRestore: (ids: string[]) => Promise<import('../../shared/media').MediaRecord[]>
+      mediaPurgeNow: () => Promise<{ purged: number; filesDeleted: number }>
+      mediaFolderCreate: (name: string, parentId?: string | null) => Promise<import('../../shared/media').MediaFolder | null>
+      mediaFolderRename: (id: string, name: string) => Promise<boolean>
+      mediaFolderDelete: (id: string) => Promise<boolean>
+      mediaRelinkPick: (id: string) => Promise<{ ok: boolean; message?: string; canceled?: boolean }>
+      onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void) => () => void
+
       // Help / manual
       getManualManifest: () => Promise<ManualManifest | null>
       getManualPage: (relPath: string) => Promise<string | null>

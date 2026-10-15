@@ -1,0 +1,153 @@
+/**
+ * mediaService.ts — owns the one MediaLibrary instance for the running app and
+ * exposes it over IPC. All the rules live in mediaLibrary.ts; this file only
+ * decides where the library lives (<userData>/media), keeps a backup of the
+ * index, tidies at start-up, and turns operator actions (a file dialog, a
+ * drop) into library calls.
+ */
+import { app, dialog, ipcMain, BrowserWindow } from 'electron'
+import { copyFileSync, existsSync, mkdirSync, statSync, statfsSync } from 'fs'
+import { join } from 'path'
+import { log } from './logger'
+import { checkAndRecoverDatabase } from './dbIntegrity'
+import { MediaLibrary, type ImportOptions, type ListQuery } from './mediaLibrary'
+import { MediaDbTooNewError } from './mediaSchema'
+import { electronMediaDecoder, disposeMediaDecoder } from './mediaDecoder'
+import { IMAGE_EXTENSIONS, MEDIA_MESSAGES, type MediaImportResult, type MediaRecord } from '../shared/media'
+
+let lib: MediaLibrary | null = null
+let unavailable: string | null = null
+
+export function mediaDir(): string {
+  return join(app.getPath('userData'), 'media')
+}
+
+/** Open the library (safe to call repeatedly). Never throws: on failure the media
+ *  area reports itself unavailable and everything else in BORN carries on. */
+export function getMediaLibrary(): MediaLibrary | null {
+  if (lib || unavailable) return lib
+  try {
+    const dir = mediaDir()
+    mkdirSync(dir, { recursive: true })
+    const dbPath = join(dir, 'media.db')
+    const bak = join(dir, 'media.db.bak')
+    const rec = checkAndRecoverDatabase(
+      dbPath,
+      (target) => {
+        // A damaged index is quarantined (never deleted); restore the last good backup if there is one.
+        if (existsSync(bak)) {
+          try {
+            copyFileSync(bak, target)
+            log.warn('media: restored media.db from media.db.bak')
+          } catch (e) {
+            log.error('media: restoring media.db.bak failed', e)
+          }
+        }
+      },
+      'media.db'
+    )
+    if (rec.recovered) log.error(`media: media.db was damaged; kept as ${rec.quarantinedTo}`)
+    lib = new MediaLibrary({ dir, decoder: electronMediaDecoder })
+    const swept = lib.sweepTemp()
+    const purged = lib.purge()
+    // One backup per day of a healthy index (cheap: the file is small).
+    try {
+      const stale = !existsSync(bak) || Date.now() - statSync(bak).mtimeMs > 24 * 3600 * 1000
+      if (stale) {
+        lib.db.pragma('wal_checkpoint(TRUNCATE)')
+        copyFileSync(dbPath, bak)
+      }
+    } catch (e) {
+      log.warn('media: backup of media.db skipped', e)
+    }
+    log.info(`media: library open at ${dir} (${lib.count().items} items; swept ${swept} temp files, purged ${purged.purged})`)
+  } catch (e) {
+    unavailable = e instanceof MediaDbTooNewError ? e.message : MEDIA_MESSAGES['library-unavailable']
+    log.error('media: library could not be opened', e)
+    lib = null
+  }
+  return lib
+}
+
+export function closeMediaLibrary(): void {
+  disposeMediaDecoder()
+  if (lib) {
+    try {
+      lib.close()
+    } catch {
+      /* closing at quit */
+    }
+    lib = null
+  }
+}
+
+function freeBytes(dir: string): number | null {
+  try {
+    const s = statfsSync(dir)
+    return Number(s.bavail) * Number(s.bsize)
+  } catch {
+    return null
+  }
+}
+
+const unavailableResult = (path = ''): MediaImportResult => ({ ok: false, code: 'library-unavailable', message: unavailable ?? MEDIA_MESSAGES['library-unavailable'], path })
+
+export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
+  const need = <T>(fn: (l: MediaLibrary) => T, fallback: T): T => {
+    const l = getMediaLibrary()
+    return l ? fn(l) : fallback
+  }
+
+  ipcMain.handle('media:info', () => {
+    const l = getMediaLibrary()
+    if (!l) return { available: false, message: unavailable, dir: mediaDir() }
+    const c = l.count()
+    return { available: true, dir: l.dir, items: c.items, bytesManaged: c.bytesManaged, trashed: c.trashed, freeBytes: freeBytes(l.dir) }
+  })
+  ipcMain.handle('media:list', (_e, q: ListQuery | undefined) => need((l) => l.list(q ?? {}), [] as MediaRecord[]))
+  ipcMain.handle('media:get', (_e, id: string) => need((l) => l.get(id), null))
+  ipcMain.handle('media:tags', () => need((l) => l.allTags(), []))
+  ipcMain.handle('media:folders', () => need((l) => l.listFolders(), []))
+  ipcMain.handle('media:check-all', () => need((l) => l.checkAll(), []))
+  ipcMain.handle('media:check', (_e, id: string) => need((l) => l.check(id), 'missing' as const))
+  ipcMain.handle('media:thumb-path', (_e, id: string, w?: number) => need((l) => l.thumbnail(id, w === 960 ? 960 : 320), Promise.resolve(null)))
+
+  const runImport = async (paths: string[], opts: ImportOptions): Promise<{ results: MediaImportResult[]; skipped: number }> => {
+    const l = getMediaLibrary()
+    if (!l) return { results: paths.map(unavailableResult), skipped: 0 }
+    const win = getMain()
+    const out = await l.importPaths(paths, opts, (p) => win?.webContents.send('media:import-progress', p))
+    return out
+  }
+  ipcMain.handle('media:import-paths', (_e, paths: string[], opts?: ImportOptions) => runImport(Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : [], opts ?? {}))
+  ipcMain.handle('media:pick-and-import', async (_e, opts?: ImportOptions & { folders?: boolean }) => {
+    const win = getMain()
+    const props: Array<'openFile' | 'openDirectory' | 'multiSelections'> = [opts?.folders ? 'openDirectory' : 'openFile', 'multiSelections']
+    const r = await dialog.showOpenDialog(win ?? (undefined as never), {
+      title: opts?.folders ? 'Add a folder of pictures' : 'Add pictures',
+      properties: props,
+      filters: opts?.folders ? undefined : [{ name: 'Pictures', extensions: IMAGE_EXTENSIONS }]
+    })
+    if (r.canceled || r.filePaths.length === 0) return { canceled: true, results: [], skipped: 0 }
+    return { canceled: false, ...(await runImport(r.filePaths, opts ?? {})) }
+  })
+
+  ipcMain.handle('media:rename', (_e, id: string, name: string) => need((l) => (l.rename(id, name), true), false))
+  ipcMain.handle('media:favorite', (_e, id: string, fav: boolean) => need((l) => (l.setFavorite(id, !!fav), true), false))
+  ipcMain.handle('media:set-tags', (_e, id: string, tags: string[]) => need((l) => (l.setTags(id, tags), true), false))
+  ipcMain.handle('media:move', (_e, ids: string[], folderId: string | null) => need((l) => (l.moveToFolder(ids, folderId), true), false))
+  ipcMain.handle('media:mark-used', (_e, id: string) => need((l) => (l.markUsed(id), true), false))
+  ipcMain.handle('media:remove', (_e, ids: string[]) => need((l) => (l.remove(ids), true), false))
+  ipcMain.handle('media:restore', (_e, ids: string[]) => need((l) => l.restore(ids), [] as MediaRecord[]))
+  ipcMain.handle('media:purge-now', () => need((l) => l.purge(0), { purged: 0, filesDeleted: 0 }))
+  ipcMain.handle('media:folder-create', (_e, name: string, parentId?: string | null) => need((l) => l.createFolder(name, parentId ?? null), null))
+  ipcMain.handle('media:folder-rename', (_e, id: string, name: string) => need((l) => (l.renameFolder(id, name), true), false))
+  ipcMain.handle('media:folder-delete', (_e, id: string) => need((l) => (l.deleteFolder(id), true), false))
+  ipcMain.handle('media:relink-pick', async (_e, id: string) => {
+    const l = getMediaLibrary()
+    if (!l) return { ok: false, message: unavailable ?? MEDIA_MESSAGES['library-unavailable'] }
+    const r = await dialog.showOpenDialog(getMain() ?? (undefined as never), { title: 'Find the picture', properties: ['openFile'], filters: [{ name: 'Pictures', extensions: IMAGE_EXTENSIONS }] })
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true }
+    return l.relink(id, r.filePaths[0])
+  })
+}
