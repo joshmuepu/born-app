@@ -95,3 +95,14 @@ generic WebSocket feedback against `ws://<born-host>:4316/api/v1/automation/ws`
 and read `state[0].blanked` from each incoming message (`state[0]` is
 whichever channel you're watching — match by `id`, not array position, if
 you're driving more than one channel).
+
+## Pictures (added, nothing existing changed)
+
+- `GET /api/v1/automation/queue` — read-only list of the Main queue:
+  `[{ id, index, kind, title, slideCount, played, live, mediaIds: ["m_…"] }]`. `kind` is `quote`, `bible`, `song` or `media`.
+- In `GET /state` (and the WebSocket), a picture on screen has `current.kind: "media"` and
+  `current.media: { mediaId, fit? }`. A text slide on an output with a still background has `current.background: { mediaId, dim }`.
+- `GET /media/<id>/thumb` and `GET /media/<id>/display` (same port, no token) serve a picture for Graphics pages and tools.
+  `<id>` must match `m_` + 12 hex characters; anything else is `404`.
+
+Nothing here can change what is live, and there is no way to add or delete pictures over the API.

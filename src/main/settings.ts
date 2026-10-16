@@ -66,6 +66,10 @@ export interface AppSettings {
    *  same zero-friction default as the phone remote's own /command endpoint
    *  has always had. Operator-set in Settings; this file only persists it. */
   automationToken: string | null
+  /** Still backgrounds behind text, per destination and per channel. */
+  mediaBackgrounds: import('../shared/media').BackgroundSettings
+  /** The library picture shown by the logo key (Ctrl/Cmd+Shift+L). */
+  mediaLogoId?: string | null
 }
 
 const DEFAULTS: AppSettings = {
@@ -86,7 +90,8 @@ const DEFAULTS: AppSettings = {
     { destinationId: 'congregation', channelId: 'main', kind: 'window' },
     { destinationId: 'stage', channelId: 'main', kind: 'window' }
   ],
-  automationToken: null
+  automationToken: null,
+  mediaBackgrounds: { destinations: {}, channels: {} }
 }
 
 let cache: AppSettings | null = null

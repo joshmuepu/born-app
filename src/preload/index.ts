@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 
 /** Which phone/role added something, from the remote's "Who's this?" picker
  *  — undefined when that phone skipped picking one. */
@@ -87,7 +87,11 @@ export type SlideSource =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
 
 export interface SlidePayload {
-  kind: 'quote' | 'bible' | 'song'
+  kind: 'quote' | 'bible' | 'song' | 'media'
+  /** Picture slides only. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  /** Still background behind text on this output (set per destination/channel). */
+  background?: { mediaId: string; dim: number }
   text: string
   label?: string
   reference?: string
@@ -327,6 +331,62 @@ const api = {
       dateCode?: string
     }
   ): Promise<Quote[]> => ipcRenderer.invoke('search:query', query, filters),
+
+  // Media library (Phase 1a)
+  mediaInfo: (): Promise<unknown> => ipcRenderer.invoke('media:info'),
+  mediaList: (q?: unknown): Promise<unknown[]> => ipcRenderer.invoke('media:list', q),
+  mediaGet: (id: string): Promise<unknown> => ipcRenderer.invoke('media:get', id),
+  mediaTags: (): Promise<Array<{ tag: string; count: number }>> => ipcRenderer.invoke('media:tags'),
+  mediaFolders: (): Promise<unknown[]> => ipcRenderer.invoke('media:folders'),
+  mediaCheckAll: (): Promise<Array<{ id: string; status: string }>> => ipcRenderer.invoke('media:check-all'),
+  mediaCheck: (id: string): Promise<string> => ipcRenderer.invoke('media:check', id),
+  mediaThumbPath: (id: string, width?: number): Promise<string | null> => ipcRenderer.invoke('media:thumb-path', id, width),
+  mediaImportPaths: (paths: string[], opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-paths', paths, opts),
+  mediaPickAndImport: (opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:pick-and-import', opts),
+  mediaRename: (id: string, name: string): Promise<boolean> => ipcRenderer.invoke('media:rename', id, name),
+  mediaFavorite: (id: string, fav: boolean): Promise<boolean> => ipcRenderer.invoke('media:favorite', id, fav),
+  mediaSetTags: (id: string, tags: string[]): Promise<boolean> => ipcRenderer.invoke('media:set-tags', id, tags),
+  mediaMove: (ids: string[], folderId: string | null): Promise<boolean> => ipcRenderer.invoke('media:move', ids, folderId),
+  mediaMarkUsed: (id: string): Promise<boolean> => ipcRenderer.invoke('media:mark-used', id),
+  mediaRemove: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('media:remove', ids),
+  mediaRestore: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:restore', ids),
+  mediaPurgeNow: (): Promise<{ purged: number; filesDeleted: number }> => ipcRenderer.invoke('media:purge-now'),
+  mediaFolderCreate: (name: string, parentId?: string | null): Promise<unknown> => ipcRenderer.invoke('media:folder-create', name, parentId),
+  mediaFolderRename: (id: string, name: string): Promise<boolean> => ipcRenderer.invoke('media:folder-rename', id, name),
+  mediaFolderDelete: (id: string): Promise<boolean> => ipcRenderer.invoke('media:folder-delete', id),
+  mediaRelinkPick: (id: string): Promise<unknown> => ipcRenderer.invoke('media:relink-pick', id),
+  mediaImportBuffer: (name: string, bytes: ArrayBuffer, opts?: unknown): Promise<unknown> => ipcRenderer.invoke('media:import-buffer', name, bytes, opts),
+  mediaBackgroundsGet: (): Promise<{ settings: { destinations: Record<string, { mediaId: string | null; dim: number }>; channels: Record<string, { mediaId: string | null; dim: number }> }; congregationMain: { mediaId: string; dim: number } | null }> =>
+    ipcRenderer.invoke('media:backgrounds-get'),
+  mediaBackgroundSet: (scope: 'destination' | 'channel', id: string, bg: { mediaId: string | null; dim?: number } | null): Promise<boolean> =>
+    ipcRenderer.invoke('media:background-set', scope, id, bg),
+  onMediaBackgroundsChanged: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on('media:backgrounds-changed', h)
+    return () => ipcRenderer.removeListener('media:backgrounds-changed', h)
+  },
+  mediaPickPdf: (): Promise<{ canceled: boolean; name?: string; bytes?: ArrayBuffer; error?: string }> => ipcRenderer.invoke('media:pick-pdf'),
+  /** Test-only: honoured only when BORN_TEST_ALLOW_SET_PDF or BORN_TEST_PICK_PDF is set in the environment. */
+  mediaTestSetPdf: (path: string): Promise<boolean> => ipcRenderer.invoke('media:test-set-pdf', path),
+  mediaLogoGet: (): Promise<string | null> => ipcRenderer.invoke('media:logo-get'),
+  mediaLogoSet: (id: string | null): Promise<boolean> => ipcRenderer.invoke('media:logo-set', id),
+  onLogoShortcut: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on('shortcut:logo', h)
+    return () => ipcRenderer.removeListener('shortcut:logo', h)
+  },
+  mediaReveal: (id: string): Promise<boolean> => ipcRenderer.invoke('media:reveal', id),
+  mediaResolveHashes: (hashes: string[]): Promise<Record<string, string>> => ipcRenderer.invoke('media:resolve-hashes', hashes),
+  mediaLocateFolder: (wanted: Array<{ hash: string; bytes: number }>): Promise<{ canceled: boolean; found: Record<string, string>; scanned: number }> => ipcRenderer.invoke('media:locate-folder', wanted),
+  mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
+  mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
+  /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
+  mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
+  onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {
+    const h = (_e: IpcRendererEvent, p: { done: number; total: number; current: string }): void => cb(p)
+    ipcRenderer.on('media:import-progress', h)
+    return () => ipcRenderer.removeListener('media:import-progress', h)
+  },
 
   // Autocomplete
   getAutocompleteSuggestions: (wordPart: string): Promise<string[]> =>

@@ -42,6 +42,8 @@ export interface Slide {
    *  and a follow channel needs to know which page to show, not just which
    *  paragraph. */
   page?: number
+  /** Media slides only: which library picture this slide shows, and how. */
+  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
 }
 
 /** Which remote contributor added an item — absent for anything added
@@ -85,7 +87,60 @@ export interface SongItem extends QueueItemBase {
   author?: string
 }
 
-export type QueueItem = QuoteItem | BibleItem | SongItem
+/**
+ * Media (images and slideshows — Phase 1a). Saved to `.born` only as a *compat
+ * shell* (see serializeItem) so an older BORN reads it as a harmless quote row
+ * instead of crashing. `slides` stays empty until the media output exists.
+ */
+export type MediaKind = 'image' | 'slideshow'
+
+/** How a shared service file identifies a picture on another computer: by what it IS (its
+ *  content hash), never by this computer's private id. Written when a service is saved. */
+export interface MediaRef {
+  id: string
+  hash: string
+  name: string
+  width: number
+  height: number
+  bytes: number
+}
+export interface MediaItem extends QueueItemBase {
+  kind: 'media'
+  /** The (first) picture. For a slideshow, `mediaIds` lists all of them in order. */
+  mediaId: string
+  mediaKind: MediaKind
+  name: string
+  mediaIds?: string[]
+  /** What each picture is (hash, name, size) — lets another computer find or ask for them. */
+  refs?: MediaRef[]
+  fit?: 'fit' | 'fill' | 'stretch' | 'center'
+  /** Slideshow only. Seconds per picture; absent = manual (the safe default). */
+  autoAdvanceSec?: number
+  /** Slideshow only: start over after the last picture (auto-advance or Next). */
+  loop?: boolean
+  /** Unknown `ext` fields from a newer writer, carried through a save unchanged. */
+  _ext?: Record<string, unknown>
+  /** Unknown top-level fields on the shell, carried through unchanged. */
+  _top?: Record<string, unknown>
+}
+
+/**
+ * An item this version cannot use: written by a newer BORN (`reason: 'newer'`)
+ * or damaged (`'malformed'`). It is shown as a clearly labelled, non-projectable
+ * row and written back to disk exactly as it was read (`raw`), so opening and
+ * re-saving a file never loses what a newer version put in it.
+ */
+export interface UnknownItem extends QueueItemBase {
+  kind: 'unknown'
+  reason: 'newer' | 'malformed'
+  label: string
+  raw: unknown
+}
+
+export type QueueItem = QuoteItem | BibleItem | SongItem | MediaItem | UnknownItem
+
+export const NEWER_VERSION_LABEL = 'Made by a newer version of BORN'
+export const UNREADABLE_LABEL = "Couldn't read this item"
 
 let idCounter = 0
 /** Cheap unique id — good enough for in-memory queue rows. */
@@ -234,24 +289,226 @@ export function quoteToItem(quote: Quote): QuoteItem {
   return { kind: 'quote', id: makeId('q'), quote, slides }
 }
 
+const FITS = ['fit', 'fill', 'stretch', 'center']
+
+/** Slides for a media item, rebuilt from its ids (names are only for display). */
+export function mediaSlides(ids: string[], fit?: MediaItem['fit'], names?: string[]): Slide[] {
+  return ids.map((id, i) => ({ text: names?.[i] ?? 'Picture', media: { mediaId: id, ...(fit && fit !== 'fit' ? { fit } : {}) } }))
+}
+
+/** The queue item for one library picture. */
+export function mediaToItem(rec: { id: string; name: string }): MediaItem {
+  return {
+    kind: 'media',
+    id: makeId('media'),
+    mediaId: rec.id,
+    mediaKind: 'image',
+    name: rec.name,
+    slides: mediaSlides([rec.id], undefined, [rec.name])
+  }
+}
+
+/** One queue item that steps through several pictures. Manual advance by default. */
+export function slideshowToItem(recs: Array<{ id: string; name: string }>, name?: string): MediaItem {
+  const nm = name?.trim() || (recs.length === 1 ? recs[0].name : `${recs[0].name} + ${recs.length - 1} more`)
+  return {
+    kind: 'media',
+    id: makeId('media'),
+    mediaId: recs[0].id,
+    mediaKind: 'slideshow',
+    name: nm,
+    mediaIds: recs.map((r) => r.id),
+    slides: mediaSlides(recs.map((r) => r.id), undefined, recs.map((r) => r.name))
+  }
+}
+
+/** A copy of `item` with new display settings; slides are rebuilt so the fit applies per slide. */
+export function withMediaSettings(
+  item: MediaItem,
+  patch: Partial<Pick<MediaItem, 'fit' | 'autoAdvanceSec' | 'loop' | 'name'>>
+): MediaItem {
+  const next: MediaItem = { ...item, ...patch }
+  if ('autoAdvanceSec' in patch && !patch.autoAdvanceSec) delete next.autoAdvanceSec
+  if ('loop' in patch && !patch.loop) delete next.loop
+  if ('fit' in patch && (!patch.fit || patch.fit === 'fit')) delete next.fit
+  const ids = next.mediaIds ?? [next.mediaId]
+  next.slides = ids.map((id, i) => ({ text: item.slides[i]?.text ?? next.name, media: { mediaId: id, ...(next.fit ? { fit: next.fit } : {}) } }))
+  return next
+}
+
+/** Version of the `ext` envelope this build writes and understands. */
+export const EXT_VERSION = 1
+
+type Obj = Record<string, unknown>
+const isObj = (x: unknown): x is Obj => x !== null && typeof x === 'object' && !Array.isArray(x)
+const validSlides = (x: unknown): x is Slide[] =>
+  Array.isArray(x) && x.every((sl) => isObj(sl) && typeof sl.text === 'string')
+
+function unknownItem(raw: unknown, reason: 'newer' | 'malformed'): UnknownItem {
+  const o = isObj(raw) ? raw : {}
+  const src = o.source
+  const source =
+    isObj(src) && typeof src.deviceId === 'string' && typeof src.label === 'string'
+      ? { deviceId: src.deviceId, label: src.label }
+      : undefined
+  return {
+    kind: 'unknown',
+    id: typeof o.id === 'string' && o.id ? o.id : makeId('unk'),
+    slides: [],
+    source,
+    reason,
+    label: reason === 'newer' ? NEWER_VERSION_LABEL : UNREADABLE_LABEL,
+    raw
+  }
+}
+
+/** The smallest shape each known kind needs so nothing downstream can throw. */
+function knownShapeOk(kind: string, e: Obj): boolean {
+  if (!validSlides(e.slides)) return false
+  if (kind === 'quote') return isObj(e.quote) && typeof e.quote.text === 'string'
+  if (kind === 'bible') return typeof e.reference === 'string' && typeof e.translation === 'string'
+  if (kind === 'song') return typeof e.songId === 'number' && typeof e.title === 'string'
+  return false
+}
+
+/** `ext.kind` values this build can promote back into a real item. */
+const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
+  media: (e, ext) => {
+    if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
+    if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
+    const { v: _v, kind: _k, mediaId, mediaKind, name, mediaIds, refs, fit, autoAdvanceSec, loop, ...extra } = ext
+    const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
+    const nm = typeof name === 'string' ? name : 'Media'
+    const ids = Array.isArray(mediaIds) && mediaIds.length > 0 && mediaIds.every((x) => typeof x === 'string' && x) ? (mediaIds as string[]) : undefined
+    const fitV = typeof fit === 'string' && FITS.includes(fit) && fit !== 'fit' ? (fit as MediaItem['fit']) : undefined
+    return {
+      kind: 'media',
+      id: typeof id === 'string' && id ? id : makeId('media'),
+      slides: mediaSlides(ids ?? [mediaId], fitV, ids ? ids.map(() => nm) : [nm]),
+      ...(ids ? { mediaIds: ids } : {}),
+      ...(Array.isArray(refs)
+        ? (() => {
+            const ok = (refs as unknown[]).filter(
+              (r): r is MediaRef => isObj(r) && typeof r.id === 'string' && /^[0-9a-f]{64}$/.test(String(r.hash)) && typeof r.name === 'string' && typeof r.bytes === 'number'
+            )
+            return ok.length ? { refs: ok } : {}
+          })()
+        : {}),
+      ...(fitV ? { fit: fitV } : {}),
+      ...(typeof autoAdvanceSec === 'number' && autoAdvanceSec > 0 && autoAdvanceSec < 3600 ? { autoAdvanceSec } : {}),
+      ...(loop === true ? { loop: true } : {}),
+      source: source as MediaItem['source'],
+      mediaId,
+      mediaKind,
+      name: typeof name === 'string' ? name : 'Media',
+      ...(Object.keys(extra).length ? { _ext: extra } : {}),
+      ...(Object.keys(top).length ? { _top: top } : {})
+    }
+  }
+}
+
+/**
+ * Turn one persisted entry into a QueueItem. Never throws and never drops an
+ * entry: anything this version cannot use becomes an UnknownItem that keeps the
+ * original JSON, so a damaged or newer-format item is visible, harmless, and
+ * survives a save.
+ */
+export function normalizeQueueEntry(entry: unknown): QueueItem {
+  if (!isObj(entry)) return unknownItem(entry, 'malformed')
+
+  // The envelope a newer BORN writes for item kinds older builds don't know.
+  if (isObj(entry.ext) && typeof entry.ext.kind === 'string') {
+    const ext = entry.ext
+    const extKind = ext.kind as string
+    const reader = Object.prototype.hasOwnProperty.call(EXT_READERS, extKind) ? EXT_READERS[extKind] : undefined
+    if (reader && Number.isInteger(ext.v) && (ext.v as number) <= EXT_VERSION) {
+      const item = reader(entry, ext)
+      return item ?? unknownItem(entry, 'malformed')
+    }
+    return unknownItem(entry, 'newer')
+  }
+
+  if (typeof entry.kind === 'string') {
+    if (entry.kind === 'quote' || entry.kind === 'bible' || entry.kind === 'song') {
+      if (!knownShapeOk(entry.kind, entry)) return unknownItem(entry, 'malformed')
+      const item = entry as unknown as QueueItem
+      return item.id ? item : ({ ...item, id: makeId(item.kind) } as QueueItem)
+    }
+    return unknownItem(entry, 'newer')
+  }
+
+  // Oldest format: a bare Quote.
+  if ('text' in entry && 'sermonId' in entry) return quoteToItem(entry as unknown as Quote)
+  return unknownItem(entry, 'malformed')
+}
+
 /**
  * Migrate a persisted queue (old format was `Quote[]`, new format is
- * `QueueItem[]`). Anything already shaped like a QueueItem passes through.
+ * `QueueItem[]`). Every entry yields an item — see normalizeQueueEntry.
  */
 export function migrateQueue(raw: unknown): QueueItem[] {
   if (!Array.isArray(raw)) return []
-  return raw
-    .map((entry): QueueItem | null => {
-      if (entry && typeof entry === 'object' && 'kind' in entry && Array.isArray((entry as QueueItem).slides)) {
-        const item = entry as QueueItem
-        return item.id ? item : { ...item, id: makeId(item.kind) }
+  return raw.map(normalizeQueueEntry)
+}
+
+/** Can this item go on a screen in this build? (Unknown items and, until the
+ *  media output exists, media items cannot.) */
+export function isProjectable(item: QueueItem): boolean {
+  if (item.kind === 'unknown') return false
+  return item.slides.length > 0
+}
+
+/** What a queue row says when `isProjectable` is false. */
+export function unprojectableReason(item: QueueItem): string | null {
+  if (item.kind === 'unknown') return item.label
+  return item.slides.length === 0 ? 'Nothing to show' : null
+}
+
+/**
+ * The persisted shape of one item. Known kinds are written as they are.
+ * Newer kinds are written as a *compat shell*: an ordinary `quote` row an
+ * older BORN can open, step over and re-save (and which reads as a clear
+ * warning), carrying the real data in `ext`. Unknown items are written back
+ * exactly as they were read.
+ */
+export function serializeItem(item: QueueItem): unknown {
+  if (item.kind === 'unknown') return item.raw
+  if (item.kind === 'media') {
+    const text = `${item.name} — ${item.mediaKind === 'slideshow' ? 'slideshow' : 'picture'} (${NEWER_VERSION_LABEL.toLowerCase()})`
+    return {
+      ...(item._top ?? {}),
+      kind: 'quote',
+      id: item.id,
+      slides: [{ text }],
+      quote: {
+        text,
+        sermonTitle: `${item.name} (needs a newer BORN)`,
+        dateCode: '',
+        sermonId: -1,
+        paragraphIndex: 0,
+        paragraphRef: ''
+      },
+      ...(item.source ? { source: item.source } : {}),
+      ext: {
+        ...(item._ext ?? {}),
+        v: EXT_VERSION,
+        kind: 'media',
+        mediaId: item.mediaId,
+        mediaKind: item.mediaKind,
+        name: item.name,
+        ...(item.mediaIds ? { mediaIds: item.mediaIds } : {}),
+        ...(item.refs ? { refs: item.refs } : {}),
+        ...(item.fit ? { fit: item.fit } : {}),
+        ...(item.autoAdvanceSec ? { autoAdvanceSec: item.autoAdvanceSec } : {}),
+        ...(item.loop ? { loop: true } : {})
       }
-      if (entry && typeof entry === 'object' && 'text' in entry && 'sermonId' in entry) {
-        return quoteToItem(entry as Quote)
-      }
-      return null
-    })
-    .filter((x): x is QueueItem => x !== null)
+    }
+  }
+  return item
+}
+
+export function serializeQueue(items: QueueItem[]): unknown[] {
+  return items.map(serializeItem)
 }
 
 /** Short label for a queue row / stage view. */
@@ -263,5 +520,53 @@ export function itemTitle(item: QueueItem): string {
       return `${item.reference} · ${item.translation}`
     case 'song':
       return item.title
+    case 'media':
+      return item.name
+    case 'unknown':
+      return item.label
+    default:
+      return 'Unknown item'
   }
+}
+
+// ── Pictures travelling with a saved service ───────────────────────────────────
+
+/** Every picture id used by media items in a queue. */
+export function mediaIdsInQueue(items: QueueItem[]): string[] {
+  const out = new Set<string>()
+  for (const it of items) if (it.kind === 'media') for (const s of it.slides) if (s.media?.mediaId) out.add(s.media.mediaId)
+  return [...out]
+}
+
+/** A copy of the queue with `refs` filled in for every media item (needed before saving). */
+export function attachMediaRefs(items: QueueItem[], lookup: (id: string) => MediaRef | null): QueueItem[] {
+  return items.map((it) => {
+    if (it.kind !== 'media') return it
+    const ids = it.mediaIds ?? [it.mediaId]
+    const refs = ids.map((id) => lookup(id)).filter((r): r is MediaRef => !!r)
+    return refs.length ? { ...it, refs } : it
+  })
+}
+
+/** Point a queue's pictures at this computer's library ids (`map`: the file's id → local id). */
+export function remapMediaIds(items: QueueItem[], map: Record<string, string>): QueueItem[] {
+  const m = (id: string): string => map[id] ?? id
+  return items.map((it) => {
+    if (it.kind !== 'media') return it
+    const next: MediaItem = {
+      ...it,
+      mediaId: m(it.mediaId),
+      ...(it.mediaIds ? { mediaIds: it.mediaIds.map(m) } : {}),
+      ...(it.refs ? { refs: it.refs.map((r) => ({ ...r, id: m(r.id) })) } : {}),
+      slides: it.slides.map((s) => (s.media ? { ...s, media: { ...s.media, mediaId: m(s.media.mediaId) } } : s))
+    }
+    return next
+  })
+}
+
+/** The distinct picture references a queue carries (for matching against a library). */
+export function collectMediaRefs(items: QueueItem[]): MediaRef[] {
+  const seen = new Map<string, MediaRef>()
+  for (const it of items) if (it.kind === 'media') for (const r of it.refs ?? []) if (!seen.has(r.hash)) seen.set(r.hash, r)
+  return [...seen.values()]
 }

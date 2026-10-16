@@ -44,3 +44,9 @@ the chosen screen(s), over whatever else is showing, and disappears on its own.
 ---
 
 Next: [The mobile remote](mobile-remote.md).
+
+## Panic and the logo key
+
+**Esc** (or **B**) also cancels a take that is still loading — a large picture can't appear a moment after you hid the screen.
+**Ctrl/⌘ + Shift + L** shows the church logo (choose it in the Media area); with no logo set it simply hides the screen.
+See [Pictures on the screen](media-on-screen.md#panic-esc-and-the-logo-key).

@@ -25,3 +25,13 @@ product, and is not in the lockfile.
 ## Not changed
 
 No existing dependency was upgraded or removed in this branch.
+
+## Media library, Phase 1a (branch `v2-media-1a`)
+
+**No new npm dependencies.** Image decoding and thumbnails use Chromium inside Electron (already
+shipped); the index uses `better-sqlite3` (already a dependency); hashing uses Node's `crypto`.
+PDF import (Step 6) will use `pdfjs-dist` (already a dependency).
+
+| Used | What for | Notes |
+|---|---|---|
+| macOS `/usr/bin/sips` (operating-system tool, not bundled) | Convert HEIC/TIFF to JPEG on import | Called only on macOS. On other systems HEIC/TIFF are refused with instructions. Nothing is added to the installer |

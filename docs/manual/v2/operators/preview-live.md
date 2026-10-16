@@ -80,3 +80,9 @@ screen.
 ---
 
 Next: [Hiding, clearing, and messages](blank-clear.md).
+
+## Pictures
+
+Pictures and slideshows work the same way: staging one in **Preview** changes nothing; only **Take**, **Project**, **Next** or **Back**
+does. Preview and Live show the picture (and, for text, the background behind it). If a picture's file is missing when you take it,
+the screen is left as it was. See [Pictures on the screen](media-on-screen.md).

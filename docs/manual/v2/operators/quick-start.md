@@ -79,3 +79,6 @@ showing on the Congregation screen.
 Continue to [Hiding, clearing, and messages](blank-clear.md) for what to do between
 items, or [The Screens menu](screens-menu.md) if you need to check which display or
 channel something is going to.
+
+> **Pictures:** the **Media** item on the rail holds pictures, slideshows, backgrounds and PDFs — see
+> [Pictures: the Media library](media-library.md) and [Is tonight ready?](media-ready-and-sharing.md).

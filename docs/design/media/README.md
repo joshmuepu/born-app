@@ -1,0 +1,145 @@
+# Born Again — projecting anything: media design package
+
+**Status: design APPROVED by the owner (see below). Docs only — no application code written.** Branch
+`v2-media-design`. Nothing is merged, tagged or released.
+
+Written for the owner (not an engineer). Dates: research done 2026-10-15.
+
+
+## Approved by the owner
+
+**Date:** 2026-10-15 (recorded in the session that followed the review; the owner's decisions are
+quoted from their instruction).
+
+| # | Decision | Effect on this package |
+|---|---|---|
+| 1 | **Media is a fourth top-level area** with its own colour, *subject to the automated contrast test* | `--ba-media` stays proposed until `themeContrast.test.ts` passes for dark, light and high-contrast |
+| 2 | **Library files are COPIED into a managed library by default**, with an optional **"link in place"** for very large files | **Reverses** the earlier recommendation (reference by default) in [03 §2.1](03-product-design.md#21-getting-media-in) and roadmap question 2. Adds disk-space, duplicate and "link in place" handling to Phase 1a |
+| 3 | **First release:** MP4 (H.264 + AAC) video; MP3/AAC/FLAC/Ogg/Opus audio; common image formats. Unsupported files show a **clear message, never a broken item**. **No FFmpeg bundling in phase 1** | Matches the design; conversion stays Phase 2+ |
+| 4 | **Phone remote: Play/Pause live media only** (no seek, no starting sound) | Matches [03 §7](03-product-design.md#7-remote-and-automation) |
+| 5 | **Phase 1 is split:** **1a** = library, images, slideshows, backgrounds, PDF import, preflight, panic key; **1b** = video/audio and the playback bar, *after the spikes pass* | Roadmap updated |
+| 6 | **YouTube videos supported if possible** | New: [06 · YouTube](06-youtube.md); lands after 1b |
+
+**Still open** (owner's call, my recommendations in the roadmap): the "link in place" size threshold;
+whether to confirm with counsel the questions in [06 §10C](06-youtube.md#10-rights-and-terms--for-the-january-commercialization-checklist);
+the YouTube alert-handling choice ([06 §6](06-youtube.md#6-layers-and-alerts)); whether a YouTube
+*search* (needs the Data API and its terms) is wanted later; and the results of the nine spikes, which
+decide whether 1b and YouTube proceed as designed.
+
+## The package
+
+| File | What it is |
+|---|---|
+| **This page** | One-page recommendation |
+| [01 · Scenario catalog](01-scenario-catalog.md) | Everything a church might project, by moment and ministry; must/should/nice |
+| [02 · State of the art](02-state-of-the-art.md) | What ProPresenter, Proclaim, EasyWorship, FreeShow, OBS, vMix, Companion, NDI and others do — what to steal and what not to copy |
+| [03 · Product design](03-product-design.md) | The media model, library, playback, Channels/Destinations/layers, safety, remote, sharing, technical feasibility, rights, accessibility |
+| [04 · Visual design](04-visual-design.md) | Index of the 12 mockup screens |
+| [05 · Roadmap](05-roadmap.md) | Phases, spikes, tests, open questions with recommended answers |
+| [06 · YouTube](06-youtube.md) | YouTube items within YouTube's rules: flow, preflight, ads, failures, terms |
+| [mockups/](mockups/) | HTML + PNG mockups (open `mockups/png/` first) |
+| [spikes/codec-check/](spikes/codec-check/) | The one measurement taken: what this app's Electron can play |
+
+---
+
+## The recommendation, on one page
+
+**Build media as "more kinds of queue items," not as a second app.** Born Again already has the hard
+parts: a queue, a trustworthy Preview/Live pair, Channels, Destinations, a stage monitor, a Graphics
+page for OBS, a phone remote and an automation API. Pictures, video, audio, countdowns and alerts become
+items that ride those rails. Three things are new:
+
+1. **A Media library** you can trust — import by drag-and-drop or watched folder, folders/tags/favorites,
+   thumbnails, and a *Needs attention* view; files are **found and checked on Saturday, not discovered
+   missing on Sunday**.
+2. **A playback bar** on the Live panel that reads back what the output is *really* doing — position,
+   time left, loop, volume, fade, and "when it ends, then…". Nothing plays by itself, no surprise sound.
+3. **Four fixed layers** — Background, Content, Overlay, Alert — so a nursery alert is always on top,
+   a motion background never covers text, and the operator never arranges layers.
+
+**Start small and safe:** Phase 1 is images, slideshows, MP4 video, audio, still and motion backgrounds,
+a media library, basic playback, a one-key panic, and a preflight check — plus PDF import using a
+library we already ship. Everything with real technical risk (converting formats, live cameras/NDI,
+PowerPoint, bundles that carry media) comes after short prototypes that answer specific questions.
+
+**Why this order.** The most-complained-about thing in the field is *missing media found on stage*
+([ProPresenter relink guides](https://www.churchmotiongraphics.com/blog/how-to-relink-not-found-media-files-in-propresenter/)),
+and the second is video that stutters or behaves differently on the output. So reliability features
+(preflight, relink, watchdog, failure states) ship *with* video, not later.
+
+**What we deliberately don't copy:** timelines/cue editors, user-built layer systems, cloud storage of
+video, deep colour/crop effects, auto-play, and an in-app video editor. A tired volunteer in a dim booth
+needs fewer choices, not more.
+
+### One verified fact that shapes everything
+
+I measured this repo's own Electron (33.4.11 / Chromium 130, macOS): **MP4 with H.264 + AAC, WebM
+(VP8/VP9), AV1, MP3, AAC, FLAC, Ogg and Opus are supported; ProRes/MOV, MKV, AVI, MPEG-TS and AC-3 are
+not.** HEVC *claims* support but depends on each computer's hardware. So **MP4/H.264 is the safe
+format** and churches will hand us files that are not — we need either a friendly message (Phase 1) or
+a safe-copy conversion (Phase 2, after a licensing decision). Details: [03 §9](03-product-design.md#9-technical-feasibility).
+
+### Top ten scenarios (see [01](01-scenario-catalog.md))
+
+1. Countdown to the start of service
+2. Pre-service announcement loop (slides and photos)
+3. A video clip (testimony, mission, sermon illustration) that ends *then* does something sensible
+4. Still and motion backgrounds behind lyrics and verses
+5. A guest speaker's PowerPoint/PDF
+6. Photo slideshows (baby dedications, tributes — reliability matters most)
+7. Nursery/security/weather **alerts** that always win
+8. Stage cards and timers for the speaker ("5 min", "wrap up")
+9. Giving/QR and connect-card prompts
+10. A one-key **panic/blank/logo** and a Saturday **"is tonight ready?"** check
+
+### The five best ideas to steal ([02](02-state-of-the-art.md))
+
+1. **ProPresenter** — in/out points and a "then" action on media (without the timeline).
+2. **Proclaim / Planning Center** — the *plan* is the unit; files ride the plan; "needs attention".
+3. **FreeShow** — importers and NDI/timers as a proof of what a web-tech app can do (copy the spirit; NDI later).
+4. **Holyrics** — alerts that go *only* to the stage monitor.
+5. **Bitfocus Companion** — stable ids and a state feed with media position, so a Stream Deck can show "2:31 left".
+
+(Honourable mention: **OpenLP's failure** — alerts that can't show over video — is why our layers are fixed.)
+
+### Proposed phase 1 ([05](05-roadmap.md))
+
+Media library · image/slideshow/video/audio · still & motion backgrounds · playback bar with in/out,
+loop, fade, "when it ends" · panic key · preflight · stage monitor timing · remote Play/Pause/Blank ·
+PDF import. After **8 short spikes** (stability, HEVC, sync, serving to OBS, capture cards, conversion
+licensing, file compatibility, type cleanup).
+
+### Biggest technical risks
+
+| Risk | Why | How we reduce it |
+|---|---|---|
+| **Multi-screen sync** | Each output decodes its own copy; drift and different GPUs | Shared clock owned by the main process; 60-minute drift test |
+| **Long-running stability and 4K** | A volunteer laptop; memory/GPU limits | Warn + 1080p copies; a 60-minute loop test on the slowest machine |
+| **Formats churches will bring** (ProRes, MKV, AVI, HEVC) | Not playable in this engine ✔ measured | Message first; conversion after licensing advice |
+| **FFmpeg licence/patents** | LGPL/GPL and codec patents | Don't bundle in Phase 1; decide with advice |
+| **Old apps reading a new `.born`** | Unknown item kinds | Prove safe-skip, else a sibling file |
+| **Media over the network to OBS/other computers** | `file://` can't cross machines | Serve with range requests from the app |
+| **Live cameras/NDI** | Hardware variety, permissions, SDK licence | Use NDI Virtual Input (no SDK) first |
+
+### Where the mockups are, and how to open them
+
+`docs/design/media/mockups/png/` (start with `01-library.dark.png`, `03-queue-preview-live.dark.png`,
+`08-preflight.dark.png`) and the same screens as HTML in `docs/design/media/mockups/`
+(add `?theme=light` or `?theme=contrast` to see other themes). Index: [04](04-visual-design.md).
+
+### Decisions I need from you
+
+Full list with my recommended answers is in [05](05-roadmap.md#open-questions-for-the-owner-with-recommended-answers).
+The ones that gate the most: **(1)** Media as a fourth top-level area with its own colour? **(2)**
+Reference files in place by default, or copy into a library? **(3)** MP4/H.264 only for the first
+release? **(4)** Is any FFmpeg bundling acceptable, or must we avoid it? **(5)** Phone: Play/Pause the
+live video only — agreed that it cannot seek or start sound? **(6)** Go ahead with the 8 spikes first?
+
+## Limits of this research
+
+- Product facts come from public pages reachable on 2026-10-15; many were search snippets and
+  aggregator reviews. Items marked *unverified* in [02](02-state-of-the-art.md) and [03](03-product-design.md)
+  should not be relied on.
+- The codec test ran on **macOS only**, with `canPlayType` (what the engine *claims*), not real files.
+- Time/effort numbers in the roadmap are judgement.
+- Licensing text is information, not legal advice.

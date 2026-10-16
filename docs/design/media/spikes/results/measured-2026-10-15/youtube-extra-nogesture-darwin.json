@@ -1,0 +1,260 @@
+{
+ "when": "2026-10-15T15:01:46.104Z",
+ "electron": "33.4.11",
+ "chrome": "130.0.6723.191",
+ "policy": "nogesture",
+ "results": [
+  {
+   "name": "X1 strict autoplay policy, autoplay=1 UNMUTED",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&autoplay=1&origin=ht",
+     "referer": "http://localhost:65315/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": true,
+    "events": [
+     "142ms api-ready",
+     "409ms onReady",
+     "524ms state -1",
+     "524ms autoplayBlocked"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 213,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "backgroundable": false,
+      "eventId": "nurQaqzWBZb3y_sP3rDimAI",
+      "cpn": "UgvojIud3uQBptB-",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwisnev_pLyXAxWW-3IJHV6YGCPKAQSS0h3p",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": false
+    },
+    "lastSample": {
+     "t": 8144,
+     "pos": 0,
+     "st": -1,
+     "dur": 213
+    }
+   }
+  },
+  {
+   "name": "X2 strict autoplay policy, autoplay=1 muted",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&autoplay=1&or",
+     "referer": "http://localhost:65315/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": true,
+    "events": [
+     "144ms api-ready",
+     "406ms onReady",
+     "766ms state 1"
+    ],
+    "final": {
+     "pos": 7.404267108718872,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "purQarKYG-7Cy_sPkKnhwQQ",
+      "cpn": "lDReIXxfQfGt40Qy",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwiyg-mDpbyXAxVu4XIJHZBUOEjKAQQ5qJE1",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 8146,
+     "pos": 7.404267108718872,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "X3 strict policy, API playVideo() with no user gesture (unmuted)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&origin=http%3A%2F%2F",
+     "referer": "http://localhost:65315/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": true,
+    "events": [
+     "153ms api-ready",
+     "406ms onReady",
+     "417ms state -1",
+     "417ms state 3",
+     "740ms state 1"
+    ],
+    "final": {
+     "pos": 7.438426954223633,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "r-rQapP-BNCCut0PqP7RuQw",
+      "cpn": "bVX2rLLCm2YA7ACq",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwjTkfiHpbyXAxVQga4FHSh_NMfKAQQUGLxr",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 8154,
+     "pos": 7.437427026702881,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "X4 all YouTube/Google hosts blocked (simulated offline / DNS failure)",
+   "referersSeenByYouTube": [],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": false,
+    "events": [
+     "7ms api-script-error"
+    ],
+    "final": null
+   }
+  },
+  {
+   "name": "X5 only the embed page blocked (API script loads, iframe does not)",
+   "referersSeenByYouTube": [],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": true,
+    "events": [
+     "139ms api-ready"
+    ],
+    "final": {
+     "err": "P.getCurrentTime is not a function"
+    },
+    "lastSample": {
+     "t": 8141
+    }
+   }
+  },
+  {
+   "name": "X6 video stream hosts blocked (player loads, media bytes do not)",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "http://localhost:65315/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:65315",
+    "scriptLoaded": true,
+    "events": [
+     "148ms api-ready",
+     "453ms onReady",
+     "466ms state -1",
+     "467ms state 3"
+    ],
+    "final": {
+     "pos": 0,
+     "st": 3,
+     "dur": 214,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "backgroundable": false,
+      "cpn": "KPh8SE8nAAoix-oV",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMIgu_Ml6W8lwMViNOUCR0oxxJ5ygEEObj3bA==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 10150,
+     "pos": 0,
+     "st": 3,
+     "dur": 214
+    }
+   }
+  }
+ ]
+}

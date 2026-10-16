@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
@@ -22,6 +22,9 @@ import BrowsePanel from './components/BrowsePanel'
 import BiblePanel from './components/BiblePanel'
 import ChannelSermonsPanel from './components/ChannelSermonsPanel'
 import SongsPanel from './components/SongsPanel'
+import MediaPanel from './components/MediaPanel'
+import Preflight from './components/Preflight'
+import MediaImportReview, { type ReviewRequest } from './components/MediaImportReview'
 import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
@@ -39,7 +42,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, slideshowToItem, withMediaSettings, attachMediaRefs, mediaIdsInQueue, collectMediaRefs, remapMediaIds, type MediaItem, type MediaRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -59,7 +62,7 @@ const QUEUE_MIN = 280
 const QUEUE_MAX = 560
 const QUEUE_DEFAULT = 360
 
-type TopTab = 'sermons' | 'bible' | 'songs'
+type TopTab = 'sermons' | 'bible' | 'songs' | 'media'
 type SermonsSubTab = 'search' | 'browse'
 
 interface Projected {
@@ -106,8 +109,13 @@ export function slideSource(item: QueueItem, s: Slide): SlideSource | undefined 
 }
 
 function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
+  if (item.kind === 'unknown') return null
   const s = item.slides[slide]
   if (!s) return null
+  if (item.kind === 'media') {
+    if (!s.media) return null
+    return { kind: 'media', text: item.mediaIds && item.mediaIds.length > 1 ? `${item.name} — ${slide + 1} of ${item.mediaIds.length}` : item.name, media: s.media }
+  }
   return {
     kind: item.kind,
     text: s.text,
@@ -372,7 +380,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (queueLoaded.current) window.electronAPI.saveQueue(serviceQueue)
+    if (queueLoaded.current) window.electronAPI.saveQueue(serializeQueue(serviceQueue) as never)
   }, [serviceQueue])
 
   // Show the real saved projection text size in the Text control.
@@ -474,7 +482,10 @@ export default function App() {
       setProjected(null)
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
-    const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
+    const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => {
+      blankEpoch.current += 1 // any blank/unblank from Esc, the phone or the API cancels a take still loading
+      setIsScreenBlanked(blank)
+    })
     return () => {
       unProj()
       unStage()
@@ -496,6 +507,11 @@ export default function App() {
     }
   }, [])
 
+  /** Bumped every time the screen is blanked or un-blanked by anyone. A take that was still
+   *  loading (e.g. a big picture) when that happened is dropped, so Esc can never be
+   *  undone a moment later by something that was already on its way. */
+  const blankEpoch = useRef(0)
+
   const doProject = useCallback(
     async (
       item: QueueItem,
@@ -505,7 +521,20 @@ export default function App() {
     ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
+      const epoch = blankEpoch.current
+      // A picture is only ever put up if its file is there and readable right now. If not, nothing on
+      // the screen changes and the operator is told why (see also Preflight).
+      if (item.kind === 'media') {
+        const mid = item.slides[slide]?.media?.mediaId
+        const r = mid ? await window.electronAPI.mediaPrepareDisplay(mid) : { ok: false, status: 'missing' }
+        if (!r.ok) {
+          const why = r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
+          pushToast({ message: `Can't show “${item.name}” — ${why}. The screen was not changed.`, timeoutMs: 9000 })
+          return
+        }
+      }
       await ensureProjectionOpen()
+      if (blankEpoch.current !== epoch) return // the screen was blanked while this was loading: honour that
 
       // Private copy so Next/Prev flow-through never mutates the queued item.
       const stored: QueueItem = { ...item, slides: item.slides.map((s) => ({ ...s })) }
@@ -531,7 +560,7 @@ export default function App() {
         slide + 1 < stored.slides.length ? slidePayload(stored, slide + 1) : null
       window.electronAPI.updateStage(payload, nextPayload)
     },
-    [ensureProjectionOpen]
+    [ensureProjectionOpen, pushToast]
   )
 
   // Next / Prev walk the current item's slides; past either end they flow into
@@ -569,6 +598,11 @@ export default function App() {
           await doProject(p.item, target, p.queueIndex, { head: p.head, tail: p.tail })
           return true
         }
+        // A looping slideshow wraps instead of running out.
+        if (p.item.kind === 'media' && p.item.loop && p.item.slides.length > 1) {
+          await doProject(p.item, dir === 'next' ? 0 : p.item.slides.length - 1, p.queueIndex)
+          return true
+        }
 
         if (dir === 'next') {
           const ext = await fetchAdjacentSlide(p.tail, 'next', sermonCacheRef.current)
@@ -591,6 +625,24 @@ export default function App() {
 
   const handleNext = useCallback(() => advance('next'), [advance])
   const handlePrev = useCallback(() => advance('prev'), [advance])
+
+  // Slideshow auto-advance. It only ever runs for a slideshow the operator has taken, and it stops the
+  // moment anything else goes up, the screen is hidden, or the operator steps manually (every change
+  // of what is live restarts or cancels the timer).
+  useEffect(() => {
+    const p = projected
+    if (!p || p.item.kind !== 'media' || isScreenBlanked) return
+    const sec = p.item.autoAdvanceSec
+    if (!sec || p.item.slides.length < 2) return
+    const last = p.slide >= p.item.slides.length - 1
+    if (last && !p.item.loop) return
+    const t = window.setTimeout(() => {
+      const cur = projectedRef.current
+      if (!cur || cur.item.id !== p.item.id || cur.slide !== p.slide) return
+      void doProject(p.item, last ? 0 : p.slide + 1, p.queueIndex, { head: p.head, tail: p.tail })
+    }, sec * 1000)
+    return () => window.clearTimeout(t)
+  }, [projected, isScreenBlanked, doProject])
 
   useEffect(() => window.electronAPI.onQueueNavigate((dir) => advance(dir)), [advance])
 
@@ -632,7 +684,7 @@ export default function App() {
       setNextFlowPayload(
         ext
           ? {
-              kind: p.item.kind,
+              kind: p.item.kind as SlidePayload['kind'],
               text: ext.slide.text,
               label: ext.slide.label,
               reference: ext.slide.reference,
@@ -796,7 +848,7 @@ export default function App() {
   const handleProjectFromQueue = useCallback(
     (index: number, slide = 0) => {
       const item = queueRef.current[index]
-      if (!item) return
+      if (!item || !isProjectable(item)) return
       doProject(item, slide, index)
       followForItem(item)
     },
@@ -808,7 +860,7 @@ export default function App() {
   const handleSelectFromQueue = useCallback(
     (index: number) => {
       const item = queueRef.current[index]
-      if (item) {
+      if (item && isProjectable(item)) {
         setStagedId(item.id)
         followForItem(item, true)
       }
@@ -824,7 +876,9 @@ export default function App() {
       if (q.length === 0) return
       const cur = projectedRef.current?.queueIndex
       const from = cur == null ? (step === 1 ? -1 : q.length) : cur
-      const next = from + step
+      let next = from + step
+      // Step over anything this build can't show (newer-format or damaged items).
+      while (next >= 0 && next < q.length && !isProjectable(q[next])) next += step
       if (next < 0 || next >= q.length) return
       doProject(q[next], 0, next)
       followForItem(q[next])
@@ -887,6 +941,9 @@ export default function App() {
             item = songToItem(song as SongDetail)
             window.electronAPI.noteSongUsed(payload.songId)
           }
+        } else if (payload.type === 'media') {
+          const rec = await window.electronAPI.mediaGet(payload.mediaId)
+          if (rec) item = mediaToItem(rec)
         }
       } catch {
         item = null
@@ -907,6 +964,72 @@ export default function App() {
       })
     },
     [bibleTranslation, mutateQueue, pushToast]
+  )
+  /** "Add to queue" from the Media area: appends, with an Undo. Never changes what is live. */
+  const handleAddMediaToQueue = useCallback(
+    (recs: Array<{ id: string; name: string; animated?: boolean }>) => {
+      if (recs.length === 0) return
+      const placed = recs.map((r) => mediaToItem(r))
+      mutateQueue((q) => [...q, ...placed])
+      pushToast({
+        message: placed.length === 1 ? `Added “${placed[0].name}” to the queue` : `Added ${placed.length} pictures to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => placed.reduce((acc, it) => removeById(acc, it.id), q))
+      })
+      recs.forEach((r) => void window.electronAPI.mediaMarkUsed(r.id))
+    },
+    [mutateQueue, pushToast]
+  )
+  const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
+  const [preflightOpen, setPreflightOpen] = useState(false)
+  /** Ctrl/Cmd+Shift+L: put the church logo on screen (or just black if none is set). */
+  const showLogo = useCallback(async () => {
+    const id = await window.electronAPI.mediaLogoGet()
+    if (!id) {
+      setIsScreenBlanked(true)
+      window.electronAPI.setBlankScreen(true)
+      pushToast({ message: 'No logo is set, so the screen was blanked. In Media, open a picture and choose “Use as the church logo”.', timeoutMs: 8000 })
+      return
+    }
+    await doProject(mediaToItem({ id, name: 'Logo' }), 0, null)
+  }, [doProject, pushToast])
+  const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
+  useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
+  useEffect(() => {
+    const load = (): void => {
+      void window.electronAPI.mediaBackgroundsGet().then((b) => setMainBackground(b.congregationMain)).catch(() => setMainBackground(null))
+    }
+    load()
+    return window.electronAPI.onMediaBackgroundsChanged(load)
+  }, [])
+
+  /** A slideshow of several library pictures as one queue item. */
+  const handleAddSlideshow = useCallback(
+    (recs: Array<{ id: string; name: string }>) => {
+      if (recs.length === 0) return
+      const it = slideshowToItem(recs)
+      mutateQueue((q) => [...q, it])
+      pushToast({
+        message: `Added slideshow “${it.name}” (${recs.length} pictures) to the queue`,
+        actionLabel: 'Undo',
+        timeoutMs: 5000,
+        onAction: () => mutateQueue((q) => removeById(q, it.id))
+      })
+      recs.forEach((r) => void window.electronAPI.mediaMarkUsed(r.id))
+    },
+    [mutateQueue, pushToast]
+  )
+
+  /** Change how a queued picture/slideshow is shown (fit, auto-advance, loop). Only edits the queue
+   *  entry: whatever is live right now keeps using the copy it was taken with. */
+  const handleMediaSettings = useCallback(
+    (index: number, patch: Partial<Pick<MediaItem, 'fit' | 'autoAdvanceSec' | 'loop'>>) => {
+      const it = queueRef.current[index]
+      if (!it || it.kind !== 'media') return
+      mutateQueue((q) => q.map((x) => (x.id === it.id && x.kind === 'media' ? withMediaSettings(x, patch) : x)))
+    },
+    [mutateQueue]
   )
   // ── Back / forward history across the drill-down ───────────────────────────
   // Every time the operator opens a sermon, a chapter or a song it is noted;
@@ -1068,6 +1191,7 @@ export default function App() {
   }, [stageOpen])
 
   const handleToggleBlank = useCallback(() => {
+    blankEpoch.current += 1
     const b = !isScreenBlanked
     setIsScreenBlanked(b)
     window.electronAPI.setBlankScreen(b)
@@ -1113,7 +1237,8 @@ export default function App() {
           text: s.text,
           label: s.label,
           marker: s.marker,
-          reference: s.reference
+          reference: s.reference,
+          ...(s.media ? { media: s.media } : {})
         }))
       })),
       activeIndex: activeQueueIndex,
@@ -1130,7 +1255,8 @@ export default function App() {
                 projected.item.slides[projected.slide]?.reference ?? itemTitle(projected.item),
               label: projected.item.slides[projected.slide]?.label,
               nextText: nextPreviewText,
-              readingAhead
+              readingAhead,
+              ...(projected.item.slides[projected.slide]?.media ? { mediaId: projected.item.slides[projected.slide]?.media?.mediaId } : {})
             }
           : null
     })
@@ -1310,6 +1436,10 @@ export default function App() {
       { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
       { id: 'go-bible', label: 'Go to Bible', keywords: 'scripture verse', run: () => setTopTab('bible') },
       { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
+      { id: 'preflight', label: "Check that tonight's service is ready", keywords: 'preflight check ready missing files problems', run: () => setPreflightOpen(true) },
+      { id: 'logo', label: 'Show the church logo', keywords: 'panic blank logo', hint: 'Ctrl+Shift+L', run: () => void showLogo() },
+      { id: 'go-media', label: 'Go to Media', keywords: 'pictures photos images slides library backgrounds', run: () => setTopTab('media') },
+      { id: 'media-add', label: 'Add pictures to the library…', keywords: 'import photos images media', run: () => { setTopTab('media'); void window.electronAPI.mediaPickAndImport({}) } },
       {
         id: 'search-sermons',
         label: 'Search sermons',
@@ -1404,6 +1534,11 @@ export default function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === 'w') {
         e.preventDefault()
         handleToggleProjection()
+        return
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault()
+        void showLogo()
         return
       }
       if (mod && e.key === 'Enter') {
@@ -1591,10 +1726,53 @@ export default function App() {
     })
   }, [serviceQueue.length, projectionOpen, isScreenBlanked, snapshotService, restoreService, pushToast])
 
+  // ── Pictures travelling with a saved service ──────────────────────────────
+  // A saved service names each picture by what it IS (a content hash), because another computer's
+  // library ids mean nothing. On opening, pictures this computer already has are matched silently;
+  // for the rest the operator reviews once, before anything changes.
+  const [mediaReview, setMediaReview] = useState<ReviewRequest | null>(null)
+
+  const withMediaRefs = useCallback(async (q: QueueItem[]): Promise<QueueItem[]> => {
+    const ids = mediaIdsInQueue(q)
+    if (ids.length === 0) return q
+    const recs = await Promise.all(ids.map((id) => window.electronAPI.mediaGet(id)))
+    const refs = new Map<string, MediaRef>()
+    for (const r of recs) if (r) refs.set(r.id, { id: r.id, hash: r.hash, name: r.name, width: r.width, height: r.height, bytes: r.bytes })
+    return attachMediaRefs(q, (id) => refs.get(id) ?? null)
+  }, [])
+
+  /** Match a loaded queue's pictures to this library. Resolves to the queue to use, or null if the
+   *  operator cancelled (nothing is changed in that case). */
+  const prepareMediaForQueue = useCallback(
+    async (items: QueueItem[], opts: { silent?: boolean } = {}): Promise<QueueItem[] | null> => {
+      let current = items
+      for (let round = 0; round < 3; round++) {
+        const refs = collectMediaRefs(current)
+        if (refs.length === 0) return current
+        const have = await window.electronAPI.mediaResolveHashes(refs.map((r) => r.hash))
+        const map: Record<string, string> = {}
+        for (const r of refs) if (have[r.hash]) map[r.id] = have[r.hash]
+        current = remapMediaIds(current, map)
+        const missing = refs.filter((r) => !have[r.hash])
+        if (missing.length === 0 || opts.silent) return current // silent (unattended remote import): never wait on a dialog
+        const choice = await new Promise<'locate' | 'open' | 'cancel'>((resolve) => setMediaReview({ missing, total: refs.length, resolve }))
+        setMediaReview(null)
+        if (choice === 'cancel') return null
+        if (choice === 'open') return current
+        const r = await window.electronAPI.mediaLocateFolder(missing.map((m) => ({ hash: m.hash, bytes: m.bytes })))
+        if (r.canceled) return null
+        // loop: re-match against the (now larger) library
+      }
+      return current
+    },
+    []
+  )
+
   const handleSaveService = useCallback(async () => {
-    const ok = await window.electronAPI.saveService(serviceQueue)
+    const withRefs = await withMediaRefs(serviceQueue)
+    const ok = await window.electronAPI.saveService(serializeQueue(withRefs) as never)
     if (ok) refreshRecents()
-  }, [serviceQueue, refreshRecents])
+  }, [serviceQueue, refreshRecents, withMediaRefs])
 
   const loadServiceItems = useCallback(
     (loaded: unknown[]) => {
@@ -1646,20 +1824,24 @@ export default function App() {
     try {
       const loaded = await window.electronAPI.openService()
       if (loaded) {
-        loadServiceItems(loaded)
+        const prepared = await prepareMediaForQueue(migrateQueue(loaded))
+        if (!prepared) return // cancelled at the picture review: nothing changed
+        loadServiceItems(serializeQueue(prepared))
         refreshRecents()
       }
     } catch (e) {
       showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
     }
-  }, [loadServiceItems, refreshRecents, showOpenError])
+  }, [loadServiceItems, refreshRecents, showOpenError, prepareMediaForQueue])
 
   const handleOpenRecent = useCallback(
     async (path: string) => {
       try {
         const loaded = await window.electronAPI.openServicePath(path)
         if (loaded) {
-          loadServiceItems(loaded)
+          const prepared = await prepareMediaForQueue(migrateQueue(loaded))
+          if (!prepared) return
+          loadServiceItems(serializeQueue(prepared))
           refreshRecents()
         } else {
           showOpenError("Couldn't open that service file — it may be damaged or empty.")
@@ -1668,7 +1850,7 @@ export default function App() {
         showOpenError("Couldn't open that service file — it may be damaged or empty.")
       }
     },
-    [loadServiceItems, refreshRecents, showOpenError]
+    [loadServiceItems, refreshRecents, showOpenError, prepareMediaForQueue]
   )
 
   /** Untagged items from an imported file (saved before per-item source tags
@@ -1701,10 +1883,12 @@ export default function App() {
       )
     }
     if (files.length === 0) return
-    const allTagged = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
+    const allTagged0 = files.flatMap((f) => tagUntaggedItems(migrateQueue(f.items), f.name))
+    const allTagged = await prepareMediaForQueue(allTagged0)
+    if (!allTagged) return // cancelled at the picture review: nothing was added
     if (allTagged.length > 0) addToQueue(allTagged)
     refreshRecents()
-  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError])
+  }, [tagUntaggedItems, addToQueue, refreshRecents, showOpenError, prepareMediaForQueue])
 
   // The remote's New/Open/Save already confirm on the phone itself before
   // sending the command — doing it again here (a JS confirm() on an
@@ -1737,18 +1921,18 @@ export default function App() {
   useEffect(
     () =>
       window.electronAPI.onWebRemoteImportService(({ items, label }) => {
-        addToQueue(tagUntaggedItems(migrateQueue(items), label))
+        void prepareMediaForQueue(tagUntaggedItems(migrateQueue(items), label), { silent: true }).then((p) => p && addToQueue(p))
         refreshRecents()
       }),
-    [tagUntaggedItems, addToQueue, refreshRecents]
+    [tagUntaggedItems, addToQueue, refreshRecents, prepareMediaForQueue]
   )
   useEffect(
     () =>
       window.electronAPI.onWebRemoteSaveQueue(async (name) => {
-        await window.electronAPI.saveServiceNamed(name, serviceQueue)
+        await window.electronAPI.saveServiceNamed(name, serializeQueue(await withMediaRefs(serviceQueue)) as never)
         refreshRecents()
       }),
-    [serviceQueue, refreshRecents]
+    [serviceQueue, refreshRecents, withMediaRefs]
   )
 
   const isRunning = indexer?.status === 'running'
@@ -2081,7 +2265,8 @@ export default function App() {
             {([
               ['sermons', 'Sermons', Mic2],
               ['bible', 'Bible', BookOpen],
-              ['songs', 'Songs', Music2]
+              ['songs', 'Songs', Music2],
+              ['media', 'Media', ImageIcon]
             ] as const).map(([id, label, Icon]) => (
               <button
                 key={id}
@@ -2216,6 +2401,17 @@ export default function App() {
               onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
             />
           </div>
+
+          <div className="panel-view" hidden={topTab !== 'media'}>
+            <MediaPanel
+              visible={topTab === 'media'}
+              onAddToQueue={handleAddMediaToQueue}
+              onAddSlideshow={handleAddSlideshow}
+              pushToast={pushToast}
+              focusId={mediaFocusId}
+              onFocused={() => setMediaFocusId(null)}
+            />
+          </div>
           </div>
         </div>
 
@@ -2270,6 +2466,8 @@ export default function App() {
             stageOpen={stageOpen}
             blanked={isScreenBlanked}
             onProject={handleProjectFromQueue}
+            onMediaSettings={handleMediaSettings}
+            onPreflight={() => setPreflightOpen(true)}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}
@@ -2288,6 +2486,7 @@ export default function App() {
             stagedPayload={stagedPayload}
             stagedTitle={stagedItem ? itemTitle(stagedItem) : null}
             nextPayload={previewNextPayload}
+            background={mainBackground}
             onTake={handleTake}
             onUnstage={() => setStagedId(null)}
             onToggleBlank={handleToggleBlank}
@@ -2354,7 +2553,9 @@ export default function App() {
               <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (also cancels anything still loading)</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></dt><dd>Show the church logo (set in Media)</dd></div>
+              <div><dt><kbd>Q</kbd> / <kbd>F</kbd> in Media</dt><dd>Add the picture to the queue / favorite it</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
@@ -2452,6 +2653,10 @@ export default function App() {
           )
         })()}
 
+      <MediaImportReview request={mediaReview} />
+
+      <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} />
+
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -2465,6 +2670,10 @@ export default function App() {
         onOpenSong={(id) => {
           setTopTab('songs')
           setFocusSongId(id)
+        }}
+        onOpenMedia={(id) => {
+          setTopTab('media')
+          setMediaFocusId(id)
         }}
         onOpenVerse={(v) => {
           setTopTab('bible')

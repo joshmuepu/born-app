@@ -50,3 +50,11 @@ Once connected on a given WiFi network, the phone stays connected on future visi
 ---
 
 Next: [The Screens menu](screens-menu.md).
+
+### Pictures
+
+Picture and slideshow items show a small thumbnail in the queue and in the item's slide list, and the picture that is on screen
+shows its thumbnail under **Now**. **Next / Prev** step a slideshow and **Blank** hides the screen. The phone has no seek or
+sound controls.
+
+![A queue with a picture and a slideshow on a phone.](../images/media-remote-iphone.png)

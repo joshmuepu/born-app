@@ -90,3 +90,14 @@
 @media (prefers-reduced-motion: reduce) {
   .slide-thumb-stage { animation: none; }
 }
+
+.slide-thumb-pic { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #000; }
+.slide-thumb-pic--fit { object-fit: contain; }
+.slide-thumb-pic--fill { object-fit: cover; }
+.slide-thumb-pic--stretch { object-fit: fill; }
+.slide-thumb-pic--center { object-fit: none; }
+
+.st-bg { position: absolute; inset: 0; z-index: 0; }
+.st-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.st-bg-dim { position: absolute; inset: 0; }
+.slide-thumb-stage > :not(.st-bg) { z-index: 1; }

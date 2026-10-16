@@ -1,0 +1,451 @@
+{
+ "when": "2026-10-15T14:48:15.133Z",
+ "electron": "33.4.11",
+ "chrome": "130.0.6723.191",
+ "policy": "nogesture",
+ "results": [
+  {
+   "name": "S1 file:// default",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1",
+     "referer": "(none)"
+    }
+   ],
+   "r": {
+    "origin": "file://",
+    "scriptLoaded": true,
+    "events": [
+     "209ms api-ready",
+     "464ms onReady",
+     "464ms onError 153"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "embedder.identity.missing.referrer",
+      "backgroundable": false,
+      "cpn": "oUf4HPAj_gtflXU1",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMIi8vk9aG8lwMVlsyUCR3n1wonygEEEWw8aA==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9212,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "S2 file:// + referrerpolicy=strict-origin-when-cross-origin",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1",
+     "referer": "(none)"
+    }
+   ],
+   "r": {
+    "origin": "file://",
+    "scriptLoaded": true,
+    "events": [
+     "283ms api-ready",
+     "539ms onReady",
+     "540ms onError 153"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "embedder.identity.missing.referrer",
+      "backgroundable": false,
+      "cpn": "BXfkVP02ElHaZujP",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMI4q2c-qG8lwMVFRezAB0G3hoeygEEKFhHog==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9285,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "S3 http://127.0.0.1 + origin param",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "http://127.0.0.1:64890/"
+    }
+   ],
+   "r": {
+    "origin": "http://127.0.0.1:64890",
+    "scriptLoaded": true,
+    "events": [
+     "140ms api-ready",
+     "476ms onReady",
+     "476ms onError 150"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "auth",
+      "backgroundable": false,
+      "cpn": "reNzFUti4J8_VrI9",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMIx_fx_qG8lwMVGdKUCR1lCDqCygEE21ay6g==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9143,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "S4 http://localhost + origin param",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "http://localhost:64890/"
+    }
+   ],
+   "r": {
+    "origin": "http://localhost:64890",
+    "scriptLoaded": true,
+    "events": [
+     "144ms api-ready",
+     "399ms onReady",
+     "410ms state -1",
+     "410ms state 3",
+     "963ms state 1"
+    ],
+    "final": {
+     "pos": 8.215658940872192,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "gOfQavDSGtvHy_sPmKLPqAU",
+      "cpn": "DYgO3B2pQMjYDhen",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwjwkr6DoryXAxXb43IJHRjRE1XKAQST7zDe",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9147,
+     "pos": 8.21465901335144,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "S5 http://127.0.0.1 + no-referrer policy",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1&origin=http%3",
+     "referer": "(none)"
+    }
+   ],
+   "r": {
+    "origin": "http://127.0.0.1:64890",
+    "scriptLoaded": true,
+    "events": [
+     "138ms api-ready",
+     "446ms onReady",
+     "446ms onError 153"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "embedder.identity.missing.referrer",
+      "backgroundable": false,
+      "cpn": "8GkF_UwFz-LhuZF3",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMI1-j6h6K8lwMV2yyzAB3TMCjWygEEJW0O-g==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9140,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "S6 file:// + injected Referer https://com.joshmuepu.born.v2dev/",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1",
+     "referer": "https://com.joshmuepu.born.v2dev/"
+    },
+    {
+     "url": "https://www.youtube.com/embed/establish_zw",
+     "referer": "https://com.joshmuepu.born.v2dev/"
+    }
+   ],
+   "r": {
+    "origin": "file://",
+    "scriptLoaded": true,
+    "events": [
+     "133ms api-ready",
+     "387ms onReady",
+     "399ms state -1",
+     "399ms state 3",
+     "704ms state 1"
+    ],
+    "final": {
+     "pos": 8.450331961853028,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "k-fQapf3Gt2Cut0PxIDQ6Qw",
+      "cpn": "9kxTT58zu7zwrimj",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwjXjMaMoryXAxVdga4FHUQANM3KAQQQ9I1s",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9134,
+     "pos": 8.450331961853028,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  },
+  {
+   "name": "S7 bornapp:// custom scheme (standard+secure) default",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1",
+     "referer": "(none)"
+    }
+   ],
+   "r": {
+    "origin": "bornapp://born",
+    "scriptLoaded": true,
+    "events": [
+     "140ms api-ready",
+     "400ms onReady",
+     "400ms onError 153"
+    ],
+    "final": {
+     "pos": 0,
+     "st": -1,
+     "dur": 0,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "",
+      "title": "",
+      "isPlayable": false,
+      "errorCode": "embedder.identity.missing.referrer",
+      "backgroundable": false,
+      "cpn": "-d9ZeXbvVlTa1A47",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": false,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQru4BIhMI-PiEkaK8lwMViMzjBx0O-Q7cygEEE6AWqg==",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9142,
+     "pos": 0,
+     "st": -1,
+     "dur": 0
+    }
+   }
+  },
+  {
+   "name": "S8 bornapp:// + injected Referer",
+   "referersSeenByYouTube": [
+    {
+     "url": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&mute=1",
+     "referer": "https://com.joshmuepu.born.v2dev/"
+    }
+   ],
+   "r": {
+    "origin": "bornapp://born",
+    "scriptLoaded": true,
+    "events": [
+     "143ms api-ready",
+     "434ms onReady",
+     "449ms state -1",
+     "449ms state 3",
+     "756ms state 1"
+    ],
+    "final": {
+     "pos": 8.408959980926515,
+     "st": 1,
+     "dur": 213.061,
+     "data": {
+      "video_id": "dQw4w9WgXcQ",
+      "author": "Rick Astley",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+      "isPlayable": true,
+      "errorCode": null,
+      "video_quality": "hd720",
+      "video_quality_features": [],
+      "backgroundable": false,
+      "eventId": "pufQaqfqHbqNut0P8vXoiA8",
+      "cpn": "N4Yk2D5qRcwOrCje",
+      "isLive": false,
+      "isWindowedLive": false,
+      "isManifestless": false,
+      "allowLiveDvr": false,
+      "isListed": true,
+      "isMultiChannelAudio": false,
+      "hasProgressBarBoundaries": false,
+      "isPremiere": false,
+      "itct": "CAAQu2kiEwin1dCVoryXAxW6hq4FHfI6GvHKAQR3FCmJ",
+      "playerResponseCpn": "",
+      "progressBarStartPositionUtcTimeMillis": null,
+      "progressBarEndPositionUtcTimeMillis": null,
+      "paidContentOverlayDurationMs": 0,
+      "isSeekable": null
+     },
+     "muted": true
+    },
+    "lastSample": {
+     "t": 9145,
+     "pos": 8.407960053405763,
+     "st": 1,
+     "dur": 213.061
+    }
+   }
+  }
+ ]
+}
