@@ -76,3 +76,6 @@ Next: [Presentation profiles](profiles.md).
 > **Pictures and backgrounds on Graphics.** A **Full-screen** output draws pictures and any still background you set (**Media →
 > Backgrounds**). A **Lower third** output (meant to sit over a camera) deliberately draws neither, so a picture can never cover your
 > camera by accident.
+
+> **A full OBS setup for a livestream** (scenes, the lower-third and full-screen layouts from one output, sound, YouTube, a Sunday checklist and a "blank overlay" fix list) is on
+> the page [Using BORN with OBS](obs-live.md).

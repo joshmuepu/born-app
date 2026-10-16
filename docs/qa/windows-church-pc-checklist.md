@@ -84,3 +84,16 @@ It starts the app with a throw-away data folder, checks the window loads and the
 - [ ] A video whose owner disabled embedding: plain message, backup offered.
 - [ ] Ads: note whether ads appear with and without YouTube Premium signed in on this PC (not confirmed anywhere).
 - [ ] No "Error 153" on Windows (the player page origin is the proof point).
+
+## OBS (v2-obs-live) — by hand on the church PC
+Mac results and numbers: `docs/qa/v2-obs-live-report.md`. Manual: *Using BORN with OBS*.
+- [ ] OBS 30+: *Scene Collection → Import* `docs/manual/obs/BORN-scenes.json`; paste the Graphics address into **BORN Lower Third** and **BORN Full-screen** (keep the `?profile=` endings). Project a verse: it appears on scene 1 in about a second.
+- [ ] Same computer: use the **"OBS on this computer"** address. Quit and restart BORN: the overlay returns by itself within ~5 s. Try the `.local` address too and write down how long it takes (Windows needs Bonjour).
+- [ ] Other computer: use the numbers address. Pull the network cable for 20 s and put it back; the overlay returns within ~1 minute without touching OBS.
+- [ ] Scene switch is instant (source setting *Shutdown when not visible* is OFF); canvas 1920×1080 @ 30, sources stretched to the screen.
+- [ ] Video clip: scene 4 follows the room within about a quarter of a second; the browser source is silent; sound reaches the stream through **Application Audio Capture** of BORN (check the OBS meter).
+- [ ] Right-to-left or long text (if you use it): panel aligns right and stays inside the picture; text readable over a bright camera shot.
+- [ ] Esc and Ctrl+Shift+L clear the stream output as well as the room; phone Blank does too.
+- [ ] YouTube item: stream shows the name only (or nothing on the lower third); if window capture is wanted, add *Window Capture* of BORN's output and check it.
+- [ ] 10 minutes of a private/unlisted livestream with the overlay: no stale verse, no frozen overlay; watch OBS *Stats* for dropped frames.
+- [ ] Hardware acceleration off (OBS Advanced): the overlay still draws.

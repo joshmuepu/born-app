@@ -290,7 +290,15 @@ interface GraphicsEntry {
   cycleTimer: ReturnType<typeof setInterval> | null
   cyclePages: string[]
   cycleIndex: number
+  /** What is live right now (before any profile-specific slicing), so a client that asks for its own layout can be given a frame. */
+  live: { slide: WebRemoteSlide | null; blanked: boolean }
+  /** A page opened with `?profile=` is always drawn in that layout, whatever the output's own setting (see overrideOf). */
+  overrides: WeakMap<ServerResponse, PresentationProfileId>
+  /** Pagination state for those pages, one per layout in use. */
+  overrideCycles: Map<PresentationProfileId, { timer: ReturnType<typeof setInterval> | null; pages: string[]; index: number; last: GraphicsPayload }>
 }
+/** How often the live feed sends a keep-alive, and how long a page waits in silence before it reconnects by itself. */
+export const graphicsTiming = { heartbeatMs: 15_000, silenceMs: 45_000 }
 const graphicsDestinations = new Map<string, GraphicsEntry>()
 
 /** main/index.ts calls this once, when a Graphics destination is added (or
@@ -304,7 +312,10 @@ export function registerGraphicsDestination(id: string, profileId: PresentationP
     lastPlayback: null,
     cycleTimer: null,
     cyclePages: [],
-    cycleIndex: 0
+    cycleIndex: 0,
+    live: { slide: null, blanked: true },
+    overrides: new WeakMap(),
+    overrideCycles: new Map()
   })
 }
 
@@ -316,6 +327,7 @@ export function unregisterGraphicsDestination(id: string): void {
   const entry = graphicsDestinations.get(id)
   if (!entry) return
   if (entry.cycleTimer) clearInterval(entry.cycleTimer)
+  for (const c of entry.overrideCycles.values()) if (c.timer) clearInterval(c.timer)
   for (const res of entry.clients) {
     try {
       res.end()
@@ -390,11 +402,82 @@ function sendGraphicsFrame(
   entry.lastPayload = { slide, blanked, profileId }
   const data = `data: ${JSON.stringify(entry.lastPayload)}\n\n`
   for (const res of entry.clients) {
+    if (entry.overrides.has(res)) continue // those get their own layout (pushOverrides)
     try {
       res.write(data)
     } catch {
       entry.clients.delete(res)
     }
+  }
+}
+
+/** The layout a page asked for with `?profile=` (ignored unless it names a real profile; `auto` means "no override"). */
+export function parseProfileParam(v: string | null | undefined): PresentationProfileId | null {
+  return v && Object.prototype.hasOwnProperty.call(PRESENTATION_PROFILES, v) ? (v as PresentationProfileId) : null
+}
+
+/** The layouts that connected override pages are using right now. */
+function overrideProfiles(entry: GraphicsEntry): Set<PresentationProfileId> {
+  const out = new Set<PresentationProfileId>()
+  for (const res of entry.clients) {
+    const p = entry.overrides.get(res)
+    if (p) out.add(p)
+  }
+  return out
+}
+
+/** One frame in a fixed layout, paginated for THAT layout (a lower third holds fewer lines than a full screen). */
+function startOverrideCycle(entry: GraphicsEntry, profileId: PresentationProfileId): void {
+  const old = entry.overrideCycles.get(profileId)
+  if (old?.timer) clearInterval(old.timer)
+  const { slide, blanked } = entry.live
+  if (!slide || blanked) {
+    entry.overrideCycles.set(profileId, { timer: null, pages: [], index: 0, last: { slide, blanked, profileId } })
+    return
+  }
+  const profile = getPresentationProfile(profileId)
+  const pages = chunkLines(slide.text, profile.broadcastPagination.linesPerPage)
+  const cyc: { timer: ReturnType<typeof setInterval> | null; pages: string[]; index: number; last: GraphicsPayload } = {
+    timer: null,
+    pages,
+    index: 0,
+    last: { slide: { ...slide, text: pages[0] ?? slide.text }, blanked: false, profileId }
+  }
+  entry.overrideCycles.set(profileId, cyc)
+  if (pages.length > 1) {
+    cyc.timer = setInterval(() => {
+      cyc.index = (cyc.index + 1) % pages.length
+      cyc.last = { slide: { ...slide, text: pages[cyc.index] }, blanked: false, profileId }
+      sendToOverrideClients(entry, profileId)
+    }, profile.broadcastPagination.intervalMs)
+    cyc.timer.unref?.()
+  }
+}
+
+function sendToOverrideClients(entry: GraphicsEntry, profileId: PresentationProfileId): void {
+  const cyc = entry.overrideCycles.get(profileId)
+  if (!cyc) return
+  const data = `data: ${JSON.stringify(cyc.last)}\n\n`
+  for (const res of entry.clients) {
+    if (entry.overrides.get(res) !== profileId) continue
+    try {
+      res.write(data)
+    } catch {
+      entry.clients.delete(res)
+    }
+  }
+}
+
+/** New live content: every override layout in use is rebuilt and sent. */
+function pushOverrides(entry: GraphicsEntry): void {
+  const wanted = overrideProfiles(entry)
+  for (const [p, c] of entry.overrideCycles) {
+    if (c.timer) clearInterval(c.timer)
+    if (!wanted.has(p)) entry.overrideCycles.delete(p)
+  }
+  for (const p of wanted) {
+    startOverrideCycle(entry, p)
+    sendToOverrideClients(entry, p)
   }
 }
 
@@ -412,6 +495,8 @@ export function pushGraphicsUpdate(id: string, payload: GraphicsPayload): void {
   }
 
   const slide = payload.slide
+  entry.live = { slide, blanked: payload.blanked }
+  pushOverrides(entry)
   if (!slide || payload.blanked) {
     entry.cyclePages = []
     entry.cycleIndex = 0
@@ -654,14 +739,19 @@ function buildGraphicsScript(id: string): string {
 
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
+    panelEl.style.background = '';
     picEl.style.display = 'none'; picEl.removeAttribute('src');
     stopVideo();
     bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
     bgVideoEl.style.display = 'none'; bgVideoEl.pause(); bgVideoEl.removeAttribute('src');
     if (!payload || !payload.slide || payload.blanked) {
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
+      // Nothing live: hide the whole panel. A lower-third panel has its own backdrop and padding, so empty text alone would
+      // leave a dark empty bar over the camera.
+      panelEl.style.display = 'none';
       return;
     }
+    panelEl.style.display = '';
     var s = payload.slide;
     // Still background: only on a Full-screen output (a lower-third sits over a camera and must stay transparent).
     if (s.background && s.kind !== 'media' && stageEl.dataset.profile === 'fullscreen' && /^m_[0-9a-f]{12}$/.test(s.background.mediaId)) {
@@ -677,15 +767,18 @@ function buildGraphicsScript(id: string): string {
       }
       bgDimEl.style.background = 'rgba(0,0,0,' + (Math.max(0, Math.min(80, s.background.dim)) / 100) + ')';
       bgDimEl.style.display = 'block';
+      // The Full-screen panel is an opaque black backdrop that sits ABOVE the background layers: let the background show through it.
+      panelEl.style.background = 'transparent';
     }
     if (s.kind === 'media') {
+      panelEl.style.display = 'none'; // a picture/video is its own frame (and nothing at all on a lower-third): no empty text panel
       // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
       // overlay) output nothing is drawn, so a picture never covers the camera by accident.
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       if (s.media && s.media.type === 'youtube') {
         // YouTube is NEVER played on a Graphics/OBS page (a second player would have its own network, ads and clock, and YouTube
         // needs a visible player of its own). Full-screen outputs show the name only; a lower-third output shows nothing.
-        if (stageEl.dataset.profile === 'fullscreen') { labelEl.textContent = 'YouTube'; textInnerEl.textContent = s.text || ''; refEl.textContent = 'Playing on the main screen'; }
+        if (stageEl.dataset.profile === 'fullscreen') { panelEl.style.display = ''; labelEl.textContent = 'YouTube'; textInnerEl.textContent = s.text || ''; refEl.textContent = 'Playing on the main screen'; }
         return;
       }
       if (stageEl.dataset.profile === 'fullscreen' && s.media && s.media.type === 'video' && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
@@ -723,20 +816,42 @@ function buildGraphicsScript(id: string): string {
     }
   }
 
+  // ?profile=lower-third|fullscreen on the page address picks this page's layout (the output's own setting is the default).
+  var live = null, lastHeard = Date.now(), staleTimer = null;
+  // Feed lost. Keep the last frame through a short blip, but never leave an old verse on a livestream for minutes: after 10 s with no
+  // feed the frame is cleared. The red "RECONNECTING…" text is for people looking at the page in a browser, not for a livestream
+  // (inside OBS, window.obsstudio exists), so it is not drawn there.
+  function showDisconnected(){
+    if (!window.obsstudio) discEl.style.display = 'block';
+    if (!staleTimer) staleTimer = setTimeout(function(){ staleTimer = null; applyFrame(null); }, 10000);
+  }
   function connect(){
-    var es = new EventSource(${JSON.stringify(eventsPath)});
+    if (live) { try { live.close(); } catch (e) {} }
+    lastHeard = Date.now();
+    var es = new EventSource(${JSON.stringify(eventsPath)} + location.search);
+    live = es;
     es.onmessage = function(ev){
+      lastHeard = Date.now();
+      if (staleTimer) { clearTimeout(staleTimer); staleTimer = null; }
       discEl.style.display = 'none';
       try { render(JSON.parse(ev.data)); } catch (e) {}
     };
+    es.addEventListener('open', function(){ lastHeard = Date.now(); });
     es.addEventListener('playback', function(ev){
+      lastHeard = Date.now();
       try { wire = JSON.parse(ev.data); wireAt = performance.now(); applyPlayback(); } catch (e) {}
     });
     es.addEventListener('playback-stop', function(){ wire = null; });
+    es.addEventListener('ping', function(){ lastHeard = Date.now(); });
     es.onerror = function(){
-      discEl.style.display = 'block';
+      showDisconnected();
+      // The browser retries a dropped connection by itself, but gives up for good on an HTTP error (for example 404 while BORN is
+      // still starting): start over ourselves.
+      if (es.readyState === 2) setTimeout(function(){ if (live === es) connect(); }, 2000);
     };
   }
+  // A connection that died silently (Wi-Fi change, sleep/wake) says nothing at all: no pings for this long = start over.
+  setInterval(function(){ if (Date.now() - lastHeard > ${graphicsTiming.silenceMs}) { showDisconnected(); connect(); } }, 5000);
   connect();
 })();
 `
@@ -784,7 +899,8 @@ function buildGraphicsHTML(id: string): string {
   html, body { background: transparent; color: #fff; height: 100%; overflow: hidden; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   #stage { position: relative; height: 100vh; }
-  #text-inner { width: 100%; }
+  /* the line decides its own direction (Arabic/Hebrew read right-to-left and align right; the profile text-align is start) */
+  #text-inner { width: 100%; unicode-bidi: plaintext; }
 ${profileCSS}
   #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; }
   #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; background: #000; }
@@ -1133,10 +1249,27 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive'
     })
-    res.write(`data: ${JSON.stringify(entry.lastPayload)}\n\n`)
+    const override = parseProfileParam(new URL(req.url ?? '', 'http://x').searchParams.get('profile'))
+    if (override) {
+      entry.overrides.set(res, override)
+      entry.clients.add(res)
+      if (!entry.overrideCycles.has(override)) startOverrideCycle(entry, override)
+      res.write(`data: ${JSON.stringify(entry.overrideCycles.get(override)!.last)}\n\n`)
+    } else {
+      res.write(`data: ${JSON.stringify(entry.lastPayload)}\n\n`)
+      entry.clients.add(res)
+    }
     if (entry.lastPlayback) res.write(`event: playback\ndata: ${JSON.stringify(entry.lastPlayback)}\n\n`)
-    entry.clients.add(res)
-    req.on('close', () => entry.clients.delete(res))
+    // A `ping` event every graphicsTiming.heartbeatMs (a real event, so the page can see it): keeps the connection from being judged idle by
+    // anything in between (a router, a proxy, the OS), and lets the page notice within graphicsTiming.silenceMs if the connection died without saying so.
+    const beat = setInterval(() => {
+      try { res.write('event: ping\ndata: {}\n\n') } catch { clearInterval(beat) }
+    }, graphicsTiming.heartbeatMs)
+    beat.unref?.()
+    req.on('close', () => {
+      clearInterval(beat)
+      entry.clients.delete(res)
+    })
     return
   }
 

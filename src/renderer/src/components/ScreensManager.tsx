@@ -478,6 +478,14 @@ export default function ScreensManager({
                 <span className="display-row-main">
                   <span className="display-row-name">Graphics</span>
                   <span className="display-row-sub">{out.url ?? 'Remote unavailable right now'}</span>
+                  {out.localUrl && (
+                    <span className="display-row-sub" title="Use this one when OBS runs on THIS computer: it does not depend on the network, and it reconnects within seconds if BORN is restarted.">
+                      OBS on this computer: {out.localUrl}{' '}
+                      <button className="display-row-btn" title="Copy the this-computer URL" aria-label="Copy this-computer Graphics URL" onClick={() => copyOutputUrl(`${out.id}-local`, out.localUrl!)}>
+                        {urlCopiedId === `${out.id}-local` ? <Check width={12} height={12} strokeWidth={2.4} aria-hidden="true" /> : <Copy width={12} height={12} strokeWidth={2.2} aria-hidden="true" />}
+                      </button>
+                    </span>
+                  )}
                 </span>
                 <span className="display-row-actions">
                   {out.url && (
