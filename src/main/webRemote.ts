@@ -682,6 +682,12 @@ function buildGraphicsScript(id: string): string {
       // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
       // overlay) output nothing is drawn, so a picture never covers the camera by accident.
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
+      if (s.media && s.media.type === 'youtube') {
+        // YouTube is NEVER played on a Graphics/OBS page (a second player would have its own network, ads and clock, and YouTube
+        // needs a visible player of its own). Full-screen outputs show the name only; a lower-third output shows nothing.
+        if (stageEl.dataset.profile === 'fullscreen') { labelEl.textContent = 'YouTube'; textInnerEl.textContent = s.text || ''; refEl.textContent = 'Playing on the main screen'; }
+        return;
+      }
       if (stageEl.dataset.profile === 'fullscreen' && s.media && s.media.type === 'video' && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
         // A video: played MUTED here, following the main output's clock; never any sound from a browser output.
         startVideo(s.media.mediaId, !!s.media.loop);

@@ -71,7 +71,14 @@ export default function SlideThumb({
             : emptyLabel
       }
     >
-      {slide && !hidden && slide.kind === 'media' && slide.media ? (
+      {slide && !hidden && slide.kind === 'media' && slide.media?.type === 'youtube' ? (
+        // A YouTube video is never drawn in a thumbnail (YouTube needs a real player of at least 200×200): a still of YouTube's own
+        // preview picture where it can be loaded, and always its name and "Online". The picture is not saved anywhere.
+        <div className="slide-thumb-yt">
+          {slide.media.youtubeId && <img src={`https://i.ytimg.com/vi/${slide.media.youtubeId}/mqdefault.jpg`} alt="" draggable={false} referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />}
+          <div className="slide-thumb-yt-label"><span className="slide-thumb-yt-badge">Online</span><span className="slide-thumb-yt-title">{slide.text}</span></div>
+        </div>
+      ) : slide && !hidden && slide.kind === 'media' && slide.media ? (
         <img
           className={`slide-thumb-pic slide-thumb-pic--${slide.media.fit ?? 'fit'}`}
           src={`born-media://thumb/${slide.media.mediaId}/960`}

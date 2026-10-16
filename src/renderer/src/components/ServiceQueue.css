@@ -310,6 +310,12 @@
   background: var(--songs-wash);
   color: var(--songs);
 }
+/* YouTube is "Online": the Screens ice-blue pair (never red = live, never green = ok). */
+.queue-badge--youtube {
+  background: var(--screens-wash);
+  color: var(--screens);
+}
+.queue-row--youtube .queue-row-icon { color: var(--screens); }
 /* ── Live control bar (pinned to the bottom of the queue) ─── */
 
 .queue-live-bar {

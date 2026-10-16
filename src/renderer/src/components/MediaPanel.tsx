@@ -18,7 +18,8 @@ import {
   Film,
   Play,
   Layers,
-  FileText
+  FileText,
+  Globe
 } from 'lucide-react'
 import MediaBackgrounds, { useBackgroundTargets } from './MediaBackgrounds'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
@@ -71,6 +72,8 @@ const STATUS_TEXT: Record<Exclude<MediaStatus, 'ok'>, string> = {
 interface Props {
   visible: boolean
   onAddToQueue: (items: MediaRecord[]) => void
+  /** Open the "Add a YouTube video" dialog. */
+  onAddYouTube?: () => void
   onAddSlideshow: (items: MediaRecord[]) => void
   pushToast: (t: ToastSpec) => void
   /** Open this item in the right pane (from the palette or the queue). */
@@ -78,7 +81,7 @@ interface Props {
   onFocused?: () => void
 }
 
-export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, pushToast, focusId, onFocused }: Props): JSX.Element {
+export default function MediaPanel({ visible, onAddToQueue, onAddYouTube, onAddSlideshow, pushToast, focusId, onFocused }: Props): JSX.Element {
   const actions = useAppActions()
   const [view, setView] = useBrowseView()
   const [collapsed, setCollapsed] = useState(false)
@@ -556,6 +559,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
         </div>
         <div className="media-actions">
           <button className="btn-primary btn-sm" onClick={() => void pick(false)} disabled={!available.ok || !!progress}><Upload size={14} /> Add pictures</button>
+          {onAddYouTube && <button className="btn-secondary btn-sm" onClick={onAddYouTube} title="Paste a YouTube link — plays online in YouTube's own player"><Globe size={14} /> YouTube</button>}
           <button className="btn-quiet btn-sm" onClick={() => void pick(true)} disabled={!available.ok || !!progress}><FolderOpen size={14} /> Add folder</button>
           <button className="btn-quiet btn-sm" onClick={() => void importPdfFile()} disabled={!available.ok || !!progress || !!pdfJob} title="Turn the pages of a PDF into a slideshow"><FileText size={14} /> Import PDF</button>
           <label className="media-link-toggle" title="Keep the original where it is instead of copying it into BORN's library. Use for very large files; the file must stay in place.">

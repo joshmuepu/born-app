@@ -4,6 +4,7 @@ import type { QueueItem } from '../../../shared/queueItem'
 import { itemTitle, isProjectable } from '../../../shared/queueItem'
 import type { MediaPreflightResult } from '../../../shared/media'
 import type { OutputInfo } from '../types'
+import { youtubeDisplayName } from '../../../shared/youtube'
 import './Preflight.css'
 
 type Level = 'pass' | 'warn' | 'fail'
@@ -15,7 +16,8 @@ interface Row {
   /** Queue position, if this row is about one item. */
   index?: number
   mediaId?: string
-  fix?: Array<'find' | 'reconnect' | 'remove'>
+  videoId?: string
+  fix?: Array<'find' | 'reconnect' | 'remove' | 'test'>
 }
 
 const ICON = { pass: CheckCircle2, warn: AlertTriangle, fail: XCircle } as const
@@ -45,6 +47,11 @@ export default function Preflight({
     const api = window.electronAPI
     const out: Row[] = []
     const mediaIds = [...new Set(queue.flatMap((it) => (it.kind === 'media' ? it.slides.map((s) => s.media?.mediaId).filter((x): x is string => !!x) : [])))]
+    // YouTube items: the online check (internet, YouTube's player accepts the video, embedding allowed). Skipped when there are none.
+    const ytItems = queue.filter((q): q is Extract<QueueItem, { kind: 'youtube' }> => q.kind === 'youtube')
+    const ytP = ytItems.length ? api.youtubePreflight(ytItems.map((y) => ({ videoId: y.videoId, hasFallback: !!y.fallback }))).catch(() => []) : Promise.resolve([])
+    const fbIds = [...new Set(ytItems.map((y) => y.fallback?.mediaId).filter((x): x is string => !!x))]
+    const [ytRes, fbRes] = await Promise.all([ytP, fbIds.length ? api.mediaPreflight(fbIds).catch(() => [] as MediaPreflightResult[]) : Promise.resolve([] as MediaPreflightResult[])])
     const [pf, info, outs, bgs] = await Promise.all([
       mediaIds.length ? api.mediaPreflight(mediaIds).catch(() => [] as MediaPreflightResult[]) : Promise.resolve([] as MediaPreflightResult[]),
       api.mediaInfo().catch(() => null),
@@ -59,6 +66,24 @@ export default function Preflight({
       const title = itemTitle(it)
       if (it.kind === 'unknown') {
         out.push({ key: `u${index}`, level: 'fail', title: `“${title}” can't be shown`, detail: it.reason === 'newer' ? 'It was made by a newer version of BORN. It will be skipped; it stays in the file.' : 'This item is damaged. It will be skipped.', index, fix: ['remove'] })
+        return
+      }
+      if (it.kind === 'youtube') {
+        const v = ytRes.find((r) => r.videoId === it.videoId)
+        const name = youtubeDisplayName(it)
+        const fbMissing = !!it.fallback?.mediaId && !fbRes.some((r) => r.id === it.fallback?.mediaId && r.status === 'ok')
+        if (!v) out.push({ key: `y${index}`, level: 'warn', title: `“${name}”: couldn't be checked`, detail: 'Press Check again.', index, videoId: it.videoId, fix: ['test', 'remove'] })
+        else {
+          out.push({
+            key: `y${index}`,
+            level: v.level,
+            title: `“${name}” (YouTube, online): ${v.title}`,
+            detail: `${v.detail}${fbMissing ? ' Its backup file is not in this computer’s library any more.' : ''}`,
+            index,
+            videoId: it.videoId,
+            fix: ['test', ...(v.level === 'fail' ? (['remove'] as const) : [])]
+          })
+        }
         return
       }
       if (it.kind === 'media') {
@@ -153,6 +178,9 @@ export default function Preflight({
                   )}
                   {r.fix?.includes('reconnect') && (
                     <button className="btn-quiet btn-sm" onClick={async () => { const x = await window.electronAPI.mediaReconnectLinked(); if (!x.canceled) void run() }}>Find the folder…</button>
+                  )}
+                  {r.fix?.includes('test') && r.videoId && (
+                    <button className="btn-quiet btn-sm" onClick={() => { void window.electronAPI.youtubeTestPlay(r.videoId as string) }} title="Opens a small muted player for a few seconds">Test play</button>
                   )}
                   {r.fix?.includes('remove') && r.index !== undefined && (
                     <button className="btn-quiet btn-sm" onClick={() => { onRemoveItem(r.index as number) }}>Remove from queue</button>

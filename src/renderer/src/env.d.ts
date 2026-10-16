@@ -177,6 +177,14 @@ declare global {
       mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => void
       onMediaPlayback: (cb: (m: import('../../shared/videoPlayback').PlaybackWire) => void) => () => void
       onMediaPlaybackStop: (cb: (channelId: string) => void) => () => void
+      youtubeHostUrl: (videoId: string, start?: number) => Promise<string | null>
+      youtubeLookup: (videoId: string) => Promise<{ title: string; author: string } | null>
+      youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>) => Promise<Array<import('../../shared/youtube').YtPreflightVerdict & { videoId: string; duration: number | null }>>
+      youtubeTestPlay: (videoId: string) => Promise<{ ok: boolean; state: number | null; code: number | null; seconds: number } | null>
+      youtubeRecentsGet: () => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
+      youtubeRecentsAdd: (r: { videoId: string; title?: string; label?: string }) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
+      youtubeRecentsRemove: (videoId: string) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
+      onOperatorNotice: (cb: (message: string) => void) => () => void
       packEstimate: (queue: unknown) => Promise<import('../../shared/servicePack').PackEstimate | null>
       packExport: (queue: unknown, title: string) => Promise<import('../../shared/servicePack').PackResult<{ bytes: number; count: number; path: string }> & { canceled?: boolean }>
       packPickAndInspect: () => Promise<import('../../shared/servicePack').PackResult<{ review: import('../../shared/servicePack').PackReview }> & { canceled?: boolean }>

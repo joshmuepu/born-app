@@ -440,6 +440,18 @@ const api = {
     ipcRenderer.on('media:playback-stop', h)
     return () => ipcRenderer.removeListener('media:playback-stop', h)
   },
+  youtubeHostUrl: (videoId: string, start?: number): Promise<string | null> => ipcRenderer.invoke('youtube:host-url', videoId, start),
+  youtubeLookup: (videoId: string): Promise<{ title: string; author: string } | null> => ipcRenderer.invoke('youtube:lookup', videoId),
+  youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>): Promise<unknown[]> => ipcRenderer.invoke('youtube:preflight', items),
+  youtubeTestPlay: (videoId: string): Promise<unknown> => ipcRenderer.invoke('youtube:test-play', videoId),
+  youtubeRecentsGet: (): Promise<unknown[]> => ipcRenderer.invoke('youtube:recents-get'),
+  youtubeRecentsAdd: (r: { videoId: string; title?: string; label?: string }): Promise<unknown[]> => ipcRenderer.invoke('youtube:recents-add', r),
+  youtubeRecentsRemove: (videoId: string): Promise<unknown[]> => ipcRenderer.invoke('youtube:recents-remove', videoId),
+  onOperatorNotice: (cb: (message: string) => void): (() => void) => {
+    const h = (_e: unknown, m: string): void => cb(m)
+    ipcRenderer.on('operator:notice', h)
+    return () => ipcRenderer.removeListener('operator:notice', h)
+  },
   packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
   packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),
   packPickAndInspect: (): Promise<unknown> => ipcRenderer.invoke('pack:pick-and-inspect'),
