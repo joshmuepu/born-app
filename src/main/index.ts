@@ -47,7 +47,6 @@ import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
   startWebRemote,
   updateWebRemoteState,
-  getLocalIP,
   isWebRemoteAvailable,
   getWebRemoteTranslation,
   pushGraphicsUpdate,
@@ -59,8 +58,11 @@ import {
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
-  listAdapters,
   getConnectedPhoneCount,
+  getLocalIP,
+  getPhoneConnections,
+  probeAddresses,
+  setPhoneViaListener,
   REMOTE_PORT,
   type AutomationChannelState
 } from './webRemote'
@@ -70,7 +72,16 @@ import {
   type ObservabilityDestination,
   type ObservabilityChannel
 } from '../shared/observability'
-import { startMdns, stopMdns, getMdnsHostname } from './mdns'
+import { networkInterfaces } from 'os'
+import {
+  buildDiagnosticHints,
+  chooseDefault,
+  listNetworks,
+  windowsFirewallCommands,
+  type RemoteNetwork
+} from './networks'
+import { getNetworkMeta } from './networkMeta'
+import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { formatVerse } from '../shared/bibleRef'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -446,7 +457,8 @@ function getSettingsSafe(): AppSettings {
         { destinationId: 'stage', channelId: 'main', kind: 'window' }
       ],
       automationToken: null,
-      mediaBackgrounds: { destinations: {}, channels: {} }
+      mediaBackgrounds: { destinations: {}, channels: {} },
+      remoteLastPhoneNetwork: null
     }
   }
 }
@@ -2049,27 +2061,99 @@ ipcMain.on('webremote:sync', (_event, state) => {
   updateWebRemoteState(state)
 })
 
+function currentNetworks(): RemoteNetwork[] {
+  return listNetworks(networkInterfaces(), getNetworkMeta())
+}
+
+function usableNetworkAddresses(): string[] {
+  return currentNetworks()
+    .filter((n) => n.usable)
+    .map((n) => n.address)
+}
+
+/** Remember which of this computer's networks a phone really connected
+ *  through, so the panel shows that one first next time. */
+setPhoneViaListener((viaAddress) => {
+  const net = currentNetworks().find((n) => n.address === viaAddress)
+  if (!net) return
+  const prev = getSettingsSafe().remoteLastPhoneNetwork
+  if (prev && prev.name === net.name && prev.address === net.address) return
+  updateSettings({ remoteLastPhoneNetwork: { name: net.name, address: net.address } })
+})
+
 ipcMain.handle('webremote:ip', () => {
   if (!isWebRemoteAvailable()) {
-    return { available: false, url: '', ipUrl: '', hostnameUrl: null }
+    return {
+      available: false,
+      url: '',
+      ipUrl: '',
+      hostnameUrl: null,
+      port: REMOTE_PORT,
+      networks: [],
+      selectedId: null,
+      reason: null
+    }
   }
-  return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
+  const networks = currentNetworks()
+  const choice = chooseDefault(networks, getSettingsSafe().remoteLastPhoneNetwork)
+  return {
+    ...buildRemoteConnectionInfo(choice.network?.address ?? 'localhost', getMdnsHostname(), REMOTE_PORT),
+    port: REMOTE_PORT,
+    networks,
+    selectedId: choice.network?.id ?? null,
+    reason: choice.reason
+  }
 })
 
 /** Backs the "Remote connection check" panel — everything an operator (or
  *  support, reading a copied dump) needs to see why a phone can't connect,
  *  since the panel otherwise only knows "the server bound" and has no way to
- *  know whether anything on the LAN can actually reach it. */
-ipcMain.handle('webremote:diagnostics', () => ({
-  available: isWebRemoteAvailable(),
-  port: REMOTE_PORT,
-  chosenIp: getLocalIP(),
-  adapters: listAdapters(),
-  mdnsHostname: getMdnsHostname(),
-  connectedPhones: getConnectedPhoneCount(),
-  recentLogLines: log.getRecentLines(40),
-  platform: process.platform
-}))
+ *  know whether anything on the LAN can actually reach it. `selectedId` is
+ *  the network the panel's QR is currently showing. */
+ipcMain.handle('webremote:diagnostics', async (_event, selectedId?: string) => {
+  const networks = currentNetworks()
+  const choice = chooseDefault(networks, getSettingsSafe().remoteLastPhoneNetwork)
+  const qr = networks.find((n) => n.id === selectedId) ?? choice.network
+  const available = isWebRemoteAvailable()
+  const probes = available
+    ? await probeAddresses(
+        networks.map((n) => n.address),
+        REMOTE_PORT
+      )
+    : []
+  const phones = getPhoneConnections()
+  return {
+    available,
+    port: REMOTE_PORT,
+    chosenIp: qr?.address ?? 'localhost',
+    adapters: networks.map((n) => {
+      const probe = probes.find((p) => p.address === n.address)
+      return {
+        name: n.name,
+        label: n.label,
+        address: n.address,
+        virtual: !n.usable && n.kind !== 'other',
+        usable: n.usable,
+        hiddenReason: n.hiddenReason,
+        chosen: n.id === qr?.id,
+        reachable: probe ? probe.ok : null,
+        reachError: probe?.error ?? null
+      }
+    }),
+    mdnsHostname: getMdnsHostname(),
+    connectedPhones: getConnectedPhoneCount(),
+    phones,
+    hints: buildDiagnosticHints({
+      platform: process.platform,
+      networks,
+      probes,
+      phoneCount: phones.length
+    }),
+    firewallCommands: process.platform === 'win32' ? windowsFirewallCommands(REMOTE_PORT) : [],
+    recentLogLines: log.getRecentLines(40),
+    platform: process.platform
+  }
+})
 
 // ── Automation API (Stream Deck/Companion) ──────────────────────────────────
 // Off by default — reading a null token means every /api/automation/*
@@ -3005,7 +3089,12 @@ app.whenReady().then(async () => {
       show: (channelId) => setChannelBlank(channelId, false),
       getState: automationState
     },
-    () => startMdns(REMOTE_PORT)
+    () => {
+      startMdns(REMOTE_PORT, usableNetworkAddresses())
+      // A network joining or leaving after launch (Wi-Fi connected late, cable
+      // unplugged) changes which adapters should answer mDNS.
+      setInterval(() => refreshMdns(REMOTE_PORT, usableNetworkAddresses()), 30_000).unref()
+    }
   )
   setAutomationToken(getSettingsSafe().automationToken)
 

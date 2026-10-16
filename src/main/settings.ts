@@ -70,6 +70,10 @@ export interface AppSettings {
   mediaBackgrounds: import('../shared/media').BackgroundSettings
   /** The library picture shown by the logo key (Ctrl/Cmd+Shift+L). */
   mediaLogoId?: string | null
+  /** The adapter + address a phone last reached the remote through — the
+   *  Remote panel shows this network first next time. Null until a phone
+   *  has connected. */
+  remoteLastPhoneNetwork: { name: string; address: string } | null
 }
 
 const DEFAULTS: AppSettings = {
@@ -91,7 +95,8 @@ const DEFAULTS: AppSettings = {
     { destinationId: 'stage', channelId: 'main', kind: 'window' }
   ],
   automationToken: null,
-  mediaBackgrounds: { destinations: {}, channels: {} }
+  mediaBackgrounds: { destinations: {}, channels: {} },
+  remoteLastPhoneNetwork: null
 }
 
 let cache: AppSettings | null = null
