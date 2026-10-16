@@ -113,4 +113,15 @@ describe('Test play', () => {
     expect(await testPlay(deps, 'NOTHINGNOTH', 60)).toMatchObject({ ok: false, code: null })
     expect(closed).toHaveLength(1)
   })
+  it('shows the plain explanation inside the test window when YouTube refuses, and keeps that window open to be read', async () => {
+    const { deps, closed } = fakeDeps({ REFUSEREFUS: [{ t: 'ready' }, { t: 'error', code: 150 }] })
+    const shown: Array<[string, number]> = []
+    const open = deps.openVisible
+    deps.openVisible = (url) => ({ ...open(url), showMessage: (t, k) => { shown.push([t, k]) } })
+    await testPlay(deps, 'REFUSEREFUS', 60)
+    expect(shown).toHaveLength(1)
+    expect(shown[0][0]).toMatch(/owner of this video does not allow it/)
+    expect(shown[0][0]).toMatch(/Media library/)
+    expect(closed).toHaveLength(0) // the window closes itself after the message has been up a while
+  })
 })

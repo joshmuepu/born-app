@@ -5,7 +5,7 @@
  * YouTube's own player said: cued, or an error code. This file only waits for the first answer and turns it into a YtProbe.
  * Nothing here reads a YouTube page, downloads anything or keeps anything.
  */
-import { judgeYouTubePreflight, type YtPreflightVerdict, type YtProbe } from '../shared/youtube'
+import { judgeYouTubePreflight, youtubeErrorInfo, type YtPreflightVerdict, type YtProbe } from '../shared/youtube'
 import type { HostMessage, HostMode } from './youtubeHost'
 
 export interface ProbeHost {
@@ -20,7 +20,8 @@ export interface ProbeDeps {
   /** Open a window on the page that nobody sees. */
   openHidden(url: string): { close(): void }
   /** Open a visible 480×270+ window for Test play. */
-  openVisible(url: string): { close(): void }
+  /** `showMessage` replaces the window's content with plain text and keeps the window open that long (ms) before closing it itself. */
+  openVisible(url: string): { close(): void; showMessage?(text: string, keepMs: number): void }
   /** Can this computer reach YouTube's player script at all? */
   checkInternet(): Promise<boolean>
   /** How long to wait for a first answer (ms). */
@@ -104,9 +105,18 @@ export async function testPlay(deps: ProbeDeps, videoId: string, ms = 6000): Pro
     let code: number | null = null
     let time = 0
     let reachedPlaying = false
-    let win: { close(): void } | null = null
+    let win: { close(): void; showMessage?(text: string, keepMs: number): void } | null = null
+    let shown = false
     const off = deps.host.listen(sid, (m) => {
-      if (m.t === 'error') code = typeof m.code === 'number' ? m.code : -1
+      if (m.t === 'error') {
+        code = typeof m.code === 'number' ? m.code : -1
+        if (!shown && win?.showMessage) {
+          // YouTube's own error page says little: say it in plain words, and fix, in the window itself
+          shown = true
+          const i = youtubeErrorInfo(code)
+          win.showMessage(`${i.short}\n\n${i.fix}`, 12000)
+        }
+      }
       if (typeof m.state === 'number') state = m.state
       if (typeof m.time === 'number') time = Math.max(time, m.time)
       if (m.state === 1) reachedPlaying = true
@@ -114,7 +124,7 @@ export async function testPlay(deps: ProbeDeps, videoId: string, ms = 6000): Pro
     win = deps.openVisible(deps.host.urlFor(videoId, { sid, mode: 'test' }))
     void wait(ms).then(() => {
       off()
-      try { win?.close() } catch { /* already gone */ }
+      if (!shown) { try { win?.close() } catch { /* already gone */ } }
       resolve({ ok: reachedPlaying && code === null, state, code, seconds: Math.round(time * 10) / 10 })
     })
   })

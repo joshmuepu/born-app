@@ -28,6 +28,8 @@ export default function YouTubeAdd({ onClose, onAdd }: { onClose: () => void; on
   const [library, setLibrary] = useState<MediaRecord[]>([])
   const [recents, setRecents] = useState<Recent[]>([])
   const [test, setTest] = useState<string | null>(null)
+  /** The same online check the Check screen runs, done as soon as a link is pasted. */
+  const [verdict, setVerdict] = useState<{ level: 'pass' | 'warn' | 'fail'; title: string; detail: string } | 'checking' | null>(null)
   const seq = useRef(0)
   const parsed = useMemo(() => parseYouTubeInput(text), [text])
   const videoId = parsed.ok ? parsed.videoId : null
@@ -40,9 +42,11 @@ export default function YouTubeAdd({ onClose, onAdd }: { onClose: () => void; on
   // read the title (public oEmbed, no sign-in); if it fails the operator just names it themselves
   useEffect(() => {
     setTest(null)
-    if (!videoId) { setInfo(null); return }
+    if (!videoId) { setInfo(null); setVerdict(null); return }
     const mine = ++seq.current
     setInfo('loading')
+    setVerdict('checking')
+    void window.electronAPI.youtubePreflight([{ videoId, hasFallback: true }]).then((r) => { if (mine === seq.current) setVerdict(r[0] ? { level: r[0].level, title: r[0].title, detail: r[0].detail } : null) }).catch(() => { if (mine === seq.current) setVerdict(null) })
     void window.electronAPI.youtubeLookup(videoId).then((r) => { if (mine === seq.current) setInfo(r) })
   }, [videoId])
 
@@ -87,6 +91,10 @@ export default function YouTubeAdd({ onClose, onAdd }: { onClose: () => void; on
           <div className="preflight-summary" role="status">
             {info === 'loading' ? 'Looking it up…' : info ? <><b>{info.title}</b>{info.author ? ` · ${info.author}` : ''}</> : <>Couldn’t read the title (you may be offline). It can still be added — give it a name below.</>}
           </div>
+        )}
+        {videoId && verdict === 'checking' && <div className="preflight-detail" role="status">Checking that YouTube allows this video…</div>}
+        {videoId && verdict && verdict !== 'checking' && verdict.level !== 'pass' && (
+          <div className={`preflight-summary preflight-summary--${verdict.level}`} role="alert"><b>{verdict.title}</b> {verdict.detail}</div>
         )}
         {videoId && (
           <>

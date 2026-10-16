@@ -30,7 +30,7 @@ export function applyYouTubeIdentity(force: boolean): void {
   })
 }
 
-function openWindow(url: string, visible: boolean): { close(): void } {
+function openWindow(url: string, visible: boolean): { close(): void; showMessage(text: string, keepMs: number): void } {
   const win = new BrowserWindow({
     show: visible,
     width: visible ? 640 : 480,
@@ -41,7 +41,18 @@ function openWindow(url: string, visible: boolean): { close(): void } {
     webPreferences: { sandbox: true, contextIsolation: true, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }
   })
   void win.loadURL(url).catch((e) => log.warn(`youtube window load failed: ${String(e)}`))
-  return { close: () => { if (!win.isDestroyed()) win.destroy() } }
+  const close = (): void => { if (!win.isDestroyed()) win.destroy() }
+  return {
+    close,
+    showMessage: (text, keepMs) => {
+      if (win.isDestroyed()) return
+      const safe = JSON.stringify(text)
+      void win.webContents
+        .executeJavaScript(`document.body.innerHTML='';var d=document.createElement('div');d.style.cssText='font:16px/1.5 system-ui,sans-serif;color:#f4f2ee;padding:32px;white-space:pre-wrap';d.textContent=${safe};document.body.appendChild(d)`)
+        .catch(() => {})
+      setTimeout(close, keepMs)
+    }
+  }
 }
 
 async function reachable(url: string, ms = 5000): Promise<boolean> {
