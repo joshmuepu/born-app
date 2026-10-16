@@ -381,6 +381,17 @@ const api = {
   mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
+  packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
+  packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),
+  packPickAndInspect: (): Promise<unknown> => ipcRenderer.invoke('pack:pick-and-inspect'),
+  packInspectPath: (path: string): Promise<unknown> => ipcRenderer.invoke('pack:inspect-path', path),
+  packImport: (path: string): Promise<unknown> => ipcRenderer.invoke('pack:import', path),
+  packCancel: (): void => ipcRenderer.send('pack:cancel'),
+  onPackProgress: (cb: (p: { kind: 'export' | 'check' | 'import'; done: number; total: number; doneBytes?: number; totalBytes?: number; current?: string }) => void): (() => void) => {
+    const h = (_e: unknown, p: Parameters<typeof cb>[0]): void => cb(p)
+    ipcRenderer.on('pack:progress', h)
+    return () => ipcRenderer.removeListener('pack:progress', h)
+  },
   mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {
     const h = (_e: IpcRendererEvent, p: { done: number; total: number; current: string }): void => cb(p)

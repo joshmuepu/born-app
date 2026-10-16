@@ -412,6 +412,105 @@ export class MediaLibrary {
     return { results, skipped }
   }
 
+  // ── service packs ──────────────────────────────────────────────────────────
+
+  /** A fresh hidden folder inside the library's own drive for unpacking (so moving a file into place is a rename). */
+  newStagingDir(): string {
+    const d = join(this.dir, `.pack-${randomBytes(6).toString('hex')}`)
+    mkdirSync(d, { recursive: true })
+    return d
+  }
+
+  /** Does this library already hold the picture with this identity (alive and with its bytes on disk)? */
+  hasPicture(libraryHash: string): boolean {
+    const r = this.rowByHash(libraryHash)
+    if (!r) return false
+    const rec = this.rowToRecord(r)
+    return this.checkRecord(rec, r.link_mtime_ms) === 'ok'
+  }
+
+  /** What the pack writer needs for one picture: the record and, if it can be read right now, its path. */
+  packSource(id: string): { rec: MediaRecord; path: string | null; status: MediaStatus } | null {
+    const rec = this.get(id)
+    if (!rec) return null
+    const status = this.check(id)
+    return { rec, path: status === 'ok' ? this.resolvePath(rec) : null, status }
+  }
+
+  /**
+   * Add pictures that came out of a service pack, ALL OR NOTHING. Each staged file is checked to be a whole, supported
+   * picture (the same test as any import), moved into the library and recorded in one database transaction. If anything
+   * fails or is cancelled, every file this call created is removed and the library is exactly as before.
+   */
+  async importPackFiles(
+    entries: Array<{ stagedPath: string; libraryHash: string; ext: string; name: string; origFilename: string; bytes: number; convertedFrom: string | null; folderId?: string | null }>,
+    opts: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {}
+  ): Promise<{ added: MediaRecord[]; already: number }> {
+    const created: string[] = []
+    const rows: Array<{ id: string; e: (typeof entries)[number]; width: number; height: number; animated: boolean; alpha: boolean }> = []
+    let already = 0
+    const todo = entries.filter((e) => {
+      if (this.hasPicture(e.libraryHash)) { already++; return false }
+      return true
+    })
+    const need = todo.reduce((n, e) => n + e.bytes, 0)
+    if (todo.length > 0 && !this.checkSpace(need).ok) throw Object.assign(new Error('no-space'), { code: 'no-space' })
+    const rollback = (): void => {
+      for (const f of created) { try { unlinkSync(f) } catch { /* already gone */ } }
+    }
+    try {
+      for (let i = 0; i < todo.length; i++) {
+        const e = todo[i]
+        if (opts.signal?.aborted) throw Object.assign(new Error('cancelled'), { code: 'cancelled' })
+        opts.onProgress?.(i, todo.length)
+        if (!/^[0-9a-f]{64}$/.test(e.libraryHash) || !/^(jpg|png|gif|webp|bmp|avif)$/.test(e.ext)) throw Object.assign(new Error('bad entry'), { code: 'bad-entry' })
+        const header = readImageHeader(readHead(e.stagedPath, 64 * 1024))
+        if (EXT_FOR[header.format] !== e.ext) throw Object.assign(new Error(`${e.name} is not a ${e.ext} picture`), { code: 'bad-type' })
+        const sized = orientedSize(header)
+        if (sized && sized.width * sized.height > MEDIA_LIMITS.maxPixels) throw Object.assign(new Error('too large'), { code: 'bad-type' })
+        const dec = await this.decoder.decode(e.stagedPath, MEDIA_LIMITS.thumbWidths, { needNatural: !sized })
+        if (!dec.ok) throw Object.assign(new Error(`${e.name} would not open as a picture`), { code: 'bad-type' })
+        const dest = this.managedPath(e.libraryHash, e.ext)
+        mkdirSync(dirname(dest), { recursive: true })
+        if (!existsSync(dest)) {
+          renameRetry(e.stagedPath, dest)
+          created.push(dest)
+        }
+        dec.thumbs.forEach((t, k) => {
+          try {
+            const tp = this.thumbPath(e.libraryHash, MEDIA_LIMITS.thumbWidths[k], t.ext)
+            if (!existsSync(tp)) { writeBuffer(tp, t.data); created.push(tp) }
+          } catch { /* thumbnails are regenerated on demand */ }
+        })
+        rows.push({ id: newId(), e, width: sized?.width ?? dec.width, height: sized?.height ?? dec.height, animated: !!header.animated, alpha: !!(header.hasAlpha ?? dec.hasAlpha) })
+      }
+      if (opts.signal?.aborted) throw Object.assign(new Error('cancelled'), { code: 'cancelled' })
+      const insert = this.db.prepare(
+        `INSERT INTO media_items (id, hash, type, name, orig_filename, ext, mime, bytes, width, height, animated, has_alpha,
+           storage, link_path, link_mtime_ms, converted_from, folder_id, added_at)
+         VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'managed', NULL, NULL, ?, ?, ?)`
+      )
+      const restore = this.db.prepare('UPDATE media_items SET deleted_at = NULL WHERE id = ?')
+      const now = nowIso()
+      this.db.transaction(() => {
+        for (const r of rows) {
+          const trashed = this.db.prepare('SELECT id FROM media_items WHERE hash = ? AND deleted_at IS NOT NULL LIMIT 1').get(r.e.libraryHash) as { id: string } | undefined
+          if (trashed) {
+            restore.run(trashed.id)
+            r.id = trashed.id
+            continue
+          }
+          insert.run(r.id, r.e.libraryHash, r.e.name, r.e.origFilename || r.e.name, r.e.ext, MIME[r.e.ext] ?? 'application/octet-stream', r.e.bytes, r.width, r.height, r.animated ? 1 : 0, r.alpha ? 1 : 0, r.e.convertedFrom, r.e.folderId ?? null, now)
+        }
+      })()
+    } catch (e) {
+      rollback()
+      throw e
+    }
+    opts.onProgress?.(todo.length, todo.length)
+    return { added: rows.map((r) => this.get(r.id) as MediaRecord), already }
+  }
+
   /** Where the untouched HEIC/TIFF is kept when a picture was converted on import. */
   originalPath(hash: string, ext: 'heic' | 'tiff'): string {
     return join(this.filesDir, hash.slice(0, 2), `${hash}.orig.${ext}`)
@@ -855,7 +954,7 @@ export class MediaLibrary {
   sweepTemp(): number {
     let n = 0
     try {
-      for (const f of readdirSync(this.dir)) if (f.startsWith('.convert-')) { rmSync(join(this.dir, f), { force: true }); n++ }
+      for (const f of readdirSync(this.dir)) if (f.startsWith('.convert-') || f.startsWith('.pack-')) { rmSync(join(this.dir, f), { recursive: true, force: true }); n++ }
     } catch { /* ignore */ }
     const walk = (d: string): void => {
       let names: string[] = []
