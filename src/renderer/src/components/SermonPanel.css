@@ -497,3 +497,7 @@
 }
 .results-list--virtual { padding-inline: 10px; }
 .follow-list--virtual { padding-inline: 12px; }
+
+/* Tape chip in the sermon header (docs/design/sermon-audio) */
+.tape-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px 10px; font-weight: 600; }
+.tape-chip--on { border-color: var(--sermons); color: var(--text-primary); }

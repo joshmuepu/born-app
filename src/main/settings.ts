@@ -76,6 +76,47 @@ export interface AppSettings {
   remoteLastPhoneNetwork: { name: string; address: string } | null
   /** YouTube links the operator has used (id + names only — never video, never a thumbnail). Newest first, at most 30. */
   youtubeRecents: Array<{ videoId: string; title: string; label?: string; at: number }>
+  /** The folder the operator keeps tape audio in (scanned on request, never changed). */
+  tapeFolder: string | null
+  /** Tape service options (docs/design/sermon-audio/02-product-design.md §1). Every one applies to the next tape, never to what is on screen. */
+  tape: TapeSettings
+}
+
+export interface TapeSettings {
+  /** the sound output device id (a Chromium sinkId); '' = the system default */
+  outputDeviceId: string
+  outputDeviceLabel: string
+  /** seconds: show the next paragraph this long before the speaker reaches it (one-at-a-time view) */
+  leadSec: number
+  view: 'highlight' | 'single' | 'lower'
+  speedRange: 'wide' | 'narrow' | 'off'
+  /** what happens when the sound device is lost */
+  deviceLoss: 'pause' | 'default'
+  /** what a video / YouTube item does to a playing tape */
+  videoRule: 'pause' | 'stop'
+  /** Esc: blank only ('keep') or blank and pause ('pause') */
+  escRule: 'keep' | 'pause'
+  /** if numbering differs between the tape's map and the text language */
+  mismatchPolicy: 'ask' | 'never' | 'matching'
+  /** a whisper.cpp add-on (S8), set by the operator: nothing is bundled */
+  whisperPath: string
+  whisperModelPath: string
+  ffmpegPath: string
+}
+
+export const TAPE_DEFAULTS: TapeSettings = {
+  outputDeviceId: '',
+  outputDeviceLabel: '',
+  leadSec: 4,
+  view: 'highlight',
+  speedRange: 'wide',
+  deviceLoss: 'pause',
+  videoRule: 'pause',
+  escRule: 'keep',
+  mismatchPolicy: 'ask',
+  whisperPath: '',
+  whisperModelPath: '',
+  ffmpegPath: ''
 }
 
 const DEFAULTS: AppSettings = {
@@ -99,7 +140,9 @@ const DEFAULTS: AppSettings = {
   automationToken: null,
   mediaBackgrounds: { destinations: {}, channels: {} },
   remoteLastPhoneNetwork: null,
-  youtubeRecents: []
+  youtubeRecents: [],
+  tapeFolder: null,
+  tape: { ...TAPE_DEFAULTS }
 }
 
 let cache: AppSettings | null = null
@@ -116,7 +159,7 @@ export function getSettings(): AppSettings {
     // an untouched value to the new, honest 100% (4.5).
     const needsFontSizeRealign = raw.fontSize === 3
     if (needsFontSizeRealign) raw.fontSize = 4.5
-    cache = { ...DEFAULTS, ...raw }
+    cache = { ...DEFAULTS, ...raw, tape: { ...TAPE_DEFAULTS, ...(raw.tape ?? {}) } }
     // Without this, the correction above only ever lived in memory — every
     // future launch kept re-deriving it from an unchanged 3.0 on disk, and
     // anything that reads settings.json directly (support, a future

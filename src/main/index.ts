@@ -20,6 +20,7 @@ import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHt
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
+import { registerTapeIpc, closeTape } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -133,7 +134,7 @@ import {
   getLocalLocationTree,
   getOnThisDay
 } from './browseLocal'
-import { getSettings, updateSettings, type AppSettings } from './settings'
+import { getSettings, updateSettings, TAPE_DEFAULTS, type AppSettings } from './settings'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -466,7 +467,9 @@ function getSettingsSafe(): AppSettings {
       automationToken: null,
       mediaBackgrounds: { destinations: {}, channels: {} },
       remoteLastPhoneNetwork: null,
-      youtubeRecents: []
+      youtubeRecents: [],
+      tapeFolder: null,
+      tape: { ...TAPE_DEFAULTS }
     }
   }
 }
@@ -3043,6 +3046,7 @@ app.whenReady().then(async () => {
   setMediaResolver(resolveMediaForHttp)
   registerMediaIpc(() => mainWindow)
   registerYouTubeIpc()
+  registerTapeIpc(() => mainWindow)
   registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
   createMainWindow()
 
@@ -3241,6 +3245,7 @@ app.on('window-all-closed', () => {
   closeDb()
   closeLibraryDb()
   closeMediaLibrary()
+  closeTape()
   if (process.platform !== 'darwin') {
     app.quit()
   }

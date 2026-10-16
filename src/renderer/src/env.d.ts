@@ -177,6 +177,20 @@ declare global {
       mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => void
       onMediaPlayback: (cb: (m: import('../../shared/videoPlayback').PlaybackWire) => void) => () => void
       onMediaPlaybackStop: (cb: (channelId: string) => void) => () => void
+      tapeInfo: () => Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }>
+      tapeRecordings: (sermonId: number) => Promise<Array<import('../../shared/tape').TapeRecording & { status: import('../../shared/tape').TapeFileStatus }>>
+      tapeSermonsWithTapes: () => Promise<number[]>
+      tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<import('../../shared/tape').TapeImportResult[]>
+      tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<{ canceled: boolean; results: import('../../shared/tape').TapeImportResult[] }>
+      tapeRemove: (recordingId: string) => Promise<boolean>
+      tapeMatchName: (fileName: string) => Promise<import('../../shared/tapeMatch').TapeMatch & { parsedCode: string | null }>
+      tapePickFolder: () => Promise<string | null>
+      tapeClearFolder: () => Promise<boolean>
+      tapeScanFolder: () => Promise<import('../../shared/tape').TapeFolderHit[]>
+      tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>) => Promise<import('../../shared/tape').TapeImportResult[]>
+      tapePreflight: (recordingId: string, extra?: { browserDurationSec?: number | null; paragraphNumbers?: number[]; outputDevice?: { present: boolean; label?: string } | null }) => Promise<import('../../shared/tape').TapePreflight | null>
+      tapeOpenAudioPage: () => Promise<boolean>
+      tapePathsForFiles: (files: File[]) => string[]
       youtubeHostUrl: (videoId: string, start?: number) => Promise<string | null>
       youtubeLookup: (videoId: string) => Promise<{ title: string; author: string } | null>
       youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>) => Promise<Array<import('../../shared/youtube').YtPreflightVerdict & { videoId: string; duration: number | null }>>

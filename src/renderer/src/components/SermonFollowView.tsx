@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, Search } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, Search, Headphones } from 'lucide-react'
+import TapeAttach from './TapeAttach'
+import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
 import { quoteToItem } from '../../../shared/queueItem'
@@ -74,6 +76,10 @@ export default function SermonFollowView({
   const ctx = useContextMenu()
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
+  const [tapeOpen, setTapeOpen] = useState(false)
+  const [recs, setRecs] = useState<Array<TapeRecording & { status: TapeFileStatus }>>([])
+  const loadRecs = useCallback(() => { void window.electronAPI.tapeRecordings(sermonId).then(setRecs).catch(() => {}) }, [sermonId])
+  useEffect(() => { loadRecs() }, [loadRecs])
   // What to keep in view: the projected paragraph if we're live, else the
   // paragraph the operator opened the sermon on.
   const focusRef = liveRef ?? anchorRef
@@ -125,6 +131,16 @@ export default function SermonFollowView({
         </button>
         <span className="follow-title">{title}</span>
         <span className="follow-meta">{dateCode}</span>
+        <button
+          className={`btn-quiet btn-sm tape-chip${recs.length ? ' tape-chip--on' : ''}`}
+          onClick={() => setTapeOpen(true)}
+          title={recs.length ? 'The tape for this sermon' : 'Add a recording of this sermon so the text can follow it'}
+        >
+          <Headphones width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+          {recs.length
+            ? `Tape · ${formatTapeTime(recs[0].file.durationSec)}${recs[0].status !== 'ok' ? ' · file missing' : recs[0].synced ? ' · timed' : ' · no timing yet'}`
+            : 'Add tape…'}
+        </button>
         {query && (
           <span className="follow-still-searching">
             <Search width={12} height={12} strokeWidth={2.2} aria-hidden="true" />
@@ -213,6 +229,7 @@ export default function SermonFollowView({
         />
       )}
       {ctx.element}
+      {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} />}
     </div>
   )
 }

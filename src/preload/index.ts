@@ -442,6 +442,21 @@ const api = {
     ipcRenderer.on('media:playback-stop', h)
     return () => ipcRenderer.removeListener('media:playback-stop', h)
   },
+  // Tape service (sermon audio + follow-along) — docs/design/sermon-audio
+  tapeInfo: (): Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }> => ipcRenderer.invoke('tape:info'),
+  tapeRecordings: (sermonId: number): Promise<unknown[]> => ipcRenderer.invoke('tape:recordings', sermonId),
+  tapeSermonsWithTapes: (): Promise<number[]> => ipcRenderer.invoke('tape:sermons-with-tapes'),
+  tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<unknown[]> => ipcRenderer.invoke('tape:import-paths', paths, opts),
+  tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<{ canceled: boolean; results: unknown[] }> => ipcRenderer.invoke('tape:pick-and-import', opts),
+  tapeRemove: (recordingId: string): Promise<boolean> => ipcRenderer.invoke('tape:remove', recordingId),
+  tapeMatchName: (fileName: string): Promise<unknown> => ipcRenderer.invoke('tape:match-name', fileName),
+  tapePickFolder: (): Promise<string | null> => ipcRenderer.invoke('tape:pick-folder'),
+  tapeClearFolder: (): Promise<boolean> => ipcRenderer.invoke('tape:clear-folder'),
+  tapeScanFolder: (): Promise<unknown[]> => ipcRenderer.invoke('tape:scan-folder'),
+  tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>): Promise<unknown[]> => ipcRenderer.invoke('tape:import-confirmed', items),
+  tapePreflight: (recordingId: string, extra?: unknown): Promise<unknown> => ipcRenderer.invoke('tape:preflight', recordingId, extra),
+  tapeOpenAudioPage: (): Promise<boolean> => ipcRenderer.invoke('tape:open-audio-page'),
+  tapePathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   youtubeHostUrl: (videoId: string, start?: number): Promise<string | null> => ipcRenderer.invoke('youtube:host-url', videoId, start),
   youtubeLookup: (videoId: string): Promise<{ title: string; author: string } | null> => ipcRenderer.invoke('youtube:lookup', videoId),
   youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>): Promise<unknown[]> => ipcRenderer.invoke('youtube:preflight', items),
