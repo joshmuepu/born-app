@@ -145,6 +145,34 @@ describe('media library: importing', () => {
     expect(ok(await lib.importFile(fx('phone.heic'))).duplicate).toBe(true)
   })
 
+  it('HEIC/TIFF: real conversion — stored as JPEG, original kept beside it, a duplicate is spotted, purge removes both', async () => {
+    // The converter itself is tested on real files in imageConvert.test.ts. Here a stand-in writes a JPEG of the right shape, because
+    // running the WebAssembly decoder in the same process as better-sqlite3 makes Node crash while it cleans up (a test-process quirk;
+    // in the app the decoder runs in its own worker thread).
+    dec.convertToJpeg = async (_src, out) => { copyFileSync(fx('tiny.jpg'), out); return { ok: true, notes: ['Colours were converted to sRGB for the screen.'] } }
+    const r = ok(await lib.importFile(fx('heic-rot6.heic')))
+    expect(r.item).toMatchObject({ ext: 'jpg', convertedFrom: 'heic' })
+    expect(r.warnings.join(' ')).toMatch(/sRGB/)
+    const orig = lib.originalPath(r.item.hash, 'heic')
+    expect(existsSync(orig)).toBe(true)
+    expect(readFileSync(orig).equals(readFileSync(fx('heic-rot6.heic')))).toBe(true)
+    expect(ok(await lib.importFile(fx('heic-rot6.heic'))).duplicate).toBe(true)
+    const t = ok(await lib.importFile(fx('tiff-quad.tiff')))
+    expect(t.item).toMatchObject({ ext: 'jpg', convertedFrom: 'tiff' })
+    expect(stray()).toEqual([])
+    lib.remove([r.item.id])
+    lib.purge(0)
+    expect(existsSync(orig)).toBe(false)
+  })
+
+  it('HEIC: a damaged file is reported as damaged (not "unsupported"), the batch is unharmed, nothing is left behind', async () => {
+    dec.convertToJpeg = async (src) => (src.includes('corrupt') ? { ok: false, reason: 'corrupt' } : false)
+    const out = await lib.importPaths([fx('heic-corrupt.heic'), fx('tiny.jpg')])
+    expect(out.results.map((x) => x.ok)).toEqual([false, true])
+    expect(out.results[0]).toMatchObject({ code: 'corrupt' })
+    expect(stray()).toEqual([])
+  })
+
   it('animated pictures are kept and flagged, with a warning', async () => {
     const r = ok(await lib.importFile(fx('anim.gif')))
     expect(r.item.animated).toBe(true)

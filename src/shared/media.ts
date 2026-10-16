@@ -128,7 +128,7 @@ export const MEDIA_MESSAGES: Record<MediaErrorCode, string> = {
   empty: 'That file is empty (0 bytes). Copy it again from the original.',
   unsupported: "BORN can't show this kind of file yet. Pictures work as JPEG, PNG, GIF, WebP, BMP or AVIF.",
   'unsupported-heic':
-    "This computer can't open HEIC photos. On an iPhone, set Settings → Camera → Formats → Most Compatible, or export the photo as JPEG, then add it again.",
+    "This is an iPhone photo format that this computer cannot open. Share it as JPEG: in Photos, choose Share, Options, Most Compatible (or use AirDrop with “Most Compatible”), then add it again.",
   'unsupported-video': 'Videos arrive in a later version of BORN. Nothing was added.',
   'unsupported-audio': 'Audio arrives in a later version of BORN. Nothing was added.',
   'is-pdf': 'This is a PDF. Use “Import PDF” to turn its pages into a slideshow.',

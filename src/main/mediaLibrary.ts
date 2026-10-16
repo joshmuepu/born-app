@@ -65,7 +65,7 @@ export interface MediaDecoder {
   /** Fully decode the picture (this is the validity test), and make one thumbnail per width. */
   decode(path: string, thumbWidths: readonly number[], opts?: { needNatural?: boolean }): Promise<DecodeResult>
   /** Convert a picture Chromium cannot show (HEIC, TIFF) to a JPEG. Optional — absent = unsupported. */
-  convertToJpeg?(path: string, outPath: string): Promise<boolean>
+  convertToJpeg?(path: string, outPath: string): Promise<boolean | { ok: true; notes?: string[] } | { ok: false; reason: 'corrupt' | 'too-large' | 'unsupported' | 'io' | 'memory' }>
 }
 
 export interface ImportOptions {
@@ -267,13 +267,22 @@ export class MediaLibrary {
     if (needsConversion) {
       if (!this.decoder.convertToJpeg) return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
       tmpConverted = join(this.dir, `.convert-${randomBytes(4).toString('hex')}.jpg`)
-      let ok = false
+      let res: Awaited<ReturnType<NonNullable<MediaDecoder['convertToJpeg']>>> = false
       try {
-        ok = await this.decoder.convertToJpeg(fsSrc, tmpConverted)
+        res = await this.decoder.convertToJpeg(fsSrc, tmpConverted)
       } catch {
-        ok = false
+        res = false
       }
-      if (!ok || !existsSync(tmpConverted)) return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
+      const converted = res === true || (typeof res === 'object' && res.ok)
+      if (typeof res === 'object' && res.ok && res.notes) warnings.push(...res.notes)
+      if (!converted || !existsSync(tmpConverted)) {
+        const why = typeof res === 'object' && !res.ok ? res.reason : 'unsupported'
+        try { unlinkSync(tmpConverted) } catch { /* nothing was written */ }
+        if (why === 'corrupt') return failure('corrupt', src)
+        if (why === 'too-large') return failure('too-large-pixels', src, 'This picture is enormous (over 64 megapixels) and cannot be converted safely. Resize it and add it again.')
+        if (why === 'memory') return failure('io', src, 'This picture is too big to open on this computer.')
+        return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
+      }
       storeFrom = tmpConverted
       convertedFrom = fmt === 'heic' ? 'heic' : 'tiff'
       ext = 'jpg'
@@ -317,6 +326,11 @@ export class MediaLibrary {
           }
         }
         bytes = statSync(dest).size
+        if (convertedFrom) {
+          // Keep the original next to the converted copy, so a better conversion can be made later. Best effort.
+          const keep = this.originalPath(hash, convertedFrom === 'heic' ? 'heic' : 'tiff')
+          try { if (!existsSync(keep) && this.checkSpace(st.size * 2).ok) copyFileSync(fsSrc, keep) } catch { /* the converted picture is what matters */ }
+        }
       } else {
         linkMtime = Math.round(st.mtimeMs)
         if (st.size >= MEDIA_LIMITS.suggestLinkBytes) warnings.push('Linked in place: if this file is moved or its drive is unplugged, the picture will show as missing.')
@@ -396,6 +410,11 @@ export class MediaLibrary {
     }
     onProgress?.({ done: files.length, total: files.length, current: '' })
     return { results, skipped }
+  }
+
+  /** Where the untouched HEIC/TIFF is kept when a picture was converted on import. */
+  originalPath(hash: string, ext: 'heic' | 'tiff'): string {
+    return join(this.filesDir, hash.slice(0, 2), `${hash}.orig.${ext}`)
   }
 
   private managedPath(hash: string, ext: string): string {
@@ -609,6 +628,9 @@ export class MediaLibrary {
             unlinkRetry(p)
             filesDeleted++
           } catch { /* already gone */ }
+          for (const oe of ['heic', 'tiff'] as const) {
+            try { unlinkSync(this.originalPath(r.hash, oe)) } catch { /* none kept */ }
+          }
         }
       }
       if (!this.db.prepare('SELECT 1 FROM media_items WHERE hash = ? AND id <> ? AND deleted_at IS NULL').get(r.hash, r.id)) {
