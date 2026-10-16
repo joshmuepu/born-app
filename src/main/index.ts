@@ -51,11 +51,11 @@ import {
   setPhoneViaListener,
   REMOTE_PORT
 } from './webRemote'
-import { networkInterfaces } from 'os'
 import {
   buildDiagnosticHints,
   chooseDefault,
   listNetworks,
+  readInterfaces,
   windowsFirewallCommands,
   type RemoteNetwork
 } from './networks'
@@ -1290,7 +1290,7 @@ ipcMain.on('webremote:sync', (_event, state) => {
 })
 
 function currentNetworks(): RemoteNetwork[] {
-  return listNetworks(networkInterfaces(), getNetworkMeta())
+  return listNetworks(readInterfaces(), getNetworkMeta())
 }
 
 function usableNetworkAddresses(): string[] {

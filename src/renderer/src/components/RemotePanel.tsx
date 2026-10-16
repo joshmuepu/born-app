@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Copy, Check, AlertTriangle, Stethoscope } from 'lucide-react'
+import { Smartphone, Copy, Check, AlertTriangle, Stethoscope, Wifi, Cable, Network } from 'lucide-react'
 import QRCode from 'qrcode'
 
-interface RemoteInfo {
-  available: boolean
-  url: string
-  ipUrl: string
-  hostnameUrl: string | null
+type RemoteInfo = WebRemoteInfo
+
+function networkIcon(kind: RemoteNetworkInfo['kind']): JSX.Element {
+  const props = { width: 14, height: 14, strokeWidth: 2, 'aria-hidden': true as const }
+  if (kind === 'wifi') return <Wifi {...props} />
+  if (kind === 'ethernet') return <Cable {...props} />
+  return <Network {...props} />
 }
 
 /** Plain-language, OS-specific next step — the self-test below this can say
@@ -28,14 +30,26 @@ function buildDiagnosticsText(diag: RemoteDiagnostics): string {
     `Platform: ${diag.platform}`,
     `Server listening: ${diag.available}`,
     `Port: ${diag.port}`,
-    `Chosen address: ${diag.chosenIp}`,
+    `QR code address: ${diag.chosenIp}`,
     `mDNS hostname: ${diag.mdnsHostname ?? '(not resolved)'}`,
     `Connected phones: ${diag.connectedPhones}`,
     '',
-    'Network adapters:',
+    'Network adapters (→ = used by the QR code):',
     ...diag.adapters.map(
-      (a) => `  ${a.chosen ? '→' : ' '} ${a.name}: ${a.address}${a.virtual ? ' (virtual/VPN)' : ''}`
+      (a) =>
+        `  ${a.chosen ? '→' : ' '} ${a.label}: ${a.address}` +
+        ` — ${a.reachable === null ? 'not tested' : a.reachable ? 'answers' : `NO ANSWER (${a.reachError ?? 'unknown'})`}` +
+        (a.usable ? '' : ` [hidden: ${a.hiddenReason ?? 'virtual/VPN'}]`)
     ),
+    '',
+    'Phones that have connected since BORN started:',
+    ...(diag.phones.length === 0
+      ? ['  (none)']
+      : diag.phones.map(
+          (p) => `  ${p.clientIp} (network ${p.subnet}) via ${p.viaAddress}${p.active ? ' — connected now' : ''}`
+        )),
+    ...(diag.hints.length ? ['', 'Hints:', ...diag.hints.map((h) => `  - ${h}`)] : []),
+    ...(diag.firewallCommands.length ? ['', 'Windows Firewall commands:', ...diag.firewallCommands.map((c) => `  ${c}`)] : []),
     '',
     'Recent log lines:',
     ...diag.recentLogLines.map((l) => `  ${l}`)
@@ -61,7 +75,12 @@ export default function RemotePanel(): JSX.Element {
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<RemoteInfo | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
+  // The network the operator picked by hand. Null = follow the default BORN
+  // chose (and keep following it if that changes while the panel is open).
+  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [cmdCopied, setCmdCopied] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [diag, setDiag] = useState<RemoteDiagnostics | null>(null)
   const [diagOpen, setDiagOpen] = useState(false)
@@ -103,13 +122,26 @@ export default function RemotePanel(): JSX.Element {
 
   const remoteErrored = !info?.available && failedAttempts >= FAILED_ATTEMPTS_BEFORE_ERROR
 
+  const networks = info?.networks ?? []
+  const usableNetworks = networks.filter((n) => n.usable)
+  // Hidden networks are only listed when asked for — except the one in use.
+  const activeNetwork =
+    networks.find((n) => n.id === pickedId) ?? networks.find((n) => n.id === info?.selectedId) ?? null
+  const visibleNetworks = showAll ? networks : networks.filter((n) => n.usable || n.id === activeNetwork?.id)
+  const hiddenCount = networks.length - usableNetworks.length
+  const multiNetwork = usableNetworks.length > 1 || (showAll && networks.length > 1)
+  // The address phones should use: the selected network's, else (no networks
+  // reported — e.g. an older main process) the single address as before.
+  const activeUrl =
+    info?.available && activeNetwork ? `http://${activeNetwork.address}:${info.port}` : (info?.url ?? '')
+
   useEffect(() => {
-    if (!info?.url) {
+    if (!activeUrl) {
       setQrDataUrl('')
       return
     }
     let cancelled = false
-    QRCode.toDataURL(info.url, {
+    QRCode.toDataURL(activeUrl, {
       margin: 1,
       width: 240,
       color: { dark: '#0d1117', light: '#ffffff' }
@@ -119,7 +151,7 @@ export default function RemotePanel(): JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [info?.url])
+  }, [activeUrl])
 
   useEffect(() => {
     if (!open) return
@@ -137,18 +169,32 @@ export default function RemotePanel(): JSX.Element {
     }
   }, [open])
 
-  const copy = (): void => {
-    if (!info?.url) return
-    navigator.clipboard?.writeText(info.url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+  const copy = (key: string, url: string): void => {
+    if (!url) return
+    navigator.clipboard?.writeText(url)
+    setCopied(key)
+    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500)
+  }
+
+  const copyCommands = (): void => {
+    if (!diag) return
+    navigator.clipboard?.writeText(diag.firewallCommands.join('\n'))
+    setCmdCopied(true)
+    setTimeout(() => setCmdCopied(false), 1500)
   }
 
   const toggleDiagnostics = (): void => {
     const next = !diagOpen
     setDiagOpen(next)
-    if (next) window.electronAPI.getWebRemoteDiagnostics().then(setDiag)
+    if (next) window.electronAPI.getWebRemoteDiagnostics(activeNetwork?.id).then(setDiag)
   }
+
+  // Keep "which one is the QR using" in the open check in step with the selector.
+  useEffect(() => {
+    if (!diagOpen) return
+    window.electronAPI.getWebRemoteDiagnostics(activeNetwork?.id).then(setDiag)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNetwork?.id])
 
   const copyDiagnostics = (): void => {
     if (!diag) return
@@ -201,28 +247,110 @@ export default function RemotePanel(): JSX.Element {
                 Scan once, on this WiFi. It stays connected on that phone or tablet from then on
                 — no address to type, no re-scanning.
               </p>
-              {info?.url ? (
-                <div className="remote-address">
-                  <code>{info.url.replace(/^https?:\/\//, '')}</code>
-                  <button className="btn-icon remote-copy" onClick={copy} title="Copy address" aria-label="Copy address">
-                    {copied ? (
-                      <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
-                    ) : (
-                      <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="remote-address remote-address--pending">Starting…</div>
+              {!multiNetwork &&
+                (activeUrl ? (
+                  <div className="remote-address">
+                    <code>{activeUrl.replace(/^https?:\/\//, '')}</code>
+                    <button
+                      className="btn-icon remote-copy"
+                      onClick={() => copy('main', activeUrl)}
+                      title="Copy address"
+                      aria-label="Copy address"
+                    >
+                      {copied === 'main' ? (
+                        <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                      ) : (
+                        <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="remote-address remote-address--pending">Starting…</div>
+                ))}
+              {multiNetwork && (
+                <p className="remote-hint remote-network-prompt">
+                  Your phone must be on the same network as the one selected below.
+                </p>
               )}
               {info?.available && info.hostnameUrl && (
                 <p className="remote-note">
                   Also reachable at {info.hostnameUrl.replace(/^https?:\/\//, '')} once a phone
-                  resolves it — the address above is more reliable to scan.
+                  resolves it — the IP address is more reliable to scan.
                 </p>
               )}
             </div>
           </div>
+          )}
+
+          {!remoteErrored && info?.available && (multiNetwork || hiddenCount > 0) && (
+            <div className="remote-networks">
+              {multiNetwork && (
+                <div className="remote-networks-list" role="radiogroup" aria-label="Network for the QR code">
+                  {visibleNetworks.map((n) => {
+                    const selected = n.id === activeNetwork?.id
+                    const url = `http://${n.address}:${info.port}`
+                    return (
+                      <div
+                        key={n.id}
+                        className={`remote-network${selected ? ' is-selected' : ''}${n.usable ? '' : ' is-hidden-kind'}`}
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className="remote-network-pick"
+                          onClick={() => setPickedId(n.id)}
+                          title={n.hiddenReason ?? `Show the QR code for ${n.label}`}
+                        >
+                          <span className="remote-network-icon">{networkIcon(n.kind)}</span>
+                          <span className="remote-network-text">
+                            <span className="remote-network-name">{n.label}</span>
+                            <code>
+                              {n.address}:{info.port}
+                            </code>
+                            {n.hiddenReason && <span className="remote-network-reason">{n.hiddenReason}</span>}
+                          </span>
+                        </button>
+                        <button
+                          className="btn-icon remote-copy"
+                          onClick={() => copy(n.id, url)}
+                          title={`Copy ${n.label} address`}
+                          aria-label={`Copy ${n.label} address`}
+                        >
+                          {copied === n.id ? (
+                            <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                          ) : (
+                            <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {multiNetwork && activeNetwork && (
+                <p className="remote-network-why">
+                  {activeNetwork.id === info.selectedId
+                    ? info.reason
+                    : `Showing ${activeNetwork.label} because you picked it.`}
+                </p>
+              )}
+              {hiddenCount > 0 && (
+                <button
+                  className="remote-showall"
+                  onClick={() => {
+                    // Collapsing must not leave a hidden (VPN/virtual) network selected.
+                    if (showAll && !activeNetwork?.usable) setPickedId(null)
+                    setShowAll((v) => !v)
+                  }}
+                  aria-expanded={showAll}
+                >
+                  {showAll
+                    ? 'Hide virtual and VPN networks'
+                    : `Show all (${hiddenCount} hidden — VPN / virtual)`}
+                </button>
+              )}
+            </div>
           )}
 
           <button className="btn-secondary btn-sm remote-diag-toggle" onClick={toggleDiagnostics}>
@@ -237,21 +365,70 @@ export default function RemotePanel(): JSX.Element {
                   <p className="remote-diag-row">
                     Server: {diag.available ? 'listening' : 'not listening'} on port {diag.port}
                   </p>
-                  <p className="remote-diag-row">Connected phones right now: {diag.connectedPhones}</p>
+                  <p className="remote-diag-row">
+                    Phones connected right now: {diag.connectedPhones}
+                  </p>
                   <p className="remote-diag-row">
                     mDNS name: {diag.mdnsHostname ?? 'not resolved yet'}
                   </p>
-                  <p className="remote-diag-row">Network adapters found:</p>
+                  <p className="remote-diag-row">Networks on this computer (→ = QR code):</p>
                   <ul className="remote-diag-adapters">
                     {diag.adapters.map((a) => (
                       <li key={a.name + a.address}>
                         {a.chosen ? '→ ' : '　'}
-                        <code>{a.address}</code> ({a.name}
-                        {a.virtual ? ', looks virtual/VPN' : ''})
+                        <code>{a.address}</code> {a.label}
+                        {a.usable ? '' : `, hidden (${a.hiddenReason ?? 'virtual/VPN'})`}
+                        {' — '}
+                        {a.reachable === null ? (
+                          'not tested'
+                        ) : a.reachable ? (
+                          <span className="remote-diag-pass">answers</span>
+                        ) : (
+                          <span className="remote-diag-fail">no answer ({a.reachError ?? 'unknown'})</span>
+                        )}
                       </li>
                     ))}
                   </ul>
+                  <p className="remote-diag-row">
+                    {diag.phones.length === 0
+                      ? 'No phone has connected since BORN started.'
+                      : 'Phones that have connected since BORN started:'}
+                  </p>
+                  {diag.phones.length > 0 && (
+                    <ul className="remote-diag-adapters">
+                      {diag.phones.map((p) => (
+                        <li key={p.clientIp}>
+                          <code>{p.clientIp}</code> on network {p.subnet}, via <code>{p.viaAddress}</code>
+                          {p.active ? ' — connected now' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {diag.hints.map((h) => (
+                    <p key={h} className="remote-diag-row remote-diag-hint">
+                      {h}
+                    </p>
+                  ))}
                   <p className="remote-diag-row remote-diag-firewall">{firewallHint(diag.platform)}</p>
+                  {diag.firewallCommands.length > 0 && (
+                    <div className="remote-diag-commands">
+                      <p className="remote-diag-row">
+                        Run these in PowerShell (as Administrator). The first shows whether each network is
+                        Private or Public; the second lets the remote through on Private networks. If your
+                        Wi-Fi shows Public, change <code>Private</code> to <code>Any</code> in the second
+                        command, or set the network to Private in Windows settings.
+                      </p>
+                      <pre className="remote-diag-pre">{diag.firewallCommands.join('\n')}</pre>
+                      <button className="btn-secondary btn-sm" onClick={copyCommands}>
+                        {cmdCopied ? (
+                          <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
+                        ) : (
+                          <Copy width={13} height={13} strokeWidth={2} aria-hidden="true" />
+                        )}
+                        Copy commands
+                      </button>
+                    </div>
+                  )}
                   <button className="btn-secondary btn-sm" onClick={copyDiagnostics}>
                     {diagCopied ? (
                       <Check width={13} height={13} strokeWidth={2.4} aria-hidden="true" />
