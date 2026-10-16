@@ -179,7 +179,9 @@ const LOWER_THIRD: PresentationProfile = {
       left: EDGE,
       right: EDGE,
       bottom: '6%',
-      background: 'rgba(10, 8, 6, 0.78)',
+      // OBS blends in linear light, so a 0.78 panel over WHITE video came out mid-grey (measured 129/255 in a real recording: white text
+      // only 3.9:1). 0.92 measures about 7:1 over white and bright yellow, and is still a soft panel over a dark camera.
+      background: 'rgba(10, 8, 6, 0.92)',
       'border-radius': '10px',
       padding: '16px 28px'
     },

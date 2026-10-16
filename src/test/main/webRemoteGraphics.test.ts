@@ -101,6 +101,17 @@ describe('text direction and size on the lower third', () => {
     expect(html).toMatch(/#text-inner \{ width: 100%; unicode-bidi: plaintext; \}/)
     unregisterGraphicsDestination('g-rtl')
   })
+  it('the panel is opaque enough to read over white video once OBS blends it in linear light (white text >= 4.5:1 against the blended panel)', async () => {
+    const { PRESENTATION_PROFILES } = await import('../../shared/presentationProfiles')
+    const a = Number(/rgba\(10, 8, 6, ([0-9.]+)\)/.exec(PRESENTATION_PROFILES['lower-third'].regions.panel.background)![1])
+    const lin = (v: number): number => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    const blended = a * lin(8) + (1 - a) * lin(255) // panel over a white frame, in linear light
+    const lum = 0.2126 * blended + 0.7152 * blended + 0.0722 * blended
+    expect((1 + 0.05) / (lum + 0.05)).toBeGreaterThanOrEqual(4.5)
+    // and the tan reference line too (216,205,184)
+    const ref = 0.2126 * lin(216) + 0.7152 * lin(205) + 0.0722 * lin(184)
+    expect((ref + 0.05) / (lum + 0.05)).toBeGreaterThanOrEqual(4.5)
+  })
   it('a very long word wraps and the text never grows past about half the picture', async () => {
     const { PRESENTATION_PROFILES } = await import('../../shared/presentationProfiles')
     const t = PRESENTATION_PROFILES['lower-third'].regions.text
