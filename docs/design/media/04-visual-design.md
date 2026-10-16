@@ -22,7 +22,7 @@ original gradients — no stock photos.
 
 ## The screens
 
-Screens 13–16 were added with the [YouTube design](06-youtube.md); the numbering is by creation, not by order.
+Screens 13–16 were added with the [YouTube design](06-youtube.md), 17–19 with the [service pack](07-service-pack.md); the numbering is by creation, not by order.
 
 | # | Screen | What to look at | Themes shown |
 |---|---|---|---|
@@ -41,6 +41,9 @@ Screens 13–16 were added with the [YouTube design](06-youtube.md); the numberi
 | 14 | **YouTube in the queue** ([png](mockups/png/14-youtube-queue.dark.png), [html](mockups/14-youtube-queue.html)) | *Online* badge, Preview is a picture, Test play, fallback | dark · light · contrast |
 | 15 | **Preflight with YouTube** ([png](mockups/png/15-youtube-preflight.dark.png), [html](mockups/15-youtube-preflight.html)) | Online checks, can't-verify-offline, embedding-off with fallback, ads notice | dark · light · contrast |
 | 16 | **YouTube playback bar and failures** ([png](mockups/png/16-youtube-playbar.dark.png), [html](mockups/16-youtube-playbar.html)) | Playing, buffering, stalled, error 101/150, error 153, offline | dark |
+| 17 | **Save service with pictures** ([png](mockups/png/17-pack-export.dark.png), [html](mockups/17-pack-export.html)) | What goes in the pack, size and free space, big-pack warning, progress with Cancel, a missing-picture refusal. Design: [07](07-service-pack.md) | dark · light · contrast |
+| 18 | **Open a service pack** ([png](mockups/png/18-pack-import.dark.png), [html](mockups/18-pack-import.html)) | Review before anything is copied: new / already here / damaged, atomic copy with Cancel, the summary | dark · light · contrast |
+| 19 | **Pack errors and reconnect a drive** ([png](mockups/png/19-pack-errors.dark.png), [html](mockups/19-pack-errors.html)) | Not a pack, cut short, newer version, too big, no space, wrong file type; “Reconnect this drive” for linked pictures | dark |
 | 12 | **Failure states** ([png](mockups/png/12-failure-states.dark.png), [html](mockups/12-failure-states.html)) | Stalled video, missing file, unsupported format, projector unplugged, low memory, and the **panic** key | dark |
 
 ## Honest notes about the mockups

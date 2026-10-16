@@ -91,9 +91,16 @@ S7, S8. **Test strategy:** see matrix below.
 
 **Effort:** L · **Risk:** low–medium. **Dependencies:** Phase 1; S6.
 
+## Phase 1a follow-up — service pack (moved up from Phase 3)
+
+`.bornpack` (a queue plus its pictures in one shareable file) with a review-then-atomic import, built in the 1a hardening round.
+Moved up because Phase 1a already identifies pictures by content hash and has the "find these pictures" review, so it is packaging
+what exists; it needs no video, no network and no new screen type; and "the pictures aren't on the booth computer" is the first
+real-world failure churches meet. Design: [07-service-pack.md](07-service-pack.md).
+
 ## Phase 3 — "Travels well"
 
-- `.bornpack` bundles + relink review dialog modelled on song-import.
+- ~~`.bornpack` bundles~~ — **done in the 1a follow-up** (see above); relink review stays.
 - Shared-folder media root; phone **Send to booth** Inbox; watch folders.
 - PowerPoint via PDF/LibreOffice-if-installed.
 - Language variants, per-Channel backgrounds polish.
