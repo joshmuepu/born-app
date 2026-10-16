@@ -11,6 +11,7 @@ import { tmpdir } from 'os'
 import { pathToFileURL } from 'url'
 import { join } from 'path'
 import { log } from './logger'
+import { testHook } from './testHooks'
 import { checkAndRecoverDatabase } from './dbIntegrity'
 import { MediaLibrary, type ImportOptions, type ListQuery } from './mediaLibrary'
 import { MediaDbTooNewError } from './mediaSchema'
@@ -208,7 +209,7 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     const l = getMediaLibrary()
     if (!l || !Array.isArray(wanted)) return { canceled: true, found: {}, scanned: 0 }
     // BORN_TEST_LOCATE_DIR: dev/test only, answers the folder picker without a dialog.
-    const testDir = process.env.BORN_TEST_LOCATE_DIR
+    const testDir = testHook('BORN_TEST_LOCATE_DIR', app.isPackaged)
     const r = testDir ? { canceled: false, filePaths: [testDir] } : await dialog.showOpenDialog(getMain() ?? (undefined as never), { title: 'Choose the folder that has the pictures', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return { canceled: true, found: {}, scanned: 0 }
     const out = await l.locateInFolder(r.filePaths[0], wanted.filter((w) => w && typeof w.hash === 'string' && typeof w.bytes === 'number').slice(0, 5000))
@@ -233,7 +234,7 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
   // PDF import: the file dialog and the read live here; the page rendering is done in the window (pdfImport.ts).
   // Dev/test only (like BORN_USER_DATA_DIR): BORN_TEST_PICK_PDF=<file> answers the picker without a dialog,
   // so automated runs can drive the real import. Unset in every normal run.
-  let testPdfPath = process.env.BORN_TEST_PICK_PDF || ''
+  let testPdfPath = testHook('BORN_TEST_PICK_PDF', app.isPackaged)
   ipcMain.handle('media:pick-pdf', async () => {
     if (testPdfPath) {
       const p = testPdfPath
@@ -257,7 +258,7 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     }
   })
   ipcMain.handle('media:test-set-pdf', (_e, path: string) => {
-    if (!process.env.BORN_TEST_PICK_PDF && !process.env.BORN_TEST_ALLOW_SET_PDF) return false
+    if (!testHook('BORN_TEST_PICK_PDF', app.isPackaged) && !testHook('BORN_TEST_ALLOW_SET_PDF', app.isPackaged)) return false
     testPdfPath = String(path || '')
     return true
   })

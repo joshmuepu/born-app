@@ -216,13 +216,9 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     [linkInPlace, cat, summarize]
   )
 
-  const importPdfFile = useCallback(async () => {
-    if (pdfJob) return
-    const picked = await window.electronAPI.mediaPickPdf()
-    if (picked.canceled) return
-    const name = picked.name ?? 'PDF'
-    if (picked.error === 'too-large' || !picked.bytes) {
-      setReport({ added: 0, dup: 0, failed: [{ name, message: picked.error === 'too-large' ? PDF_MESSAGES['too-large'] : PDF_MESSAGES.io }], warnings: [] })
+  const runPdf = useCallback(async (name: string, bytes: ArrayBuffer | undefined, error?: string) => {
+    if (error === 'too-large' || !bytes) {
+      setReport({ added: 0, dup: 0, failed: [{ name, message: error === 'too-large' ? PDF_MESSAGES['too-large'] : PDF_MESSAGES.io }], warnings: [] })
       return
     }
     const ac = new AbortController()
@@ -231,7 +227,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     try {
       const api = window.electronAPI
       const out = await importPdf(
-        picked.bytes,
+        bytes,
         name,
         {
           importBuffer: (n, b, o) => api.mediaImportBuffer(n, b, o),
@@ -254,7 +250,14 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
       setPdfJob(null)
       void refresh()
     }
-  }, [pdfJob, onAddSlideshow, refresh])
+  }, [onAddSlideshow, refresh])
+
+  const importPdfFile = useCallback(async () => {
+    if (pdfJob) return
+    const picked = await window.electronAPI.mediaPickPdf()
+    if (picked.canceled) return
+    await runPdf(picked.name ?? 'PDF', picked.bytes, picked.error)
+  }, [pdfJob, runPdf])
 
   const remove = useCallback(
     async (ids: string[]) => {
@@ -321,7 +324,14 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     if (files.length === 0) return
     e.preventDefault()
     e.stopPropagation()
-    void importPaths(window.electronAPI.mediaPathsForFiles(files))
+    // A dropped PDF (e.g. a PowerPoint exported to PDF) becomes a slideshow, same as "Import PDF".
+    const pdf = files.find((f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf')
+    const rest = files.filter((f) => f !== pdf)
+    if (rest.length > 0) void importPaths(window.electronAPI.mediaPathsForFiles(rest))
+    if (pdf && !pdfJob) {
+      if (pdf.size > 200 * 1024 * 1024) void runPdf(pdf.name, undefined, 'too-large')
+      else void pdf.arrayBuffer().then((b) => runPdf(pdf.name, b), () => runPdf(pdf.name, undefined, 'io'))
+    }
   }
   useEffect(() => {
     if (!visible) return
