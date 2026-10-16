@@ -1140,13 +1140,16 @@ function onDisplayLayoutChanged(reason: string): void {
 
 /** The still background that applies to one destination right now, or null. A missing or
  *  unreadable picture never blocks the text: it is simply not drawn. */
-function backgroundFor(destinationId: string, channelId: ChannelId): { mediaId: string; dim: number } | null {
+function backgroundFor(destinationId: string, channelId: ChannelId): { mediaId: string; dim: number; motion?: boolean } | null {
   const b = resolveBackground(getSettingsSafe().mediaBackgrounds, destinationId, channelId, (c) => {
     const s = channels.get(c)?.sync
     return s && s.syncMode !== 'independent' && s.linkedTo ? s.linkedTo : null
   })
   if (!b) return null
-  return getMediaLibrary()?.check(b.mediaId) === 'ok' ? b : null
+  const lib = getMediaLibrary()
+  if (lib?.check(b.mediaId) !== 'ok') return null
+  // A video here is a MOTION background: drawn muted and looping behind the text.
+  return lib.get(b.mediaId)?.type === 'video' ? { ...b, motion: true } : b
 }
 /** Text slides get their destination's background attached; pictures are the content layer
  *  and cover it, so they never carry one. */
@@ -1158,7 +1161,7 @@ function withBackground(destinationId: string, channelId: ChannelId, slide: Slid
 
 function toGraphicsSlide(
   slide: SlidePayload | null,
-  bg?: { mediaId: string; dim: number } | null
+  bg?: SlideBackground | null
 ): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media']; background?: SlidePayload['background'] } | null {
   if (!slide) return null
   return {

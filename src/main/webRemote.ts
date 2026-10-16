@@ -542,6 +542,7 @@ function buildGraphicsScript(id: string): string {
   var discEl = document.getElementById('disconnected');
   var picEl = document.getElementById('pic');
   var bgEl = document.getElementById('bg');
+  var bgVideoEl = document.getElementById('bgvideo');
   var bgDimEl = document.getElementById('bgdim');
   var TRANSITIONS = ${JSON.stringify(transitions)};
   var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
@@ -563,6 +564,7 @@ function buildGraphicsScript(id: string): string {
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
     picEl.style.display = 'none'; picEl.removeAttribute('src');
     bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
+    bgVideoEl.style.display = 'none'; bgVideoEl.pause(); bgVideoEl.removeAttribute('src');
     if (!payload || !payload.slide || payload.blanked) {
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       return;
@@ -570,8 +572,16 @@ function buildGraphicsScript(id: string): string {
     var s = payload.slide;
     // Still background: only on a Full-screen output (a lower-third sits over a camera and must stay transparent).
     if (s.background && s.kind !== 'media' && stageEl.dataset.profile === 'fullscreen' && /^m_[0-9a-f]{12}$/.test(s.background.mediaId)) {
-      bgEl.src = '/media/' + s.background.mediaId + '/display';
-      bgEl.style.display = 'block';
+      if (s.background.motion) {
+        // a MOTION background: muted, looping, never any sound
+        bgVideoEl.muted = true; bgVideoEl.loop = true;
+        bgVideoEl.src = '/media/' + s.background.mediaId + '/file';
+        bgVideoEl.style.display = 'block';
+        bgVideoEl.play().catch(function(){});
+      } else {
+        bgEl.src = '/media/' + s.background.mediaId + '/display';
+        bgEl.style.display = 'block';
+      }
       bgDimEl.style.background = 'rgba(0,0,0,' + (Math.max(0, Math.min(80, s.background.dim)) / 100) + ')';
       bgDimEl.style.display = 'block';
     }
@@ -669,6 +679,7 @@ function buildGraphicsHTML(id: string): string {
   #text-inner { width: 100%; }
 ${profileCSS}
   #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; }
+  #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; background: #000; }
   #bgdim { position: fixed; inset: 0; display: none; z-index: 1; }
   #stage { z-index: 2; }
   #pic { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
@@ -687,7 +698,7 @@ ${profileCSS}
     <div id="reference-detail"></div>
   </div>
 </div>
-<img id="bg" alt=""/><div id="bgdim"></div>
+<img id="bg" alt=""/><video id="bgvideo" muted loop playsinline preload="auto"></video><div id="bgdim"></div>
 <img id="pic" alt=""/>
 <div id="disconnected">RECONNECTING…</div>
 <script>${buildGraphicsScript(id)}</script>

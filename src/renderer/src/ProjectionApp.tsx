@@ -145,7 +145,12 @@ export default function ProjectionApp() {
     <div className={`projection-active projection-${slide.kind}${slide.background ? ' has-bg' : ''}`}>
       {slide.background && (
         <div className="projection-bg" aria-hidden="true">
-          <img src={`born-media://display/${slide.background.mediaId}`} alt="" draggable={false} />
+          {slide.background.motion ? (
+            // A motion background: a muted, looping video behind the text. Never audio, never part of the playback clock.
+            <video key={slide.background.mediaId} className="projection-bg-video" src={`born-media://file/${slide.background.mediaId}`} poster={`born-media://display/${slide.background.mediaId}`} muted loop autoPlay playsInline preload="auto" disablePictureInPicture />
+          ) : (
+            <img src={`born-media://display/${slide.background.mediaId}`} alt="" draggable={false} />
+          )}
           <div className="projection-bg-dim" style={{ background: `rgba(0,0,0,${slide.background.dim / 100})` }} />
         </div>
       )}

@@ -38,7 +38,7 @@ export default function VideoBar({ channelId, mediaId }: { channelId: string; me
 
   const pos = seeking ?? wirePosition(wire, performance.now() - receivedAt.current)
   const dur = wire.duration
-  const left = dur !== null ? Math.max(0, dur - pos) : null
+  const left = dur !== null ? Math.max(0, Math.ceil(dur - pos - 0.001)) : null
   const playing = wire.status === 'playing'
   const note =
     wire.status === 'error' ? `This video stopped: ${wire.error ?? 'it could not be played'}. Press Clear, or take it again.`

@@ -110,7 +110,7 @@ export default function MediaBackgrounds({ items }: { items: MediaRecord[] }): J
                 >
                   <option value="">{t.scope === 'channel' ? '(no default)' : '(use the channel default)'}</option>
                   <option value="__none">No background here</option>
-                  {pickable(items, cur?.mediaId).map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  {pickable(items, cur?.mediaId).map((i) => <option key={i.id} value={i.id}>{i.type === 'video' ? `${i.name} (video, loops)` : i.name}</option>)}
                 </select>
                 <label className="media-bg-dim">
                   Dim {cur?.dim ?? DEFAULT_BACKGROUND_DIM}%
