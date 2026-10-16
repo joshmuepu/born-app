@@ -47,3 +47,15 @@ UI. In short:
   would also zoom the projection output). Pointer maths must use
   `currentUiZoom()`.
 - Honour `prefers-reduced-motion`; keep everything keyboard-operable.
+
+## Running and testing safely (learned in the media work)
+
+- **Never run a dev or test launch against real data or ports.** Every launch script and manual run must set
+  `BORN_USER_DATA_DIR=<throw-away dir>`, `BORN_REMOTE_PORT=<not 4316>` and `BORN_MDNS_NAME=<name>` (all builds honour them). `ELECTRON_RUN_AS_NODE`
+  must be unset when starting Electron (it makes it behave as plain Node). `BORN_TEST_*` hooks answer file pickers in dev/test only; a packaged app ignores them.
+- **better-sqlite3 flips between two builds**: `npm rebuild better-sqlite3` for vitest (Node), `npm run rebuild:native` before launching the app (Electron).
+  Tests that use sqlite import `src/test/main/keepStatements.ts` (a Node 24 test-runner crash workaround; not an app problem).
+- Check `ps` and listening ports before launching: a stale instance on a debugging port answers instead of the new one.
+- Media follow-ups: packaged-app checks are in `scripts/packaged-check/`; Windows is only ever built by the manual workflow
+  `.github/workflows/v2-dev-build.yml` (never the release workflow).
+

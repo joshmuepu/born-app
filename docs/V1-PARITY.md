@@ -104,3 +104,10 @@ There is no v1 branch for it. v2 already has the behaviour (Media 1a Step 1). Ha
 | "Drive not connected" state, Reconnect-by-folder, Copy into library for linked pictures | **intentionally different** (v2-only) | |
 | Manual-only Windows build workflow `.github/workflows/v2-dev-build.yml` (read-only, no release) | **intentionally different** | `release.yml` and its v1.x.x tag gate untouched |
 
+## v2-only: Media Phase 1b (`v2-media-1b`) — video and moving backgrounds
+
+| Item | v2 status | Notes |
+|---|---|---|
+| Video items (MP4, H.264 + AAC), playback bar, follower screens, Graphics follower, stage time-left, phone Play/Pause of the live video, panic keys, motion backgrounds, video preflight | **intentionally different** (v2-only media area) | `docs/design/media/08-phase-1b-build-plan.md`. v1.13.0's own queue reader opens a v2 file with video items without crashing (tested against the real v1 file in `src/test/shared/v1Compat.test.ts`) |
+| `smoke-macos.sh` now isolates its profile and ports | intentionally different | CI script only; the v1 release workflow is untouched |
+
