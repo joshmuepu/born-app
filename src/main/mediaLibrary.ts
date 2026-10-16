@@ -21,6 +21,7 @@ import {
   copyFileSync,
   createReadStream,
   existsSync,
+  fstatSync,
   mkdirSync,
   openSync,
   readSync,
@@ -35,7 +36,7 @@ import {
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'path'
 import { longPath, renameRetry, unlinkRetry } from './winFs'
 import { migrateMediaDb } from './mediaSchema'
-import { orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
+import { looksComplete, orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
 import {
   IMAGE_EXTENSIONS,
   MEDIA_LIMITS,
@@ -217,6 +218,8 @@ export class MediaLibrary {
       const looksLikePicture = IMAGE_EXTENSIONS.includes(extname(src).slice(1).toLowerCase())
       return failure(looksLikePicture && fmt === 'unknown' ? 'corrupt' : 'unsupported', src)
     }
+
+    if (!needsConversion && !fileLooksComplete(fsSrc)) return failure('truncated', src)
 
     // 2. identity (streamed, so a 2 GB file costs no memory)
     let hash: string
@@ -810,6 +813,11 @@ export class MediaLibrary {
         return { ...out, status: 'unreadable', deep: 'skipped' }
       }
     }
+    if (!fileLooksComplete(path)) {
+      out.deep = 'damaged'
+      out.notes.push('The file looks cut short (an unfinished copy or download). Copy the picture again from the original.')
+      return out
+    }
     // 2. does it really open?
     const dec = await this.decoder.decode(path, [64])
     if (!dec.ok) {
@@ -1000,4 +1008,30 @@ function writeBuffer(path: string, data: Buffer): void {
   const tmp = `${path}.tmp-${randomBytes(3).toString('hex')}`
   writeFileSync(tmp, data)
   renameRetry(tmp, path)
+}
+
+/** Reads only the start and end of a file to see whether it is all there (see looksComplete). */
+export function fileLooksComplete(path: string): boolean {
+  let fd: number | null = null
+  try {
+    fd = openSync(path, 'r')
+    const size = fstatSync(fd).size
+    const read = (pos: number, len: number): Buffer => {
+      const b = Buffer.alloc(Math.max(0, Math.min(len, size - pos)))
+      if (b.length) readSync(fd as number, b, 0, b.length, pos)
+      return b
+    }
+    const head = read(0, 64 * 1024)
+    const format = readImageHeader(head).format
+    // Measured against the real browser engine (see docs/qa follow-up report): it already REJECTS a cut-off JPEG, PNG, WebP, BMP
+    // and AVIF, but it happily ACCEPTS a cut-off GIF (shows the frames that arrived). So the ending is checked for GIF; the rules
+    // for the others stay available in looksComplete but are not applied, to avoid false alarms (e.g. a phone "motion photo" is a
+    // JPEG with a video glued on, so a JPEG's last bytes are not the end-of-image marker).
+    if (format !== 'gif') return true
+    return looksComplete(format, head, read(Math.max(0, size - 64), 64), size)
+  } catch {
+    return true // cannot tell: the decode below decides
+  } finally {
+    if (fd !== null) { try { closeSync(fd) } catch { /* ignore */ } }
+  }
 }

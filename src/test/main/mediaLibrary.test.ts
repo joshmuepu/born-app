@@ -115,6 +115,33 @@ describe('media library: importing', () => {
     expect(stray()).toEqual([])
   })
 
+  it('a cut-off GIF is refused as truncated (browsers show the frames that arrived, so the ending is checked)', async () => {
+    const r = bad(await lib.importFile(fx('truncated.gif')))
+    expect(r.code).toBe('truncated')
+    expect(lib.count().items).toBe(0)
+    expect(stray()).toEqual([])
+    expect(ok(await lib.importFile(fx('anim.gif'))).item.animated).toBe(true) // the whole one is fine
+  })
+
+  it('preflight catches a file that was cut short after it was added (size changed, or ending missing)', async () => {
+    const copy = join(dir, 'cut.gif')
+    copyFileSync(fx('anim.gif'), copy)
+    const r = ok(await lib.importFile(copy, { linkInPlace: true }))
+    const g = readFileSync(copy)
+    writeFileSync(copy, g.subarray(0, g.length - 20)) // an unfinished sync replaced it
+    const p = await lib.preflight(r.item.id)
+    expect(p.status).toBe('changed') // length check: no longer the size it was
+    // same length but ending lost (overwritten with zeros): the ending check catches it
+    writeFileSync(copy, Buffer.concat([g.subarray(0, g.length - 20), Buffer.alloc(20)]))
+    utimesSync(copy, new Date(r.item.addedAt), new Date(r.item.addedAt))
+    const rec = lib.get(r.item.id)!
+    const st = statSync(copy)
+    lib.db.prepare('UPDATE media_items SET link_mtime_ms = ? WHERE id = ?').run(Math.round(st.mtimeMs), rec.id)
+    const p2 = await lib.preflight(r.item.id)
+    expect(p2.deep).toBe('damaged')
+    expect(p2.notes.join(' ')).toMatch(/cut short/)
+  })
+
   it('refuses a cut-off picture as truncated and leaves nothing behind', async () => {
     const r = bad(await lib.importFile(fx('truncated.jpg')))
     expect(r.code).toBe('truncated')
