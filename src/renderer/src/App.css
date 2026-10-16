@@ -2161,6 +2161,15 @@ button.display-row:hover {
   color: var(--text-secondary);
   line-height: 1.4;
 }
+.remote-network-single {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
 .remote-network-prompt {
   font-weight: 600;
   color: var(--text-primary);

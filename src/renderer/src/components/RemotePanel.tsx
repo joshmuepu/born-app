@@ -275,6 +275,12 @@ export default function RemotePanel(): JSX.Element {
                   Scan once, on this WiFi. It stays connected on that phone or tablet from then on
                   — no address to type, no re-scanning.
                 </p>
+                {!multiNetwork && activeNetwork && (
+                  <p className="remote-network-single">
+                    {networkIcon(activeNetwork.kind)}
+                    <span>{activeNetwork.label}</span>
+                  </p>
+                )}
                 {!multiNetwork &&
                   (activeUrl ? (
                     <div className="remote-address">
