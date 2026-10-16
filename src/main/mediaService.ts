@@ -6,7 +6,9 @@
  * drop) into library calls.
  */
 import { app, dialog, ipcMain, BrowserWindow, protocol, net, shell } from 'electron'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from 'fs'
+import { Readable } from 'stream'
+import { parseRange } from '../shared/httpRange'
+import { copyFileSync, createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { pathToFileURL } from 'url'
 import { join } from 'path'
@@ -127,12 +129,23 @@ function registerMediaProtocol(): void {
       const rec = l.get(id)
       const p = rec ? l.resolvePath(rec) : null
       if (!rec || !p || !existsSync(p)) return notFound
-      // Range is forwarded so a <video> can seek (the file loader answers 206 with Content-Range).
-      const range = req.headers.get('range')
-      const r = await net.fetch(pathToFileURL(p).href, range ? { headers: { range } } : undefined)
-      const headers: Record<string, string> = { 'content-type': rec.type === 'video' ? 'video/mp4' : (CONTENT_TYPE[rec.ext] ?? 'application/octet-stream'), 'cache-control': 'no-store', 'accept-ranges': 'bytes' }
-      for (const h of ['content-range', 'content-length']) { const v = r.headers.get(h); if (v) headers[h] = v }
-      return new Response(r.body, { status: r.status, headers })
+      // A <video> seeks with Range requests, so the byte ranges are answered here (206 + Content-Range) rather than left to chance.
+      const size = statSync(p).size
+      const type = rec.type === 'video' ? 'video/mp4' : (CONTENT_TYPE[rec.ext] ?? 'application/octet-stream')
+      const range = parseRange(req.headers.get('range'), size)
+      if (range === 'invalid') return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } })
+      const part = range ?? { start: 0, end: Math.max(0, size - 1) }
+      const body = size === 0 ? null : (Readable.toWeb(createReadStream(p, { start: part.start, end: part.end })) as unknown as ReadableStream)
+      return new Response(body, {
+        status: range ? 206 : 200,
+        headers: {
+          'content-type': type,
+          'cache-control': 'no-store',
+          'accept-ranges': 'bytes',
+          'content-length': String(size === 0 ? 0 : part.end - part.start + 1),
+          ...(range ? { 'content-range': `bytes ${part.start}-${part.end}/${size}` } : {})
+        }
+      })
     } catch (e) {
       log.warn('born-media protocol error', e)
       return notFound
