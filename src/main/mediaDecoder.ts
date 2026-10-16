@@ -95,6 +95,76 @@ const DECODE_FN = `async (url, widths, needNatural) => {
   }
 }`
 
+// ── video: prove one frame decodes here, and make the poster ──────────────────
+//
+// Its own hidden window, because drawing a frame of a local file onto a canvas needs web security off (a file:// video taints the
+// canvas otherwise). The window never loads anything but this blank page and one local video; it has no Node, is sandboxed, and is
+// closed after a minute idle.
+let vwin: BrowserWindow | null = null
+let vIdle: ReturnType<typeof setTimeout> | null = null
+
+async function getVideoWindow(): Promise<BrowserWindow> {
+  if (vwin && !vwin.isDestroyed()) return vwin
+  vwin = new BrowserWindow({
+    show: false,
+    width: 320,
+    height: 240,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, webSecurity: false, autoplayPolicy: 'no-user-gesture-required' }
+  })
+  vwin.on('closed', () => { vwin = null })
+  await vwin.loadFile(ensurePage())
+  return vwin
+}
+function scheduleVideoIdleClose(): void {
+  if (vIdle) clearTimeout(vIdle)
+  vIdle = setTimeout(() => {
+    if (vwin && !vwin.isDestroyed()) vwin.destroy()
+    vwin = null
+  }, 60_000)
+}
+
+const DECODE_VIDEO_FN = `async (url, widths) => {
+  const v = document.createElement('video')
+  try {
+    v.muted = true; v.preload = 'auto'; v.playsInline = true
+    await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('timed out opening the video')), 25000)
+      v.onloadeddata = () => { clearTimeout(t); res() }
+      v.onerror = () => { clearTimeout(t); rej(new Error('media error ' + (v.error ? v.error.code + ' ' + v.error.message : ''))) }
+      v.src = url
+    })
+    const dur = v.duration
+    if (!isFinite(dur) || dur <= 0) throw new Error('the video has no length')
+    const at = Math.min(1, dur * 0.1)
+    if (at > 0.05) {
+      await new Promise((res, rej) => {
+        const t = setTimeout(() => rej(new Error('timed out seeking')), 25000)
+        v.onseeked = () => { clearTimeout(t); res() }
+        v.onerror = () => { clearTimeout(t); rej(new Error('seek error ' + (v.error ? v.error.code : ''))) }
+        v.currentTime = at
+      })
+    }
+    const w = v.videoWidth, h = v.videoHeight
+    if (!w || !h) throw new Error('the video has no picture')
+    const out = []
+    for (const tw of widths) {
+      const sw = Math.min(tw, w), sh = Math.max(1, Math.round(h * sw / w))
+      const c = new OffscreenCanvas(sw, sh)
+      c.getContext('2d').drawImage(v, 0, 0, sw, sh)
+      const blob = await c.convertToBlob({ type: 'image/jpeg', quality: 0.84 })
+      const buf = new Uint8Array(await blob.arrayBuffer())
+      let s = ''
+      for (let k = 0; k < buf.length; k += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000))
+      out.push({ w: sw, h: sh, ext: 'jpg', b64: btoa(s) })
+    }
+    return { ok: true, w, h, duration: dur, thumbs: out }
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) }
+  } finally {
+    try { v.removeAttribute('src'); v.load() } catch (e) {}
+  }
+}`
+
 export const electronMediaDecoder: MediaDecoder = {
   decode(path, thumbWidths, opts) {
     const job = queue.then(async (): Promise<DecodeResult> => {
@@ -126,6 +196,35 @@ export const electronMediaDecoder: MediaDecoder = {
     return job
   },
 
+  decodeVideo(path, thumbWidths) {
+    const job = queue.then(async () => {
+      try {
+        const w = await getVideoWindow()
+        const r = (await w.webContents.executeJavaScript(`(${DECODE_VIDEO_FN})(${JSON.stringify(pathToFileURL(path).href)}, ${JSON.stringify(thumbWidths)})`)) as
+          | { ok: true; w: number; h: number; duration: number; thumbs: Array<{ w: number; h: number; ext: 'jpg' | 'png'; b64: string }> }
+          | { ok: false; error: string }
+        scheduleVideoIdleClose()
+        if (!r.ok) {
+          log.warn(`mediaDecoder: video did not decode: ${r.error}`)
+          return { ok: false as const, reason: 'undecodable' as const, detail: r.error }
+        }
+        return {
+          ok: true as const,
+          width: r.w,
+          height: r.h,
+          duration: r.duration,
+          hasAudio: null,
+          thumbs: r.thumbs.map((t) => ({ width: t.w, height: t.h, ext: t.ext, data: Buffer.from(t.b64, 'base64') }))
+        }
+      } catch (e) {
+        log.warn('mediaDecoder: video decode threw', e)
+        return { ok: false as const, reason: 'io' as const, detail: (e as Error).message }
+      }
+    })
+    queue = job.catch(() => undefined)
+    return job
+  },
+
   /**
    * One conversion path on every OS: libheif/UTIF in a worker thread (see imageConvert.ts). On macOS only, if that
    * cannot read a HEIC file, the system's own `sips` gets a second try — the OS knows more HEIC variants than libheif
@@ -150,6 +249,9 @@ export function disposeMediaDecoder(): void {
   if (idleTimer) clearTimeout(idleTimer)
   if (win && !win.isDestroyed()) win.destroy()
   win = null
+  if (vIdle) clearTimeout(vIdle)
+  if (vwin && !vwin.isDestroyed()) vwin.destroy()
+  vwin = null
   if (pagePath) {
     try {
       rmSync(join(pagePath, '..'), { recursive: true, force: true })

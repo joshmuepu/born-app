@@ -38,6 +38,7 @@ decide whether 1b and YouTube proceed as designed.
 | [05 · Roadmap](05-roadmap.md) | Phases, spikes, tests, open questions with recommended answers |
 | [06 · YouTube](06-youtube.md) | YouTube items within YouTube's rules: flow, preflight, ads, failures, terms |
 | [07 · Service pack](07-service-pack.md) | `.bornpack`: a queue and its pictures in one file — built in the 1a follow-up (moved up from Phase 3) |
+| [08 · Phase 1b build plan](08-phase-1b-build-plan.md) | Video and motion backgrounds: slices, limits, design, acceptance tests, YouTube-next — **built** on `v2-media-1b` |
 | [mockups/](mockups/) | HTML + PNG mockups (open `mockups/png/` first) |
 | [spikes/codec-check/](spikes/codec-check/) | The one measurement taken: what this app's Electron can play |
 

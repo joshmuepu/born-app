@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import type { SlidePayload } from './types'
 import { useAutoFitFontSize } from './useAutoFitFontSize'
+import ProjectionVideo from './components/ProjectionVideo'
+import type { PlaybackWire } from '../../shared/videoPlayback'
 
 export default function ProjectionApp() {
   const [slide, setSlide] = useState<SlidePayload | null>(null)
@@ -12,6 +14,9 @@ export default function ProjectionApp() {
   const [viewportH, setViewportH] = useState(() =>
     typeof window === 'undefined' ? 900 : window.innerHeight
   )
+  // The playback record for the video on this screen (kept here, not in the video component, so a message that arrives a moment
+  // before the component mounts is never lost).
+  const [playback, setPlayback] = useState<PlaybackWire | null>(null)
   const [alertText, setAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -37,6 +42,15 @@ export default function ProjectionApp() {
     return () => {
       removeShow()
       removeClear()
+    }
+  }, [])
+
+  useEffect(() => {
+    const offPlay = window.electronAPI.onMediaPlayback(setPlayback)
+    const offStop = window.electronAPI.onMediaPlaybackStop(() => setPlayback(null))
+    return () => {
+      offPlay()
+      offStop()
     }
   }, [])
 
@@ -103,6 +117,15 @@ export default function ProjectionApp() {
     return <div className="projection-idle">{alertBanner}</div>
   }
 
+  if (slide.kind === 'media' && slide.media?.type === 'video') {
+    return (
+      <div className="projection-active projection-media">
+        <ProjectionVideo mediaId={slide.media.mediaId} fit={slide.media.fit} playback={playback} />
+        {alertBanner}
+      </div>
+    )
+  }
+
   if (slide.kind === 'media' && slide.media) {
     return (
       <div className="projection-active projection-media">
@@ -122,7 +145,12 @@ export default function ProjectionApp() {
     <div className={`projection-active projection-${slide.kind}${slide.background ? ' has-bg' : ''}`}>
       {slide.background && (
         <div className="projection-bg" aria-hidden="true">
-          <img src={`born-media://display/${slide.background.mediaId}`} alt="" draggable={false} />
+          {slide.background.motion ? (
+            // A motion background: a muted, looping video behind the text. Never audio, never part of the playback clock.
+            <video key={slide.background.mediaId} className="projection-bg-video" src={`born-media://file/${slide.background.mediaId}`} poster={`born-media://display/${slide.background.mediaId}`} muted loop autoPlay playsInline preload="auto" disablePictureInPicture />
+          ) : (
+            <img src={`born-media://display/${slide.background.mediaId}`} alt="" draggable={false} />
+          )}
           <div className="projection-bg-dim" style={{ background: `rgba(0,0,0,${slide.background.dim / 100})` }} />
         </div>
       )}

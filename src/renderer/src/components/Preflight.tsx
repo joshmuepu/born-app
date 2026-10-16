@@ -69,7 +69,7 @@ export default function Preflight({
           out.push({ key: `m${index}`, level: 'fail', title: `“${title}”: a picture is no longer in the library`, detail: 'Remove it from the queue, or add the picture again.', index, fix: ['remove'] })
         } else if (bad.length > 0) {
           const r = bad[0]
-          const why = r.status === 'offline' ? 'its drive is not connected' : r.status === 'missing' ? 'the file is missing' : r.status === 'changed' ? 'the file was changed' : r.status === 'unreadable' ? "BORN can't read the file" : r.deep === 'damaged' ? 'the file is damaged' : "it won't open as a picture"
+          const why = r.status === 'offline' ? 'its drive is not connected' : r.status === 'missing' ? 'the file is missing' : r.status === 'changed' ? 'the file was changed' : r.status === 'unreadable' ? "BORN can't read the file" : r.deep === 'damaged' ? 'the file is damaged' : it.mediaKind === 'video' ? "it won't play on this computer" : "it won't open as a picture"
           out.push({
             key: `m${index}`,
             level: 'fail',
@@ -83,9 +83,9 @@ export default function Preflight({
           const notes = results.flatMap((r) => r.notes)
           out.push({
             key: `m${index}`,
-            level: notes.some((n) => /^(Very large|Small|Linked)/.test(n)) ? 'warn' : 'pass',
+            level: notes.some((n) => /^(Very large|Small|Linked|4K|\d+ frames|Very high)/.test(n)) ? 'warn' : 'pass',
             title: `“${title}”`,
-            detail: notes.length ? Array.from(new Set(notes)).slice(0, 3).join(' ') : ids.length > 1 ? `${ids.length} pictures, all present and readable.` : 'Present, unchanged and readable.',
+            detail: notes.length ? Array.from(new Set(notes)).slice(0, 3).join(' ') : ids.length > 1 ? `${ids.length} pictures, all present and readable.` : it.mediaKind === 'video' ? 'Present, whole, and a frame plays on this computer.' : 'Present, unchanged and readable.',
             index
           })
         }

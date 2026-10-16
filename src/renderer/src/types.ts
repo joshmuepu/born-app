@@ -8,6 +8,7 @@ export type {
   QueueSource
 } from '../../shared/queueItem'
 
+import type { SlideMedia, SlideBackground } from '../../shared/media'
 import type { ParsedSong } from '../../shared/song'
 export type { ParsedSong, ParsedSongSlide } from '../../shared/song'
 
@@ -82,9 +83,9 @@ export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   text: string
   /** Picture slides only. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind text on this output (set per destination/channel). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   label?: string
   reference?: string
   marker?: string

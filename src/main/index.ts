@@ -1,3 +1,4 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import {
   app,
   BrowserWindow,
@@ -17,6 +18,8 @@ import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
 import { registerPackIpc } from './packService'
+import { PlaybackHub } from './mediaPlayback'
+import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
 import {
   getBibleTranslations,
@@ -47,7 +50,6 @@ import { startIndexer, stopIndexer, getIndexerStatus } from './indexer'
 import {
   startWebRemote,
   updateWebRemoteState,
-  getLocalIP,
   isWebRemoteAvailable,
   getWebRemoteTranslation,
   pushGraphicsUpdate,
@@ -56,11 +58,16 @@ import {
   setGraphicsProfile,
   setGraphicsAutoProfile,
   graphicsClientCount,
+  pushGraphicsPlayback as webPushGraphicsPlayback,
+  setPlaybackProvider,
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
-  listAdapters,
   getConnectedPhoneCount,
+  getLocalIP,
+  getPhoneConnections,
+  probeAddresses,
+  setPhoneViaListener,
   REMOTE_PORT,
   type AutomationChannelState
 } from './webRemote'
@@ -70,7 +77,16 @@ import {
   type ObservabilityDestination,
   type ObservabilityChannel
 } from '../shared/observability'
-import { startMdns, stopMdns, getMdnsHostname } from './mdns'
+import {
+  buildDiagnosticHints,
+  chooseDefault,
+  listNetworks,
+  readInterfaces,
+  windowsFirewallCommands,
+  type RemoteNetwork
+} from './networks'
+import { getNetworkMeta } from './networkMeta'
+import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { formatVerse } from '../shared/bibleRef'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -194,9 +210,9 @@ const isDev = process.env.NODE_ENV === 'development'
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind text on this output (set per destination/channel). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   text: string
   label?: string
   reference?: string
@@ -446,7 +462,8 @@ function getSettingsSafe(): AppSettings {
         { destinationId: 'stage', channelId: 'main', kind: 'window' }
       ],
       automationToken: null,
-      mediaBackgrounds: { destinations: {}, channels: {} }
+      mediaBackgrounds: { destinations: {}, channels: {} },
+      remoteLastPhoneNetwork: null
     }
   }
 }
@@ -1125,13 +1142,16 @@ function onDisplayLayoutChanged(reason: string): void {
 
 /** The still background that applies to one destination right now, or null. A missing or
  *  unreadable picture never blocks the text: it is simply not drawn. */
-function backgroundFor(destinationId: string, channelId: ChannelId): { mediaId: string; dim: number } | null {
+function backgroundFor(destinationId: string, channelId: ChannelId): { mediaId: string; dim: number; motion?: boolean } | null {
   const b = resolveBackground(getSettingsSafe().mediaBackgrounds, destinationId, channelId, (c) => {
     const s = channels.get(c)?.sync
     return s && s.syncMode !== 'independent' && s.linkedTo ? s.linkedTo : null
   })
   if (!b) return null
-  return getMediaLibrary()?.check(b.mediaId) === 'ok' ? b : null
+  const lib = getMediaLibrary()
+  if (lib?.check(b.mediaId) !== 'ok') return null
+  // A video here is a MOTION background: drawn muted and looping behind the text.
+  return lib.get(b.mediaId)?.type === 'video' ? { ...b, motion: true } : b
 }
 /** Text slides get their destination's background attached; pictures are the content layer
  *  and cover it, so they never carry one. */
@@ -1143,7 +1163,7 @@ function withBackground(destinationId: string, channelId: ChannelId, slide: Slid
 
 function toGraphicsSlide(
   slide: SlidePayload | null,
-  bg?: { mediaId: string; dim: number } | null
+  bg?: SlideBackground | null
 ): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media']; background?: SlidePayload['background'] } | null {
   if (!slide) return null
   return {
@@ -1216,6 +1236,7 @@ function setDestinationSuppressed(id: string, suppressed: boolean): void {
 function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   const channel = channels.get(channelId)
   if (!channel) return
+  if (blank) playbackHub.blank(channelId) // silence at once — Esc, the phone's Blank and the logo key all come through here
   channels.set(channelId, patchChannel(channel, { blanked: blank }))
   pushLive()
   const congregation = destinations.get('congregation')
@@ -1227,6 +1248,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
     stage.send('stage:set-blank', blank || stage.suppressed)
   }
   pushGraphicsForChannel(channelId)
+  if (!blank) playbackHub.resend(channelId) // a Graphics page rebuilds its video on a new frame; tell it where the (paused) video is
   // Keep the operator console's blank state in sync (e.g. when the command came
   // from the projection window's Esc key or the phone web remote). Only 'main'
   // has an operator console concept today.
@@ -1236,6 +1258,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
 function clearChannel(channelId: ChannelId): void {
   const channel = channels.get(channelId)
   if (!channel) return
+  playbackHub.stop(channelId)
   channels.set(channelId, patchChannel(channel, { current: null, next: null, blanked: false }))
   pushLive()
   const congregation = destinations.get('congregation')
@@ -1342,6 +1365,45 @@ function cascadeFollowSlide(sourceChannelId: ChannelId, slide: SlidePayload): vo
   }
 }
 
+// ── Video playback (Phase 1b) ─────────────────────────────────────────────────
+// One playback record per channel; the congregation window is the leader (it plays, with sound, and reports its real position), the
+// operator's bar, the stage monitor and any Graphics page follow it. See docs/design/media/08-phase-1b-build-plan.md.
+function channelOfDestination(destId: string): ChannelId | null {
+  return destinations.get(destId)?.config.channelId ?? null
+}
+const playbackHub = new PlaybackHub({
+  now: () => Date.now(),
+  emit: (msg: PlaybackWire) => {
+    if (channelOfDestination('congregation') === msg.channelId) sendToProjection('media:playback', msg)
+    if (channelOfDestination('stage') === msg.channelId) sendToStage('media:playback', msg)
+    sendToMain('media:playback', msg)
+    pushGraphicsPlayback(msg.channelId, msg)
+  },
+  emitStop: (channelId) => {
+    if (channelOfDestination('congregation') === channelId) sendToProjection('media:playback-stop', channelId)
+    if (channelOfDestination('stage') === channelId) sendToStage('media:playback-stop', channelId)
+    sendToMain('media:playback-stop', channelId)
+    pushGraphicsPlayback(channelId, null)
+  }
+})
+setInterval(() => playbackHub.tick(), 1000).unref()
+
+/** Graphics (browser) outputs follow the playback record too: muted, correcting to the main clock (see the Graphics page script). */
+function pushGraphicsPlayback(channelId: ChannelId, msg: PlaybackWire | null): void {
+  for (const dest of destinationsFor(channelId)) if (dest.config.kind === 'browser') webPushGraphicsPlayback(dest.config.id, msg)
+}
+
+/** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
+function syncPlaybackToSlide(channelId: ChannelId, slide: SlidePayload | null): void {
+  const m = slide && slide.kind === 'media' && slide.media?.type === 'video' ? slide.media : null
+  if (!m) {
+    playbackHub.stop(channelId)
+    return
+  }
+  const rec = getMediaLibrary()?.get(m.mediaId)
+  playbackHub.take(channelId, m.mediaId, { duration: rec?.durationSec ?? null, loop: !!m.loop })
+}
+
 function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   applyChannelSlide(channelId, slide)
   cascadeFollowSlide(channelId, slide)
@@ -1355,6 +1417,7 @@ function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   if (congregation && congregation.config.channelId === channelId && !congregation.suppressed) {
     congregation.send('projection:show-slide', withBackground('congregation', channelId, slide))
   }
+  syncPlaybackToSlide(channelId, slide)
   pushLive()
   // A fresh slide always un-blanks — keep the stage screen in step so it
   // doesn't stay stuck on the clock after an Esc blackout (unless it's
@@ -1389,6 +1452,37 @@ function automationState(): AutomationChannelState[] {
     blanked: c.blanked
   }))
 }
+
+// ── Video playback IPC ─────────────────────────────────────────────────────────
+const PLAYBACK_COMMANDS = ['play', 'pause', 'toggle', 'seek', 'volume', 'muted', 'loop']
+ipcMain.handle('media:playback-command', (_e, channelId: string, action: PlaybackAction) => {
+  if (typeof channelId !== 'string' || !action || typeof action !== 'object' || !PLAYBACK_COMMANDS.includes((action as { type: string }).type)) return null
+  const a = action as PlaybackAction
+  // only plain values from the window: never trust shapes (a `report` is reserved for the leader window below)
+  const safe: PlaybackAction | null =
+    a.type === 'seek' ? { type: 'seek', to: Number((a as { to: number }).to) || 0 }
+    : a.type === 'volume' ? { type: 'volume', value: Number((a as { value: number }).value) }
+    : a.type === 'muted' ? { type: 'muted', value: !!(a as { value: boolean }).value }
+    : a.type === 'loop' ? { type: 'loop', value: !!(a as { value: boolean }).value }
+    : { type: a.type } as PlaybackAction
+  const s = playbackHub.command(channelId, safe)
+  return s ? playbackHub.get(channelId) : null
+})
+ipcMain.handle('media:playback-get', (_e, channelId: string) => (typeof channelId === 'string' ? playbackHub.get(channelId) : null))
+// The leader window (the congregation output) reports where it really is, about once a second.
+ipcMain.on('media:playback-report', (e, r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => {
+  if (!projectionWindow || projectionWindow.isDestroyed() || e.sender !== projectionWindow.webContents) return
+  const channelId = channelOfDestination('congregation')
+  if (!channelId || !r || typeof r.position !== 'number' || !Number.isFinite(r.position)) return
+  playbackHub.report(channelId, {
+    position: Math.max(0, r.position),
+    playing: !!r.playing,
+    duration: typeof r.duration === 'number' && Number.isFinite(r.duration) ? r.duration : undefined,
+    ended: !!r.ended,
+    stalled: !!r.stalled,
+    error: typeof r.error === 'string' ? r.error.slice(0, 200) : null
+  })
+})
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
 
@@ -2049,27 +2143,99 @@ ipcMain.on('webremote:sync', (_event, state) => {
   updateWebRemoteState(state)
 })
 
+function currentNetworks(): RemoteNetwork[] {
+  return listNetworks(readInterfaces(), getNetworkMeta())
+}
+
+function usableNetworkAddresses(): string[] {
+  return currentNetworks()
+    .filter((n) => n.usable)
+    .map((n) => n.address)
+}
+
+/** Remember which of this computer's networks a phone really connected
+ *  through, so the panel shows that one first next time. */
+setPhoneViaListener((viaAddress) => {
+  const net = currentNetworks().find((n) => n.address === viaAddress)
+  if (!net) return
+  const prev = getSettingsSafe().remoteLastPhoneNetwork
+  if (prev && prev.name === net.name && prev.address === net.address) return
+  updateSettings({ remoteLastPhoneNetwork: { name: net.name, address: net.address } })
+})
+
 ipcMain.handle('webremote:ip', () => {
   if (!isWebRemoteAvailable()) {
-    return { available: false, url: '', ipUrl: '', hostnameUrl: null }
+    return {
+      available: false,
+      url: '',
+      ipUrl: '',
+      hostnameUrl: null,
+      port: REMOTE_PORT,
+      networks: [],
+      selectedId: null,
+      reason: null
+    }
   }
-  return buildRemoteConnectionInfo(getLocalIP(), getMdnsHostname(), REMOTE_PORT)
+  const networks = currentNetworks()
+  const choice = chooseDefault(networks, getSettingsSafe().remoteLastPhoneNetwork)
+  return {
+    ...buildRemoteConnectionInfo(choice.network?.address ?? 'localhost', getMdnsHostname(), REMOTE_PORT),
+    port: REMOTE_PORT,
+    networks,
+    selectedId: choice.network?.id ?? null,
+    reason: choice.reason
+  }
 })
 
 /** Backs the "Remote connection check" panel — everything an operator (or
  *  support, reading a copied dump) needs to see why a phone can't connect,
  *  since the panel otherwise only knows "the server bound" and has no way to
- *  know whether anything on the LAN can actually reach it. */
-ipcMain.handle('webremote:diagnostics', () => ({
-  available: isWebRemoteAvailable(),
-  port: REMOTE_PORT,
-  chosenIp: getLocalIP(),
-  adapters: listAdapters(),
-  mdnsHostname: getMdnsHostname(),
-  connectedPhones: getConnectedPhoneCount(),
-  recentLogLines: log.getRecentLines(40),
-  platform: process.platform
-}))
+ *  know whether anything on the LAN can actually reach it. `selectedId` is
+ *  the network the panel's QR is currently showing. */
+ipcMain.handle('webremote:diagnostics', async (_event, selectedId?: string) => {
+  const networks = currentNetworks()
+  const choice = chooseDefault(networks, getSettingsSafe().remoteLastPhoneNetwork)
+  const qr = networks.find((n) => n.id === selectedId) ?? choice.network
+  const available = isWebRemoteAvailable()
+  const probes = available
+    ? await probeAddresses(
+        networks.map((n) => n.address),
+        REMOTE_PORT
+      )
+    : []
+  const phones = getPhoneConnections()
+  return {
+    available,
+    port: REMOTE_PORT,
+    chosenIp: qr?.address ?? 'localhost',
+    adapters: networks.map((n) => {
+      const probe = probes.find((p) => p.address === n.address)
+      return {
+        name: n.name,
+        label: n.label,
+        address: n.address,
+        virtual: !n.usable && n.kind !== 'other',
+        usable: n.usable,
+        hiddenReason: n.hiddenReason,
+        chosen: n.id === qr?.id,
+        reachable: probe ? probe.ok : null,
+        reachError: probe?.error ?? null
+      }
+    }),
+    mdnsHostname: getMdnsHostname(),
+    connectedPhones: getConnectedPhoneCount(),
+    phones,
+    hints: buildDiagnosticHints({
+      platform: process.platform,
+      networks,
+      probes,
+      phoneCount: phones.length
+    }),
+    firewallCommands: process.platform === 'win32' ? windowsFirewallCommands(REMOTE_PORT) : [],
+    recentLogLines: log.getRecentLines(40),
+    platform: process.platform
+  }
+})
 
 // ── Automation API (Stream Deck/Companion) ──────────────────────────────────
 // Off by default — reading a null token means every /api/automation/*
@@ -2892,8 +3058,17 @@ app.whenReady().then(async () => {
   screen.on('display-removed', () => onDisplayLayoutChanged('display-removed'))
   screen.on('display-metrics-changed', () => onDisplayLayoutChanged('display-metrics-changed'))
 
+  setPlaybackProvider(() => {
+    const w = playbackHub.get('main')
+    return w ? { mediaId: w.mediaId, status: w.status, position: w.position, duration: w.duration, hasPlayedOnce: w.hasPlayedOnce, stalled: w.stalled, error: w.error } : null
+  })
   startWebRemote(
     (cmd) => {
+      // The phone's video controls: Play/Pause of the LIVE video only (no seek, no volume, no first play with sound).
+      if (cmd.action === 'media-play' || cmd.action === 'media-pause') {
+        playbackHub.phone('main', cmd.action)
+        return
+      }
       if (!mainWindow || mainWindow.isDestroyed()) return
       if (cmd.action === 'prev' || cmd.action === 'next') {
         mainWindow.webContents.send('queue:navigate', cmd.action)
@@ -3005,7 +3180,12 @@ app.whenReady().then(async () => {
       show: (channelId) => setChannelBlank(channelId, false),
       getState: automationState
     },
-    () => startMdns(REMOTE_PORT)
+    () => {
+      startMdns(REMOTE_PORT, usableNetworkAddresses())
+      // A network joining or leaving after launch (Wi-Fi connected late, cable
+      // unplugged) changes which adapters should answer mDNS.
+      setInterval(() => refreshMdns(REMOTE_PORT, usableNetworkAddresses()), 30_000).unref()
+    }
   )
   setAutomationToken(getSettingsSafe().automationToken)
 

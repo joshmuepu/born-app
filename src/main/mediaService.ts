@@ -6,7 +6,9 @@
  * drop) into library calls.
  */
 import { app, dialog, ipcMain, BrowserWindow, protocol, net, shell } from 'electron'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from 'fs'
+import { Readable } from 'stream'
+import { parseRange } from '../shared/httpRange'
+import { copyFileSync, createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { pathToFileURL } from 'url'
 import { join } from 'path'
@@ -17,7 +19,7 @@ import { checkAndRecoverDatabase } from './dbIntegrity'
 import { MediaLibrary, type ImportOptions, type ListQuery } from './mediaLibrary'
 import { MediaDbTooNewError } from './mediaSchema'
 import { electronMediaDecoder, disposeMediaDecoder } from './mediaDecoder'
-import { IMAGE_EXTENSIONS, MEDIA_MESSAGES, type MediaImportResult, type MediaRecord } from '../shared/media'
+import { IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, MEDIA_MESSAGES, type MediaImportResult, type MediaRecord } from '../shared/media'
 
 // `born-media://thumb/<id>/<320|960>` and `born-media://file/<id>` — how the
 // renderer (and, in Step 4, the output windows) read library pictures without
@@ -127,8 +129,23 @@ function registerMediaProtocol(): void {
       const rec = l.get(id)
       const p = rec ? l.resolvePath(rec) : null
       if (!rec || !p || !existsSync(p)) return notFound
-      const r = await net.fetch(pathToFileURL(p).href)
-      return new Response(r.body, { headers: { 'content-type': CONTENT_TYPE[rec.ext] ?? 'application/octet-stream', 'cache-control': 'no-store' } })
+      // A <video> seeks with Range requests, so the byte ranges are answered here (206 + Content-Range) rather than left to chance.
+      const size = statSync(p).size
+      const type = rec.type === 'video' ? 'video/mp4' : (CONTENT_TYPE[rec.ext] ?? 'application/octet-stream')
+      const range = parseRange(req.headers.get('range'), size)
+      if (range === 'invalid') return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } })
+      const part = range ?? { start: 0, end: Math.max(0, size - 1) }
+      const body = size === 0 ? null : (Readable.toWeb(createReadStream(p, { start: part.start, end: part.end })) as unknown as ReadableStream)
+      return new Response(body, {
+        status: range ? 206 : 200,
+        headers: {
+          'content-type': type,
+          'cache-control': 'no-store',
+          'accept-ranges': 'bytes',
+          'content-length': String(size === 0 ? 0 : part.end - part.start + 1),
+          ...(range ? { 'content-range': `bytes ${part.start}-${part.end}/${size}` } : {})
+        }
+      })
     } catch (e) {
       log.warn('born-media protocol error', e)
       return notFound
@@ -171,7 +188,7 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     const r = await dialog.showOpenDialog(win ?? (undefined as never), {
       title: opts?.folders ? 'Add a folder of pictures' : 'Add pictures',
       properties: props,
-      filters: opts?.folders ? undefined : [{ name: 'Pictures', extensions: IMAGE_EXTENSIONS }]
+      filters: opts?.folders ? undefined : [{ name: 'Pictures and videos', extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS] }, { name: 'Pictures', extensions: IMAGE_EXTENSIONS }, { name: 'Videos (MP4)', extensions: VIDEO_EXTENSIONS }]
     })
     if (r.canceled || r.filePaths.length === 0) return { canceled: true, results: [], skipped: 0 }
     return { canceled: false, ...(await runImport(r.filePaths, opts ?? {})) }
@@ -301,10 +318,17 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
 }
 
 /** For the Graphics (OBS/browser) output: resolves `/media/<id>/display` to a file. */
-export async function resolveMediaForHttp(id: string, kind: 'display' | 'thumb' = 'display'): Promise<{ path: string; type: string } | null> {
+export async function resolveMediaForHttp(id: string, kind: 'display' | 'thumb' | 'file' = 'display'): Promise<{ path: string; type: string } | null> {
   if (!/^m_[0-9a-f]{12}$/.test(id)) return null
   const l = getMediaLibrary()
   if (!l) return null
+  if (kind === 'file') {
+    // only a VIDEO's own bytes are ever served this way (pictures go through 'display', which may be a screen-sized copy)
+    const rec = l.get(id)
+    if (!rec || rec.type !== 'video' || l.check(id) !== 'ok') return null
+    const p = l.resolvePath(rec)
+    return p ? { path: p, type: 'video/mp4' } : null
+  }
   if (kind === 'thumb') {
     // thumbnails live in BORN's own cache, so they still show for a picture whose original has gone missing
     const p = await l.thumbnail(id, 320)

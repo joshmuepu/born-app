@@ -1,0 +1,13 @@
+.vbar { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-secondary); }
+.vbar-row { display: flex; align-items: center; gap: 8px; }
+.vbar-play { display: inline-flex; align-items: center; gap: 6px; min-width: 96px; justify-content: center; }
+.vbar-time { font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); }
+.vbar-of { color: var(--text-secondary); font-weight: 500; }
+.vbar-left { margin-left: auto; font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; font-size: var(--text-xs); color: var(--text-secondary); }
+.vbar-seek, .vbar-vol { width: 100%; accent-color: var(--media); }
+.vbar-vol { max-width: 120px; }
+.vbar-icon { display: inline-grid; place-items: center; min-width: 30px; }
+.vbar-icon.is-on { color: var(--media); border-color: var(--media); }
+.vbar-note { font-size: var(--text-xs); color: var(--text-secondary); }
+.vbar-note.is-warn { color: var(--warn); font-weight: 600; }
+.vbar--idle { min-height: 40px; justify-content: center; }

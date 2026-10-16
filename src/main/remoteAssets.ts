@@ -227,6 +227,12 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
    extra width goes toward reading the plan, not sitting empty. */
 .qthumb{display:block; width:100%; max-width:220px; aspect-ratio:16/9; object-fit:contain; background:#000; border-radius:8px; margin-bottom:8px}
 .qthumb--slide{max-width:120px; margin:0 12px 0 0; flex:none}
+.media-ctl{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:10px 0; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface)}
+.media-ctl button{min-height:48px; min-width:120px; padding:0 18px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); font-size:16px; font-weight:700}
+.media-ctl button[disabled]{opacity:.45; border-color:var(--border); background:var(--surface2); color:var(--text2)}
+.media-ctl .mc-time{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+.media-ctl .mc-note{flex-basis:100%; font-size:12.5px; color:var(--text2)}
+.media-ctl .mc-warn{color:var(--warn)}
 .now-pic{display:block; max-width:100%; max-height:46vh; margin:0 auto 10px; object-fit:contain; background:#000; border-radius:8px}
 .qpreview{font-size:12.5px; color:var(--text2); margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .empty{text-align:center; color:var(--text2); padding:40px 24px; font-size:14px; line-height:1.5}
@@ -1233,6 +1239,28 @@ function removeQueueItemRemote(i){
   if(!it) return;
   cmd('remove', { id: it.id });
 }
+function mmss(sec){
+  if(sec == null || !isFinite(sec)) return '–:––';
+  var t = Math.max(0, Math.floor(sec)), m = Math.floor(t / 60), s2 = t % 60;
+  return m + ':' + (s2 < 10 ? '0' : '') + s2;
+}
+// Play/Pause of the LIVE video only. No seek, no volume — and Play stays off until the operator has started it once, so a phone can
+// never be what first makes sound in the room.
+function mediaControlsHtml(){
+  var p = state.qs.playback;
+  if(!p || state.qs.blanked) return '';
+  var playing = p.status === 'playing';
+  var left = p.duration ? Math.max(0, Math.ceil(p.duration - p.position - 0.001)) : null;
+  var btn;
+  if(p.status === 'error') btn = '<button disabled>Cannot play</button>';
+  else if(playing) btn = '<button onclick="cmd(\\'media-pause\\')">Pause</button>';
+  else if(p.hasPlayedOnce) btn = '<button onclick="cmd(\\'media-play\\')">' + (p.status === 'ended' ? 'Play again' : 'Play') + '</button>';
+  else btn = '<button disabled>Play</button>';
+  var note = p.status === 'error' ? '<div class="mc-note mc-warn">This video stopped. Ask the operator.</div>'
+    : (!p.hasPlayedOnce && !playing) ? '<div class="mc-note">Start it on the main computer first. From here you can pause and resume it.</div>'
+    : p.stalled ? '<div class="mc-note mc-warn">The picture has stopped moving.</div>' : '';
+  return '<div class="media-ctl">' + btn + '<span class="mc-time">' + mmss(p.position) + (left != null ? ' &nbsp;−' + mmss(left) : '') + '</span>' + note + '</div>';
+}
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
   if(!on){
@@ -1256,6 +1284,7 @@ function nowNextPerfHtml(){
     + (on.mediaId ? '<img class="now-pic" alt="" src="/media/' + on.mediaId + '/thumb">' : '')
     + '<div class="now-text">' + esc(on.text) + '</div>'
     + '</div></div>';
+  html += mediaControlsHtml();
   html += '<div class="next-card">'
     + '<div class="next-label-lg">NEXT' + (on.nextText ? ' — NOT ON SCREEN YET' : '') + '</div>'
     + '<div class="next-text-lg">' + (on.nextText ? esc(on.nextText) : 'End of this item — pick the next one below') + '</div>'
@@ -1272,7 +1301,7 @@ function nowNextBigHtml(){
   if(orphaned) flags += '<span class="now-flag now-flag--warn">Not in your queue</span>';
   else if(on.readingAhead) flags += '<span class="now-flag">Reading ahead</span>';
   return (flags ? '<div class="preview-now-flags">' + flags + '</div>' : '')
-    + '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>'
+    + '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>' + mediaControlsHtml()
     + '<div class="preview-next-box">' + ICON_CHEVRON_RIGHT
     + '<div><div class="next-label" style="margin-bottom:4px">NEXT</div><div class="next-text">' + nextLine + '</div></div></div>';
 }

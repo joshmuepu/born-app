@@ -84,6 +84,7 @@ export function PackExportDialog({ queue, title, onClose, onSaved }: { queue: un
             {est.big && !est.tooBig && <div className="preflight-summary preflight-summary--warn">This is a big pack — about {mb(est.totalBytes)}. It will take a few minutes to save and may not fit on a small USB stick.</div>}
             {est.tooBig && <div className="preflight-summary preflight-summary--fail">This service’s pictures come to {mb(est.totalBytes)}, more than one pack can hold ({mb(PACK_LIMITS.maxPackBytes)}). Remove some of the biggest pictures and try again.</div>}
             {est.tooMany && <div className="preflight-summary preflight-summary--fail">More than {PACK_LIMITS.maxPictures.toLocaleString()} pictures. Split the service.</div>}
+            {est.videos.length > 0 && <div className="preflight-summary preflight-summary--fail">This service has {est.videos.length === 1 ? 'a video' : `${est.videos.length} videos`} ({est.videos.map((v) => v.name).slice(0, 3).join(', ')}). A service pack can’t carry videos yet — use plain <b>Save</b> (the video stays on this computer) or take the video out first.</div>}
             {est.missing.length > 0 && <div className="preflight-summary preflight-summary--fail">{est.missing.length} picture{est.missing.length === 1 ? ' is' : 's are'} missing, so nothing can be saved. Use <b>Check</b> to fix them, then save again.</div>}
           </>
         )}
@@ -97,7 +98,7 @@ export function PackExportDialog({ queue, title, onClose, onSaved }: { queue: un
         )}
         <div className="preflight-foot">
           <button className="btn-quiet btn-sm" onClick={cancel}>Cancel</button>
-          <button className="btn-primary btn-sm" onClick={() => void save()} disabled={!est || busy !== null || est.count === 0 || est.missing.length > 0 || est.tooBig || est.tooMany}><Package width={14} height={14} /> Choose where to save…</button>
+          <button className="btn-primary btn-sm" onClick={() => void save()} disabled={!est || busy !== null || est.count === 0 || est.missing.length > 0 || est.videos.length > 0 || est.tooBig || est.tooMany}><Package width={14} height={14} /> Choose where to save…</button>
         </div>
       </div>
     </div>

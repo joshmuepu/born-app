@@ -1,6 +1,9 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
-import { networkInterfaces } from 'os'
-import { createReadStream, existsSync, readFileSync } from 'fs'
+import { get as httpGet } from 'http'
+import { parseRange } from '../shared/httpRange'
+import { followerStep, SYNC } from '../shared/videoPlayback'
+import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { WebSocketServer, WebSocket } from 'ws'
@@ -19,10 +22,23 @@ import { chunkLines } from '../shared/paginate'
 import { automationRequestAuthorized } from '../shared/automationAuth'
 import { resolveApiV1, AUTOMATION_WS_VERSION } from '../shared/apiVersioning'
 import { log } from './logger'
+import {
+  chooseDefault,
+  isLoopbackAddress,
+  listNetworks,
+  readInterfaces,
+  looksVirtual,
+  normalizeIp,
+  subnetOf,
+  type RememberedNetwork
+} from './networks'
 
 /** Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR in main/index.ts
  *  — lets a second local checkout bind a different port instead of colliding
  *  with this one. Never set for a real install. */
+/** Every IPv4 interface. Exported so tests assert the real bind address. */
+export const REMOTE_BIND_HOST = '0.0.0.0'
+
 export const REMOTE_PORT = Number(process.env.BORN_REMOTE_PORT) || 4316
 
 export interface WebRemoteSlide {
@@ -35,9 +51,9 @@ export interface WebRemoteSlide {
    *  profile the destination had fixed. */
   kind?: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides: which library picture, and how it sits. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind this slide's text (Full-screen outputs only). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   /** This channel follows another, had no translation for this content, and
    *  fell back to English — purely informational, carried through to the
    *  automation API's state endpoint so an external tool can show it too. */
@@ -225,6 +241,14 @@ let currentState: WebRemoteState = {
 let commandCallback: CommandCallback | null = null
 let searchHandlers: WebRemoteSearchHandlers | null = null
 
+/** The address the remote advertises by default. Delegates to networks.ts —
+ *  the old "first private, non-virtual address in OS enumeration order" rule
+ *  is what put the unreachable Ethernet address on the QR at church. */
+export function getLocalIP(remembered: RememberedNetwork | null = null): string {
+  const { network } = chooseDefault(listNetworks(readInterfaces()), remembered)
+  return network?.address ?? 'localhost'
+}
+
 /** What a Graphics output (OBS Browser Source, a lobby display, etc.) shows —
  *  deliberately smaller than WebRemoteState: just enough to render a slide,
  *  nothing about the queue or controls. Reuses WebRemoteSlide rather than
@@ -259,6 +283,8 @@ interface GraphicsEntry {
    *  showing. A client connecting mid-cycle sees exactly what every other
    *  connected client sees right now, not a reset back to page one. */
   lastPayload: GraphicsPayload
+  /** The live video's playback record (Phase 1b), for a client that connects mid-video. */
+  lastPlayback: unknown | null
   /** Broadcast-pagination cycling state for the slide currently live on
    *  this destination — see pushGraphicsUpdate. */
   cycleTimer: ReturnType<typeof setInterval> | null
@@ -275,6 +301,7 @@ export function registerGraphicsDestination(id: string, profileId: PresentationP
     autoProfile,
     clients: new Set(),
     lastPayload: { slide: null, blanked: true, profileId },
+    lastPlayback: null,
     cycleTimer: null,
     cyclePages: [],
     cycleIndex: 0
@@ -329,6 +356,24 @@ export function isGraphicsActive(id: string): boolean {
  *  tell those apart and doesn't need to. */
 export function graphicsClientCount(id: string): number {
   return graphicsDestinations.get(id)?.clients.size ?? 0
+}
+
+/**
+ * The playback record of the video live on this destination's channel, pushed (about once a second, and on every change) as its own
+ * SSE event so a video-following Graphics page can run the correction. `null` = the video is gone.
+ */
+export function pushGraphicsPlayback(id: string, record: unknown | null): void {
+  const entry = graphicsDestinations.get(id)
+  if (!entry) return
+  entry.lastPlayback = record
+  const data = record ? `event: playback\ndata: ${JSON.stringify(record)}\n\n` : 'event: playback-stop\ndata: {}\n\n'
+  for (const res of entry.clients) {
+    try {
+      res.write(data)
+    } catch {
+      entry.clients.delete(res)
+    }
+  }
 }
 
 /** Writes one frame to every client currently connected to this one
@@ -409,21 +454,6 @@ function isPrivate(addr: string): boolean {
 const VIRTUAL_ADAPTER_NAME =
   /utun|^tun|^tap|ppp|wireguard|^wg|ipsec|awdl|llw|bridge|vnic|vmnet|vethernet|vmware|virtualbox|hyper-v|wsl|docker|tailscale|zerotier|vpn/i
 
-export function getLocalIP(): string {
-  const nets = networkInterfaces()
-  const real: string[] = []
-  const virtual: string[] = []
-  for (const [name, ifaces] of Object.entries(nets)) {
-    for (const net of ifaces ?? []) {
-      if (net.family !== 'IPv4' || net.internal) continue
-      if (VIRTUAL_ADAPTER_NAME.test(name)) virtual.push(net.address)
-      else real.push(net.address)
-    }
-  }
-  const candidates = [...real, ...virtual]
-  return real.find(isPrivate) ?? candidates.find(isPrivate) ?? candidates[0] ?? 'localhost'
-}
-
 export interface AdapterInfo {
   name: string
   address: string
@@ -433,18 +463,15 @@ export interface AdapterInfo {
   chosen: boolean
 }
 
-/** Every non-loopback IPv4 adapter on this machine, for the "Remote
- *  connection check" diagnostic — lets the operator (or support, reading a
- *  copied diagnostics dump) see every candidate address and which one BORN
- *  picked and why, instead of just trusting a single hidden choice. */
+/** Every non-loopback IPv4 adapter on this machine (kept for the plain
+ *  adapter dump; the richer per-network view lives in networks.ts). */
 export function listAdapters(): AdapterInfo[] {
-  const nets = networkInterfaces()
   const chosenIp = getLocalIP()
   const out: AdapterInfo[] = []
-  for (const [name, ifaces] of Object.entries(nets)) {
+  for (const [name, ifaces] of Object.entries(readInterfaces())) {
     for (const net of ifaces ?? []) {
       if (net.family !== 'IPv4' || net.internal) continue
-      out.push({ name, address: net.address, virtual: VIRTUAL_ADAPTER_NAME.test(name), chosen: net.address === chosenIp })
+      out.push({ name, address: net.address, virtual: looksVirtual(name), chosen: net.address === chosenIp })
     }
   }
   return out
@@ -516,8 +543,13 @@ function cssDecl(rec: Record<string, string>): string {
  *  that id as a `data-profile` attribute every profile's CSS is scoped
  *  under, so switching treatment is one attribute write, never a reload. */
 /** Set by the main process: turns a library picture id into a file to serve. */
-let mediaResolver: ((id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>) | null = null
-export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>): void {
+/** What the phone may see of the live video (set by the main process): status, position, length, whether the operator has started it. */
+let playbackProvider: (() => { mediaId: string; status: string; position: number; duration: number | null; hasPlayedOnce: boolean; stalled: boolean; error: string | null } | null) | null = null
+export function setPlaybackProvider(fn: NonNullable<typeof playbackProvider>): void {
+  playbackProvider = fn
+}
+let mediaResolver: ((id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>) | null = null
+export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>): void {
   mediaResolver = fn
 }
 
@@ -537,9 +569,75 @@ function buildGraphicsScript(id: string): string {
   var discEl = document.getElementById('disconnected');
   var picEl = document.getElementById('pic');
   var bgEl = document.getElementById('bg');
+  var bgVideoEl = document.getElementById('bgvideo');
+  var vidEl = document.getElementById('vid');
+  var stillEl = document.getElementById('vidstill');
+  var stillImgEl = document.getElementById('vidstillimg');
+  var leftEl = document.getElementById('vidleft');
   var bgDimEl = document.getElementById('bgdim');
   var TRANSITIONS = ${JSON.stringify(transitions)};
   var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
+
+  // ── video: follow the main output's clock (spike 3's correction: nudge 40–500 ms, seek beyond, still frame when it cannot catch up) ──
+  var SYNC = ${JSON.stringify(SYNC)};
+  var followerStep = ${followerStep.toString()};
+  var mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+  var curVideo = null, wire = null, wireAt = 0, lastEpoch = null;
+  function clock(sec){
+    if (sec === null || sec === undefined || !isFinite(sec)) return '–:––';
+    var t = Math.max(0, Math.floor(sec)), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return h > 0 ? h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s : m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function wirePos(){
+    if (!wire) return 0;
+    if (wire.status !== 'playing') return wire.position;
+    var p = wire.position + Math.max(0, performance.now() - wireAt) / 1000;
+    if (wire.duration > 0) p = wire.loop ? p % wire.duration : Math.min(p, wire.duration);
+    return p;
+  }
+  function showStill(on){
+    if (on) {
+      stillImgEl.src = '/media/' + curVideo + '/display';
+      leftEl.textContent = wire && wire.duration ? clock(Math.max(0, Math.ceil(wire.duration - wirePos() - 0.001))) : '';
+      stillEl.style.display = 'block';
+    } else {
+      stillEl.style.display = 'none';
+    }
+  }
+  function stopVideo(){
+    curVideo = null; wire = null; lastEpoch = null;
+    mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+    vidEl.style.display = 'none'; try { vidEl.pause(); } catch (e) {}
+    vidEl.removeAttribute('src'); vidEl.load();
+    stillEl.style.display = 'none';
+  }
+  function startVideo(mediaId, loop){
+    curVideo = mediaId; lastEpoch = null; wire = null;
+    mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+    vidEl.muted = true; vidEl.loop = !!loop;
+    vidEl.poster = '/media/' + mediaId + '/display';
+    vidEl.src = '/media/' + mediaId + '/file';
+    vidEl.style.display = 'block';
+    vidEl.onerror = function(){ showStill(true); };
+  }
+  function applyPlayback(){
+    if (!curVideo || !wire || wire.mediaId !== curVideo) return;
+    vidEl.muted = true; vidEl.loop = !!wire.loop;
+    if (wire.epoch !== lastEpoch) {
+      lastEpoch = wire.epoch;
+      mem.farChecksSinceSeek = 0;
+      try { vidEl.currentTime = wirePos(); } catch (e) {}
+    }
+    if (wire.status === 'playing') { if (vidEl.paused) vidEl.play().catch(function(){}); }
+    else { if (!vidEl.paused) vidEl.pause(); showStill(false); }
+  }
+  setInterval(function(){
+    if (!curVideo || !wire || wire.status !== 'playing' || vidEl.style.display === 'none') return;
+    var act = followerStep(mem, SYNC, wirePos(), vidEl.currentTime, performance.now(), !!wire.loop, wire.duration);
+    if (act.kind === 'rate') { if (vidEl.playbackRate !== act.rate) vidEl.playbackRate = act.rate; showStill(false); if (vidEl.paused) vidEl.play().catch(function(){}); }
+    else if (act.kind === 'seek') { try { vidEl.currentTime = act.to; } catch (e) {} vidEl.playbackRate = 1; }
+    else if (act.kind === 'still') { if (!vidEl.paused) vidEl.pause(); showStill(true); }
+  }, 1000);
 
   function esc(s){
     return (s || '').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; });
@@ -557,7 +655,9 @@ function buildGraphicsScript(id: string): string {
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
     picEl.style.display = 'none'; picEl.removeAttribute('src');
+    stopVideo();
     bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
+    bgVideoEl.style.display = 'none'; bgVideoEl.pause(); bgVideoEl.removeAttribute('src');
     if (!payload || !payload.slide || payload.blanked) {
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
       return;
@@ -565,8 +665,16 @@ function buildGraphicsScript(id: string): string {
     var s = payload.slide;
     // Still background: only on a Full-screen output (a lower-third sits over a camera and must stay transparent).
     if (s.background && s.kind !== 'media' && stageEl.dataset.profile === 'fullscreen' && /^m_[0-9a-f]{12}$/.test(s.background.mediaId)) {
-      bgEl.src = '/media/' + s.background.mediaId + '/display';
-      bgEl.style.display = 'block';
+      if (s.background.motion) {
+        // a MOTION background: muted, looping, never any sound
+        bgVideoEl.muted = true; bgVideoEl.loop = true;
+        bgVideoEl.src = '/media/' + s.background.mediaId + '/file';
+        bgVideoEl.style.display = 'block';
+        bgVideoEl.play().catch(function(){});
+      } else {
+        bgEl.src = '/media/' + s.background.mediaId + '/display';
+        bgEl.style.display = 'block';
+      }
       bgDimEl.style.background = 'rgba(0,0,0,' + (Math.max(0, Math.min(80, s.background.dim)) / 100) + ')';
       bgDimEl.style.display = 'block';
     }
@@ -574,6 +682,11 @@ function buildGraphicsScript(id: string): string {
       // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
       // overlay) output nothing is drawn, so a picture never covers the camera by accident.
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
+      if (stageEl.dataset.profile === 'fullscreen' && s.media && s.media.type === 'video' && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
+        // A video: played MUTED here, following the main output's clock; never any sound from a browser output.
+        startVideo(s.media.mediaId, !!s.media.loop);
+        return;
+      }
       if (stageEl.dataset.profile === 'fullscreen' && s.media && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
         picEl.className = 'fit-' + (s.media.fit || 'fit');
         picEl.src = '/media/' + s.media.mediaId + '/display';
@@ -610,6 +723,10 @@ function buildGraphicsScript(id: string): string {
       discEl.style.display = 'none';
       try { render(JSON.parse(ev.data)); } catch (e) {}
     };
+    es.addEventListener('playback', function(ev){
+      try { wire = JSON.parse(ev.data); wireAt = performance.now(); applyPlayback(); } catch (e) {}
+    });
+    es.addEventListener('playback-stop', function(){ wire = null; });
     es.onerror = function(){
       discEl.style.display = 'block';
     };
@@ -664,9 +781,14 @@ function buildGraphicsHTML(id: string): string {
   #text-inner { width: 100%; }
 ${profileCSS}
   #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; }
+  #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; background: #000; }
   #bgdim { position: fixed; inset: 0; display: none; z-index: 1; }
   #stage { z-index: 2; }
-  #pic { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
+  #pic, #vid { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
+  #vid { object-fit: contain; }
+  #vidstill { position: fixed; inset: 0; display: none; background: #000; z-index: 6; }
+  #vidstillimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #vidleft { position: absolute; right: 3vw; bottom: 3vh; font: 800 8vh/1 -apple-system, 'Segoe UI', sans-serif; color: #fff; text-shadow: 0 0 12px #000; font-variant-numeric: tabular-nums; }
   #pic.fit-fit { object-fit: contain; } #pic.fit-fill { object-fit: cover; }
   #pic.fit-stretch { object-fit: fill; } #pic.fit-center { object-fit: none; }
   #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
@@ -682,8 +804,10 @@ ${profileCSS}
     <div id="reference-detail"></div>
   </div>
 </div>
-<img id="bg" alt=""/><div id="bgdim"></div>
+<img id="bg" alt=""/><video id="bgvideo" muted loop playsinline preload="auto"></video><div id="bgdim"></div>
 <img id="pic" alt=""/>
+<video id="vid" muted playsinline preload="auto"></video>
+<div id="vidstill"><img id="vidstillimg" alt=""/><div id="vidleft"></div></div>
 <div id="disconnected">RECONNECTING…</div>
 <script>${buildGraphicsScript(id)}</script>
 </body>
@@ -765,16 +889,29 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
 
-  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/(display|thumb)$/.exec(path)
+  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/(display|thumb|file)$/.exec(path)
   if (picMatch && req.method === 'GET') {
     try {
-      const f = mediaResolver ? await mediaResolver(picMatch[1], picMatch[2] as 'display' | 'thumb') : null
+      const f = mediaResolver ? await mediaResolver(picMatch[1], picMatch[2] as 'display' | 'thumb' | 'file') : null
       if (!f) {
         res.writeHead(404)
         res.end()
         return
       }
-      res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-store' })
+      // A video element seeks with Range requests; answer them (206) so the Graphics page can follow the main clock.
+      const size = statSync(f.path).size
+      const range = parseRange(req.headers.range, size)
+      if (range === 'invalid') {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` })
+        res.end()
+        return
+      }
+      if (range) {
+        res.writeHead(206, { 'Content-Type': f.type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${range.start}-${range.end}/${size}`, 'Content-Length': range.end - range.start + 1 })
+        createReadStream(f.path, { start: range.start, end: range.end }).pipe(res)
+        return
+      }
+      res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes', 'Content-Length': size })
       createReadStream(f.path).pipe(res)
     } catch {
       res.writeHead(500)
@@ -788,9 +925,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // reliable heartbeat already available, so it doubles as the "how many
     // phones are actually connected right now" signal for diagnostics,
     // without adding a second mechanism.
-    const clientIp = req.socket.remoteAddress
-    if (clientIp) lastSeenByClient.set(clientIp, Date.now())
-    sendJSON(res, 200, currentState)
+    noteClient(req)
+    sendJSON(res, 200, { ...currentState, playback: playbackProvider?.() ?? null })
+    return
+  }
+
+  // Reachability self-test for the connection check: answers without touching
+  // phone tracking, so testing an address can never look like a phone.
+  if (path === '/ping' && req.method === 'GET') {
+    sendText(res, 200, 'text/plain; charset=utf-8', 'ok')
     return
   }
 
@@ -985,6 +1128,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       Connection: 'keep-alive'
     })
     res.write(`data: ${JSON.stringify(entry.lastPayload)}\n\n`)
+    if (entry.lastPlayback) res.write(`event: playback\ndata: ${JSON.stringify(entry.lastPlayback)}\n\n`)
     entry.clients.add(res)
     req.on('close', () => entry.clients.delete(res))
     return
@@ -1018,10 +1162,53 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 let remoteAvailable = false
 let server: ReturnType<typeof createServer> | null = null
 
-// Client IP -> last time it polled /state. A phone that stops polling (app
-// closed, screen locked, Wi-Fi dropped) ages out instead of counting forever.
-const lastSeenByClient = new Map<string, number>()
+// Client IP -> last time it polled /state, and which of THIS computer's
+// addresses it connected to. A phone that stops polling (app closed, screen
+// locked, Wi-Fi dropped) ages out of the "connected" count instead of
+// counting forever; the entry itself stays for the rest of the run so the
+// connection check can say which subnet a phone *has* connected from.
+interface ClientSeen {
+  at: number
+  /** The server-side address the phone actually reached (socket.localAddress). */
+  via: string
+}
+const lastSeenByClient = new Map<string, ClientSeen>()
 const CONNECTED_WINDOW_MS = 5000
+const MAX_TRACKED_CLIENTS = 50
+
+let phoneViaListener: ((viaAddress: string) => void) | null = null
+let lastNotifiedVia: string | null = null
+
+/** Called when a phone first reaches the remote through a given local
+ *  address (and again only if that address changes) — index.ts uses it to
+ *  remember which network phones really connect from. */
+export function setPhoneViaListener(cb: ((viaAddress: string) => void) | null): void {
+  phoneViaListener = cb
+  lastNotifiedVia = null
+}
+
+function noteClient(req: IncomingMessage): void {
+  const raw = req.socket.remoteAddress
+  if (!raw) return
+  const clientIp = normalizeIp(raw)
+  const via = normalizeIp(req.socket.localAddress ?? '')
+  lastSeenByClient.set(clientIp, { at: Date.now(), via })
+  if (lastSeenByClient.size > MAX_TRACKED_CLIENTS) {
+    const oldest = [...lastSeenByClient.entries()].sort((a, b) => a[1].at - b[1].at)[0]
+    if (oldest) lastSeenByClient.delete(oldest[0])
+  }
+  // This computer talking to itself over loopback (a browser on the operator
+  // PC) still counts as connected, but says nothing about which network a
+  // phone is on, so it never feeds the remembered-network logic.
+  if (via && !isLoopbackAddress(clientIp) && !isLoopbackAddress(via) && via !== lastNotifiedVia) {
+    lastNotifiedVia = via
+    try {
+      phoneViaListener?.(via)
+    } catch (e) {
+      log.warn('webRemote: phone-network listener failed', e)
+    }
+  }
+}
 
 /** How many distinct phones have polled /state in the last few seconds —
  *  the operator-visible "N connected" count. Approximate by design: a NAT'd
@@ -1030,10 +1217,81 @@ const CONNECTED_WINDOW_MS = 5000
 export function getConnectedPhoneCount(): number {
   const now = Date.now()
   let n = 0
-  for (const t of lastSeenByClient.values()) {
-    if (now - t <= CONNECTED_WINDOW_MS) n++
+  for (const seen of lastSeenByClient.values()) {
+    if (now - seen.at <= CONNECTED_WINDOW_MS) n++
   }
   return n
+}
+
+export interface PhoneConnection {
+  clientIp: string
+  subnet: string
+  /** The address of this computer the phone connected to. */
+  viaAddress: string
+  active: boolean
+}
+
+/** Every phone that has polled /state since BORN started, newest first. */
+export function getPhoneConnections(): PhoneConnection[] {
+  const now = Date.now()
+  return [...lastSeenByClient.entries()]
+    .filter(([clientIp]) => !isLoopbackAddress(clientIp))
+    .sort((a, b) => b[1].at - a[1].at)
+    .map(([clientIp, seen]) => ({
+      clientIp,
+      subnet: subnetOf(clientIp),
+      viaAddress: seen.via,
+      active: now - seen.at <= CONNECTED_WINDOW_MS
+    }))
+}
+
+export interface AddressProbe {
+  address: string
+  ok: boolean
+  /** Short plain reason when not ok. */
+  error: string | null
+  ms: number | null
+}
+
+/** Self-connect to address:port (an HTTP GET /ping) for each address, in
+ *  parallel. Proves the server answers on that address *from this computer*;
+ *  it cannot prove a firewall allows a phone in (a machine reaching its own
+ *  LAN address is usually let through regardless), which is why the check
+ *  also shows the firewall hint. */
+export function probeAddresses(addresses: string[], port: number, timeoutMs = 1500): Promise<AddressProbe[]> {
+  return Promise.all(
+    addresses.map(
+      (address) =>
+        new Promise<AddressProbe>((resolve) => {
+          const started = Date.now()
+          let done = false
+          const finish = (r: Omit<AddressProbe, 'address'>): void => {
+            if (done) return
+            done = true
+            resolve({ address, ...r })
+          }
+          try {
+            const req = httpGet({ host: address, port, path: '/ping', timeout: timeoutMs, agent: false }, (res) => {
+              res.resume()
+              finish(
+                res.statusCode === 200
+                  ? { ok: true, error: null, ms: Date.now() - started }
+                  : { ok: false, error: `unexpected reply (${res.statusCode})`, ms: null }
+              )
+            })
+            req.on('timeout', () => {
+              req.destroy()
+              finish({ ok: false, error: 'timed out', ms: null })
+            })
+            req.on('error', (e: NodeJS.ErrnoException) =>
+              finish({ ok: false, error: e.code === 'ECONNREFUSED' ? 'connection refused' : (e.code ?? e.message), ms: null })
+            )
+          } catch (e) {
+            finish({ ok: false, error: e instanceof Error ? e.message : 'failed', ms: null })
+          }
+        })
+    )
+  )
 }
 
 export function isWebRemoteAvailable(): boolean {
@@ -1048,6 +1306,7 @@ export function stopWebRemote(): void {
   server = null
   remoteAvailable = false
   lastSeenByClient.clear()
+  lastNotifiedVia = null
 }
 
 export function startWebRemote(
@@ -1111,9 +1370,12 @@ export function startWebRemote(
   })
   ensureAutomationBroadcastLoop()
 
-  server.listen(port, () => {
+  // 0.0.0.0 = every network adapter, always. The advertised address is chosen
+  // separately (networks.ts); binding to just the advertised one would make
+  // every other network on this computer unreachable.
+  server.listen(port, REMOTE_BIND_HOST, () => {
     remoteAvailable = true
-    log.info(`webRemote: listening on http://${getLocalIP()}:${port}`)
+    log.info(`webRemote: listening on ${REMOTE_BIND_HOST}:${port} (advertising http://${getLocalIP()}:${port})`)
     onListening?.()
   })
 }

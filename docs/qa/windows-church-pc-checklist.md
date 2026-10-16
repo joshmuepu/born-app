@@ -47,8 +47,25 @@ The installer is **not code-signed**, so Windows SmartScreen will say "Windows p
 - [ ] Press **Save + pictures**, then **Choose where to save…**, and save to the USB stick.
 - [ ] On another computer with Born Again v2 (or after clearing the library), press **Open pack**, choose the file. The review shows what's new; press **Add … pictures and open**. The queue and pictures appear.
 
+**Video and moving backgrounds** (a few short MP4 clips: one 1080p, ideally one 4K, one with sound)
+- [ ] Add the clips (drag them into **Media**). They show ▶ and a length. Try one MOV or MKV file too: it should be refused with advice to export an MP4.
+- [ ] Put a clip in the queue, **Take** it: the first frame shows **paused**, nothing plays and there is no sound. Press **Play**: it plays with sound through the projector/speakers. Try Pause, drag the position, volume, loop.
+- [ ] Press **Esc** while it plays: picture and sound stop at once. Show the screen again: it is back **paused**. Press **Ctrl+Shift+L**: the logo replaces the video.
+- [ ] Press **Check**: the clips are listed as ready; the 4K clip (if any) shows a warning.
+- [ ] If the 4K clip stutters on this PC, note it (that is the information we need).
+- [ ] Set a short looping clip as the **Congregation background** (Media → Backgrounds). Project a Bible verse: the text sits over the moving picture, with no sound.
+- [ ] **Real phone**: scan the Remote QR code. With a video live, the phone shows **Pause/Play** and the time; Play is greyed out until you start it on the PC.
+- [ ] **OBS** (if you use it): add the Graphics URL as a Browser Source. The video plays there silently, in step with the screen.
+- [ ] **Projector** (a real second screen): the video fills it; the stage monitor (if used) shows only the time left.
+
 **Last**
 - [ ] Anything that looked wrong, felt slow, or that Windows complained about: note it and tell us. A photo of the screen is perfect.
+
+## Also worth trying on the church PC (by hand)
+
+- **YouTube ads test** (when YouTube arrives): play a video with and without YouTube Premium and note whether ads appear.
+- **Camera / capture card**: a camera or capture-card test is a later phase.
+- **HEVC table**: try a phone-made HEVC video and an AV1 video; both should be refused with the export advice (we deliberately don't trust them).
 
 ## What we can't see from here
 

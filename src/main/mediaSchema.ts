@@ -66,6 +66,16 @@ export const MEDIA_MIGRATIONS: Array<(db: Database) => void> = [
       );
       CREATE INDEX idx_media_tags_tag ON media_tags(tag);
     `)
+  },
+  // 2 — video (Phase 1b): what the file says about itself. Pictures leave these NULL.
+  (db) => {
+    db.exec(`
+      ALTER TABLE media_items ADD COLUMN duration_ms INTEGER;
+      ALTER TABLE media_items ADD COLUMN fps REAL;
+      ALTER TABLE media_items ADD COLUMN bitrate INTEGER;
+      ALTER TABLE media_items ADD COLUMN video_codec TEXT;
+      ALTER TABLE media_items ADD COLUMN audio_codec TEXT;
+    `)
   }
 ]
 

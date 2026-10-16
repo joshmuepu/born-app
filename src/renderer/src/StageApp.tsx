@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { SlidePayload } from './types'
+import { formatClock, wirePosition, type PlaybackWire } from '../../shared/videoPlayback'
 
 type View = 'stage' | 'congregation'
 
@@ -11,6 +12,28 @@ function useClock(): string {
     return () => clearInterval(id)
   }, [])
   return now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+/** The stage screen does not decode the video — it shows the time left in huge type and a progress bar, from the main output's clock. */
+function StageVideo({ slide, wire, receivedAt }: { slide: SlidePayload; wire: PlaybackWire | null; receivedAt: number }): JSX.Element {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 250)
+    return () => clearInterval(id)
+  }, [])
+  const ok = wire && wire.mediaId === slide.media?.mediaId
+  const pos = ok ? wirePosition(wire, performance.now() - receivedAt) : 0
+  const dur = ok ? wire.duration : null
+  const left = dur !== null ? Math.max(0, Math.ceil(dur - pos - 0.001)) : null
+  const state = !ok ? 'Ready' : wire.status === 'playing' ? 'Playing' : wire.status === 'ended' ? 'Finished' : wire.status === 'error' ? 'Problem' : wire.hasPlayedOnce ? 'Paused' : 'Ready'
+  return (
+    <div className="stage-video" role="status" aria-label="Video time left">
+      <div className="stage-video-title">{slide.text}</div>
+      <div className="stage-video-left">{left !== null ? formatClock(left) : '–:––'}</div>
+      <div className="stage-video-sub">{state}{dur !== null ? ` · ${formatClock(pos)} of ${formatClock(dur)}` : ''}</div>
+      <div className="stage-video-bar" aria-hidden="true"><i style={{ width: dur ? `${Math.min(100, (pos / dur) * 100)}%` : '0%' }} /></div>
+    </div>
+  )
 }
 
 export default function StageApp() {
@@ -26,6 +49,8 @@ export default function StageApp() {
     }
   })
   const clock = useClock()
+  const [wire, setWire] = useState<PlaybackWire | null>(null)
+  const [wireAt, setWireAt] = useState(0)
 
   useEffect(() => {
     const offUpdate = window.electronAPI.onStageUpdate((data) => {
@@ -34,6 +59,8 @@ export default function StageApp() {
       // A new slide arriving means we're live again — clear any stale blackout.
       if (data.current) setBlanked(false)
     })
+    const offPlay = window.electronAPI.onMediaPlayback((m) => { setWire(m); setWireAt(performance.now()) })
+    const offPlayStop = window.electronAPI.onMediaPlaybackStop(() => setWire(null))
     const offBlank = window.electronAPI.onStageSetBlank(setBlanked)
     let alertTimer: ReturnType<typeof setTimeout> | null = null
     const offAlert = window.electronAPI.onStageAlert((message) => {
@@ -44,6 +71,8 @@ export default function StageApp() {
     window.electronAPI.notifyStageReady()
     return () => {
       offUpdate()
+      offPlay()
+      offPlayStop()
       offBlank()
       offAlert()
       if (alertTimer) clearTimeout(alertTimer)
@@ -99,7 +128,9 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && view === 'congregation' && (
+      {!nothingUp && current!.kind === 'media' && current!.media?.type === 'video' && <StageVideo slide={current!} wire={wire} receivedAt={wireAt} />}
+
+      {!nothingUp && !(current!.kind === 'media' && current!.media?.type === 'video') && view === 'congregation' && (
         <div className="stage-congregation">
           {current!.label && <div className="stage-cg-label">{current!.label}</div>}
           <div className={`stage-cg-text${preClass(current)}`}>
@@ -110,7 +141,7 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && view === 'stage' && (
+      {!nothingUp && !(current!.kind === 'media' && current!.media?.type === 'video') && view === 'stage' && (
         <>
           <div className="stage-current">
             {current!.label && <div className="stage-current-label">{current!.label}</div>}

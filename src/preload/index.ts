@@ -1,3 +1,4 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 
 /** Which phone/role added something, from the remote's "Who's this?" picker
@@ -89,9 +90,9 @@ export type SlideSource =
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind text on this output (set per destination/channel). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   text: string
   label?: string
   reference?: string
@@ -163,18 +164,63 @@ export interface Songbook {
 
 export interface RemoteAdapterInfo {
   name: string
+  /** Operator-facing name, e.g. "Wi-Fi (CBCI-3170)". */
+  label: string
   address: string
   virtual: boolean
+  /** Shown by default (false = VPN / virtual switch / link-local). */
+  usable: boolean
+  hiddenReason: string | null
+  /** This is the address the QR code is using. */
   chosen: boolean
+  /** Self-connect result; null when the server isn't running. */
+  reachable: boolean | null
+  reachError: string | null
+}
+
+export interface RemotePhoneConnection {
+  clientIp: string
+  subnet: string
+  viaAddress: string
+  active: boolean
+}
+
+export interface RemoteNetworkInfo {
+  id: string
+  name: string
+  label: string
+  address: string
+  kind: 'wifi' | 'ethernet' | 'vpn' | 'virtual' | 'other'
+  ssid: string | null
+  private: boolean
+  usable: boolean
+  hiddenReason: string | null
+}
+
+export interface WebRemoteInfo {
+  available: boolean
+  /** Address for the default network (kept for older callers). */
+  url: string
+  ipUrl: string
+  hostnameUrl: string | null
+  port: number
+  networks: RemoteNetworkInfo[]
+  selectedId: string | null
+  /** One short line explaining why selectedId was chosen; null for a single network. */
+  reason: string | null
 }
 
 export interface RemoteDiagnostics {
   available: boolean
   port: number
+  /** The address the QR code is currently using. */
   chosenIp: string
   adapters: RemoteAdapterInfo[]
   mdnsHostname: string | null
   connectedPhones: number
+  phones: RemotePhoneConnection[]
+  hints: string[]
+  firewallCommands: string[]
   recentLogLines: string[]
   platform: string
 }
@@ -381,6 +427,19 @@ const api = {
   mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
+  mediaPlaybackCommand: (channelId: string, action: unknown): Promise<unknown> => ipcRenderer.invoke('media:playback-command', channelId, action),
+  mediaPlaybackGet: (channelId: string): Promise<unknown> => ipcRenderer.invoke('media:playback-get', channelId),
+  mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }): void => ipcRenderer.send('media:playback-report', r),
+  onMediaPlayback: (cb: (m: import('../shared/videoPlayback').PlaybackWire) => void): (() => void) => {
+    const h = (_e: unknown, m: import('../shared/videoPlayback').PlaybackWire): void => cb(m)
+    ipcRenderer.on('media:playback', h)
+    return () => ipcRenderer.removeListener('media:playback', h)
+  },
+  onMediaPlaybackStop: (cb: (channelId: string) => void): (() => void) => {
+    const h = (_e: unknown, c: string): void => cb(c)
+    ipcRenderer.on('media:playback-stop', h)
+    return () => ipcRenderer.removeListener('media:playback-stop', h)
+  },
   packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
   packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),
   packPickAndInspect: (): Promise<unknown> => ipcRenderer.invoke('pack:pick-and-inspect'),
@@ -506,13 +565,6 @@ const api = {
   },
 
   // Web remote
-  getWebRemoteURL: (): Promise<{
-    available: boolean
-    url: string
-    ipUrl: string
-    hostnameUrl: string | null
-  }> => ipcRenderer.invoke('webremote:ip'),
-  getWebRemoteDiagnostics: (): Promise<RemoteDiagnostics> => ipcRenderer.invoke('webremote:diagnostics'),
 
   // Automation API (Stream Deck/Companion)
   getAutomationInfo: (): Promise<{ token: string | null; baseUrl: string | null }> =>
@@ -569,6 +621,9 @@ const api = {
     ipcRenderer.on('live:changed', handler)
     return () => ipcRenderer.removeListener('live:changed', handler)
   },
+  getWebRemoteURL: (): Promise<WebRemoteInfo> => ipcRenderer.invoke('webremote:ip'),
+  getWebRemoteDiagnostics: (selectedId?: string): Promise<RemoteDiagnostics> =>
+    ipcRenderer.invoke('webremote:diagnostics', selectedId),
   syncWebRemote: (state: {
     queue: Array<{
       id: string

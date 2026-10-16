@@ -1,0 +1,362 @@
+[
+ {
+  "state": "media-videos-grid",
+  "size": "min",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "min",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "min",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "min",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "laptop",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "laptop",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "laptop",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "laptop",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "large",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "large",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "large",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "media-videos-grid",
+  "size": "large",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "min",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "min",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "min",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "min",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "laptop",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "laptop",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "laptop",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "laptop",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "large",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "large",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "large",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-detail",
+  "size": "large",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "min",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "min",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "min",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "min",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "laptop",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "laptop",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "laptop",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "laptop",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "large",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "large",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "large",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-live-bar",
+  "size": "large",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "min",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "min",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "min",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "min",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "laptop",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "laptop",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "laptop",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "laptop",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "large",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "large",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "large",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "video-preflight",
+  "size": "large",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "min",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "min",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "min",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "min",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "laptop",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "laptop",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "laptop",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "laptop",
+  "theme": "hc-light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "large",
+  "theme": "dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "large",
+  "theme": "light",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "large",
+  "theme": "hc-dark",
+  "issues": []
+ },
+ {
+  "state": "backgrounds-with-video",
+  "size": "large",
+  "theme": "hc-light",
+  "issues": []
+ }
+]

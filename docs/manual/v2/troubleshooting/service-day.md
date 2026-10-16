@@ -54,3 +54,8 @@ explained](setup-warnings.md). The **Status** tab always has a **"Not seeing a
 screen? Troubleshooting steps"** link if you just want the checklist directly.
 
 ![Manage → Status, with the troubleshooting link at the bottom.](../images/operator-manage-status-tab.png)
+
+## "The phone can't connect, but the remote says it's running"
+
+The most common cause on a computer with a network cable *and* WiFi: the QR code is for a network the phone isn't on. Open **Remote**, click the other network in the list
+(see [If this computer is on more than one network](../operators/mobile-remote.md#if-this-computer-is-on-more-than-one-network)), and scan again.

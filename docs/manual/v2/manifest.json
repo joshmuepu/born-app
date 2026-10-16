@@ -67,6 +67,11 @@
           "file": "operators/media-on-screen.md"
         },
         {
+          "id": "media-video",
+          "title": "Videos and moving backgrounds",
+          "file": "operators/media-video.md"
+        },
+        {
           "id": "media-ready",
           "title": "Is tonight ready? Sharing with pictures",
           "file": "operators/media-ready-and-sharing.md"

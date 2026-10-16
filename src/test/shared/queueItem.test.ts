@@ -221,3 +221,24 @@ describe('buildBibleSlides', () => {
     expect(slides[slideStarts[1]].reference).toBe('Psalms 119:6 · KJV')
   })
 })
+
+describe('video items (Phase 1b)', () => {
+  it('a video item round-trips through the compat shell with its loop setting', async () => {
+    const { videoToItem, serializeQueue, migrateQueue } = await import('../../shared/queueItem')
+    const v = videoToItem({ id: 'm_aaaaaaaaaaaa', name: 'Testimony' }, { loop: true })
+    expect(v).toMatchObject({ kind: 'media', mediaKind: 'video', loop: true })
+    expect(v.slides[0].media).toEqual({ mediaId: 'm_aaaaaaaaaaaa', type: 'video', loop: true })
+    const saved = serializeQueue([v])
+    const shell = saved[0] as { kind: string; ext: Record<string, unknown> }
+    expect(shell.kind).toBe('quote') // an older BORN reads it as a harmless quote row
+    expect(shell.ext).toMatchObject({ kind: 'media', mediaKind: 'video', loop: true })
+    const back = migrateQueue(JSON.parse(JSON.stringify(saved)))[0]
+    expect(back).toMatchObject({ kind: 'media', mediaKind: 'video', loop: true })
+    expect((back as { slides: Array<{ media: unknown }> }).slides[0].media).toEqual({ mediaId: 'm_aaaaaaaaaaaa', type: 'video', loop: true })
+  })
+  it('mediaToItem makes a video item for a library video', async () => {
+    const { mediaToItem } = await import('../../shared/queueItem')
+    expect(mediaToItem({ id: 'm_bbbbbbbbbbbb', name: 'Clip', type: 'video' })).toMatchObject({ mediaKind: 'video' })
+    expect(mediaToItem({ id: 'm_bbbbbbbbbbbb', name: 'Pic' })).toMatchObject({ mediaKind: 'image' })
+  })
+})

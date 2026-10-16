@@ -20,3 +20,19 @@
 | PDF import says *"nothing was added"* | Too many pages couldn't be drawn, or you cancelled | Export a simpler PDF, or split it |
 
 If something else goes wrong, **Check** (top of the queue) is the best first stop; it explains most problems in one list.
+
+## Videos
+
+| What you see | What it means | What to do |
+|---|---|---|
+| *"…uses a format many computers cannot play"* (HEVC, AV1, ProRes…) | Not H.264 | Export it as **MP4 with H.264 video and AAC audio** (HandBrake "Web" preset, or your editor's "Most compatible") and add that |
+| *"Born Again plays MP4 files… not MOV, MKV, AVI or WebM"* | Wrong container | Same fix: export as MP4 |
+| *"This video looks incomplete"* | The file was only partly copied or downloaded | Copy or download it again from the original |
+| *"This video won't open on this computer"* / **Check** says *it won't play* | The file is damaged, or this computer's decoder can't read it | Export it again as MP4 (H.264 / AAC); try the new file in Preview |
+| A video shows **4K**, **frames per second** or **bit rate** warning | It was only tested lightly at that size | Try it once on this computer; if it stutters, export a 1080p or lower bit-rate copy |
+| The video appears but **nothing plays** | By design: Take shows the first frame paused | Press **Play** in the bar under the Live picture |
+| *"The picture has stopped moving"* | The video froze on the screen | Press **Pause** then **Play**, or **Clear** and take it again |
+| No sound | Mute is on, the volume is low, the video has no sound track, or this is a Graphics (OBS) output (browser outputs never play sound) | Check the bar's mute and volume; sound comes from the main screen only |
+| The phone's **Play** button is greyed out | You haven't started this video on the main computer yet | Press Play on the main computer once; then the phone can pause and resume it |
+| A Graphics (OBS) output shows a still picture and a time | It couldn't keep in step with the main screen | It recovers by itself; if not, take the video again |
+

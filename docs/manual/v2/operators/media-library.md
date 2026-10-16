@@ -1,7 +1,7 @@
 # Pictures: the Media library
 
 The **Media** area (the fourth item on the left rail, in teal) holds every picture you might put on the screen:
-announcement slides, photos, backgrounds, a church logo, pages of a PDF.
+announcement slides, photos, backgrounds, a church logo, pages of a PDF — and short **videos** (see [Videos and moving backgrounds](media-video.md)).
 
 ![The Media library: folders, tags and favorites on the left, pictures in the middle.](../images/media-library.png)
 
@@ -33,7 +33,7 @@ If a photo *still* can't be opened (a rare format), BORN says so and offers **Co
 Options → Most Compatible** (or AirDrop with “Most Compatible”) and add the JPEG instead. The rest of a batch carries on.
 
 BORN tells you plainly when it can't use something — *damaged*, *cut off (incomplete)*, *empty*, *a PDF* (use Import PDF),
-*a video* (arrives in a later version) — and never adds a broken picture to the library.
+*a video that isn't an H.264 MP4* (see [Videos](media-video.md)) — and never adds a broken picture to the library.
 
 You can also **drop a PDF** (for example a PowerPoint saved as PDF) onto the Media area, the same as **Import PDF**.
 

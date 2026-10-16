@@ -69,6 +69,7 @@
 .media-badge--fav { right: 5px; top: 5px; color: #ffd45e; }
 .media-badge--link { left: 5px; top: 5px; }
 .media-badge--anim { right: 5px; bottom: 5px; }
+.media-badge--video { right: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
 .media-card-name { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .media-card-meta { font-size: var(--text-2xs); color: var(--text-muted); }
 

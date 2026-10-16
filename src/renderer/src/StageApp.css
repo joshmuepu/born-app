@@ -234,3 +234,12 @@ body {
 }
 
 ::-webkit-scrollbar { width: 0; }
+
+/* video on the stage monitor: time left in huge type, no picture */
+.stage-video { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh; padding: 4vh 6vw; text-align: center; }
+.stage-video-title { font-size: clamp(1.4rem, 4vh, 3rem); color: var(--stage-dim, #b5bcc7); font-weight: 600; }
+.stage-video-left { font-size: clamp(5rem, 30vh, 22rem); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; color: #fff; }
+.stage-video-sub { font-size: clamp(1.2rem, 3.4vh, 2.4rem); color: var(--stage-dim, #b5bcc7); font-variant-numeric: tabular-nums; }
+.stage-video-bar { width: min(80vw, 1200px); height: 1.2vh; min-height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.stage-video-bar i { display: block; height: 100%; background: #fff; transition: width 250ms linear; }
+@media (prefers-reduced-motion: reduce) { .stage-video-bar i { transition: none; } }

@@ -5,7 +5,11 @@ set -euo pipefail
 
 DMG="${1:?usage: smoke-macos.sh <dmg> [timeout]}"
 TIMEOUT="${2:-90}"
-LOG="$HOME/Library/Application Support/Branham or Nothing/born.log"
+# An isolated throw-away profile (and its own remote/mDNS names), so running this on a developer Mac never touches a real install's
+# data, log, settings or ports. (BORN_USER_DATA_DIR / BORN_REMOTE_PORT / BORN_MDNS_NAME are honoured by every build.)
+PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/born-smoke-profile.XXXXXX")"
+export BORN_USER_DATA_DIR="$PROFILE" BORN_REMOTE_PORT="${BORN_REMOTE_PORT:-4391}" BORN_MDNS_NAME="${BORN_MDNS_NAME:-smoke}"
+LOG="$PROFILE/born.log"
 
 echo "==================  $DMG  (timeout ${TIMEOUT}s)  =================="
 MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's/.*\(\/Volumes\/.*\)/\1/')
@@ -13,7 +17,6 @@ rm -rf /tmp/BORN-smoke.app
 cp -R "$MP"/*.app /tmp/BORN-smoke.app
 hdiutil detach "$MP" -quiet
 xattr -cr /tmp/BORN-smoke.app
-rm -f "$LOG"
 
 BIN=$(ls "/tmp/BORN-smoke.app/Contents/MacOS/")
 ARCHS=$(lipo -archs "/tmp/BORN-smoke.app/Contents/MacOS/$BIN")
