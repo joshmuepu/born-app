@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import './keepStatements'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync, existsSync, statSync, copyFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -52,8 +53,10 @@ async function addPics(l: MediaLibrary, n: number, from = 0): Promise<Array<{ id
   }
   return out
 }
-const withRefs = (l: MediaLibrary, q: QueueItem[]): QueueItem[] =>
+const typedRefs = (l: MediaLibrary, q: QueueItem[]): QueueItem[] =>
   attachMediaRefs(q, (id) => { const r = l.get(id); return r ? { id: r.id, hash: r.hash, name: r.name, width: r.width, height: r.height, bytes: r.bytes } : null })
+/** What a real Save writes: the form the pack must understand. */
+const withRefs = (l: MediaLibrary, q: QueueItem[]): unknown[] => serializeQueue(typedRefs(l, q))
 const treeOf = (l: MediaLibrary): string[] => {
   const out: string[] = []
   const walk = (d: string): void => { for (const n of readdirSync(d).sort()) { const p = join(d, n); statSync(p).isDirectory() ? walk(p) : out.push(p.slice(l.dir.length)) } }
@@ -66,14 +69,16 @@ const noStaging = (l: MediaLibrary): void => expect(readdirSync(l.dir).filter((n
 describe('service pack: round trip between two separate profiles', () => {
   it('exports a queue with pictures, slideshow pages and a background; opens it on another computer', async () => {
     const pics = await addPics(A, 5)
-    const queue = withRefs(A, [mediaToItem(pics[0]), slideshowToItem(pics.slice(1, 4), 'Announcements')])
+    const queue = typedRefs(A, [mediaToItem(pics[0]), slideshowToItem(pics.slice(1, 4), 'Announcements')])
     const settings = { backgrounds: { destinations: { congregation: { mediaId: pics[4].id, dim: 35 } }, channels: {} }, logoId: null }
-    const est = estimatePack(A, queue, settings)
+    const sq = serializeQueue(queue) // the form a real Save writes: picture items travel in a compatible "shell"
+    expect(sq.some((x) => (x as { kind: string }).kind === 'media')).toBe(false)
+    const est = estimatePack(A, sq, settings)
     expect(est).toMatchObject({ count: 5, big: false, tooBig: false })
     expect(est.groups.map((g) => g.label)).toEqual(['Welcome'.length ? pics[0].name : '', 'Announcements', 'Backgrounds used on screens'])
     const dest = join(root, 'out', 'Sunday.bornpack')
     const prog: number[] = []
-    const r = await exportPack(A, queue, { dest, title: 'Sunday', appVersion: '2.0.0-dev.1', settings, onProgress: (p) => prog.push(p.doneBytes) })
+    const r = await exportPack(A, sq, { dest, title: 'Sunday', appVersion: '2.0.0-dev.1', settings, onProgress: (p) => prog.push(p.doneBytes) })
     expect(r).toMatchObject({ ok: true, count: 5 })
     expect(prog.length).toBeGreaterThan(0)
     expect(readdirSync(join(root, 'out'))).toEqual(['Sunday.bornpack']) // no .partial left behind
@@ -94,8 +99,7 @@ describe('service pack: round trip between two separate profiles', () => {
     for (const p of pics) expect(readFileSync(B.resolvePath(B.get(found[p.hash])!)!).equals(readFileSync(A.resolvePath(A.get(p.id)!)!))).toBe(true)
     // the queue in the pack is exactly what a plain Save would write
     const q = imp.ok ? imp.summary.queue : []
-    expect(q).toEqual(JSON.parse(JSON.stringify(queue)))
-    expect(serializeQueue(queue as QueueItem[])).toBeTruthy()
+    expect(q).toEqual(JSON.parse(JSON.stringify(sq)))
   })
 
   it('opening the same pack again adds nothing (already in the library, matched by what the pictures are)', async () => {
@@ -184,8 +188,8 @@ describe('service pack: saving is careful', () => {
 
   it('reports big packs and too many pictures without writing anything', async () => {
     const pics = await addPics(A, 1)
-    const queue = withRefs(A, [mediaToItem(pics[0])])
-    const est = estimatePack(A, queue, {})
+    const queue = typedRefs(A, [mediaToItem(pics[0])])
+    const est = estimatePack(A, serializeQueue(queue), {})
     expect(est.big).toBe(false)
     expect(collectPackMedia(queue, { logoId: pics[0].id }).get(pics[0].id)).toEqual(new Set(['item', 'logo']))
   })

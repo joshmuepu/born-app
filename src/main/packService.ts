@@ -10,13 +10,12 @@ import { testHook } from './testHooks'
 import { getMediaLibrary } from './mediaService'
 import { estimatePack, exportPack, importPack, inspectPack, type PackSettings } from './servicePack'
 import { PACK_EXTENSION, PACK_MESSAGES } from '../shared/servicePack'
-import type { QueueItem } from '../shared/queueItem'
 
 let current: AbortController | null = null
 /** The only pack file the renderer may ask to import: the one the user just chose and reviewed. */
 let reviewedPath: string | null = null
 
-const asQueue = (raw: unknown): QueueItem[] => (Array.isArray(raw) ? (raw.filter((x) => typeof x === 'object' && x !== null) as QueueItem[]) : [])
+const asQueue = (raw: unknown): unknown[] => (Array.isArray(raw) ? raw.filter((x) => typeof x === 'object' && x !== null) : [])
 const unavailable = { ok: false as const, code: 'io' as const, message: "BORN's media library could not be opened. Your service files are not affected." }
 
 export function registerPackIpc(getMain: () => BrowserWindow | null, getSettings: () => PackSettings): void {

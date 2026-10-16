@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import './keepStatements'
 import Database from 'better-sqlite3'
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync, appendFileSync, mkdirSync, truncateSync } from 'fs'
 import { tmpdir } from 'os'

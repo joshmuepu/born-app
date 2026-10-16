@@ -12,7 +12,7 @@ import {
   PACK_FORMAT, PACK_LIMITS, PACK_MANIFEST_NAME, PACK_MEDIA_NAME, PACK_MESSAGES, PACK_QUEUE_NAME, PACK_VERSION, validateManifest,
   type PackErrorCode, type PackEstimate, type PackFileEntry, type PackImportSummary, type PackManifest, type PackResult, type PackReview, type PackReviewFile, type PackRole
 } from '../shared/servicePack'
-import { mediaIdsInQueue, type QueueItem } from '../shared/queueItem'
+import { mediaIdsInQueue, migrateQueue, type QueueItem } from '../shared/queueItem'
 import type { MediaBackground } from '../shared/media'
 
 const fail = (code: PackErrorCode, detail?: string, extra: object = {}): { ok: false; code: PackErrorCode; message: string; detail?: string } => ({ ok: false, code, message: PACK_MESSAGES[code], detail, ...extra })
@@ -54,7 +54,11 @@ export function collectPackMedia(queue: QueueItem[], settings: PackSettings): Ma
   return out
 }
 
-export function estimatePack(lib: MediaLibrary, queue: QueueItem[], settings: PackSettings, freeBytes: number | null = null): PackEstimate {
+/** A saved queue stores picture items in a compatible "shell" form (so old versions can skip them); read it the way opening a service does. */
+const parsed = (queue: unknown[]): QueueItem[] => migrateQueue(queue)
+
+export function estimatePack(lib: MediaLibrary, rawQueue: unknown[], settings: PackSettings, freeBytes: number | null = null): PackEstimate {
+  const queue = parsed(rawQueue)
   const media = collectPackMedia(queue, settings)
   const files: PackEstimate['files'] = []
   const missing: PackEstimate['missing'] = []
@@ -100,8 +104,9 @@ export interface ExportOptions {
 }
 
 /** Write the pack. The final file appears only when it is complete and has been read back successfully. */
-export async function exportPack(lib: MediaLibrary, queue: QueueItem[], opts: ExportOptions): Promise<PackResult<{ bytes: number; count: number; path: string }>> {
-  const est = estimatePack(lib, queue, opts.settings)
+export async function exportPack(lib: MediaLibrary, rawQueue: unknown[], opts: ExportOptions): Promise<PackResult<{ bytes: number; count: number; path: string }>> {
+  const queue = parsed(rawQueue)
+  const est = estimatePack(lib, rawQueue, opts.settings)
   if (est.missing.length) return fail('missing-pictures', undefined, { missing: est.missing })
   if (est.tooMany) return fail('too-many')
   if (est.tooBig) return fail('too-big')
@@ -155,7 +160,7 @@ export async function exportPack(lib: MediaLibrary, queue: QueueItem[], opts: Ex
       ]
     }
     await zip.addBuffer(PACK_MANIFEST_NAME, Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'))
-    await zip.addBuffer(PACK_QUEUE_NAME, Buffer.from(JSON.stringify(queue, null, 2), 'utf8'))
+    await zip.addBuffer(PACK_QUEUE_NAME, Buffer.from(JSON.stringify(rawQueue, null, 2), 'utf8'))
     await zip.finish()
     // read it back: the index must parse and every entry must match, before the real name appears
     const check = await readAndVerify(partial, opts.signal)
