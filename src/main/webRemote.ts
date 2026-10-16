@@ -543,6 +543,11 @@ function cssDecl(rec: Record<string, string>): string {
  *  that id as a `data-profile` attribute every profile's CSS is scoped
  *  under, so switching treatment is one attribute write, never a reload. */
 /** Set by the main process: turns a library picture id into a file to serve. */
+/** What the phone may see of the live video (set by the main process): status, position, length, whether the operator has started it. */
+let playbackProvider: (() => { mediaId: string; status: string; position: number; duration: number | null; hasPlayedOnce: boolean; stalled: boolean; error: string | null } | null) | null = null
+export function setPlaybackProvider(fn: NonNullable<typeof playbackProvider>): void {
+  playbackProvider = fn
+}
 let mediaResolver: ((id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>) | null = null
 export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>): void {
   mediaResolver = fn
@@ -921,7 +926,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // phones are actually connected right now" signal for diagnostics,
     // without adding a second mechanism.
     noteClient(req)
-    sendJSON(res, 200, currentState)
+    sendJSON(res, 200, { ...currentState, playback: playbackProvider?.() ?? null })
     return
   }
 

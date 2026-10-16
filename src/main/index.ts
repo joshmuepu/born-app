@@ -59,6 +59,7 @@ import {
   setGraphicsAutoProfile,
   graphicsClientCount,
   pushGraphicsPlayback as webPushGraphicsPlayback,
+  setPlaybackProvider,
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
@@ -3057,8 +3058,17 @@ app.whenReady().then(async () => {
   screen.on('display-removed', () => onDisplayLayoutChanged('display-removed'))
   screen.on('display-metrics-changed', () => onDisplayLayoutChanged('display-metrics-changed'))
 
+  setPlaybackProvider(() => {
+    const w = playbackHub.get('main')
+    return w ? { mediaId: w.mediaId, status: w.status, position: w.position, duration: w.duration, hasPlayedOnce: w.hasPlayedOnce, stalled: w.stalled, error: w.error } : null
+  })
   startWebRemote(
     (cmd) => {
+      // The phone's video controls: Play/Pause of the LIVE video only (no seek, no volume, no first play with sound).
+      if (cmd.action === 'media-play' || cmd.action === 'media-pause') {
+        playbackHub.phone('main', cmd.action)
+        return
+      }
       if (!mainWindow || mainWindow.isDestroyed()) return
       if (cmd.action === 'prev' || cmd.action === 'next') {
         mainWindow.webContents.send('queue:navigate', cmd.action)
