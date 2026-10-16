@@ -65,3 +65,9 @@ UI. In short:
 YouTube items play only in YouTube's own embedded player, on the main output only (`src/main/youtubeHost.ts`). Never download, cache, extract streams, block or skip ads,
 scrape, or draw anything over the player. Alerts go to the stage monitor only while one is live (`YOUTUBE_ALERT_POLICY` in `src/shared/youtube.ts`). Open legal questions:
 `docs/notes/youtube-needs-counsel.md`.
+
+## Graphics / OBS
+
+A Graphics page can be given its own layout with `?profile=lower-third|fullscreen` on its address (no ending = the output's own setting). The live feed pings every 15 s and the
+page restarts itself after 45 s of silence. OBS on the same computer should use the `127.0.0.1` address (a `.local` name can take over a minute to recover after a BORN restart).
+Launch OBS for tests with `open -a OBS --args …` (not its binary), with a separate profile/collection. Results: `docs/qa/v2-obs-live-report.md`.
