@@ -1,4 +1,4 @@
-const WebSocket = require('/Users/joshmuepu/MyProjects/born-again/node_modules/ws'); const fs = require('fs')
+const WebSocket = require('ws'); const fs = require('fs')
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 let nid = 1
 async function attach(titleMatch, port = 9920) {
