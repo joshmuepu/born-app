@@ -1,3 +1,4 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import {
   app,
   BrowserWindow,
@@ -205,9 +206,9 @@ const isDev = process.env.NODE_ENV === 'development'
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind text on this output (set per destination/channel). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   text: string
   label?: string
   reference?: string

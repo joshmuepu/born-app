@@ -1,3 +1,4 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 
 /** Which phone/role added something, from the remote's "Who's this?" picker
@@ -89,9 +90,9 @@ export type SlideSource =
 export interface SlidePayload {
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind text on this output (set per destination/channel). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   text: string
   label?: string
   reference?: string

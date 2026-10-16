@@ -1,6 +1,8 @@
+import type { SlideMedia, SlideBackground } from '../shared/media'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { get as httpGet } from 'http'
-import { createReadStream, existsSync, readFileSync } from 'fs'
+import { parseRange } from '../shared/httpRange'
+import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { WebSocketServer, WebSocket } from 'ws'
@@ -48,9 +50,9 @@ export interface WebRemoteSlide {
    *  profile the destination had fixed. */
   kind?: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides: which library picture, and how it sits. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
   /** Still background behind this slide's text (Full-screen outputs only). */
-  background?: { mediaId: string; dim: number }
+  background?: SlideBackground
   /** This channel follows another, had no translation for this content, and
    *  fell back to English — purely informational, carried through to the
    *  automation API's state endpoint so an external tool can show it too. */
@@ -519,8 +521,8 @@ function cssDecl(rec: Record<string, string>): string {
  *  that id as a `data-profile` attribute every profile's CSS is scoped
  *  under, so switching treatment is one attribute write, never a reload. */
 /** Set by the main process: turns a library picture id into a file to serve. */
-let mediaResolver: ((id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>) | null = null
-export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb') => Promise<{ path: string; type: string } | null>): void {
+let mediaResolver: ((id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>) | null = null
+export function setMediaResolver(fn: (id: string, kind: 'display' | 'thumb' | 'file') => Promise<{ path: string; type: string } | null>): void {
   mediaResolver = fn
 }
 
@@ -768,16 +770,29 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
 
-  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/(display|thumb)$/.exec(path)
+  const picMatch = /^\/media\/(m_[0-9a-f]{12})\/(display|thumb|file)$/.exec(path)
   if (picMatch && req.method === 'GET') {
     try {
-      const f = mediaResolver ? await mediaResolver(picMatch[1], picMatch[2] as 'display' | 'thumb') : null
+      const f = mediaResolver ? await mediaResolver(picMatch[1], picMatch[2] as 'display' | 'thumb' | 'file') : null
       if (!f) {
         res.writeHead(404)
         res.end()
         return
       }
-      res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-store' })
+      // A video element seeks with Range requests; answer them (206) so the Graphics page can follow the main clock.
+      const size = statSync(f.path).size
+      const range = parseRange(req.headers.range, size)
+      if (range === 'invalid') {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` })
+        res.end()
+        return
+      }
+      if (range) {
+        res.writeHead(206, { 'Content-Type': f.type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${range.start}-${range.end}/${size}`, 'Content-Length': range.end - range.start + 1 })
+        createReadStream(f.path, { start: range.start, end: range.end }).pipe(res)
+        return
+      }
+      res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes', 'Content-Length': size })
       createReadStream(f.path).pipe(res)
     } catch {
       res.writeHead(500)

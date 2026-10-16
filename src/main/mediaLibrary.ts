@@ -20,6 +20,7 @@ import {
   closeSync,
   copyFileSync,
   createReadStream,
+  createWriteStream,
   existsSync,
   fstatSync,
   mkdirSync,
@@ -34,11 +35,15 @@ import {
   writeFileSync
 } from 'fs'
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'path'
+import { pipeline } from 'stream/promises'
 import { driveRootOf, longPath, renameRetry, unlinkRetry } from './winFs'
 import { migrateMediaDb } from './mediaSchema'
+import { probeMp4 } from './mp4'
+import { judgeVideo } from '../shared/videoPlayback'
 import { looksComplete, orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
 import {
   IMAGE_EXTENSIONS,
+  VIDEO_EXTENSIONS,
   MEDIA_LIMITS,
   MEDIA_MESSAGES,
   type MediaErrorCode,
@@ -66,6 +71,11 @@ export interface MediaDecoder {
   /** Fully decode the picture (this is the validity test), and make one thumbnail per width. */
   decode(path: string, thumbWidths: readonly number[], opts?: { needNatural?: boolean }): Promise<DecodeResult>
   /** Convert a picture Chromium cannot show (HEIC, TIFF) to a JPEG. Optional — absent = unsupported. */
+  /** Decode one frame of a video (proof it plays here) and make poster thumbnails from it. Optional — absent = no video support. */
+  decodeVideo?(path: string, thumbWidths: readonly number[]): Promise<
+    | { ok: true; width: number; height: number; duration: number; hasAudio: boolean | null; thumbs: DecodedThumb[] }
+    | { ok: false; reason: 'undecodable' | 'io'; detail?: string }
+  >
   convertToJpeg?(path: string, outPath: string): Promise<boolean | { ok: true; notes?: string[] } | { ok: false; reason: 'corrupt' | 'too-large' | 'unsupported' | 'io' | 'memory' }>
 }
 
@@ -81,6 +91,8 @@ export interface ListQuery {
   tag?: string
   search?: string
   favoritesOnly?: boolean
+  /** Only pictures or only videos. */
+  type?: 'image' | 'video'
   sort?: 'added' | 'name' | 'recent' | 'used'
   limit?: number
   offset?: number
@@ -108,6 +120,11 @@ interface Row {
   added_at: string
   last_used_at: string | null
   deleted_at: string | null
+  duration_ms: number | null
+  fps: number | null
+  bitrate: number | null
+  video_codec: string | null
+  audio_codec: string | null
 }
 
 const MIME: Record<string, string> = { jpg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif' }
@@ -210,7 +227,7 @@ export class MediaLibrary {
     const header = readImageHeader(head)
     const fmt = header.format
     if (fmt === 'pdf') return failure('is-pdf', src)
-    if (fmt === 'video') return failure('unsupported-video', src)
+    if (fmt === 'video') return this.importVideoFile(src, fsSrc, st, opts)
     if (fmt === 'audio') return failure('unsupported-audio', src)
     const needsConversion = fmt === 'heic' || fmt === 'tiff'
     if (!EXT_FOR[fmt] && !needsConversion) {
@@ -367,6 +384,91 @@ export class MediaLibrary {
     }
   }
 
+  /**
+   * A video: MP4 with H.264 video and AAC audio only (the resolved Phase 1b limits). The file's own boxes say what it is and whether it
+   * is whole (src/main/mp4.ts); the browser engine then decodes a real frame — that frame is the poster — so "it plays here" is
+   * never guessed from `canPlayType`. A refusal always says what is wrong and how to fix it.
+   */
+  private async importVideoFile(src: string, fsSrc: string, st: { size: number; mtimeMs: number }, opts: ImportOptions): Promise<MediaImportResult> {
+    const warnings: string[] = []
+    const probe = probeMp4(fsSrc)
+    if (!probe.ok) {
+      if (probe.reason === 'truncated') return failure('video-truncated', src)
+      if (probe.reason === 'corrupt') return failure('video-damaged', src)
+      // Not an MP4 at all: MKV/WebM/AVI/… get the "export as MP4" advice; anything else is simply not a video we can use.
+      const head = readHead(fsSrc, 16)
+      const other = (head[0] === 0x1a && head[1] === 0x45) || head.toString('latin1', 0, 4) === 'RIFF'
+      return failure(other ? 'video-container' : probe.reason === 'no-video' ? 'unsupported-video' : 'video-damaged', src)
+    }
+    const verdict = judgeVideo({ brand: probe.brand, videoCodec: probe.videoCodec, audioCodec: probe.audioCodec, width: probe.width, height: probe.height, fps: probe.fps, bitrate: probe.bitrate })
+    if (!verdict.ok) return failure(verdict.code, src, `${MEDIA_MESSAGES[verdict.code]} (This file: ${verdict.detail}.)`)
+    warnings.push(...verdict.warnings)
+
+    let hash: string
+    try {
+      hash = await hashFile(fsSrc)
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
+    }
+    const existing = this.rowByHash(hash)
+    if (existing) return { ok: true, item: this.hydrate(existing), duplicate: true, warnings }
+    const trashed = this.db.prepare('SELECT * FROM media_items WHERE hash = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1').get(hash) as Row | undefined
+    if (trashed && this.resolvePath(this.rowToRecord(trashed)) && existsSync(this.resolvePath(this.rowToRecord(trashed)) as string)) {
+      this.db.prepare('UPDATE media_items SET deleted_at = NULL WHERE id = ?').run(trashed.id)
+      return { ok: true, item: this.hydrate(this.rowById(trashed.id) as Row), duplicate: true, restored: true, warnings }
+    }
+
+    if (!this.decoder.decodeVideo) return failure('unsupported-video', src)
+    const dec = await this.decoder.decodeVideo(fsSrc, MEDIA_LIMITS.thumbWidths)
+    if (!dec.ok) return failure(dec.reason === 'io' ? 'io' : 'video-damaged', src)
+    const duration = probe.durationSec !== null && Math.abs(probe.durationSec - dec.duration) <= 1.5 ? probe.durationSec : dec.duration
+    const bitrate = duration > 0 ? Math.round((st.size * 8) / duration) : probe.bitrate
+    // the bit-rate warning for a file whose own index had no duration
+    if (probe.bitrate === null && bitrate) {
+      const again = judgeVideo({ brand: probe.brand, videoCodec: probe.videoCodec, audioCodec: probe.audioCodec, width: probe.width, height: probe.height, fps: probe.fps, bitrate })
+      if (again.ok) for (const w of again.warnings) if (!warnings.includes(w)) warnings.push(w)
+    }
+
+    const storage: MediaStorage = opts.linkInPlace ? 'linked' : 'managed'
+    const dest = this.managedPath(hash, 'mp4')
+    let linkMtime: number | null = null
+    if (storage === 'managed') {
+      const space = this.checkSpace(st.size)
+      if (!space.ok) return failure('no-space', src)
+      mkdirSync(dirname(dest), { recursive: true })
+      if (!existsSync(dest)) {
+        const tmp = `${dest}.tmp-${randomBytes(4).toString('hex')}`
+        try {
+          await pipeline(createReadStream(fsSrc), createWriteStream(tmp))
+          if (statSync(tmp).size !== st.size) throw new Error('copy size mismatch')
+          renameRetry(tmp, dest)
+        } catch (e) {
+          try { unlinkSync(tmp) } catch { /* nothing to clean */ }
+          const code = (e as NodeJS.ErrnoException).code
+          return failure(code === 'ENOSPC' ? 'no-space' : code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
+        }
+      }
+    } else {
+      linkMtime = Math.round(st.mtimeMs)
+      warnings.push('Linked in place: if this file is moved or its drive is unplugged, the video will show as missing.')
+    }
+    dec.thumbs.forEach((t, i) => {
+      try { writeBuffer(this.thumbPath(hash, MEDIA_LIMITS.thumbWidths[i], t.ext), t.data) } catch { /* regenerated on demand */ }
+    })
+    const id = newId()
+    this.db
+      .prepare(
+        `INSERT INTO media_items (id, hash, type, name, orig_filename, ext, mime, bytes, width, height, animated, has_alpha,
+           storage, link_path, link_mtime_ms, converted_from, folder_id, added_at, duration_ms, fps, bitrate, video_codec, audio_codec)
+         VALUES (?, ?, 'video', ?, ?, 'mp4', 'video/mp4', ?, ?, ?, 0, 0, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(id, hash, cleanDisplayName(basename(src, extname(src))), cleanDisplayName(basename(src)), st.size, dec.width || probe.width, dec.height || probe.height,
+        storage, storage === 'linked' ? src : null, linkMtime, opts.folderId ?? null, nowIso(), Math.round(duration * 1000), probe.fps, bitrate, probe.videoCodec, probe.audioCodec)
+    if (opts.tags?.length) this.setTags(id, opts.tags)
+    return { ok: true, item: this.get(id) as MediaRecord, duplicate: false, warnings }
+  }
+
   /** Import a mix of files and folders (folders recursively). One failure never stops the rest. */
   async importPaths(
     paths: string[],
@@ -395,7 +497,7 @@ export class MediaLibrary {
           if (n.startsWith('.')) continue
           walk(join(p, n), depth + 1)
         }
-      } else if (depth === 0 || IMAGE_EXTENSIONS.includes(extname(p).slice(1).toLowerCase())) {
+      } else if (depth === 0 || IMAGE_EXTENSIONS.includes(extname(p).slice(1).toLowerCase()) || VIDEO_EXTENSIONS.includes(extname(p).slice(1).toLowerCase())) {
         files.push(p)
       } else {
         skipped++
@@ -547,7 +649,7 @@ export class MediaLibrary {
     return {
       id: r.id,
       hash: r.hash,
-      type: 'image',
+      type: r.type === 'video' ? 'video' : 'image',
       name: r.name,
       origFilename: r.orig_filename,
       ext: r.ext,
@@ -565,7 +667,12 @@ export class MediaLibrary {
       favorite: !!r.favorite,
       addedAt: r.added_at,
       lastUsedAt: r.last_used_at,
-      deletedAt: r.deleted_at
+      deletedAt: r.deleted_at,
+      durationSec: r.duration_ms != null ? r.duration_ms / 1000 : null,
+      fps: r.fps,
+      bitrate: r.bitrate,
+      videoCodec: r.video_codec,
+      audioCodec: r.audio_codec
     }
   }
 
@@ -601,6 +708,8 @@ export class MediaLibrary {
       }
     }
     if (q.favoritesOnly) where.push('i.favorite = 1')
+    if (q.type === 'video') where.push("i.type = 'video'")
+    else if (q.type === 'image') where.push("i.type = 'image'")
     if (q.tag) {
       where.push('EXISTS (SELECT 1 FROM media_tags t WHERE t.item_id = i.id AND t.tag = ?)')
       args.push(q.tag.trim().toLowerCase())
@@ -1006,9 +1115,23 @@ export class MediaLibrary {
     }
     const src = this.resolvePath(rec)
     if (!src || !existsSync(src)) return null
+    let result: string | null = null
+    if (rec.type === 'video') {
+      // a video's thumbnails are posters: one decoded frame
+      const v = this.decoder.decodeVideo ? await this.decoder.decodeVideo(src, MEDIA_LIMITS.thumbWidths) : null
+      if (!v || !v.ok) return null
+      v.thumbs.forEach((t, i) => {
+        const w = MEDIA_LIMITS.thumbWidths[i] ?? width
+        const p = this.thumbPath(rec.hash, w, t.ext)
+        try {
+          writeBuffer(p, t.data)
+          if (w === width) result = p
+        } catch { /* not cacheable */ }
+      })
+      return result
+    }
     const dec = await this.decoder.decode(src, MEDIA_LIMITS.thumbWidths)
     if (!dec.ok) return null
-    let result: string | null = null
     dec.thumbs.forEach((t, i) => {
       const w = MEDIA_LIMITS.thumbWidths[i] ?? width
       const p = this.thumbPath(rec.hash, w, t.ext)
@@ -1030,6 +1153,11 @@ export class MediaLibrary {
   async display(id: string): Promise<{ path: string; type: string } | null> {
     const rec = this.get(id)
     if (!rec) return null
+    // For a video the "picture" to show is its poster frame (the video itself plays through the playback path).
+    if (rec.type === 'video') {
+      const poster = await this.thumbnail(id, 960)
+      return poster ? { path: poster, type: poster.endsWith('.png') ? 'image/png' : 'image/jpeg' } : null
+    }
     const src = this.resolvePath(rec)
     if (!src || !existsSync(src)) return null
     const type = MIME[rec.ext] ?? 'application/octet-stream'

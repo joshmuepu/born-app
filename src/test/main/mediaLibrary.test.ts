@@ -102,7 +102,7 @@ describe('media library: importing', () => {
 
   it.each([
     ['doc.pdf', 'is-pdf'],
-    ['clip.mp4', 'unsupported-video'],
+    ['clip.mp4', 'video-truncated'], // the old fixture is only a stub (no whole file): now refused as incomplete
     ['song.mp3', 'unsupported-audio'],
     ['drawing.svg', 'unsupported'],
     ['not-an-image.jpg', 'corrupt'],

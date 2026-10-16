@@ -3,6 +3,7 @@
  * processes. A queue item is one of several content types; every item exposes a
  * flat list of `slides` that the projection window steps through.
  */
+import type { SlideMedia, SlideBackground } from './media'
 import { paginateText } from './paginate'
 import { parseParagraphRef } from './paragraphRef'
 
@@ -43,7 +44,7 @@ export interface Slide {
    *  paragraph. */
   page?: number
   /** Media slides only: which library picture this slide shows, and how. */
-  media?: { mediaId: string; fit?: 'fit' | 'fill' | 'stretch' | 'center' }
+  media?: SlideMedia
 }
 
 /** Which remote contributor added an item — absent for anything added
@@ -92,7 +93,7 @@ export interface SongItem extends QueueItemBase {
  * shell* (see serializeItem) so an older BORN reads it as a harmless quote row
  * instead of crashing. `slides` stays empty until the media output exists.
  */
-export type MediaKind = 'image' | 'slideshow'
+export type MediaKind = 'image' | 'slideshow' | 'video'
 
 /** How a shared service file identifies a picture on another computer: by what it IS (its
  *  content hash), never by this computer's private id. Written when a service is saved. */
@@ -292,12 +293,29 @@ export function quoteToItem(quote: Quote): QuoteItem {
 const FITS = ['fit', 'fill', 'stretch', 'center']
 
 /** Slides for a media item, rebuilt from its ids (names are only for display). */
-export function mediaSlides(ids: string[], fit?: MediaItem['fit'], names?: string[]): Slide[] {
-  return ids.map((id, i) => ({ text: names?.[i] ?? 'Picture', media: { mediaId: id, ...(fit && fit !== 'fit' ? { fit } : {}) } }))
+export function mediaSlides(ids: string[], fit?: MediaItem['fit'], names?: string[], video?: { loop?: boolean }): Slide[] {
+  return ids.map((id, i) => ({
+    text: names?.[i] ?? (video ? 'Video' : 'Picture'),
+    media: { mediaId: id, ...(fit && fit !== 'fit' ? { fit } : {}), ...(video ? { type: 'video' as const, ...(video.loop ? { loop: true } : {}) } : {}) }
+  }))
+}
+
+/** The queue item for one library video. It waits paused on its first frame when taken — nothing plays by itself. */
+export function videoToItem(rec: { id: string; name: string }, opts: { loop?: boolean } = {}): MediaItem {
+  return {
+    kind: 'media',
+    id: makeId('media'),
+    mediaId: rec.id,
+    mediaKind: 'video',
+    name: rec.name,
+    ...(opts.loop ? { loop: true } : {}),
+    slides: mediaSlides([rec.id], undefined, [rec.name], { loop: opts.loop })
+  }
 }
 
 /** The queue item for one library picture. */
-export function mediaToItem(rec: { id: string; name: string }): MediaItem {
+export function mediaToItem(rec: { id: string; name: string; type?: string }): MediaItem {
+  if (rec.type === 'video') return videoToItem(rec)
   return {
     kind: 'media',
     id: makeId('media'),
@@ -332,7 +350,7 @@ export function withMediaSettings(
   if ('loop' in patch && !patch.loop) delete next.loop
   if ('fit' in patch && (!patch.fit || patch.fit === 'fit')) delete next.fit
   const ids = next.mediaIds ?? [next.mediaId]
-  next.slides = ids.map((id, i) => ({ text: item.slides[i]?.text ?? next.name, media: { mediaId: id, ...(next.fit ? { fit: next.fit } : {}) } }))
+  next.slides = ids.map((id, i) => ({ text: item.slides[i]?.text ?? next.name, media: { mediaId: id, ...(next.fit ? { fit: next.fit } : {}), ...(next.mediaKind === 'video' ? { type: 'video' as const, ...(next.loop ? { loop: true } : {}) } : {}) } }))
   return next
 }
 
@@ -375,7 +393,7 @@ function knownShapeOk(kind: string, e: Obj): boolean {
 const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
   media: (e, ext) => {
     if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
-    if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow') return null
+    if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow' && ext.mediaKind !== 'video') return null
     const { v: _v, kind: _k, mediaId, mediaKind, name, mediaIds, refs, fit, autoAdvanceSec, loop, ...extra } = ext
     const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
     const nm = typeof name === 'string' ? name : 'Media'
@@ -384,7 +402,7 @@ const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
     return {
       kind: 'media',
       id: typeof id === 'string' && id ? id : makeId('media'),
-      slides: mediaSlides(ids ?? [mediaId], fitV, ids ? ids.map(() => nm) : [nm]),
+      slides: mediaSlides(ids ?? [mediaId], fitV, ids ? ids.map(() => nm) : [nm], mediaKind === 'video' ? { loop: loop === true } : undefined),
       ...(ids ? { mediaIds: ids } : {}),
       ...(Array.isArray(refs)
         ? (() => {

@@ -78,7 +78,7 @@ export interface PreviewLivePairProps {
   /** What Next will bring up on Main (flow-through included). */
   nextPayload: SlidePayload | null
   /** The main congregation output's still background (for the Preview thumbnail). */
-  background?: { mediaId: string; dim: number } | null
+  background?: import('../../../shared/media').SlideBackground | null
   projectionOpen: boolean
   canTake: boolean
   onTake: () => void
