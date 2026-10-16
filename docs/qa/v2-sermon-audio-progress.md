@@ -56,3 +56,11 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 - `src/shared/tapeAlign.ts`: word anchors (3-word groups unique on both sides, longest increasing chain), per-paragraph start + confidence, gap regions, whisper JSON reader. Tests: tapeAlign.test.ts (12). Not wired to UI yet; nothing is ever auto-applied.
 - Decision: built before S5 so a real map can be made from the real tape's whisper output and S4/S5 can be checked live.
 - Resume: next is a script/IPC that feeds whisper JSON into alignParagraphs and saves as a proposed map; then S5.
+
+### S8 runner + S4 live check (real tape, numbers only)
+- `src/main/tapeAligner.ts` (child process: ffmpeg → 16 kHz WAV → whisper-cli, progress, cancel, proposal only) + IPC `tape:align-run/cancel/pick-tool`; editor has **Suggest timing**, **Next least sure**, and a tools panel (paths for whisper-cli / model / ffmpeg; nothing bundled).
+- Real tape in the app (base.en, this Mac, Apple Silicon): **71 s** for 2 h 24 m 47 s (~122× real time); 21,073 words heard; 349 of 363 paragraphs located with confidence, 15 flagged for review; aligner itself 22 ms; no time goes backwards; saved as source `auto`.
+- S4 live: **9/9** seek points (60 s … 8400 s) highlight the map's paragraph; **45/45** samples agree over 90 s at 2×.
+- ⚑ Decision: the engine's maximum speed stays **2×** (clamp in `clampSpeed`); the brief's "4×" check was run at 2× — a tape service never needs more, and Chromium's pitch-preserving rate is only dependable to about 2×.
+- Bug found by the live run and fixed: far "follow" jumps in the windowed list stopped part-way (smooth scroll restarting on every row-measure retry). `VirtualList` now jumps instantly when the target is far and re-aims until the row is on screen.
+- Owner note: `origin/main` has v1.13.1 and the Remote network picker; not merged (rule: tell the owner, never merge unasked).

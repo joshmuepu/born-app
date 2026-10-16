@@ -56,3 +56,7 @@
 .tse-tap kbd { background: transparent; color: inherit; border-color: currentColor; }
 .tse-actions kbd, .tse-faint kbd { background: transparent; }
 .tse-bars i { background: var(--text-tertiary); opacity: .55; }
+
+.tse-tools { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--bg-secondary); }
+.tse-tool-row { display: grid; grid-template-columns: 14rem 1fr auto; gap: 10px; align-items: center; font-size: var(--text-sm); }
+.tse-tool-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-family: var(--font-mono); }

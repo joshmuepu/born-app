@@ -21,6 +21,7 @@ import { parseRange } from '../shared/httpRange'
 import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import type { TapeAction, TapeWire } from '../shared/tapePlayback'
+import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
 import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
 import type { SyncMark, SyncMap, SyncRegion, SyncSource } from '../shared/tape'
 
@@ -361,6 +362,24 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     const src: SyncSource = source === 'auto' || source === 'imported' ? source : 'tap'
     return { ok: true, map: db.saveMap(rec.id, lang(textLanguage), src, m, r), issues }
   })
+  ipcMain.handle('tape:pick-tool', async (_e, which: string): Promise<string | null> => {
+    const hook = testHook('BORN_TEST_TAPE_TOOL', app.isPackaged)
+    if (hook) return hook
+    const titles: Record<string, string> = { whisper: 'Choose the whisper.cpp program (whisper-cli)', model: 'Choose a whisper.cpp model file (.bin)', ffmpeg: 'Choose ffmpeg' }
+    const r = await dialog.showOpenDialog(getMain() ?? undefined!, { title: titles[which] ?? 'Choose a file', properties: ['openFile'] })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
+  // ── automatic alignment (optional; a PROPOSAL only, never saved here) ──
+  ipcMain.handle('tape:align-run', async (e, recordingId: string, paragraphs: unknown) => {
+    const rec = getTapeDb()?.getRecording(String(recordingId))
+    const path = rec ? lib?.resolvePath(rec.file) : null
+    if (!rec || !path) return { ok: false, message: 'This recording is no longer attached to the sermon.' }
+    const paras = (Array.isArray(paragraphs) ? paragraphs : []).filter((p) => p && Number.isInteger(p.n) && typeof p.text === 'string').map((p) => ({ n: p.n as number, text: p.text as string }))
+    if (!paras.length) return { ok: false, message: 'There is no numbered text to line up.' }
+    const t = getSettings().tape
+    return alignRecording(path, paras, { whisper: t.whisperPath ?? '', model: t.whisperModelPath ?? '', ffmpeg: t.ffmpegPath ?? '' }, (p) => { if (!e.sender.isDestroyed()) e.sender.send('tape:align-progress', p) })
+  })
+  ipcMain.handle('tape:align-cancel', () => { cancelAlign(); return alignBusy() })
   ipcMain.handle('tape:map-delete', (_e, recordingId: string, textLanguage: string | null) => { getTapeDb()?.deleteMap(String(recordingId), lang(textLanguage)); return true })
   ipcMain.handle('tape:map-export', async (_e, recordingId: string, textLanguage: string | null): Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }> => {
     const db = getTapeDb()

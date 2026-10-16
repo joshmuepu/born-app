@@ -458,6 +458,14 @@ const api = {
   tapeMapGet: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-get', recordingId, textLanguage),
   tapeMapLanguages: (recordingId: string): Promise<Array<string | null>> => ipcRenderer.invoke('tape:map-languages', recordingId),
   tapeMapSave: (recordingId: string, textLanguage: string | null, source: string, marks: unknown, regions: unknown): Promise<unknown> => ipcRenderer.invoke('tape:map-save', recordingId, textLanguage, source, marks, regions),
+  tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg'): Promise<string | null> => ipcRenderer.invoke('tape:pick-tool', which),
+  tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>): Promise<unknown> => ipcRenderer.invoke('tape:align-run', recordingId, paragraphs),
+  tapeAlignCancel: (): Promise<boolean> => ipcRenderer.invoke('tape:align-cancel'),
+  onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void): (() => void) => {
+    const h = (_e: unknown, p: { phase: 'prepare' | 'listen' | 'match'; pct: number }): void => cb(p)
+    ipcRenderer.on('tape:align-progress', h)
+    return () => ipcRenderer.removeListener('tape:align-progress', h)
+  },
   tapeMapDelete: (recordingId: string, textLanguage: string | null): Promise<boolean> => ipcRenderer.invoke('tape:map-delete', recordingId, textLanguage),
   tapeMapExport: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-export', recordingId, textLanguage),
   tapeMapImport: (recordingId: string): Promise<unknown> => ipcRenderer.invoke('tape:map-import', recordingId),

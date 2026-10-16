@@ -30,6 +30,11 @@ beforeEach(() => {
     tapeDevices: vi.fn(async () => []),
     tapeMapSave: vi.fn(async (_id: string, _l: unknown, _s: string, marks: unknown[]) => ({ ok: true as const, map: { id: 'm', recordingId: 'r_1', textLanguage: null, source: 'tap', marks, regions: [], updatedAt: '' }, issues: [] })),
     tapeMapExport: vi.fn(async () => ({ ok: true, path: '/x.json' })),
+    tapeAlignRun: vi.fn(async () => ({ ok: true as const, seconds: 61.4, heardWords: 100, result: { marks: [{ n: 1, t: 10, kind: 'start' as const, confidence: 0.95 }, { n: 2, t: 20, kind: 'start' as const, confidence: 0.4 }, { n: 3, t: 30, kind: 'start' as const, confidence: 0.9 }], regions: [], stats: { paragraphs: 5, located: 3, lowConfidence: 1, matchedWordsPct: 80, anchors: 9 } } })),
+    tapePickTool: vi.fn(async () => '/opt/whisper/whisper-cli'),
+    tapeSettingsSet: vi.fn(async () => ({})),
+    tapeAlignCancel: vi.fn(async () => true),
+    onTapeAlignProgress: vi.fn(() => vi.fn()),
     tapeMapImport: vi.fn(async () => ({ ok: true as const, marks: [{ n: 1, t: 10, kind: 'start' as const }, { n: 2, t: 20, kind: 'start' as const }], regions: [], textLanguage: null, warnings: ['It was made for a different sermon.'] }))
   }
   Object.assign(window.electronAPI, api)
@@ -171,5 +176,41 @@ describe('the sync editor', () => {
     await open()
     fireEvent.click(screen.getByRole('button', { name: 'Paragraph 1: play from here' }))
     expect(api.tapeCommand).toHaveBeenCalledWith({ type: 'seek', to: 49 })
+  })
+
+  it('"Suggest timing" loads a PROPOSAL as unsaved changes, says how many to check, and saves it as automatic only when the operator saves', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: /Suggest timing/ }))
+    await screen.findByText(/Suggestion ready in 61 s — 3 of 5 paragraphs found with confidence; 1 to check\. Nothing is saved yet\./)
+    expect(api.tapeMapSave).not.toHaveBeenCalled()
+    expect(api.tapeAlignRun).toHaveBeenCalledWith('r_1', expect.arrayContaining([expect.objectContaining({ n: 1 }), expect.objectContaining({ n: 5 })]))
+    expect(screen.getByText(/auto · 40%/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(() => expect(api.tapeMapSave).toHaveBeenCalled())
+    expect(api.tapeMapSave.mock.calls[0][2]).toBe('auto')
+  })
+  it('"Next least sure" goes to the lowest-confidence suggestion first and puts the tape just before it', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: /Suggest timing/ }))
+    await screen.findByText(/Suggestion ready/)
+    fireEvent.click(screen.getByRole('button', { name: /Next least sure/ }))
+    expect(api.tapeCommand).toHaveBeenCalledWith({ type: 'seek', to: 19 })
+  })
+  it('a failed or canceled suggestion shows the reason and leaves the timing alone', async () => {
+    api.tapeAlignRun.mockResolvedValueOnce({ ok: false, message: 'Choose the whisper.cpp program (whisper-cli) in Settings first.' })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: /Suggest timing/ }))
+    await screen.findByText(/Choose the whisper\.cpp program/)
+    expect(screen.getByText('0 of 5 paragraphs timed')).toBeTruthy()
+  })
+
+  it('the tools panel shows where the optional recogniser is, and choosing a file saves it in the settings', async () => {
+    api.tapeSettingsGet.mockResolvedValue({ speedRange: 'wide', whisperPath: '', whisperModelPath: '', ffmpegPath: '' })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Automatic timing tools' }))
+    await screen.findByText(/BORN does not include a speech recogniser/)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Choose…' })[0])
+    await waitFor(() => expect(api.tapeSettingsSet).toHaveBeenCalledWith({ whisperPath: '/opt/whisper/whisper-cli' }))
+    expect(await screen.findByText('/opt/whisper/whisper-cli')).toBeTruthy()
   })
 })

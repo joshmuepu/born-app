@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { X, Hand, Undo2, Save, Download, Upload, Play, Trash2, SkipForward, Flag, EyeOff, Clock, AlertTriangle, Check } from 'lucide-react'
+import { X, Hand, Undo2, Save, Download, Upload, Play, Trash2, SkipForward, Flag, EyeOff, Clock, AlertTriangle, Check, Sparkles, ListChecks, Settings2 } from 'lucide-react'
 import type { SyncMark, SyncRegion, TapeRecording } from '../../../shared/tape'
 import { formatTapeTime } from '../../../shared/tape'
 import { numberedParagraphs, type NumberedParagraph } from '../../../shared/tapeParagraphs'
@@ -49,6 +49,9 @@ export default function TapeSyncEditor({
   const [zoom, setZoom] = useState<'tape' | 'near'>('tape')
   const [confirmClose, setConfirmClose] = useState(false)
   const [drag, setDrag] = useState<{ n: number; t: number } | null>(null)
+  const [aligning, setAligning] = useState<{ phase: 'prepare' | 'listen' | 'match'; pct: number } | null>(null)
+  const reviewIdx = useRef(0)
+  const [tools, setTools] = useState<{ open: boolean; whisperPath: string; whisperModelPath: string; ffmpegPath: string }>({ open: false, whisperPath: '', whisperModelPath: '', ffmpegPath: '' })
   const rootRef = useRef<HTMLDivElement>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<Map<number, HTMLElement>>(new Map())
@@ -102,7 +105,7 @@ export default function TapeSyncEditor({
     const iss = validateMap(st.marks, st.regions, dur, numbers)
     setIssues(iss)
     if (iss.some((i) => i.level === 'error')) { setMessage({ kind: 'bad', text: 'This cannot be saved yet — see the problems below.' }); return }
-    const r = await window.electronAPI.tapeMapSave(recording.id, null, 'tap', st.marks, st.regions)
+    const r = await window.electronAPI.tapeMapSave(recording.id, null, st.marks.some((m) => m.confidence !== null && m.confidence !== undefined) ? 'auto' : 'tap', st.marks, st.regions)
     if (r.ok) { dispatch({ type: 'saved' }); setMessage({ kind: 'ok', text: `Saved — ${timedCount(r.map.marks)} paragraphs are timed.` }); onSaved?.() }
     else { setIssues(r.issues); setMessage({ kind: 'bad', text: r.issues[0]?.message ?? 'It could not be saved.' }) }
   }
@@ -117,6 +120,41 @@ export default function TapeSyncEditor({
     if (!r.ok) { if (!r.canceled) setMessage({ kind: 'bad', text: r.message }); return }
     dispatch({ type: 'replace', marks: r.marks, regions: r.regions })
     setMessage({ kind: r.warnings.length ? 'warn' : 'ok', text: `Timing loaded — ${r.marks.length} paragraphs. Check it, then Save.${r.warnings.length ? ' ' + r.warnings.join(' ') : ''}` })
+  }
+  /** Ask the optional recogniser for a PROPOSAL. It is loaded into the editor like an import: nothing is saved or used until the operator saves it. */
+  const openTools = async (): Promise<void> => {
+    if (!tools.open) { const t = await window.electronAPI.tapeSettingsGet(); setTools({ open: true, whisperPath: t.whisperPath ?? '', whisperModelPath: t.whisperModelPath ?? '', ffmpegPath: t.ffmpegPath ?? '' }) } else setTools((x) => ({ ...x, open: false }))
+  }
+  const chooseTool = async (which: 'whisper' | 'model' | 'ffmpeg'): Promise<void> => {
+    const p = await window.electronAPI.tapePickTool(which)
+    if (!p) return
+    const key = which === 'whisper' ? 'whisperPath' : which === 'model' ? 'whisperModelPath' : 'ffmpegPath'
+    await window.electronAPI.tapeSettingsSet({ [key]: p })
+    setTools((x) => ({ ...x, [key]: p }))
+  }
+  const suggest = async (): Promise<void> => {
+    if (aligning) { await window.electronAPI.tapeAlignCancel(); return }
+    if (st.marks.length > 0 && !window.confirm('This replaces the timing on screen with a suggestion (Undo brings it back). Continue?')) return
+    setMessage(null)
+    setAligning({ phase: 'prepare', pct: 0 })
+    const off = window.electronAPI.onTapeAlignProgress((p) => setAligning(p))
+    try {
+      const r = await window.electronAPI.tapeAlignRun(recording.id, paras.map((p) => ({ n: p.n, text: p.text })))
+      if (!r.ok) { if (!r.canceled) setMessage({ kind: 'bad', text: r.message }); return }
+      dispatch({ type: 'replace', marks: r.result.marks, regions: r.result.regions })
+      reviewIdx.current = 0
+      const { located, paragraphs, lowConfidence } = r.result.stats
+      setMessage({ kind: lowConfidence ? 'warn' : 'ok', text: `Suggestion ready in ${Math.round(r.seconds)} s — ${located} of ${paragraphs} paragraphs found with confidence; ${lowConfidence} to check. Nothing is saved yet.` })
+    } finally { off(); setAligning(null) }
+  }
+  /** Step through the suggested times, least sure first: jump the tape and the list to each. */
+  const reviewNext = (): void => {
+    const order = st.marks.filter((m) => m.kind === 'start' && m.confidence !== null && m.confidence !== undefined).sort((a, b) => (a.confidence as number) - (b.confidence as number))
+    if (!order.length) return
+    const m = order[reviewIdx.current % order.length]
+    reviewIdx.current++
+    rowRefs.current.get(m.n)?.scrollIntoView?.({ block: 'center' })
+    if (m.t !== null) { if (mine) command({ type: 'seek', to: Math.max(0, m.t - 1) }); else void load(recording.id, { position: Math.max(0, m.t - 1) }) }
   }
   const tryClose = (): void => { if (st.dirty) setConfirmClose(true); else onClose() }
 
@@ -250,9 +288,21 @@ export default function TapeSyncEditor({
           <button className="btn-secondary btn-sm" onClick={() => dispatch({ type: 'undo' })} disabled={st.past.length === 0}><Undo2 width={13} height={13} aria-hidden="true" /> Undo <kbd>U</kbd></button>
           <button className={`btn-secondary btn-sm${regionStart?.kind === 'gap' ? ' is-on' : ''}`} onClick={() => toggleRegion('gap')}><EyeOff width={13} height={13} aria-hidden="true" /> {regionStart?.kind === 'gap' ? `End “no text” (from ${formatTapeTime(regionStart.t)})` : 'No text here'}</button>
           <button className={`btn-secondary btn-sm${regionStart?.kind === 'differs' ? ' is-on' : ''}`} onClick={() => toggleRegion('differs')}><Flag width={13} height={13} aria-hidden="true" /> {regionStart?.kind === 'differs' ? `End “differs” (from ${formatTapeTime(regionStart.t)})` : 'Tape differs here'}</button>
+          <button className="btn-secondary btn-sm" onClick={() => void suggest()} aria-busy={!!aligning}><Sparkles width={13} height={13} aria-hidden="true" /> {aligning ? `Stop (${aligning.phase === 'listen' ? aligning.pct + '%' : aligning.phase === 'prepare' ? 'preparing' : 'matching'})` : 'Suggest timing'}</button>
+          <button className="btn-secondary btn-sm" onClick={reviewNext} disabled={!st.marks.some((m) => m.confidence !== null && m.confidence !== undefined)}><ListChecks width={13} height={13} aria-hidden="true" /> Next least sure</button>
+          <button className="btn-icon btn-sm" onClick={() => void openTools()} aria-label="Automatic timing tools" aria-expanded={tools.open} title="Where the optional speech recogniser is"><Settings2 width={13} height={13} aria-hidden="true" /></button>
           <label className="tse-react" title="People press a little after the word is spoken. This much is taken off each tap.">Reaction <input type="number" min={0} max={2} step={0.05} value={reaction} onChange={(e) => setReaction(Math.max(0, Math.min(2, Number(e.target.value) || 0)))} aria-label="Reaction time in seconds" /> s</label>
           <span className="tse-faint"><kbd>P</kbd> play/pause · <kbd>⌘Z</kbd> undo</span>
         </div>
+
+        {tools.open && (
+          <div className="tse-tools" role="group" aria-label="Automatic timing tools">
+            <p className="tse-faint">Optional. BORN does not include a speech recogniser: point it at your own copy of whisper.cpp. Nothing is sent anywhere — it runs on this computer.</p>
+            {([['whisper', 'whisper-cli program', tools.whisperPath], ['model', 'Model file (.bin)', tools.whisperModelPath], ['ffmpeg', 'ffmpeg (only for non-WAV audio)', tools.ffmpegPath]] as const).map(([k, label, val]) => (
+              <div className="tse-tool-row" key={k}><span>{label}</span><code title={val}>{val || 'not chosen'}</code><button className="btn-secondary btn-sm" onClick={() => void chooseTool(k)}>Choose…</button></div>
+            ))}
+          </div>
+        )}
 
         {message && <div className={`tse-msg tse-msg--${message.kind}`} role="status">{message.kind === 'ok' ? <Check width={14} height={14} aria-hidden="true" /> : <AlertTriangle width={14} height={14} aria-hidden="true" />} {message.text}</div>}
         {issues.length > 0 && <ul className="tse-issues">{issues.map((i, k) => <li key={k} className={`tse-issue tse-issue--${i.level}`}>{i.message}</li>)}</ul>}
