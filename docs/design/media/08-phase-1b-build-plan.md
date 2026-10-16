@@ -94,4 +94,7 @@ What the roadmap and [06-youtube.md](06-youtube.md) say: long videos should play
 
 ## What was built
 
-*(Updated as slices land — see the commits on `v2-media-1b` and `docs/qa/v2-media-merge-readiness.md`.)*
+All seven slices are built and tested; evidence, numbers and what differs from the plan are in
+[docs/qa/v2-media-1b-report.md](../../qa/v2-media-1b-report.md); merge readiness in [docs/qa/v2-media-merge-readiness.md](../../qa/v2-media-merge-readiness.md).
+Differences from this plan: the library label "All pictures" became "All media"; a service pack refuses a service that contains a video (pictures only);
+the Graphics follower is measured on Chromium (what OBS uses) and unverified on WebKit; motion backgrounds are not synchronised across screens (as planned).

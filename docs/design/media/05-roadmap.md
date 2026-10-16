@@ -45,6 +45,8 @@ clear message and never become a broken item.
 
 ## Phase 1b — "Video and audio" (only after spikes 1–4 and 7 pass)
 
+> **Status 2026-10-16:** video and looping motion backgrounds are **built** on branch `v2-media-1b` (see [08](08-phase-1b-build-plan.md) and `docs/qa/v2-media-1b-report.md`); audio-only items, in/out points and "when it ends" remain out.
+
 **Scope:** MP4/H.264 + AAC video; MP3/AAC/FLAC/Ogg/Opus audio; motion backgrounds; **playback bar**
 (play/pause, seek, loop, volume, fade, in/out, "when it ends"); Live readback; stalled-video watchdog;
 phone **Play/Pause live media only**; stage-monitor time left. **No FFmpeg.**
