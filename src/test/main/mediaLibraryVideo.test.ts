@@ -1,7 +1,7 @@
 import './keepStatements'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync, mkdirSync, readFileSync, statSync, utimesSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { MediaLibrary, type MediaDecoder } from '../../main/mediaLibrary'
@@ -133,6 +133,70 @@ describe('video import', () => {
     expect(lib.list({ type: 'image' })).toEqual([])
     const d = await lib.display(v.item.id)
     expect(d?.type).toBe('image/jpeg')
+  })
+})
+
+describe('"Is tonight ready?" for a video', () => {
+  const mtimeFix = (p: string, id: string): void => {
+    const st = statSync(p)
+    lib.db.prepare('UPDATE media_items SET link_mtime_ms = ? WHERE id = ?').run(Math.round(st.mtimeMs), id)
+  }
+  it('a good video passes: whole, allowed, and a frame decodes here', async () => {
+    const r = ok(await lib.importFile(file({})))
+    const p = await lib.preflight(r.item.id)
+    expect(p).toMatchObject({ status: 'ok', deep: 'ok' })
+    expect(p.notes).toEqual([])
+  })
+
+  it('4K, high frame rate and bit rate are warnings, never failures', async () => {
+    const r = ok(await lib.importFile(file({ width: 3840, height: 2160, fps: 60, mdatBytes: 200_000_000 / 8 * 3 })))
+    const p = await lib.preflight(r.item.id)
+    expect(p.deep).toBe('ok')
+    expect(p.notes.join(' ')).toMatch(/4K/)
+    expect(p.notes.join(' ')).toMatch(/60 frames/)
+  })
+
+  it('catches a managed copy whose bytes changed (hash) and a linked file that was cut short or lost its index', async () => {
+    const m = ok(await lib.importFile(file({})))
+    const mp = lib.resolvePath(m.item)!
+    const b = readFileSync(mp)
+    b[b.length - 5] ^= 0xff
+    writeFileSync(mp, b)
+    expect((await lib.preflight(m.item.id)).deep).toBe('damaged')
+
+    const src = file({ mdatBytes: 9999 }, 'linked.mp4')
+    const l = ok(await lib.importFile(src, { linkInPlace: true }))
+    // same size, but the index box is now called something else: the file no longer says it is a whole video
+    const bytes = readFileSync(src)
+    bytes.write('free', bytes.indexOf('moov'), 'latin1')
+    writeFileSync(src, bytes)
+    utimesSync(src, new Date(l.item.addedAt), new Date(l.item.addedAt))
+    mtimeFix(src, l.item.id)
+    const p = await lib.preflight(l.item.id)
+    expect(p.deep).toBe('damaged')
+    expect(p.notes.join(' ')).toMatch(/incomplete|cut short/)
+  })
+
+  it('a video the engine cannot decode on this computer is flagged with the fix', async () => {
+    const r = ok(await lib.importFile(file({})))
+    failDecode = true
+    const p = await lib.preflight(r.item.id)
+    expect(p.deep).toBe('undecodable')
+    expect(p.notes.join(' ')).toMatch(/H\.264/)
+  })
+
+  it('a length that no longer agrees with what was added is a warning sign', async () => {
+    const r = ok(await lib.importFile(file({ seconds: 10 })))
+    lib.db.prepare('UPDATE media_items SET duration_ms = 60000 WHERE id = ?').run(r.item.id)
+    const p = await lib.preflight(r.item.id)
+    expect(p.deep).toBe('damaged')
+    expect(p.notes.join(' ')).toMatch(/length/)
+  })
+
+  it('a linked video on an unplugged drive is "drive not connected", not damaged', async () => {
+    const r = ok(await lib.importFile(file({}), { linkInPlace: true }))
+    lib.db.prepare('UPDATE media_items SET link_path = ? WHERE id = ?').run('/Volumes/BORN_TEST_NOT_PLUGGED/clip.mp4', r.item.id)
+    expect((await lib.preflight(r.item.id)).status).toBe(process.platform === 'win32' ? 'missing' : 'offline')
   })
 })
 

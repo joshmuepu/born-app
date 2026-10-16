@@ -9,6 +9,7 @@ let showSlide: (s: SlidePayload) => void = () => {}
 let playback: (m: PlaybackWire) => void = () => {}
 let stopPlayback: (c: string) => void = () => {}
 let setBlank: (b: boolean) => void = () => {}
+let alertCb: (m: string) => void = () => {}
 let report: ReturnType<typeof vi.fn>
 let play: ReturnType<typeof vi.spyOn>
 let pause: ReturnType<typeof vi.spyOn>
@@ -21,6 +22,7 @@ beforeEach(() => {
   report = vi.fn()
   window.electronAPI.onShowSlide = vi.fn((cb: (s: SlidePayload) => void) => { showSlide = cb; return vi.fn() })
   window.electronAPI.onSetBlankScreen = vi.fn((cb: (b: boolean) => void) => { setBlank = cb; return vi.fn() })
+  window.electronAPI.onAlert = vi.fn((cb: (m: string) => void) => { alertCb = cb; return vi.fn() }) as never
   window.electronAPI.onMediaPlayback = vi.fn((cb: (m: PlaybackWire) => void) => { playback = cb; return vi.fn() })
   window.electronAPI.onMediaPlaybackStop = vi.fn((cb: (c: string) => void) => { stopPlayback = cb; return vi.fn() })
   window.electronAPI.mediaPlaybackReport = report as never
@@ -109,6 +111,14 @@ describe('the main output: video', () => {
     act(() => { setBlank(true) })
     expect(document.querySelector('video')).toBeNull()
     expect(document.querySelector('.projection-idle')).toBeTruthy()
+  })
+
+  it('an alert (e.g. a nursery call) still shows over a playing video, and the video carries on', () => {
+    render(<ProjectionApp />)
+    act(() => { showSlide(videoSlide); playback(wire({ status: 'playing', hasPlayedOnce: true })) })
+    act(() => { alertCb('Nursery: please come to room 3') })
+    expect(document.querySelector('.projection-alert')?.textContent).toBe('Nursery: please come to room 3')
+    expect(video()).toBeTruthy()
   })
 
   it('stop (the video was replaced or cleared) forgets the record', () => {

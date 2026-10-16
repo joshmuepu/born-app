@@ -1014,6 +1014,7 @@ export class MediaLibrary {
         return { ...out, status: 'unreadable', deep: 'skipped' }
       }
     }
+    if (rec.type === 'video') return this.preflightVideo(rec, path, out)
     if (!fileLooksComplete(path)) {
       out.deep = 'damaged'
       out.notes.push('The file looks cut short (an unfinished copy or download). Copy the picture again from the original.')
@@ -1038,6 +1039,43 @@ export class MediaLibrary {
       out.deep = 'undecodable'
       out.notes.push('A screen-sized copy could not be made.')
     }
+    return out
+  }
+
+  /**
+   * The video half of "Is tonight ready?": the file's own index says it is whole and says what it is (no guessing from file names or
+   * `canPlayType`), it is still what the limits allow, and a real frame decodes on THIS computer right now.
+   */
+  private async preflightVideo(rec: MediaRecord, path: string, out: MediaPreflightResult): Promise<MediaPreflightResult> {
+    const probe = probeMp4(path)
+    if (!probe.ok) {
+      out.deep = 'damaged'
+      out.notes.push(
+        probe.reason === 'truncated' ? MEDIA_MESSAGES['video-truncated']
+        : probe.reason === 'not-mp4' ? MEDIA_MESSAGES['video-container']
+        : MEDIA_MESSAGES['video-damaged']
+      )
+      return out
+    }
+    const verdict = judgeVideo({ brand: probe.brand, videoCodec: probe.videoCodec, audioCodec: probe.audioCodec, width: probe.width, height: probe.height, fps: probe.fps, bitrate: rec.bitrate ?? probe.bitrate })
+    if (!verdict.ok) {
+      out.deep = 'undecodable'
+      out.notes.push(`${MEDIA_MESSAGES[verdict.code]} (This file: ${verdict.detail}.)`)
+      return out
+    }
+    const dec = this.decoder.decodeVideo ? await this.decoder.decodeVideo(path, [64]) : null
+    if (!dec || !dec.ok) {
+      out.deep = 'undecodable'
+      out.notes.push(MEDIA_MESSAGES['video-damaged'])
+      return out
+    }
+    if (rec.durationSec !== null && Math.abs(dec.duration - rec.durationSec) > 1.5) {
+      out.deep = 'damaged'
+      out.notes.push(`This video's length is now ${dec.duration.toFixed(0)} s but it was ${rec.durationSec.toFixed(0)} s when added — the file may have changed or be damaged. Add it again from the original.`)
+      return out
+    }
+    out.notes.push(...verdict.warnings)
+    if (rec.storage === 'linked') out.notes.push('Linked in place: the original must stay where it is (and its drive plugged in).')
     return out
   }
 
