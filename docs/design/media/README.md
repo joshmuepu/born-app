@@ -37,6 +37,7 @@ decide whether 1b and YouTube proceed as designed.
 | [04 · Visual design](04-visual-design.md) | Index of the 12 mockup screens |
 | [05 · Roadmap](05-roadmap.md) | Phases, spikes, tests, open questions with recommended answers |
 | [06 · YouTube](06-youtube.md) | YouTube items within YouTube's rules: flow, preflight, ads, failures, terms |
+| [07 · Service pack](07-service-pack.md) | `.bornpack`: a queue and its pictures in one file — built in the 1a follow-up (moved up from Phase 3) |
 | [mockups/](mockups/) | HTML + PNG mockups (open `mockups/png/` first) |
 | [spikes/codec-check/](spikes/codec-check/) | The one measurement taken: what this app's Electron can play |
 
