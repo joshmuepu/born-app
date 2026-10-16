@@ -13,7 +13,7 @@ const {
   pushGraphicsPlayback
 } = await import('../../main/webRemote')
 
-const PORT = 43161
+const PORT = 43172 // (webRemote.test.ts uses 43160 and 43161)
 const noopSearch = { sermons: async () => [], bible: async () => ({ kind: 'error', message: '' }), songs: async () => [], song: async () => null, bibleBooks: async () => [], bibleChapter: async () => ({ error: '' }) } as never
 const noopAutomation = { goNext() {}, goPrevious() {}, clear() {}, blank() {}, show() {}, getState: () => [] } as never
 
