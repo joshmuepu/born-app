@@ -142,6 +142,67 @@ describe('media library: importing', () => {
     expect(p2.notes.join(' ')).toMatch(/cut short/)
   })
 
+  // A USB stick is simulated with a path under /Volumes (or /media/...) that does not exist: the whole "drive" is absent.
+  describe.skipIf(process.platform === 'win32')('linked pictures on a drive that is unplugged', () => {
+    const gone = process.platform === 'darwin' ? '/Volumes/BORN_TEST_NOT_PLUGGED' : '/mnt/born-test-not-plugged'
+    async function linkedOnGoneDrive(): Promise<{ id: string; file: string; hash: string }> {
+      const file = join(dir, 'usb-file.jpg')
+      copyFileSync(fx('tiny.jpg'), file)
+      const r = ok(await lib.importFile(file, { linkInPlace: true }))
+      lib.db.prepare('UPDATE media_items SET link_path = ? WHERE id = ?').run(`${gone}/Youth/usb-file.jpg`, r.item.id) // as if it had been imported from the stick
+      return { id: r.item.id, file, hash: r.item.hash }
+    }
+
+    it('is "offline" (recoverable), not "missing"; preflight flags it; a file gone from a connected disk is still "missing"', async () => {
+      const { id } = await linkedOnGoneDrive()
+      expect(lib.check(id)).toBe('offline')
+      expect(lib.checkAll()).toEqual([{ id, status: 'offline' }])
+      expect((await lib.preflight(id)).status).toBe('offline')
+      lib.db.prepare('UPDATE media_items SET link_path = ? WHERE id = ?').run(join(dir, 'deleted.jpg'), id)
+      expect(lib.check(id)).toBe('missing')
+    })
+
+    it('Reconnect: finds the same pictures (by contents, whatever the name) in the folder the drive now has, and changes nothing else', async () => {
+      const { id, hash } = await linkedOnGoneDrive()
+      const other = ok(await lib.importFile(fx('tiny.png'))) // a normal copied picture is untouched
+      const newHome = join(dir, 'F-drive', 'Slides')
+      mkdirSync(newHome, { recursive: true })
+      copyFileSync(fx('tiny.jpg'), join(newHome, 'renamed-after-the-move.jpg'))
+      copyFileSync(fx('tiny.png'), join(newHome, 'decoy.png'))
+      writeFileSync(join(newHome, 'same-size-different.jpg'), Buffer.alloc(statSync(fx('tiny.jpg')).size, 7))
+      const r = await lib.reconnectLinked(join(dir, 'F-drive'))
+      expect(r).toMatchObject({ relinked: 1, stillMissing: 0 })
+      expect(lib.check(id)).toBe('ok')
+      expect(lib.get(id)?.linkPath).toBe(join(newHome, 'renamed-after-the-move.jpg'))
+      expect(lib.get(id)?.hash).toBe(hash)
+      expect(lib.count().items).toBe(2) // nothing was added
+      expect(lib.check(other.item.id)).toBe('ok')
+    })
+
+    it('Reconnect with the wrong folder finds nothing and says how many are still missing', async () => {
+      await linkedOnGoneDrive()
+      const empty = join(dir, 'empty-folder'); mkdirSync(empty)
+      expect(await lib.reconnectLinked(empty)).toMatchObject({ relinked: 0, stillMissing: 1 })
+    })
+
+    it('Copy into library turns a linked picture into a normal one that no longer needs its drive', async () => {
+      const file = join(dir, 'link-me.jpg'); copyFileSync(fx('tiny.jpg'), file)
+      const r = ok(await lib.importFile(file, { linkInPlace: true }))
+      expect(await lib.copyIntoLibrary(r.item.id)).toEqual({ ok: true })
+      const rec = lib.get(r.item.id)!
+      expect(rec).toMatchObject({ storage: 'managed', linkPath: null })
+      rmSync(file) // the original can vanish now
+      expect(lib.check(r.item.id)).toBe('ok')
+      expect(await lib.copyIntoLibrary(r.item.id)).toMatchObject({ ok: false })
+    })
+
+    it('Copy into library refuses while the drive is unplugged, and changes nothing', async () => {
+      const { id } = await linkedOnGoneDrive()
+      expect(await lib.copyIntoLibrary(id)).toMatchObject({ ok: false })
+      expect(lib.get(id)?.storage).toBe('linked')
+    })
+  })
+
   it('refuses a cut-off picture as truncated and leaves nothing behind', async () => {
     const r = bad(await lib.importFile(fx('truncated.jpg')))
     expect(r.code).toBe('truncated')

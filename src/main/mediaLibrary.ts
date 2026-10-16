@@ -34,7 +34,7 @@ import {
   writeFileSync
 } from 'fs'
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'path'
-import { longPath, renameRetry, unlinkRetry } from './winFs'
+import { driveRootOf, longPath, renameRetry, unlinkRetry } from './winFs'
 import { migrateMediaDb } from './mediaSchema'
 import { looksComplete, orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
 import {
@@ -766,9 +766,101 @@ export class MediaLibrary {
       return 'ok'
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
-      return code === 'EACCES' || code === 'EPERM' ? 'unreadable' : 'missing'
+      if (code === 'EACCES' || code === 'EPERM') return 'unreadable'
+      // A linked picture on a USB stick or network share whose whole drive is gone is "offline" (plug it in), not "missing".
+      if (rec.storage === 'linked' && rec.linkPath) {
+        const root = driveRootOf(rec.linkPath)
+        if (root && !this.rootOnline(root)) return 'offline'
+      }
+      return 'missing'
     }
   }
+
+  private rootProbe = new Map<string, { at: number; online: boolean }>()
+  /** Is this drive root reachable? Cached for 2 s so checking 5,000 pictures asks the (possibly slow, network) drive once. */
+  private rootOnline(root: string): boolean {
+    const hit = this.rootProbe.get(root)
+    const now = Date.now()
+    if (hit && now - hit.at < 2000) return hit.online
+    let online = false
+    try { online = existsSync(root) } catch { online = false }
+    this.rootProbe.set(root, { at: now, online })
+    return online
+  }
+
+  /**
+   * "Reconnect this drive": the drive now has another letter, or the folder moved. Look through `folder` for the files
+   * every offline/missing linked picture needs (by contents, not name) and point those pictures at them. Only changes where
+   * a linked picture is read from; nothing is copied and nothing is added.
+   */
+  async reconnectLinked(folder: string, opts: { maxFiles?: number } = {}): Promise<{ relinked: number; stillMissing: number; scanned: number }> {
+    const rows = this.db.prepare("SELECT * FROM media_items WHERE storage = 'linked' AND deleted_at IS NULL").all() as Row[]
+    const need = rows.filter((r) => this.checkRecord(this.rowToRecord(r), r.link_mtime_ms) !== 'ok')
+    const byKey = new Map<string, Row[]>()
+    for (const r of need) (byKey.get(`${r.bytes}`) ?? byKey.set(`${r.bytes}`, []).get(`${r.bytes}`)!).push(r)
+    let relinked = 0
+    let scanned = 0
+    const done = new Set<string>()
+    const max = opts.maxFiles ?? 50000
+    const stack: Array<[string, number]> = [[resolve(folder), 0]]
+    while (stack.length && scanned < max && done.size < need.length) {
+      const [d, depth] = stack.pop()!
+      let names: string[] = []
+      try { names = readdirSync(d) } catch { continue }
+      for (const n of names) {
+        if (n.startsWith('.')) continue
+        const p = join(d, n)
+        let st
+        try { st = statSync(p) } catch { continue }
+        if (st.isDirectory()) { if (depth < 10) stack.push([p, depth + 1]); continue }
+        if (!st.isFile()) continue
+        scanned++
+        const cands = (byKey.get(`${st.size}`) ?? []).filter((r) => !done.has(r.id))
+        if (!cands.length) continue
+        let h: string
+        try { h = await hashFile(p) } catch { continue }
+        for (const r of cands) {
+          // (a converted picture's identity is its original's hash, which cannot be re-checked from the JPEG: size only)
+          if (r.converted_from == null && r.hash !== h) continue
+          this.db.prepare('UPDATE media_items SET link_path = ?, link_mtime_ms = ?, bytes = ? WHERE id = ?').run(resolve(p), Math.round(st.mtimeMs), st.size, r.id)
+          done.add(r.id)
+          relinked++
+        }
+      }
+    }
+    this.rootProbe.clear()
+    return { relinked, stillMissing: need.length - relinked, scanned }
+  }
+
+  /** Turn a linked picture into a normal copied one (its bytes go into the library), so it no longer depends on its drive. */
+  async copyIntoLibrary(id: string): Promise<{ ok: boolean; message?: string }> {
+    const rec = this.get(id)
+    if (!rec || rec.storage !== 'linked') return { ok: false, message: 'That picture is already in the library.' }
+    const src = this.resolvePath(rec)
+    if (!src || this.check(id) !== 'ok') return { ok: false, message: "The picture can't be read right now. Plug the drive in first." }
+    try {
+      if (rec.convertedFrom == null && (await hashFile(src)) !== rec.hash) return { ok: false, message: 'The file has changed since it was added, so it was not copied.' }
+      if (!this.checkSpace(rec.bytes).ok) return { ok: false, message: 'There is not enough free disk space to copy it.' }
+      const dest = this.managedPath(rec.hash, rec.ext)
+      mkdirSync(dirname(dest), { recursive: true })
+      if (!existsSync(dest)) {
+        const tmp = `${dest}.tmp-${randomBytes(4).toString('hex')}`
+        try {
+          copyFileSync(src, tmp)
+          if (statSync(tmp).size !== rec.bytes) throw new Error('copy size mismatch')
+          renameRetry(tmp, dest)
+        } catch (e) {
+          try { unlinkSync(tmp) } catch { /* nothing to clean */ }
+          throw e
+        }
+      }
+      this.db.prepare("UPDATE media_items SET storage = 'managed', link_path = NULL, link_mtime_ms = NULL WHERE id = ?").run(id)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as NodeJS.ErrnoException).code === 'ENOSPC' ? 'There is not enough free disk space to copy it.' : 'Something went wrong copying it. Nothing was changed.' }
+    }
+  }
+
   /** Everything that is not OK right now (for the "Needs attention" view and preflight). */
   checkAll(): Array<{ id: string; status: MediaStatus }> {
     const rows = this.db.prepare('SELECT * FROM media_items WHERE deleted_at IS NULL').all() as Row[]

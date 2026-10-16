@@ -216,6 +216,27 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     const out = await l.locateInFolder(r.filePaths[0], wanted.filter((w) => w && typeof w.hash === 'string' && typeof w.bytes === 'number').slice(0, 5000))
     return { canceled: false, ...out }
   })
+  // "Reconnect this drive": point offline/missing linked pictures at the same files in a folder (the drive's new letter, or a moved folder).
+  ipcMain.handle('media:reconnect-linked', async () => {
+    const l = getMediaLibrary()
+    if (!l) return { canceled: true, relinked: 0, stillMissing: 0, scanned: 0 }
+    const testDir = testHook('BORN_TEST_LOCATE_DIR', app.isPackaged)
+    const r = testDir ? { canceled: false, filePaths: [testDir] } : await dialog.showOpenDialog(getMain() ?? (undefined as never), { title: 'Choose the folder or drive that has the pictures', properties: ['openDirectory'] })
+    if (r.canceled || !r.filePaths[0]) return { canceled: true, relinked: 0, stillMissing: 0, scanned: 0 }
+    return { canceled: false, ...(await l.reconnectLinked(r.filePaths[0])) }
+  })
+  ipcMain.handle('media:copy-into-library', async (_e, ids: string[]) => {
+    const l = getMediaLibrary()
+    if (!l || !Array.isArray(ids)) return { copied: 0, failed: 0, message: null as string | null }
+    let copied = 0, failed = 0
+    let message: string | null = null
+    for (const id of ids.filter((x) => typeof x === 'string').slice(0, 5000)) {
+      const r = await l.copyIntoLibrary(id)
+      if (r.ok) copied++
+      else { failed++; message = message ?? r.message ?? null }
+    }
+    return { copied, failed, message }
+  })
   ipcMain.handle('media:preflight', async (_e, ids: string[]) => {
     const l = getMediaLibrary()
     if (!l || !Array.isArray(ids)) return []

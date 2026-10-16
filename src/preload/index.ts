@@ -392,6 +392,8 @@ const api = {
     ipcRenderer.on('pack:progress', h)
     return () => ipcRenderer.removeListener('pack:progress', h)
   },
+  mediaReconnectLinked: (): Promise<{ canceled: boolean; relinked: number; stillMissing: number; scanned: number }> => ipcRenderer.invoke('media:reconnect-linked'),
+  mediaCopyIntoLibrary: (ids: string[]): Promise<{ copied: number; failed: number; message: string | null }> => ipcRenderer.invoke('media:copy-into-library', ids),
   mediaPathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void): (() => void) => {
     const h = (_e: IpcRendererEvent, p: { done: number; total: number; current: string }): void => cb(p)

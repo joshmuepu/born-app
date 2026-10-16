@@ -530,7 +530,7 @@ export default function App() {
         const mid = item.slides[slide]?.media?.mediaId
         const r = mid ? await window.electronAPI.mediaPrepareDisplay(mid) : { ok: false, status: 'missing' }
         if (!r.ok) {
-          const why = r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
+          const why = r.status === 'offline' ? 'its drive is not connected' : r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
           pushToast({ message: `Can't show “${item.name}” — ${why}. The screen was not changed.`, timeoutMs: 9000 })
           return
         }

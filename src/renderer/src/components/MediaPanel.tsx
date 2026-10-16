@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Search,
   Link2,
+  Unplug,
   AlertTriangle,
   Tag as TagIcon,
   Clock,
@@ -21,6 +22,7 @@ import {
 import MediaBackgrounds, { useBackgroundTargets } from './MediaBackgrounds'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import VirtualList from './VirtualList'
+import { driveRootOf, driveLabel } from '../../../shared/driveRoot'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { ToastSpec } from './Toasts'
 import { useAppActions } from '../AppActions'
@@ -54,7 +56,10 @@ const fmtDate = (iso: string): string => {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
+/** Which drive a linked picture lives on, judged from how its path is written (works on any computer's paths). */
+const rootOfLinked = (p: string | null): string | null => (p ? driveRootOf(p, 'win32') ?? driveRootOf(p, 'darwin') ?? driveRootOf(p, 'linux') : null)
 const STATUS_TEXT: Record<Exclude<MediaStatus, 'ok'>, string> = {
+  offline: 'Drive not connected',
   missing: 'File missing',
   changed: 'File changed',
   unreadable: "Can't read file"
@@ -215,6 +220,16 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     },
     [linkInPlace, cat, summarize]
   )
+
+  const offlineItems = useMemo(() => items.filter((i) => status.get(i.id) === 'offline'), [items, status])
+  const offlineCount = offlineItems.length
+  const offlineDrives = useMemo(() => [...new Set(offlineItems.map((i) => rootOfLinked(i.linkPath)).filter((x): x is string => !!x))], [offlineItems])
+  const reconnectAll = useCallback(async () => {
+    const x = await window.electronAPI.mediaReconnectLinked()
+    if (x.canceled) return
+    pushToast({ message: x.relinked ? `Reconnected ${x.relinked} picture${x.relinked === 1 ? '' : 's'}${x.stillMissing ? `; ${x.stillMissing} still not found` : ''}.` : 'None of the missing pictures were in that folder.' })
+    void refresh()
+  }, [pushToast, refresh])
 
   const runPdf = useCallback(async (name: string, bytes: ArrayBuffer | undefined, error?: string) => {
     if (error === 'too-large' || !bytes) {
@@ -593,6 +608,20 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
           </div>
         )}
 
+        {offlineDrives.length > 0 && (
+          <div className="media-banner" role="alert">
+            <Unplug size={18} />
+            <div>
+              <b>{offlineCount} picture{offlineCount === 1 ? ' is' : 's are'} on {offlineDrives.map(driveLabel).join(' and ')}, which {offlineDrives.length === 1 ? 'is' : 'are'} not connected.</b>
+              <div>They are linked, not copied, so they can’t show until the drive is back. Plug it in and choose Check again, or choose the folder if the drive has a new letter. “Is tonight ready?” flags them too.</div>
+            </div>
+            <div className="media-banner-actions">
+              <button className="btn-quiet btn-sm" onClick={() => void refresh()}>Check again</button>
+              <button className="btn-primary btn-sm" onClick={() => void reconnectAll()}>Find the folder…</button>
+            </div>
+          </div>
+        )}
+
         {cat.kind === 'backgrounds' ? (
           <MediaBackgrounds items={items} />
         ) : !available.ok ? (
@@ -708,6 +737,17 @@ function Detail({
     const x = await window.electronAPI.mediaRelinkPick(r.id)
     if (x.ok) { notify('Picture relinked'); onChanged() } else if (!x.canceled) notify(x.message ?? "Couldn't relink")
   }
+  const reconnect = async (): Promise<void> => {
+    const x = await window.electronAPI.mediaReconnectLinked()
+    if (x.canceled) return
+    notify(x.relinked ? `Reconnected ${x.relinked} picture${x.relinked === 1 ? '' : 's'}${x.stillMissing ? `; ${x.stillMissing} still not found` : ''}.` : "None of the missing pictures were in that folder.")
+    onChanged()
+  }
+  const copyIn = async (): Promise<void> => {
+    const x = await window.electronAPI.mediaCopyIntoLibrary([r.id])
+    notify(x.copied ? 'Copied into the library — it no longer depends on its drive.' : x.message ?? "Couldn't copy it.")
+    onChanged()
+  }
   const big = r.width * r.height >= MEDIA_LIMITS.warnPixels
   return (
     <div className="media-detail">
@@ -718,15 +758,19 @@ function Detail({
         <div className="media-banner" role="alert">
           <AlertTriangle size={18} />
           <div>
-            <b>{status === 'missing' ? 'The file is missing.' : status === 'changed' ? 'The file was changed.' : "BORN can't read the file."}</b>
+            <b>{status === 'offline' ? `${(() => { const l = driveLabel(rootOfLinked(r.linkPath) ?? ''); return l.charAt(0).toUpperCase() + l.slice(1) })()} is not connected.` : status === 'missing' ? 'The file is missing.' : status === 'changed' ? 'The file was changed.' : "BORN can't read the file."}</b>
             <div>
-              {r.storage === 'linked'
+              {status === 'offline'
+                ? `This picture is linked from ${r.linkPath}. Plug the drive in and choose Check again — or, if the drive has a different letter now, choose Find the folder. Nothing is lost.`
+                : r.storage === 'linked'
                 ? `It was linked at ${r.linkPath}. A linked picture must stay where it was.`
                 : "BORN's own copy is gone or damaged. Re-add the picture from the original to repair it."}
             </div>
           </div>
           <div className="media-banner-actions">
-            {r.storage === 'linked' && <button className="btn-quiet btn-sm" onClick={() => void relink()}>Find the file…</button>}
+            {status === 'offline' && <button className="btn-quiet btn-sm" onClick={onChanged}>Check again</button>}
+            {r.storage === 'linked' && <button className="btn-quiet btn-sm" onClick={() => void reconnect()}>{status === 'offline' ? 'Find the folder…' : 'Find the folders…'}</button>}
+            {r.storage === 'linked' && status !== 'offline' && <button className="btn-quiet btn-sm" onClick={() => void relink()}>Find the file…</button>}
             <button className="btn-quiet btn-sm" onClick={onRemove}>Remove</button>
           </div>
         </div>
@@ -768,6 +812,7 @@ function Detail({
           {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
         <span className="spacer" />
+        {r.storage === 'linked' && !problem && <button className="btn-quiet btn-sm" onClick={() => void copyIn()} title="Copy this picture into BORN's library so it no longer needs its drive">Copy into library</button>}
         <button className="btn-quiet btn-sm" onClick={() => void window.electronAPI.mediaReveal(r.id)}><FolderOpen size={13} /> Show file</button>
         <button className="btn-quiet btn-sm" onClick={onRemove}><Trash2 size={13} /> Remove</button>
       </div>

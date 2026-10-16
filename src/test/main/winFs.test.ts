@@ -57,3 +57,28 @@ describe('reserved and unsafe names', () => {
     expect(safeFileName('x'.repeat(500)).length).toBe(120)
   })
 })
+
+import { driveRootOf, driveLabel } from '../../shared/driveRoot'
+describe('which drive is a picture on?', () => {
+  it('Windows: letters (any case, either slash), network shares, and not-a-drive', () => {
+    expect(driveRootOf('E:\\Youth\\Slides\\a.jpg', 'win32')).toBe('E:\\')
+    expect(driveRootOf('e:/Youth/a.jpg', 'win32')).toBe('E:\\')
+    expect(driveRootOf('\\\\church-pc\\Media\\Slides\\a.jpg', 'win32')).toBe('\\\\church-pc\\Media\\')
+    expect(driveRootOf('\\Users\\a.jpg', 'win32')).toBeNull()
+    expect(driveRootOf('relative\\a.jpg', 'win32')).toBeNull()
+    expect(driveRootOf('C:\\Users\\Jo Ann O\u2019Brien\\Pictures\\caf\u00e9 \ud83c\udf89.jpg', 'win32')).toBe('C:\\')
+  })
+  it('macOS and Linux: mounted volumes only', () => {
+    expect(driveRootOf('/Volumes/YOUTH/Slides/a.jpg', 'darwin')).toBe('/Volumes/YOUTH')
+    expect(driveRootOf('/Users/jo/a.jpg', 'darwin')).toBeNull()
+    expect(driveRootOf('/media/jo/USB STICK/a.jpg', 'linux')).toBe('/media/jo/USB STICK')
+    expect(driveRootOf('/run/media/jo/USB/a.jpg', 'linux')).toBe('/run/media/jo/USB')
+    expect(driveRootOf('/mnt/share/a.jpg', 'linux')).toBe('/mnt/share')
+    expect(driveRootOf('/home/jo/a.jpg', 'linux')).toBeNull()
+  })
+  it('friendly names', () => {
+    expect(driveLabel('E:\\')).toBe('drive E:')
+    expect(driveLabel('\\\\church-pc\\Media\\')).toBe('the network folder \\\\church-pc\\Media')
+    expect(driveLabel('/Volumes/YOUTH')).toBe('the drive \u201cYOUTH\u201d')
+  })
+})

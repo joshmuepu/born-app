@@ -56,3 +56,8 @@ export function safeFileName(name: string, fallback = 'picture'): string {
   if (!n || isReservedWindowsName(n)) n = n ? `_${n}` : fallback
   return n.slice(0, 120)
 }
+
+import { driveRootOf as driveRootOfPlatform } from '../shared/driveRoot'
+
+/** See shared/driveRoot.ts. */
+export const driveRootOf = (p: string, platform: string = process.platform): string | null => driveRootOfPlatform(p, platform)

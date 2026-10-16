@@ -15,7 +15,7 @@ interface Row {
   /** Queue position, if this row is about one item. */
   index?: number
   mediaId?: string
-  fix?: Array<'find' | 'remove'>
+  fix?: Array<'find' | 'reconnect' | 'remove'>
 }
 
 const ICON = { pass: CheckCircle2, warn: AlertTriangle, fail: XCircle } as const
@@ -69,15 +69,15 @@ export default function Preflight({
           out.push({ key: `m${index}`, level: 'fail', title: `“${title}”: a picture is no longer in the library`, detail: 'Remove it from the queue, or add the picture again.', index, fix: ['remove'] })
         } else if (bad.length > 0) {
           const r = bad[0]
-          const why = r.status === 'missing' ? 'the file is missing' : r.status === 'changed' ? 'the file was changed' : r.status === 'unreadable' ? "BORN can't read the file" : r.deep === 'damaged' ? 'the file is damaged' : "it won't open as a picture"
+          const why = r.status === 'offline' ? 'its drive is not connected' : r.status === 'missing' ? 'the file is missing' : r.status === 'changed' ? 'the file was changed' : r.status === 'unreadable' ? "BORN can't read the file" : r.deep === 'damaged' ? 'the file is damaged' : "it won't open as a picture"
           out.push({
             key: `m${index}`,
             level: 'fail',
             title: `“${title}”: ${bad.length > 1 ? `${bad.length} pictures have problems` : why}`,
-            detail: `${r.name}: ${why}. ${r.notes[0] ?? ''}`.trim(),
+            detail: r.status === 'offline' ? `${r.name}: ${why}. Plug the drive in and press Check again — or choose the folder if it has a new letter.` : `${r.name}: ${why}. ${r.notes[0] ?? ''}`.trim(),
             index,
             mediaId: r.id,
-            fix: r.storage === 'linked' && r.status !== 'ok' ? ['find', 'remove'] : ['remove']
+            fix: r.status === 'offline' ? ['reconnect', 'remove'] : r.storage === 'linked' && r.status !== 'ok' ? ['find', 'remove'] : ['remove']
           })
         } else {
           const notes = results.flatMap((r) => r.notes)
@@ -150,6 +150,9 @@ export default function Preflight({
                 <div className="preflight-fix">
                   {r.fix?.includes('find') && r.mediaId && (
                     <button className="btn-quiet btn-sm" onClick={async () => { const x = await window.electronAPI.mediaRelinkPick(r.mediaId as string); if (x.ok) void run() }}>Find the file…</button>
+                  )}
+                  {r.fix?.includes('reconnect') && (
+                    <button className="btn-quiet btn-sm" onClick={async () => { const x = await window.electronAPI.mediaReconnectLinked(); if (!x.canceled) void run() }}>Find the folder…</button>
                   )}
                   {r.fix?.includes('remove') && r.index !== undefined && (
                     <button className="btn-quiet btn-sm" onClick={() => { onRemoveItem(r.index as number) }}>Remove from queue</button>

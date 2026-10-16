@@ -94,7 +94,8 @@ export interface MediaImportFail {
 export type MediaImportResult = MediaImportOk | MediaImportFail
 
 /** Health of a stored item right now (cheap: stat only). */
-export type MediaStatus = 'ok' | 'missing' | 'changed' | 'unreadable'
+/** `offline`: a linked picture whose whole drive (USB stick, network share) is not connected — recoverable by plugging it in. */
+export type MediaStatus = 'ok' | 'missing' | 'changed' | 'unreadable' | 'offline'
 
 export const MEDIA_LIMITS = {
   /** Refuse pictures above this many pixels (decoding would exhaust memory). */

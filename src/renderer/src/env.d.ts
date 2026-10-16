@@ -141,6 +141,8 @@ declare global {
       packImport: (path: string) => Promise<import('../../shared/servicePack').PackResult<{ summary: import('../../shared/servicePack').PackImportSummary }>>
       packCancel: () => void
       onPackProgress: (cb: (p: { kind: 'export' | 'check' | 'import'; done: number; total: number; doneBytes?: number; totalBytes?: number; current?: string }) => void) => () => void
+      mediaReconnectLinked: () => Promise<{ canceled: boolean; relinked: number; stillMissing: number; scanned: number }>
+      mediaCopyIntoLibrary: (ids: string[]) => Promise<{ copied: number; failed: number; message: string | null }>
       mediaPathsForFiles: (files: File[]) => string[]
       onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void) => () => void
 
