@@ -1,8 +1,7 @@
 # Spike 3 — Multi-screen sync (main output, stage monitor, Graphics page)
 
-> ## PARTLY MEASURED, PARTLY PENDING
-> Free-running drift is **measured** (below). The **corrected** run (does keeping Live authoritative
-> hold the screens together?) needs tonight's run: [RUN-TONIGHT.md](RUN-TONIGHT.md).
+> ## VERDICT (run 2026-10-16): **safe** — keeping Live authoritative holds three screens within ~46 ms (95th percentile), max 82 ms, with no visible jumps
+> Free-running (no correction) drifts by hundreds of ms in 15 minutes, so the correction is required. Measured on the dev Mac, under load; best-case hardware.
 
 **Questions**
 
@@ -46,22 +45,29 @@ Over a 60-minute sermon video this would grow to **~3.5 seconds** if left alone.
 visibly out of step within minutes whenever one of them plays sound. Keeping Live authoritative is not
 optional.
 
-## Pending: corrected mode
+## Measured: corrected mode and a second free-running run, 15 minutes each (2026-10-16)
 
-**Pass / fail thresholds**
+**Hardware and conditions (read before trusting any number).** Apple M4 Max MacBook Pro (Mac16,5), 14 cores, 36 GB, macOS 26.6.2, Electron 33.4.11 (Chromium 130), on AC power, built-in display plus two 2560×1440 monitors, no sleep (`caffeinate -dims`). The run was **under load**: the machine never became quiet in the 4-hour wait (the owner's Chrome had an extension process using ~0.8 of one core the whole time, plus macOS file scanning and VS Code), so the run started at 06:42 anyway. With 14 cores that load is small, but treat the numbers as "a busy but powerful laptop". Full header: [`results/RUN-HEADER.md`](results/RUN-HEADER.md); wait log: [`results/quiet-wait.log`](results/quiet-wait.log).
 
-| Measure (stage and graphics, 15 min, after warm-up) | PASS | WARN | FAIL |
+**Caveat that matters most:** an Apple Silicon Mac with hardware video decoding is a **best case**. A church Windows PC is likely slower, with a different GPU and decoder. These results say the design is sound; they do **not** prove it on the church PC.
+
+| Measure (15 min, after warm-up) | Free-running (stage / graphics) | **Corrected** (stage / graphics) | PASS threshold |
 |---|---|---|---|
-| 95th percentile absolute difference | ≤ 80 ms | ≤ 150 ms | > 150 ms |
-| Maximum absolute difference | ≤ 150 ms | — | above |
-| Hard seeks (visible jumps) | ≤ 2 in 15 min | — | more |
-| Dropped frames | ≤ 0.1% | ≤ 0.5% | more |
+| 95th percentile abs difference | 774 / 500 ms | **46 / 43.6 ms** (worst: **46 ms**) | ≤ 80 ms |
+| Mean abs difference | 408 / 276 ms | 19.9 / 18.8 ms | — |
+| Maximum abs difference | 816 / 528 ms | **73.7 / 81.8 ms** (worst: **81.8 ms**) | ≤ 150 ms |
+| Drift at start → end (free) | +36 → +706 ms / +30 → +509 ms (**≈ 45 / 32 ms per minute**) | held | |
+| Hard seeks (visible jumps) | 0 | **0** | ≤ 2 |
+| Rate corrections applied | 0 | 17 stage / 13 graphics (≈ one per minute, ±5% for a moment) | — |
+| Dropped frames | 0 / 0 / 0 of ~26,900 | **0 / 0 / 0** of ~26,900 | ≤ 0.1% |
 
-**What the verdict will decide.** PASS → "main owns the clock, followers correct" is the design for
-Phase 1b. FAIL → video plays on the main output only; other outputs show a still and the time left
-(the same rule YouTube items already use).
+**Reading it.**
+- **Without correction** the screens separate steadily: ~0.7 s (stage) and ~0.5 s (Graphics page) after 15 minutes — the earlier run's 0.85 s is the same effect (the run is not identical each time because the audio clock and the display clocks wander differently). Over a one-hour sermon video that is 2–3 seconds apart. **Correction is not optional.**
+- **With "main owns the clock, followers nudge their playback rate"** the followers stay **within about 50 ms for 95% of the time and never beyond ~82 ms**, with **no hard seeks at all** and no dropped frames. The correction is a gentle speed-up or slow-down about once a minute, not a jump.
+- **The Graphics page over HTTP (Range requests) behaved the same as a local window** (question 3): no extra drift, no dropped frames.
+- Caveat from the harness: its summary "end of run" value for the stage window (−99 ms) is larger than its own reported maximum (73.7 ms); the per-sample statistics above are what the thresholds were applied to, and the end value is an average of the last few samples. It does not change the verdict but is worth looking at if the test is reused.
+- One computer, one GPU, a 30-second clip, three windows on 2–3 displays. A church PC with different refresh rates (50 vs 60 Hz) or a slower GPU may drift faster and correct less smoothly.
 
-**Verdict:** _free-running: measured (drift is real); corrected: pending._
+**Verdict:** **SAFE.** All four PASS thresholds met on the worst of the two followers (p95 46 ms ≤ 80; max 81.8 ms ≤ 150; 0 seeks ≤ 2; 0% dropped). → **"Main owns the clock, followers correct" is the design for Phase 1b.** Other screens **can** play the video in step (not just a still), provided the correction loop ships with it.
 
-**Limits to remember.** One computer, one GPU, three windows on two/three displays: results on the
-church PC (different GPU, different refresh rates, possibly Windows) may differ.
+Raw: [`results/OVERNIGHT-darwin-arm64-2026-10-16-10-42-raw/sync-free-900s.json`](results/OVERNIGHT-darwin-arm64-2026-10-16-10-42-raw/sync-free-900s.json) and `sync-corrected-900s.json`.

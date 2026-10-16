@@ -1,0 +1,176 @@
+{
+  "started": "2026-10-16T10:42:08.428Z",
+  "finished": "2026-10-16T13:32:59.842Z",
+  "smoke": false,
+  "hidden": false,
+  "thresholds": {
+    "stallsWarn": 3,
+    "dropWarnPct": 0.1,
+    "dropFailPct": 0.5,
+    "memWarnMBh": 20,
+    "memFailMBh": 60,
+    "cpu1080": 100,
+    "cpu4k": 150,
+    "syncP95": 80,
+    "syncMax": 150,
+    "syncP95Warn": 150
+  },
+  "machine": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.6.0",
+    "cpu": "Apple M4 Max",
+    "cores": 14,
+    "memGB": 36,
+    "electronExe": "Electron"
+  },
+  "assetNote": [],
+  "steps": [
+    {
+      "name": "make h264-1080p30-30s.mp4",
+      "ok": true,
+      "code": 0,
+      "secs": 31
+    },
+    {
+      "name": "make h264-4k30-10s.mp4",
+      "ok": true,
+      "code": 0,
+      "secs": 10
+    },
+    {
+      "name": "sync free-running",
+      "ok": true,
+      "code": 0,
+      "secs": 902
+    },
+    {
+      "name": "sync corrected",
+      "ok": true,
+      "code": 0,
+      "secs": 902
+    },
+    {
+      "name": "soak 1080p30",
+      "ok": true,
+      "code": 0,
+      "secs": 7205
+    },
+    {
+      "name": "soak 4K30",
+      "ok": true,
+      "code": 0,
+      "secs": 1201
+    }
+  ],
+  "results": {
+    "syncFree": {
+      "status": "complete",
+      "mode": "free",
+      "minutes": 15,
+      "clipSeconds": 29.998967,
+      "p95AbsMs": 773.7,
+      "maxAbsMs": 815.8,
+      "meanAbsMs": 407.7,
+      "driftGrowthMsPerMin": [
+        44.7,
+        31.9
+      ],
+      "dropped": {
+        "main": "0/26905",
+        "stage": "0/26928",
+        "graphics": "0/26920"
+      },
+      "seeks": 0,
+      "verdict": "INFO"
+    },
+    "syncCorrected": {
+      "status": "complete",
+      "mode": "corrected",
+      "minutes": 15,
+      "clipSeconds": 29.998967,
+      "p95AbsMs": 46,
+      "maxAbsMs": 81.8,
+      "meanAbsMs": 19.9,
+      "driftGrowthMsPerMin": [
+        -9.1,
+        -0.5
+      ],
+      "dropped": {
+        "main": "0/26905",
+        "graphics": "0/26905",
+        "stage": "0/26904"
+      },
+      "seeks": 0,
+      "verdict": "PASS"
+    },
+    "soak1080": {
+      "status": "complete",
+      "verdict": "PASS",
+      "minutes": 120.1,
+      "samples": 720,
+      "stalls": 0,
+      "droppedPctWorstWindow": 0,
+      "memSlopeMBperHour": {
+        "renderers": 9.5,
+        "gpu": 0.5,
+        "total": 10
+      },
+      "memStartEndMB": {
+        "renderers": [
+          268,
+          316
+        ],
+        "gpu": [
+          75,
+          77
+        ]
+      },
+      "cpuMeanPctOfOneCore": 1.7,
+      "cpuMaxPct": 1.9,
+      "videoErrors": 0,
+      "perCheck": {
+        "stalls": "PASS",
+        "dropped": "PASS",
+        "memory": "PASS",
+        "cpu": "PASS",
+        "errors": "PASS",
+        "completed": "PASS"
+      }
+    },
+    "soak4k": {
+      "status": "complete",
+      "verdict": "WARN",
+      "minutes": 20,
+      "samples": 120,
+      "stalls": 0,
+      "droppedPctWorstWindow": 0,
+      "memSlopeMBperHour": {
+        "renderers": 21.5,
+        "gpu": 0.3,
+        "total": 21.8
+      },
+      "memStartEndMB": {
+        "renderers": [
+          126,
+          132
+        ],
+        "gpu": [
+          71,
+          72
+        ]
+      },
+      "cpuMeanPctOfOneCore": 0.8,
+      "cpuMaxPct": 0.9,
+      "videoErrors": 0,
+      "perCheck": {
+        "stalls": "PASS",
+        "dropped": "PASS",
+        "memory": "WARN",
+        "cpu": "PASS",
+        "errors": "PASS",
+        "completed": "PASS"
+      }
+    }
+  }
+}

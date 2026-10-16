@@ -1,0 +1,57 @@
+{
+ "mode": "free",
+ "seconds": 900,
+ "clipSeconds": 29.998967,
+ "hidden": false,
+ "platform": "darwin",
+ "electron": "33.4.11",
+ "stats": {
+  "main": {
+   "dropped": 0,
+   "total": 26905,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  },
+  "stage": {
+   "dropped": 0,
+   "total": 26928,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  },
+  "graphics": {
+   "dropped": 0,
+   "total": 26920,
+   "corrections": 0,
+   "seeks": 0,
+   "rate": 1
+  }
+ },
+ "drift": {
+  "stage": {
+   "samples": 1774,
+   "meanAbsMs": 407.7,
+   "p95AbsMs": 773.7,
+   "maxAbsMs": 815.8,
+   "firstMs": 33.5
+  },
+  "graphics": {
+   "samples": 1776,
+   "meanAbsMs": 276.2,
+   "p95AbsMs": 500.1,
+   "maxAbsMs": 527.7,
+   "firstMs": 23.5
+  }
+ },
+ "trend": {
+  "stage": {
+   "startMs": 35.9,
+   "endMs": 706.3
+  },
+  "graphics": {
+   "startMs": 30.3,
+   "endMs": 508.5
+  }
+ }
+}

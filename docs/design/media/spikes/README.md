@@ -8,9 +8,9 @@ machine: every "safe" below is a best case until the church PC repeats it.**
 
 | # | Spike | Verdict | Final? | One line |
 |---|---|---|---|---|
-| 1 | [Long-run stability](1-long-run-stability.md) | **PENDING** | runs tonight | 2 h 1080p + 20 min 4K; thresholds fixed in advance |
+| 1 | [Long-run stability](1-long-run-stability.md) | **1080p: safe** (2 h, 0 stalls, 0 dropped, memory flat after warm-up). **4K: safe with limits** (20 min clean; memory WARN on a run too short to judge) | run 2026-10-16, under load, M4 Max | Best-case hardware; repeat a longer 4K soak and a 1080p one on the church PC |
 | 2 | [Codecs / compatibility](2-codec-compatibility.md) | **Safe** on Apple-silicon Mac; **unknown** on Windows | Mac final; Windows by hand | H.264/HEVC/VP9/AV1/MKV/MOV play; **ProRes does not**; a truncated file passes a play test |
-| 3 | [Multi-screen sync](3-multi-screen-sync.md) | **Free-running: measured — drifts ~0.9 s / 15 min** when one window plays sound. **Corrected: PENDING** | runs tonight | Live must be authoritative; not optional |
+| 3 | [Multi-screen sync](3-multi-screen-sync.md) | **Safe.** Free-running drifts 0.5–0.8 s / 15 min when one window plays sound; **corrected: p95 46 ms, max 82 ms, 0 jumps** | run 2026-10-16, under load, M4 Max | Live must be authoritative; the correction works |
 | 4 | [Serving to OBS](4-serving-to-obs.md) | **Safe with limits** | Chromium final; **OBS needs a 5-min test** | Range serving works; OBS's embedded browser untested |
 | 5 | [Live inputs](5-live-inputs.md) | **Safe with limits — needs hardware** | pending camera test | Enumeration/permissions work; no card measured |
 | 6 | [Conversion & licensing](6-conversion-licensing.md) | **Safe with limits** | **final** | No FFmpeg in phase 1; Chromium can transcode at 1× real time; counsel questions listed |
