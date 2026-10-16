@@ -61,6 +61,8 @@ A picture you **linked** (*Don't copy*) lives on its drive. If the drive isn't p
   nothing is copied or added.
 - To stop depending on the drive, open a picture and choose **Copy into library** (while the drive is plugged in).
 
+![A banner says which drive isn't connected; the pictures on it are marked.](../images/media-drive-offline.png)
+
 **Check** ("Is tonight ready?") lists these pictures too, with the same **Find the folder…** button, so you find out on Saturday.
 
 ## Keyboard
