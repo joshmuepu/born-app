@@ -41,7 +41,7 @@ Latency numbers are from polling OBS source screenshots (about 40 ms resolution)
 | Idle connection | no keep-alive | BORN sends a `ping` event every **15 s** (measured 48 s → 03 s → 18 s) |
 | Port in use | — | BORN logs "port already in use — remote disabled" and keeps running; the Screens panel says "Remote unavailable right now" |
 | BORN started after OBS | — | covered by the restart runs (the page reconnects when BORN appears; HTTP 404 while starting is retried) |
-| OBS restart while BORN runs | — | the OBS relaunches in this run all reloaded the page and reconnected (the collection import test) |
+| OBS quit and relaunched while BORN keeps running | — | OBS back and websocket up in ~1 s, the live verse on the overlay **1.5 s** after relaunch, no manual refresh |
 | Network interface change, sleep/wake | not tested | covered only by the silent-death proxy test; **owner list** |
 
 Scene-switch reveal time (BORN verse live, OBS scene switched): **shutdown OFF: 19–47 ms** either with or without "refresh when active"; **shutdown ON: 0.6–0.9 s**. Chosen: shutdown OFF, refresh OFF.
@@ -77,7 +77,7 @@ Scene-switch reveal time (BORN verse live, OBS scene switched): **shutdown OFF: 
 6. **Right-to-left text, long words, long verses** (above).
 7. **Unreadable over bright video** (above).
 
-Tests: **1291 → 1305 passed** (14 new, in `webRemoteGraphics.test.ts`), 1 skipped, typecheck and production build clean. Automated tests cannot see OBS; the matrix above is the live proof.
+Tests: **1291 → 1306 passed** (15 new, in `webRemoteGraphics.test.ts`), 1 skipped, typecheck and production build clean. Automated tests cannot see OBS; the matrix above is the live proof.
 
 ## What a v1 check found
 v1 (v1.13.1) has **no Graphics output at all**, so none of these bugs exist there. No v1 hand-off note is needed.
