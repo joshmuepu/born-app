@@ -16,6 +16,9 @@ Press **Check** at the top of the queue (or **Ctrl/⌘+K → Check that tonight'
 | Background pictures, free disk space, Graphics outputs that won't draw pictures | |
 | Items made by a newer BORN, or damaged ones | They will be skipped |
 
+| A linked picture's **drive is plugged in** | An unplugged USB stick is found tonight (*Drive not connected*), with a **Find the folder…** button |
+| A file that was **cut short** (an unfinished copy or download) | Browsers will happily show half of an animated GIF; BORN doesn't |
+
 Each line says **pass**, **look at this**, or **fix this**, with the one thing to do — **Find the file…** for a linked picture, **Remove
 from queue** otherwise. The check changes nothing by itself.
 
@@ -23,13 +26,17 @@ from queue** otherwise. The check changes nothing by itself.
 
 ## Sharing a service that has pictures
 
-When you **Save** a service, each picture is written by what it *is* (a fingerprint of its contents), with its name and size —
-the pictures themselves are not inside the file. When someone **opens** or **imports** it on another computer:
+There are two ways, and you can use either.
+
+**1. Plain Save (`.born`)** — small, the everyday file. When you **Save** a service, each picture is written by what it *is* (a fingerprint of its
+contents), with its name and size — the pictures themselves are not inside the file. When someone **opens** or **imports** it on another computer:
 
 1. Pictures that computer already has are matched silently, whatever they are called.
 2. If some are missing, BORN shows **one** review: **Find the pictures…** (choose a folder or USB stick — BORN finds the right files by
    contents and adds only those), **Open anyway** (they show as missing; the check lists them), or **Cancel — change nothing**.
 3. Cancel really changes nothing.
 
-An older BORN opens such a file safely: pictures appear as readable rows saying they were made by a newer version.
-Bundling the pictures inside the file arrives in a later version.
+**2. Service pack (`.bornpack`)** — the service **and** its pictures in one file, for a USB stick or email. See
+[Service packs](media-service-pack.md).
+
+An older BORN opens a plain `.born` safely: pictures appear as readable rows saying they were made by a newer version.
