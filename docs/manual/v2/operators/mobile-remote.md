@@ -27,6 +27,20 @@ walking the room while still controlling the queue.
 and the connection indicator (top of the phone screen) shows connected, not
 "Connecting…".
 
+## If this computer is on more than one network
+
+Some computers are on two networks at once — for example a network cable **and** the church WiFi. A phone can only reach Born Again through the network it is
+actually on, so Born Again lists every network it found and lets you choose which one the QR code is for.
+
+- Each row shows the network's name (for WiFi, the WiFi's own name), its address, and a copy button. The highlighted row is the one the QR code and address follow.
+- **To switch**, click another row. The QR code changes straight away; scan it with a phone that is on *that* network.
+- The line under the list says why Born Again picked the one it did — for example *"Showing Wi-Fi because phones usually connect over Wi-Fi."* It prefers a WiFi
+  network, then a network cable. Once a phone has connected, Born Again remembers which network it came through and shows that one first next time.
+- Networks phones can't use — VPNs, virtual adapters (Hyper-V, WSL, Docker, VirtualBox) and unconnected ports — are hidden. Click **Show all** to see them.
+
+Born Again answers on **all** of this computer's networks at once, so a phone on any of them can connect; the selector only decides which address the QR code points at.
+A computer with one network shows that network's name above its address, and no list.
+
 ### If a phone can't connect
 
 Click **Remote connection check** at the bottom of the Remote popover. It shows
@@ -58,3 +72,12 @@ shows its thumbnail under **Now**. **Next / Prev** step a slideshow and **Blank*
 sound controls.
 
 ![A queue with a picture and a slideshow on a phone.](../images/media-remote-iphone.png)
+
+The check tests **every** address of this computer and says which ones answer, shows whether any phone has connected and from which network, and gives a plain hint when a phone
+is probably on the wrong network (*"Your phone must be on the same network as the address shown. If it cannot connect, try the other address."* — click the other network in the list and scan again).
+
+**On Windows**, it also shows two PowerShell commands you can copy. Open PowerShell as Administrator and run the first, `Get-NetConnectionProfile`, to see whether each network is
+**Private** or **Public**. The second, `New-NetFirewallRule …`, lets the remote through Windows Firewall on its port for Private networks. If your WiFi shows as **Public**, either
+set it to Private in Windows settings, or change `-Profile Private` to `-Profile Any`. Born Again never changes firewall rules by itself.
+
+"Answers" only proves the remote works *from this computer* — a firewall can still block a phone. If every address answers but a phone still can't connect, it is almost always the firewall or the wrong network.

@@ -80,16 +80,20 @@ v2's code from v1's), not an individual port. Confirmed: `595a728`
 | `Esc` also cancels a take still in flight | **intentionally different** | v1's Esc is unchanged |
 | Optional two-line v1 hotfix so v1 never crashes on an unknown queue item kind | **not started** (owner's decision) | Not required for v2 files, which never write such kinds |
 
-## v1.13.1 (Remote network picker) — found 2026-10-16, NOT merged, nothing ported yet
+## v1.13.1 (Remote network picker) — ported by intent into `v2-media-1b` (2026-10-16); v1 side is RELEASED (v1.13.1 on `origin/main`)
 
-`origin/main` has six commits `v2-channels` does not (`8e13590`, `a75a9fb`, `da15388`, `e468018`, `1c39202`, `19d4c37` = "Release: v1.13.1"). Nothing was merged, as the standing rule says; the owner decides.
+Ported by cherry-picking the three code commits and resolving them into v2's model (Born Again `RemotePanel`, automation section, `Born Again` wording, v2's `startWebRemote` signature); nothing merged from v1, v1 untouched. The branch `v2-media-1b` starts with these as separate commits so they can be cherry-picked onto `v2-channels`.
 
 | v1 ID / commit | What it changed | Type | v2 status | Notes |
 |---|---|---|---|---|
-| `8e13590` | Phone remote: the QR code and address could point at only one of two connected networks (e.g. cable *and* WiFi), sometimes the one the phone couldn't reach. Networks are now ranked by kind (Wi-Fi first), the server binds `0.0.0.0` explicitly, mDNS is announced per adapter, and diagnostics are richer | **fix** | **not started** | v2 shares the remote code, so this almost certainly applies. Touches `index.ts`, `mdns.ts`, new `networkMeta.ts`/`networks.ts`, `settings.ts`, `webRemote.ts`, preload, tests |
-| `a75a9fb`, `e468018` | Remote panel: network selector with a reason line, "Show all", per-address connection check; shows the network name even with one network | feature (UI) | **not started** | The UI is redesigned in v2: port the intent into the shared components, not the diff |
-| `da15388` | v1 manual pages for the above | docs | **not started** | follows the feature |
-| `19d4c37` / `1c39202` | Release commit and merge commit for v1.13.1 (CHANGELOG, version bump) | release | **do not port** | v2 keeps its own `2.0.0-dev.N` identity |
+| `8e13590` | Rank networks by kind (Wi-Fi first), bind `0.0.0.0` explicitly, mDNS per adapter, richer diagnostics backend (`networks.ts`, `networkMeta.ts`) | **fix** | **ported** | v2 keeps its own port (`BORN_REMOTE_PORT`/4316) and mDNS name (`BORN_MDNS_NAME`, default `born-remote`); webRemote tests adapted to v2's `startWebRemote(…, automation, …)` signature |
+| `a75a9fb`, `e468018` | Remote panel: network selector with reason line, "Show all", per-address connection check; network name shown with one network | feature (UI) | **ported** | Re-fitted into v2's panel (popover row + automation API section kept); verified in the real app |
+| `da15388` | v1 manual pages | docs | **ported** (text) | `docs/manual/v2/operators/mobile-remote.md`, `troubleshooting/service-day.md`; no multi-network screenshot (needs two networks) |
+| `19d4c37` / `1c39202` | Release and merge commits for v1.13.1 | release | **do not port** | v2 keeps `2.0.0-dev.N` |
+
+## v1 unknown-queue-item safety — v1 side NOT built
+
+There is no v1 branch for it. v2 already has the behaviour (Media 1a Step 1). Hand-off note for v1: `docs/notes/v1-needs-unknown-item-safety.md` (the optional two-line hotfix). v1 not touched.
 
 ## v2-only: Media follow-up (`v2-media-1a-followup`) — `docs/qa/v2-media-1a-followup-report.md`
 
