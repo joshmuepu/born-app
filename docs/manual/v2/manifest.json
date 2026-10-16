@@ -113,6 +113,11 @@
           "file": "setup/graphics-obs.md"
         },
         {
+          "id": "obs-live",
+          "title": "Using BORN with OBS (livestream)",
+          "file": "setup/obs-live.md"
+        },
+        {
           "id": "profiles",
           "title": "Presentation profiles",
           "file": "setup/profiles.md"
