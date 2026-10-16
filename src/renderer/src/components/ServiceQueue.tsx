@@ -55,6 +55,9 @@ interface Props {
    *  one or more separately-saved service files into the current queue. */
   onImportService: () => void
   onSaveService: () => void
+  /** Save the queue and its pictures as one .bornpack / open one. Optional: absent = no buttons. */
+  onSavePack?: () => void
+  onOpenPack?: () => void
   recents: RecentService[]
   onOpenRecent: (path: string) => void
   /** Set when Open/Import couldn't read or parse a file — a damaged or
@@ -145,6 +148,8 @@ export default function ServiceQueue({
   onOpenService,
   onImportService,
   onSaveService,
+  onSavePack,
+  onOpenPack,
   recents,
   onOpenRecent,
   openError,
@@ -492,6 +497,8 @@ export default function ServiceQueue({
           <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
           <button className="btn-quiet btn-sm" onClick={onImportService} title="Combine one or more saved service files into the current queue">Import</button>
           <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
+          {onSavePack && <button className="btn-quiet btn-sm" onClick={onSavePack} title="Save this service and its pictures together in one file you can carry to another computer" disabled={queue.length === 0 || !queue.some((i) => i.kind === 'media')}>Save + pictures</button>}
+          {onOpenPack && <button className="btn-quiet btn-sm" onClick={onOpenPack} title="Open a service pack (a service with its pictures)">Open pack</button>}
           {onPreflight && <button className="btn-quiet btn-sm" onClick={onPreflight} title="Check that everything in this service is ready to show" disabled={queue.length === 0}>Check</button>}
         </div>
       </div>

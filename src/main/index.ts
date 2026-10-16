@@ -16,6 +16,7 @@ import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
+import { registerPackIpc } from './packService'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
 import {
   getBibleTranslations,
@@ -2856,6 +2857,7 @@ app.whenReady().then(async () => {
   getMediaLibrary()
   setMediaResolver(resolveMediaForHttp)
   registerMediaIpc(() => mainWindow)
+  registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
   createMainWindow()
 
   // Global, not per-window — works even if an output window's own

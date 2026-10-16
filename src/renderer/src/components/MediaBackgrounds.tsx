@@ -14,6 +14,20 @@ export interface BgTarget {
   inheritsFrom?: string
 }
 
+/** A very large library would put thousands of <option>s in every picker (measured: 10,000 options → ~0.2 s of frozen window on
+ *  a slow computer). Above this many, the pickers list the newest pictures plus the one in use; any other picture is set from
+ *  its own panel ("Use as a background"). Small libraries see everything, as before. */
+export const MAX_PICKER_OPTIONS = 300
+export function pickable(items: MediaRecord[], selectedId?: string | null): MediaRecord[] {
+  if (items.length <= MAX_PICKER_OPTIONS) return items
+  const head = items.slice(0, MAX_PICKER_OPTIONS)
+  if (selectedId && !head.some((i) => i.id === selectedId)) {
+    const cur = items.find((i) => i.id === selectedId)
+    if (cur) head.push(cur)
+  }
+  return head
+}
+
 /** The places a still background can be set: the congregation screen, each Graphics output, and
  *  each channel's default (which its screens and a following channel use unless they say otherwise). */
 export function useBackgroundTargets(): { targets: BgTarget[]; settings: BackgroundSettings; reload: () => void } {
@@ -73,6 +87,7 @@ export default function MediaBackgrounds({ items }: { items: MediaRecord[] }): J
         <span><Layers size={13} /> Layers, bottom to top:</span>
         <b>Background</b> › <b>Content</b> (text or picture) › <b>Overlay</b> (later) › <b>Alert</b>
       </div>
+      {items.length > MAX_PICKER_OPTIONS && <p className="media-bg-sub">Your library is large, so each list shows the {MAX_PICKER_OPTIONS} newest pictures. To use any other picture, select it in the library and choose “Use as a background”.</p>}
       {targets.map((t) => {
         const cur = get(t)
         const rec = cur?.mediaId ? items.find((i) => i.id === cur.mediaId) : null
@@ -95,7 +110,7 @@ export default function MediaBackgrounds({ items }: { items: MediaRecord[] }): J
                 >
                   <option value="">{t.scope === 'channel' ? '(no default)' : '(use the channel default)'}</option>
                   <option value="__none">No background here</option>
-                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  {pickable(items, cur?.mediaId).map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
                 <label className="media-bg-dim">
                   Dim {cur?.dim ?? DEFAULT_BACKGROUND_DIM}%

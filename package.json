@@ -31,9 +31,17 @@
     "files": [
       "out/**/*",
       "node_modules/**/*",
+      "!node_modules/libheif-js/libheif/**",
+      "!node_modules/libheif-js/libheif-wasm/libheif.js",
+      "!node_modules/libheif-js/libheif-wasm/libheif.wasm",
+      "!node_modules/libheif-js/libheif-wasm/libheif-bundle.mjs",
+      "!node_modules/libheif-js/libheif-wasm/libheif.d.ts",
       "package.json"
     ],
     "asar": true,
+    "asarUnpack": [
+      "node_modules/libheif-js/**"
+    ],
     "extraResources": [
       {
         "from": "resources/",
@@ -86,6 +94,9 @@
     "better-sqlite3": "^11.5.0",
     "bonjour-service": "^1.4.4",
     "fast-xml-parser": "^5.11.1",
+    "heic-decode": "2.1.0",
+    "jpeg-js": "0.4.4",
+    "libheif-js": "1.23.5",
     "lucide-react": "^1.47.0",
     "mammoth": "^1.12.3",
     "markdown-it": "^15.0.2",
@@ -93,6 +104,7 @@
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "utif2": "4.1.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {

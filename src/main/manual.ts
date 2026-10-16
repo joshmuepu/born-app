@@ -8,7 +8,7 @@
  */
 import { app } from 'electron'
 import { readFileSync, existsSync } from 'fs'
-import { join, normalize } from 'path'
+import { isAbsolute, join, normalize, relative } from 'path'
 
 export interface ManualPage {
   id: string
@@ -61,7 +61,9 @@ function resolveInsideManual(relPath: string): string | null {
   const base = manualBaseDir()
   if (!base) return null
   const resolved = normalize(join(base, relPath))
-  if (!resolved.startsWith(normalize(base))) return null
+  const rel = relative(normalize(base), resolved)
+  // relative() understands drive letters and case-insensitive Windows paths; a sibling folder like "v2-x" is not inside "v2".
+  if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return null
   return resolved
 }
 

@@ -25,6 +25,8 @@ import SongsPanel from './components/SongsPanel'
 import MediaPanel from './components/MediaPanel'
 import Preflight from './components/Preflight'
 import MediaImportReview, { type ReviewRequest } from './components/MediaImportReview'
+import { PackExportDialog, PackImportDialog } from './components/PackDialogs'
+import type { PackReview, PackImportSummary } from '../../shared/servicePack'
 import HelpViewer from './components/HelpViewer'
 import type {
   Quote,
@@ -528,7 +530,7 @@ export default function App() {
         const mid = item.slides[slide]?.media?.mediaId
         const r = mid ? await window.electronAPI.mediaPrepareDisplay(mid) : { ok: false, status: 'missing' }
         if (!r.ok) {
-          const why = r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
+          const why = r.status === 'offline' ? 'its drive is not connected' : r.status === 'unreadable' ? "BORN can't read the file" : r.status === 'changed' ? 'the file was changed' : 'the file is missing'
           pushToast({ message: `Can't show “${item.name}” — ${why}. The screen was not changed.`, timeoutMs: 9000 })
           return
         }
@@ -1774,6 +1776,14 @@ export default function App() {
     if (ok) refreshRecents()
   }, [serviceQueue, refreshRecents, withMediaRefs])
 
+  // Service pack: the queue and its pictures in one .bornpack (design: docs/design/media/07-service-pack.md)
+  const [packExport, setPackExport] = useState<unknown[] | null>(null)
+  const [packReview, setPackReview] = useState<PackReview | null>(null)
+  const handleSavePack = useCallback(async () => {
+    const withRefs = await withMediaRefs(serviceQueue)
+    setPackExport(serializeQueue(withRefs) as unknown[])
+  }, [serviceQueue, withMediaRefs])
+
   const loadServiceItems = useCallback(
     (loaded: unknown[]) => {
       const snap = snapshotService()
@@ -1833,6 +1843,49 @@ export default function App() {
       showOpenError(e instanceof Error ? e.message : "Couldn't open that service file.")
     }
   }, [loadServiceItems, refreshRecents, showOpenError, prepareMediaForQueue])
+
+  const handleOpenPack = useCallback(async () => {
+    try {
+      const r = await window.electronAPI.packPickAndInspect()
+      if (r.ok) setPackReview(r.review)
+      else if (!r.canceled && r.code !== 'cancelled') showOpenError(r.message)
+    } catch (e) {
+      showOpenError(e instanceof Error ? e.message : "Couldn't open that service pack.")
+    }
+  }, [showOpenError])
+
+  // Dropping a .bornpack anywhere on the window starts the same review as "Open pack".
+  useEffect(() => {
+    const over = (e: DragEvent): void => { if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) e.preventDefault() }
+    const drop = (e: DragEvent): void => {
+      const f = Array.from(e.dataTransfer?.files ?? []).find((x) => /\.bornpack$/i.test(x.name))
+      if (!f) return
+      e.preventDefault()
+      e.stopPropagation() // the Media panel's own drop handler must not see it
+      const path = window.electronAPI.mediaPathsForFiles([f])[0]
+      if (!path) return
+      void window.electronAPI.packInspectPath(path).then((r) => { if (r.ok) setPackReview(r.review); else showOpenError(r.message) })
+    }
+    window.addEventListener('dragover', over, true)
+    window.addEventListener('drop', drop, true)
+    return () => { window.removeEventListener('dragover', over, true); window.removeEventListener('drop', drop, true) }
+  }, [showOpenError])
+
+  /** The pack's pictures are now in the library: match the queue to them exactly like any shared service, then open it. */
+  const handlePackOpened = useCallback(
+    async (summary: PackImportSummary) => {
+      setPackReview(null)
+      try {
+        const prepared = await prepareMediaForQueue(migrateQueue(summary.queue), { silent: true })
+        if (prepared) loadServiceItems(serializeQueue(prepared))
+        const bits = [`${summary.added} picture${summary.added === 1 ? '' : 's'} added`, summary.already ? `${summary.already} already here` : '', summary.damaged ? `${summary.damaged} damaged (shown as missing)` : '', summary.backgrounds ? `${summary.backgrounds} background${summary.backgrounds === 1 ? '' : 's'} came with it — set from Media ▸ Backgrounds` : ''].filter(Boolean)
+        pushToast({ message: `Service pack opened. ${bits.join(' · ')}.` })
+      } catch (e) {
+        showOpenError(e instanceof Error ? e.message : "Couldn't open that service pack.")
+      }
+    },
+    [prepareMediaForQueue, loadServiceItems, pushToast, showOpenError]
+  )
 
   const handleOpenRecent = useCallback(
     async (path: string) => {
@@ -2477,6 +2530,8 @@ export default function App() {
             onOpenService={handleOpenService}
             onImportService={handleImportService}
             onSaveService={handleSaveService}
+            onSavePack={handleSavePack}
+            onOpenPack={handleOpenPack}
             recents={recents}
             onOpenRecent={handleOpenRecent}
             openError={openError}
@@ -2654,6 +2709,8 @@ export default function App() {
         })()}
 
       <MediaImportReview request={mediaReview} />
+      {packExport && <PackExportDialog queue={packExport} title="Sunday service" onClose={() => setPackExport(null)} onSaved={(_p, n) => { setPackExport(null); pushToast({ message: `Saved a service pack with ${n} picture${n === 1 ? '' : 's'}.` }) }} />}
+      {packReview && <PackImportDialog review={packReview} onClose={() => setPackReview(null)} onOpened={(sum) => void handlePackOpened(sum)} />}
 
       <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} />
 

@@ -8,9 +8,8 @@
  * JPEG: ~60 ms and no visible memory spike (spike notes in
  * docs/design/media/spikes/7-real-world-files.md and the Step 2 report).
  *
- * HEIC/TIFF are not decodable by Chromium; on macOS the OS's own `sips` is
- * used to make a JPEG. Elsewhere they are reported as unsupported with a clear
- * message — nothing is bundled.
+ * HEIC/TIFF are not decodable by Chromium; they are converted to JPEG by a small
+ * bundled decoder in a worker thread (imageConvert.ts), the same on every OS.
  */
 import { BrowserWindow } from 'electron'
 import { execFile } from 'child_process'
@@ -19,6 +18,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { log } from './logger'
+import { convertInWorker } from './heicConvert'
 import type { DecodeResult, MediaDecoder } from './mediaLibrary'
 
 let win: BrowserWindow | null = null
@@ -126,11 +126,22 @@ export const electronMediaDecoder: MediaDecoder = {
     return job
   },
 
+  /**
+   * One conversion path on every OS: libheif/UTIF in a worker thread (see imageConvert.ts). On macOS only, if that
+   * cannot read a HEIC file, the system's own `sips` gets a second try — the OS knows more HEIC variants than libheif
+   * (some HDR and depth files), at no cost to anyone else.
+   */
   async convertToJpeg(path, outPath) {
-    if (process.platform !== 'darwin') return false
-    return new Promise<boolean>((resolve) => {
-      execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', path, '--out', outPath], { timeout: 60_000 }, (err) => resolve(!err))
-    })
+    const r = await convertInWorker(path, outPath)
+    if (r.ok) return { ok: true, notes: r.notes }
+    if (process.platform === 'darwin' && (r.reason === 'unsupported' || r.reason === 'corrupt')) {
+      const viaOs = await new Promise<boolean>((resolve) => {
+        execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', path, '--out', outPath], { timeout: 60_000 }, (err) => resolve(!err))
+      })
+      if (viaOs) return { ok: true, notes: [] }
+    }
+    log.warn(`mediaDecoder: conversion failed (${r.reason}) ${r.detail ?? ''}`)
+    return { ok: false, reason: r.reason }
   }
 }
 

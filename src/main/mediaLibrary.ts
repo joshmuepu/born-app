@@ -21,6 +21,7 @@ import {
   copyFileSync,
   createReadStream,
   existsSync,
+  fstatSync,
   mkdirSync,
   openSync,
   readSync,
@@ -33,8 +34,9 @@ import {
   writeFileSync
 } from 'fs'
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'path'
+import { driveRootOf, longPath, renameRetry, unlinkRetry } from './winFs'
 import { migrateMediaDb } from './mediaSchema'
-import { orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
+import { looksComplete, orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
 import {
   IMAGE_EXTENSIONS,
   MEDIA_LIMITS,
@@ -64,7 +66,7 @@ export interface MediaDecoder {
   /** Fully decode the picture (this is the validity test), and make one thumbnail per width. */
   decode(path: string, thumbWidths: readonly number[], opts?: { needNatural?: boolean }): Promise<DecodeResult>
   /** Convert a picture Chromium cannot show (HEIC, TIFF) to a JPEG. Optional — absent = unsupported. */
-  convertToJpeg?(path: string, outPath: string): Promise<boolean>
+  convertToJpeg?(path: string, outPath: string): Promise<boolean | { ok: true; notes?: string[] } | { ok: false; reason: 'corrupt' | 'too-large' | 'unsupported' | 'io' | 'memory' }>
 }
 
 export interface ImportOptions {
@@ -184,11 +186,12 @@ export class MediaLibrary {
     let src = srcPath
     if (!isAbsolute(src) || src.includes('\0')) return failure('not-found', srcPath)
     src = resolve(src)
+    const fsSrc = longPath(src) // a >260-character Windows path needs the extended (\\?\) form for file APIs
 
     // 1. what is it?
     let st
     try {
-      st = statSync(src)
+      st = statSync(fsSrc)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'not-found', src)
@@ -199,7 +202,7 @@ export class MediaLibrary {
 
     let head: Buffer
     try {
-      head = readHead(src, 64 * 1024)
+      head = readHead(fsSrc, 64 * 1024)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
@@ -216,10 +219,12 @@ export class MediaLibrary {
       return failure(looksLikePicture && fmt === 'unknown' ? 'corrupt' : 'unsupported', src)
     }
 
+    if (!needsConversion && !fileLooksComplete(fsSrc)) return failure('truncated', src)
+
     // 2. identity (streamed, so a 2 GB file costs no memory)
     let hash: string
     try {
-      hash = await hashFile(src)
+      hash = await hashFile(fsSrc)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
@@ -246,20 +251,41 @@ export class MediaLibrary {
     }
 
     // 4. HEIC / TIFF → JPEG, only where the OS can do it
-    let storeFrom = src
+    let storeFrom = fsSrc
     let convertedFrom: string | null = null
     let tmpConverted: string | null = null
     let ext = EXT_FOR[fmt] ?? 'jpg'
+    if (!needsConversion && fsSrc !== src) {
+      // Too-long Windows path: the decoder loads by file URL, which cannot carry the extended form, so work from a short-path copy.
+      tmpConverted = join(this.dir, `.convert-${randomBytes(4).toString('hex')}.${ext}`)
+      try {
+        copyFileSync(fsSrc, tmpConverted)
+      } catch (e) {
+        try { unlinkSync(tmpConverted) } catch { /* nothing to clean */ }
+        const code = (e as NodeJS.ErrnoException).code
+        return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
+      }
+      storeFrom = tmpConverted
+    }
     if (needsConversion) {
       if (!this.decoder.convertToJpeg) return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
       tmpConverted = join(this.dir, `.convert-${randomBytes(4).toString('hex')}.jpg`)
-      let ok = false
+      let res: Awaited<ReturnType<NonNullable<MediaDecoder['convertToJpeg']>>> = false
       try {
-        ok = await this.decoder.convertToJpeg(src, tmpConverted)
+        res = await this.decoder.convertToJpeg(fsSrc, tmpConverted)
       } catch {
-        ok = false
+        res = false
       }
-      if (!ok || !existsSync(tmpConverted)) return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
+      const converted = res === true || (typeof res === 'object' && res.ok)
+      if (typeof res === 'object' && res.ok && res.notes) warnings.push(...res.notes)
+      if (!converted || !existsSync(tmpConverted)) {
+        const why = typeof res === 'object' && !res.ok ? res.reason : 'unsupported'
+        try { unlinkSync(tmpConverted) } catch { /* nothing was written */ }
+        if (why === 'corrupt') return failure('corrupt', src)
+        if (why === 'too-large') return failure('too-large-pixels', src, 'This picture is enormous (over 64 megapixels) and cannot be converted safely. Resize it and add it again.')
+        if (why === 'memory') return failure('io', src, 'This picture is too big to open on this computer.')
+        return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
+      }
       storeFrom = tmpConverted
       convertedFrom = fmt === 'heic' ? 'heic' : 'tiff'
       ext = 'jpg'
@@ -280,7 +306,9 @@ export class MediaLibrary {
       if (finalW * finalH > MEDIA_LIMITS.maxPixels) return failure('too-large-pixels', src)
 
       // 6. keep it
-      const storage: MediaStorage = opts.linkInPlace && !needsConversion ? 'linked' : 'managed'
+      const longSource = fsSrc !== src // a >260-character Windows path is copied in rather than linked (links to such paths are unreliable)
+      const storage: MediaStorage = opts.linkInPlace && !needsConversion && !longSource ? 'linked' : 'managed'
+      if (opts.linkInPlace && longSource) warnings.push('This file has a very long path, so it was copied into the library instead of linked.')
       let bytes = statSync(storeFrom).size
       let linkMtime: number | null = null
       if (storage === 'managed') {
@@ -293,7 +321,7 @@ export class MediaLibrary {
           try {
             copyFileSync(storeFrom, tmp)
             if (statSync(tmp).size !== bytes) throw new Error('copy size mismatch')
-            renameSync(tmp, dest)
+            renameRetry(tmp, dest)
           } catch (e) {
             try { unlinkSync(tmp) } catch { /* nothing to clean */ }
             const code = (e as NodeJS.ErrnoException).code
@@ -301,6 +329,11 @@ export class MediaLibrary {
           }
         }
         bytes = statSync(dest).size
+        if (convertedFrom) {
+          // Keep the original next to the converted copy, so a better conversion can be made later. Best effort.
+          const keep = this.originalPath(hash, convertedFrom === 'heic' ? 'heic' : 'tiff')
+          try { if (!existsSync(keep) && this.checkSpace(st.size * 2).ok) copyFileSync(fsSrc, keep) } catch { /* the converted picture is what matters */ }
+        }
       } else {
         linkMtime = Math.round(st.mtimeMs)
         if (st.size >= MEDIA_LIMITS.suggestLinkBytes) warnings.push('Linked in place: if this file is moved or its drive is unplugged, the picture will show as missing.')
@@ -380,6 +413,110 @@ export class MediaLibrary {
     }
     onProgress?.({ done: files.length, total: files.length, current: '' })
     return { results, skipped }
+  }
+
+  // ── service packs ──────────────────────────────────────────────────────────
+
+  /** A fresh hidden folder inside the library's own drive for unpacking (so moving a file into place is a rename). */
+  newStagingDir(): string {
+    const d = join(this.dir, `.pack-${randomBytes(6).toString('hex')}`)
+    mkdirSync(d, { recursive: true })
+    return d
+  }
+
+  /** Does this library already hold the picture with this identity (alive and with its bytes on disk)? */
+  hasPicture(libraryHash: string): boolean {
+    const r = this.rowByHash(libraryHash)
+    if (!r) return false
+    const rec = this.rowToRecord(r)
+    return this.checkRecord(rec, r.link_mtime_ms) === 'ok'
+  }
+
+  /** What the pack writer needs for one picture: the record and, if it can be read right now, its path. */
+  packSource(id: string): { rec: MediaRecord; path: string | null; status: MediaStatus } | null {
+    const rec = this.get(id)
+    if (!rec) return null
+    const status = this.check(id)
+    return { rec, path: status === 'ok' ? this.resolvePath(rec) : null, status }
+  }
+
+  /**
+   * Add pictures that came out of a service pack, ALL OR NOTHING. Each staged file is checked to be a whole, supported
+   * picture (the same test as any import), moved into the library and recorded in one database transaction. If anything
+   * fails or is cancelled, every file this call created is removed and the library is exactly as before.
+   */
+  async importPackFiles(
+    entries: Array<{ stagedPath: string; libraryHash: string; ext: string; name: string; origFilename: string; bytes: number; convertedFrom: string | null; folderId?: string | null }>,
+    opts: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {}
+  ): Promise<{ added: MediaRecord[]; already: number }> {
+    const created: string[] = []
+    const rows: Array<{ id: string; e: (typeof entries)[number]; width: number; height: number; animated: boolean; alpha: boolean }> = []
+    let already = 0
+    const todo = entries.filter((e) => {
+      if (this.hasPicture(e.libraryHash)) { already++; return false }
+      return true
+    })
+    const need = todo.reduce((n, e) => n + e.bytes, 0)
+    if (todo.length > 0 && !this.checkSpace(need).ok) throw Object.assign(new Error('no-space'), { code: 'no-space' })
+    const rollback = (): void => {
+      for (const f of created) { try { unlinkSync(f) } catch { /* already gone */ } }
+    }
+    try {
+      for (let i = 0; i < todo.length; i++) {
+        const e = todo[i]
+        if (opts.signal?.aborted) throw Object.assign(new Error('cancelled'), { code: 'cancelled' })
+        opts.onProgress?.(i, todo.length)
+        if (!/^[0-9a-f]{64}$/.test(e.libraryHash) || !/^(jpg|png|gif|webp|bmp|avif)$/.test(e.ext)) throw Object.assign(new Error('bad entry'), { code: 'bad-entry' })
+        const header = readImageHeader(readHead(e.stagedPath, 64 * 1024))
+        if (EXT_FOR[header.format] !== e.ext) throw Object.assign(new Error(`${e.name} is not a ${e.ext} picture`), { code: 'bad-type' })
+        const sized = orientedSize(header)
+        if (sized && sized.width * sized.height > MEDIA_LIMITS.maxPixels) throw Object.assign(new Error('too large'), { code: 'bad-type' })
+        const dec = await this.decoder.decode(e.stagedPath, MEDIA_LIMITS.thumbWidths, { needNatural: !sized })
+        if (!dec.ok) throw Object.assign(new Error(`${e.name} would not open as a picture`), { code: 'bad-type' })
+        const dest = this.managedPath(e.libraryHash, e.ext)
+        mkdirSync(dirname(dest), { recursive: true })
+        if (!existsSync(dest)) {
+          renameRetry(e.stagedPath, dest)
+          created.push(dest)
+        }
+        dec.thumbs.forEach((t, k) => {
+          try {
+            const tp = this.thumbPath(e.libraryHash, MEDIA_LIMITS.thumbWidths[k], t.ext)
+            if (!existsSync(tp)) { writeBuffer(tp, t.data); created.push(tp) }
+          } catch { /* thumbnails are regenerated on demand */ }
+        })
+        rows.push({ id: newId(), e, width: sized?.width ?? dec.width, height: sized?.height ?? dec.height, animated: !!header.animated, alpha: !!(header.hasAlpha ?? dec.hasAlpha) })
+      }
+      if (opts.signal?.aborted) throw Object.assign(new Error('cancelled'), { code: 'cancelled' })
+      const insert = this.db.prepare(
+        `INSERT INTO media_items (id, hash, type, name, orig_filename, ext, mime, bytes, width, height, animated, has_alpha,
+           storage, link_path, link_mtime_ms, converted_from, folder_id, added_at)
+         VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'managed', NULL, NULL, ?, ?, ?)`
+      )
+      const restore = this.db.prepare('UPDATE media_items SET deleted_at = NULL WHERE id = ?')
+      const now = nowIso()
+      this.db.transaction(() => {
+        for (const r of rows) {
+          const trashed = this.db.prepare('SELECT id FROM media_items WHERE hash = ? AND deleted_at IS NOT NULL LIMIT 1').get(r.e.libraryHash) as { id: string } | undefined
+          if (trashed) {
+            restore.run(trashed.id)
+            r.id = trashed.id
+            continue
+          }
+          insert.run(r.id, r.e.libraryHash, r.e.name, r.e.origFilename || r.e.name, r.e.ext, MIME[r.e.ext] ?? 'application/octet-stream', r.e.bytes, r.width, r.height, r.animated ? 1 : 0, r.alpha ? 1 : 0, r.e.convertedFrom, r.e.folderId ?? null, now)
+        }
+      })()
+    } catch (e) {
+      rollback()
+      throw e
+    }
+    opts.onProgress?.(todo.length, todo.length)
+    return { added: rows.map((r) => this.get(r.id) as MediaRecord), already }
+  }
+
+  /** Where the untouched HEIC/TIFF is kept when a picture was converted on import. */
+  originalPath(hash: string, ext: 'heic' | 'tiff'): string {
+    return join(this.filesDir, hash.slice(0, 2), `${hash}.orig.${ext}`)
   }
 
   private managedPath(hash: string, ext: string): string {
@@ -590,9 +727,12 @@ export class MediaLibrary {
         const stillUsed = this.db.prepare('SELECT 1 FROM media_items WHERE hash = ? AND id <> ? AND deleted_at IS NULL').get(r.hash, r.id)
         if (p && !stillUsed) {
           try {
-            unlinkSync(p)
+            unlinkRetry(p)
             filesDeleted++
           } catch { /* already gone */ }
+          for (const oe of ['heic', 'tiff'] as const) {
+            try { unlinkSync(this.originalPath(r.hash, oe)) } catch { /* none kept */ }
+          }
         }
       }
       if (!this.db.prepare('SELECT 1 FROM media_items WHERE hash = ? AND id <> ? AND deleted_at IS NULL').get(r.hash, r.id)) {
@@ -626,9 +766,101 @@ export class MediaLibrary {
       return 'ok'
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
-      return code === 'EACCES' || code === 'EPERM' ? 'unreadable' : 'missing'
+      if (code === 'EACCES' || code === 'EPERM') return 'unreadable'
+      // A linked picture on a USB stick or network share whose whole drive is gone is "offline" (plug it in), not "missing".
+      if (rec.storage === 'linked' && rec.linkPath) {
+        const root = driveRootOf(rec.linkPath)
+        if (root && !this.rootOnline(root)) return 'offline'
+      }
+      return 'missing'
     }
   }
+
+  private rootProbe = new Map<string, { at: number; online: boolean }>()
+  /** Is this drive root reachable? Cached for 2 s so checking 5,000 pictures asks the (possibly slow, network) drive once. */
+  private rootOnline(root: string): boolean {
+    const hit = this.rootProbe.get(root)
+    const now = Date.now()
+    if (hit && now - hit.at < 2000) return hit.online
+    let online = false
+    try { online = existsSync(root) } catch { online = false }
+    this.rootProbe.set(root, { at: now, online })
+    return online
+  }
+
+  /**
+   * "Reconnect this drive": the drive now has another letter, or the folder moved. Look through `folder` for the files
+   * every offline/missing linked picture needs (by contents, not name) and point those pictures at them. Only changes where
+   * a linked picture is read from; nothing is copied and nothing is added.
+   */
+  async reconnectLinked(folder: string, opts: { maxFiles?: number } = {}): Promise<{ relinked: number; stillMissing: number; scanned: number }> {
+    const rows = this.db.prepare("SELECT * FROM media_items WHERE storage = 'linked' AND deleted_at IS NULL").all() as Row[]
+    const need = rows.filter((r) => this.checkRecord(this.rowToRecord(r), r.link_mtime_ms) !== 'ok')
+    const byKey = new Map<string, Row[]>()
+    for (const r of need) (byKey.get(`${r.bytes}`) ?? byKey.set(`${r.bytes}`, []).get(`${r.bytes}`)!).push(r)
+    let relinked = 0
+    let scanned = 0
+    const done = new Set<string>()
+    const max = opts.maxFiles ?? 50000
+    const stack: Array<[string, number]> = [[resolve(folder), 0]]
+    while (stack.length && scanned < max && done.size < need.length) {
+      const [d, depth] = stack.pop()!
+      let names: string[] = []
+      try { names = readdirSync(d) } catch { continue }
+      for (const n of names) {
+        if (n.startsWith('.')) continue
+        const p = join(d, n)
+        let st
+        try { st = statSync(p) } catch { continue }
+        if (st.isDirectory()) { if (depth < 10) stack.push([p, depth + 1]); continue }
+        if (!st.isFile()) continue
+        scanned++
+        const cands = (byKey.get(`${st.size}`) ?? []).filter((r) => !done.has(r.id))
+        if (!cands.length) continue
+        let h: string
+        try { h = await hashFile(p) } catch { continue }
+        for (const r of cands) {
+          // (a converted picture's identity is its original's hash, which cannot be re-checked from the JPEG: size only)
+          if (r.converted_from == null && r.hash !== h) continue
+          this.db.prepare('UPDATE media_items SET link_path = ?, link_mtime_ms = ?, bytes = ? WHERE id = ?').run(resolve(p), Math.round(st.mtimeMs), st.size, r.id)
+          done.add(r.id)
+          relinked++
+        }
+      }
+    }
+    this.rootProbe.clear()
+    return { relinked, stillMissing: need.length - relinked, scanned }
+  }
+
+  /** Turn a linked picture into a normal copied one (its bytes go into the library), so it no longer depends on its drive. */
+  async copyIntoLibrary(id: string): Promise<{ ok: boolean; message?: string }> {
+    const rec = this.get(id)
+    if (!rec || rec.storage !== 'linked') return { ok: false, message: 'That picture is already in the library.' }
+    const src = this.resolvePath(rec)
+    if (!src || this.check(id) !== 'ok') return { ok: false, message: "The picture can't be read right now. Plug the drive in first." }
+    try {
+      if (rec.convertedFrom == null && (await hashFile(src)) !== rec.hash) return { ok: false, message: 'The file has changed since it was added, so it was not copied.' }
+      if (!this.checkSpace(rec.bytes).ok) return { ok: false, message: 'There is not enough free disk space to copy it.' }
+      const dest = this.managedPath(rec.hash, rec.ext)
+      mkdirSync(dirname(dest), { recursive: true })
+      if (!existsSync(dest)) {
+        const tmp = `${dest}.tmp-${randomBytes(4).toString('hex')}`
+        try {
+          copyFileSync(src, tmp)
+          if (statSync(tmp).size !== rec.bytes) throw new Error('copy size mismatch')
+          renameRetry(tmp, dest)
+        } catch (e) {
+          try { unlinkSync(tmp) } catch { /* nothing to clean */ }
+          throw e
+        }
+      }
+      this.db.prepare("UPDATE media_items SET storage = 'managed', link_path = NULL, link_mtime_ms = NULL WHERE id = ?").run(id)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as NodeJS.ErrnoException).code === 'ENOSPC' ? 'There is not enough free disk space to copy it.' : 'Something went wrong copying it. Nothing was changed.' }
+    }
+  }
+
   /** Everything that is not OK right now (for the "Needs attention" view and preflight). */
   checkAll(): Array<{ id: string; status: MediaStatus }> {
     const rows = this.db.prepare('SELECT * FROM media_items WHERE deleted_at IS NULL').all() as Row[]
@@ -672,6 +904,11 @@ export class MediaLibrary {
       } catch {
         return { ...out, status: 'unreadable', deep: 'skipped' }
       }
+    }
+    if (!fileLooksComplete(path)) {
+      out.deep = 'damaged'
+      out.notes.push('The file looks cut short (an unfinished copy or download). Copy the picture again from the original.')
+      return out
     }
     // 2. does it really open?
     const dec = await this.decoder.decode(path, [64])
@@ -817,7 +1054,7 @@ export class MediaLibrary {
   sweepTemp(): number {
     let n = 0
     try {
-      for (const f of readdirSync(this.dir)) if (f.startsWith('.convert-')) { rmSync(join(this.dir, f), { force: true }); n++ }
+      for (const f of readdirSync(this.dir)) if (f.startsWith('.convert-') || f.startsWith('.pack-')) { rmSync(join(this.dir, f), { recursive: true, force: true }); n++ }
     } catch { /* ignore */ }
     const walk = (d: string): void => {
       let names: string[] = []
@@ -862,5 +1099,31 @@ function writeBuffer(path: string, data: Buffer): void {
   mkdirSync(dirname(path), { recursive: true })
   const tmp = `${path}.tmp-${randomBytes(3).toString('hex')}`
   writeFileSync(tmp, data)
-  renameSync(tmp, path)
+  renameRetry(tmp, path)
+}
+
+/** Reads only the start and end of a file to see whether it is all there (see looksComplete). */
+export function fileLooksComplete(path: string): boolean {
+  let fd: number | null = null
+  try {
+    fd = openSync(path, 'r')
+    const size = fstatSync(fd).size
+    const read = (pos: number, len: number): Buffer => {
+      const b = Buffer.alloc(Math.max(0, Math.min(len, size - pos)))
+      if (b.length) readSync(fd as number, b, 0, b.length, pos)
+      return b
+    }
+    const head = read(0, 64 * 1024)
+    const format = readImageHeader(head).format
+    // Measured against the real browser engine (see docs/qa follow-up report): it already REJECTS a cut-off JPEG, PNG, WebP, BMP
+    // and AVIF, but it happily ACCEPTS a cut-off GIF (shows the frames that arrived). So the ending is checked for GIF; the rules
+    // for the others stay available in looksComplete but are not applied, to avoid false alarms (e.g. a phone "motion photo" is a
+    // JPEG with a video glued on, so a JPEG's last bytes are not the end-of-image marker).
+    if (format !== 'gif') return true
+    return looksComplete(format, head, read(Math.max(0, size - 64), 64), size)
+  } catch {
+    return true // cannot tell: the decode below decides
+  } finally {
+    if (fd !== null) { try { closeSync(fd) } catch { /* ignore */ } }
+  }
 }

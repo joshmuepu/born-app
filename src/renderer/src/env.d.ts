@@ -134,6 +134,15 @@ declare global {
       mediaLocateFolder: (wanted: Array<{ hash: string; bytes: number }>) => Promise<{ canceled: boolean; found: Record<string, string>; scanned: number }>
       mediaPreflight: (ids: string[]) => Promise<import('../../shared/media').MediaPreflightResult[]>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
+      packEstimate: (queue: unknown) => Promise<import('../../shared/servicePack').PackEstimate | null>
+      packExport: (queue: unknown, title: string) => Promise<import('../../shared/servicePack').PackResult<{ bytes: number; count: number; path: string }> & { canceled?: boolean }>
+      packPickAndInspect: () => Promise<import('../../shared/servicePack').PackResult<{ review: import('../../shared/servicePack').PackReview }> & { canceled?: boolean }>
+      packInspectPath: (path: string) => Promise<import('../../shared/servicePack').PackResult<{ review: import('../../shared/servicePack').PackReview }>>
+      packImport: (path: string) => Promise<import('../../shared/servicePack').PackResult<{ summary: import('../../shared/servicePack').PackImportSummary }>>
+      packCancel: () => void
+      onPackProgress: (cb: (p: { kind: 'export' | 'check' | 'import'; done: number; total: number; doneBytes?: number; totalBytes?: number; current?: string }) => void) => () => void
+      mediaReconnectLinked: () => Promise<{ canceled: boolean; relinked: number; stillMissing: number; scanned: number }>
+      mediaCopyIntoLibrary: (ids: string[]) => Promise<{ copied: number; failed: number; message: string | null }>
       mediaPathsForFiles: (files: File[]) => string[]
       onMediaImportProgress: (cb: (p: { done: number; total: number; current: string }) => void) => () => void
 

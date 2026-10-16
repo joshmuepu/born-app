@@ -70,6 +70,11 @@
           "id": "media-ready",
           "title": "Is tonight ready? Sharing with pictures",
           "file": "operators/media-ready-and-sharing.md"
+        },
+        {
+          "id": "media-service-pack",
+          "title": "Service packs: a service with its pictures",
+          "file": "operators/media-service-pack.md"
         }
       ]
     },

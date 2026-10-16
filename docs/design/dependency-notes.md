@@ -34,4 +34,18 @@ PDF import (Step 6) will use `pdfjs-dist` (already a dependency).
 
 | Used | What for | Notes |
 |---|---|---|
-| macOS `/usr/bin/sips` (operating-system tool, not bundled) | Convert HEIC/TIFF to JPEG on import | Called only on macOS. On other systems HEIC/TIFF are refused with instructions. Nothing is added to the installer |
+| macOS `/usr/bin/sips` (operating-system tool, not bundled) | Convert HEIC/TIFF to JPEG on import | Now only a macOS **fallback**; see the follow-up section below for the real path |
+
+## Media follow-up (branch `v2-media-1a-followup`): HEIC/TIFF everywhere
+
+Justification and measurements: [media/spikes/10-heic-windows.md](media/spikes/10-heic-windows.md). None are native modules
+(no compiler, no install scripts); all run in a worker thread; none touch the network.
+
+| Package | Version (exact) | License | Size installed | Native? | Used for |
+|---|---|---|---|---|---|
+| `libheif-js` | 1.23.5 | **LGPL-3.0** (libheif and libde265 compiled to WebAssembly) | 2.0 MB (only `libheif-wasm/libheif-bundle.js` is packaged; other variants excluded) | No (WebAssembly) | Decode HEIC. Shipped **unpacked** (`asarUnpack`) as a separate replaceable file. **HEVC patent question for counsel.** |
+| `heic-decode` | 2.1.0 | ISC | 16 kB | No | Thin wrapper over libheif-js |
+| `jpeg-js` | 0.4.4 | BSD-3-Clause | 100 kB | No | Write the converted JPEG |
+| `utif2` | 4.1.0 | MIT | 116 kB (+ `pako` 1.x, MIT/zlib, 0.8 MB) | No | Decode TIFF |
+
+All pinned with `--save-exact`. Attribution and the LGPL notice/source offer must be added to the third-party notices.

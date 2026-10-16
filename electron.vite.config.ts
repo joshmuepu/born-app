@@ -4,7 +4,16 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        // heicWorker runs picture conversion in a worker thread; it must be its own file next to index.js
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          heicWorker: resolve(__dirname, 'src/main/heicWorker.ts')
+        }
+      }
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

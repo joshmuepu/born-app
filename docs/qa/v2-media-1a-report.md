@@ -121,3 +121,7 @@ real iPhone HEIC / HDR photos; real PowerPoint-exported PDFs; very low-end hardw
 `docs/qa/screenshots-media/` (and `docs/manual/v2/images/media-*.png`): library, detail, backgrounds, queue menu, preflight (problem and ready),
 live background, live pair, PDF import. "Before" is any earlier `docs/qa/ui-after` capture — the rest of the UI is unchanged apart from the
 new rail item and the **Check** button in the queue header.
+
+---
+
+**Follow-up round:** packaged-build verification, Windows review, HEIC/TIFF on Windows, service packs, drive reconnect and performance are in [v2-media-1a-followup-report.md](v2-media-1a-followup-report.md).

@@ -179,3 +179,58 @@ export function orientedSize(h: Pick<ImageHeader, 'width' | 'height' | 'orientat
   if (!h.width || !h.height) return null
   return h.orientation >= 5 ? { width: h.height, height: h.width } : { width: h.width, height: h.height }
 }
+
+/**
+ * Is the file all there? A browser will happily show the top half of a cut-off JPEG, or accept a PNG with its ending missing,
+ * so "it decodes" is not proof that a half-copied file (an unfinished download or cloud sync) is whole. Each format says how
+ * long it should be or how it ends:
+ *  - JPEG: ends with the end-of-image marker (trailing zero padding is fine)
+ *  - PNG: ends with the IEND chunk
+ *  - GIF: ends with the trailer byte
+ *  - WebP: the RIFF header states the length; the file must be at least that long
+ *  - BMP: the header states the file size
+ *  - AVIF: the top-level boxes must add up to exactly the file length
+ * Returns true for formats it has no rule for (never a false alarm). `tail` is the last ≥64 bytes of the file; `size` its length.
+ */
+export function looksComplete(format: SniffedFormat, head: Buffer, tail: Buffer, size: number): boolean {
+  try {
+    if (format === 'jpeg') {
+      let i = tail.length - 1
+      while (i > 0 && tail[i] === 0) i--
+      return i >= 1 && tail[i] === 0xd9 && tail[i - 1] === 0xff
+    }
+    if (format === 'png') {
+      const iend = Buffer.from([0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
+      return tail.length >= 12 && tail.subarray(tail.length - 12).equals(iend)
+    }
+    if (format === 'gif') return tail.length >= 1 && tail[tail.length - 1] === 0x3b
+    if (format === 'webp') return head.length >= 8 && size >= head.readUInt32LE(4) + 8
+    if (format === 'bmp') {
+      if (head.length < 6) return false
+      const declared = head.readUInt32LE(2)
+      return declared === 0 || size >= declared
+    }
+  } catch {
+    return true
+  }
+  return true
+}
+
+/** AVIF/ISO boxes: walk the top-level boxes using only their 8–16 byte headers; they must land exactly on the end of the file. */
+export function isoBoxesComplete(readAt: (pos: number, len: number) => Buffer, size: number): boolean {
+  let pos = 0
+  for (let n = 0; n < 64 && pos < size; n++) {
+    const h = readAt(pos, 16)
+    if (h.length < 8) return false
+    let len = h.readUInt32BE(0)
+    if (len === 1) {
+      if (h.length < 16) return false
+      len = Number(h.readBigUInt64BE(8))
+    } else if (len === 0) {
+      return true // box runs to the end of the file
+    }
+    if (len < 8) return false
+    pos += len
+  }
+  return pos === size
+}

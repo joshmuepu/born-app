@@ -19,7 +19,8 @@ export default defineConfig({
     // in it already passed. Confirmed via isolated runs + an active-handle
     // check that nothing actually leaks — this is scheduling pressure under
     // concurrent forks, not a real hang.
-    teardownTimeout: 30000,
+    // (60 s: the media follow-up added a real 1 GB streaming test, which adds disk pressure to the same contention)
+    teardownTimeout: 60000,
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/main/**', 'src/renderer/src/**']
