@@ -578,6 +578,17 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
                 {report.failed.length > 6 && <li>…and {report.failed.length - 6} more.</li>}
               </ul>
             )}
+            {report.failed.some((f) => /Most Compatible/.test(f.message)) && (
+              <button
+                className="btn-quiet btn-sm"
+                onClick={() => {
+                  const text = 'To use an iPhone photo here: in Photos, choose Share, then Options, then Most Compatible (or use AirDrop with “Most Compatible”). That sends a JPEG. Add the JPEG to BORN.'
+                  void navigator.clipboard?.writeText(text).then(() => pushToast({ message: 'Instructions copied.' }), () => undefined)
+                }}
+              >
+                Copy instructions
+              </button>
+            )}
             {report.warnings.length > 0 && <ul className="note">{report.warnings.slice(0, 3).map((w, i) => <li key={i}>{w}</li>)}</ul>}
           </div>
         )}
