@@ -79,3 +79,24 @@ v2's code from v1's), not an individual port. Confirmed: `595a728`
 | Media library, pictures, slideshows, still backgrounds, PDF import, preflight, logo key, sharing by content hash | **intentionally different** (v2-only feature) | v1 has no media area. v1 opens a v2 file with pictures safely (verified with real v1.13.0; see the compat-shell note above) |
 | `Esc` also cancels a take still in flight | **intentionally different** | v1's Esc is unchanged |
 | Optional two-line v1 hotfix so v1 never crashes on an unknown queue item kind | **not started** (owner's decision) | Not required for v2 files, which never write such kinds |
+
+## v1.13.1 (Remote network picker) — found 2026-10-16, NOT merged, nothing ported yet
+
+`origin/main` has six commits `v2-channels` does not (`8e13590`, `a75a9fb`, `da15388`, `e468018`, `1c39202`, `19d4c37` = "Release: v1.13.1"). Nothing was merged, as the standing rule says; the owner decides.
+
+| v1 ID / commit | What it changed | Type | v2 status | Notes |
+|---|---|---|---|---|
+| `8e13590` | Phone remote: the QR code and address could point at only one of two connected networks (e.g. cable *and* WiFi), sometimes the one the phone couldn't reach. Networks are now ranked by kind (Wi-Fi first), the server binds `0.0.0.0` explicitly, mDNS is announced per adapter, and diagnostics are richer | **fix** | **not started** | v2 shares the remote code, so this almost certainly applies. Touches `index.ts`, `mdns.ts`, new `networkMeta.ts`/`networks.ts`, `settings.ts`, `webRemote.ts`, preload, tests |
+| `a75a9fb`, `e468018` | Remote panel: network selector with a reason line, "Show all", per-address connection check; shows the network name even with one network | feature (UI) | **not started** | The UI is redesigned in v2: port the intent into the shared components, not the diff |
+| `da15388` | v1 manual pages for the above | docs | **not started** | follows the feature |
+| `19d4c37` / `1c39202` | Release commit and merge commit for v1.13.1 (CHANGELOG, version bump) | release | **do not port** | v2 keeps its own `2.0.0-dev.N` identity |
+
+## v2-only: Media follow-up (`v2-media-1a-followup`) — `docs/qa/v2-media-1a-followup-report.md`
+
+| Item | v2 status | Notes |
+|---|---|---|
+| HEIC/TIFF on Windows and Mac by a bundled decoder (colour-corrected, rotated, original kept); Windows-safe file handling | **intentionally different** (v2-only media area) | `docs/design/media/spikes/10-heic-windows.md` |
+| Service packs (`.bornpack`): a queue with its pictures, review-then-atomic open | **intentionally different** (v2-only) | `docs/design/media/07-service-pack.md`. v1 and old v2 never see the format; the `.born` inside is unchanged |
+| "Drive not connected" state, Reconnect-by-folder, Copy into library for linked pictures | **intentionally different** (v2-only) | |
+| Manual-only Windows build workflow `.github/workflows/v2-dev-build.yml` (read-only, no release) | **intentionally different** | `release.yml` and its v1.x.x tag gate untouched |
+
