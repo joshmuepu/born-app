@@ -88,6 +88,8 @@ export type SlideSource =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
 
 export interface SlidePayload {
+  /** A tape screen: the sermon's paragraphs and timing, drawn by the screen from the tape's own position (see shared/tapeScreen.ts). `text` is the paragraph at the moment of Take, for anything that cannot draw it. */
+  tape?: import('../shared/tapeScreen').TapeScreenSpec
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: SlideMedia

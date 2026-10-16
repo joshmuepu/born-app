@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { SlidePayload } from './types'
+import StageTape from './components/StageTape'
+import TapeScreen from './components/TapeScreen'
 import { formatClock, wirePosition, type PlaybackWire } from '../../shared/videoPlayback'
 
 type View = 'stage' | 'congregation'
@@ -132,9 +134,12 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && isTimedMedia(current!) && <StageVideo slide={current!} wire={wire} receivedAt={wireAt} />}
+      {!nothingUp && current!.tape && view === 'stage' && <StageTape spec={current!.tape} />}
+      {!nothingUp && current!.tape && view === 'congregation' && <TapeScreen spec={current!.tape} baseRem={4} />}
 
-      {!nothingUp && !(isTimedMedia(current!)) && view === 'congregation' && (
+      {!nothingUp && !current!.tape && isTimedMedia(current!) && <StageVideo slide={current!} wire={wire} receivedAt={wireAt} />}
+
+      {!nothingUp && !current!.tape && !(isTimedMedia(current!)) && view === 'congregation' && (
         <div className="stage-congregation">
           {current!.label && <div className="stage-cg-label">{current!.label}</div>}
           <div className={`stage-cg-text${preClass(current)}`}>
@@ -145,7 +150,7 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && !(isTimedMedia(current!)) && view === 'stage' && (
+      {!nothingUp && !current!.tape && !(isTimedMedia(current!)) && view === 'stage' && (
         <>
           <div className="stage-current">
             {current!.label && <div className="stage-current-label">{current!.label}</div>}

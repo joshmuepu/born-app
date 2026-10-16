@@ -1,0 +1,17 @@
+/* Stage monitor, tape layout. The stage screen is always dark; colours here are its own (see StageApp.css). */
+.stagetape { position: absolute; inset: 14vh 5vw 3vh; display: flex; flex-direction: column; gap: 2.2vh; color: #f4f2ee; }
+.stagetape-times { display: flex; align-items: baseline; justify-content: space-between; gap: 3vw; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.stagetape-elapsed { font-size: 8vh; font-weight: 600; }
+.stagetape-left { font-size: 6vh; opacity: 0.75; }
+.stagetape-pill { font: 700 2.6vh 'Inter', -apple-system, 'Segoe UI', sans-serif; padding: 0.6vh 2vh; border-radius: 4vh; border: 0.3vh solid #bdb8ad; color: #f4f2ee; }
+.stagetape-pill.is-ok { border-color: #6fcf8a; color: #6fcf8a; }
+.stagetape-pill.is-bad { border-color: #ffb454; color: #ffb454; }
+.stagetape-bar { height: 1.4vh; border-radius: 1vh; background: rgba(244, 242, 238, 0.18); overflow: hidden; }
+.stagetape-bar > i { display: block; height: 100%; background: #b9a8f5; transition: width 0.25s linear; }
+.stagetape-cap { font: 700 2.4vh 'Inter', -apple-system, 'Segoe UI', sans-serif; letter-spacing: 0.1em; opacity: 0.8; }
+.stagetape-cap b { color: #b9a8f5; letter-spacing: 0.04em; }
+.stagetape-now { flex: 1 1 55%; min-height: 0; overflow: hidden; }
+.stagetape-next { flex: 0 0 24%; min-height: 0; overflow: hidden; opacity: 0.75; }
+.stagetape-text { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; font-size: 5vh; line-height: 1.35; margin: 0.8vh 0 0; unicode-bidi: plaintext; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.stagetape-text--next { font-size: 3.6vh; -webkit-line-clamp: 2; }
+@media (prefers-reduced-motion: reduce) { .stagetape-bar > i { transition: none; } }

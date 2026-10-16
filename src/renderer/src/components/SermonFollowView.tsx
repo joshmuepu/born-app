@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
 import TapeAttach from './TapeAttach'
+import TapeScreenControls, { useScreenItems } from './TapeScreenControls'
 import TapeBar from './TapeBar'
 import TapeSyncEditor from './TapeSyncEditor'
 import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
@@ -103,6 +104,7 @@ export default function SermonFollowView({
   }, [paras])
 
   // ── the tape (docs/design/sermon-audio): the highlight is the TAPE's, the scroll is the user's ──
+  const screenItemList = useScreenItems(flatSlides, baseNumber)
   const tapeRec = recs[0] && recs[0].status === 'ok' ? recs[0] : null
   const tf = useTapeFollow(tapeRec, language, mapVersion)
   const tapeActive = !!tapeRec && tf.mine && !!tf.map && !!tf.here
@@ -304,6 +306,7 @@ export default function SermonFollowView({
           )}
         </div>
       )}
+      {tapeRec && <TapeScreenControls recording={tapeRec} sermonId={sermonId} title={title} items={screenItemList} map={tf.map} position={tf.mine ? tf.pos : 0} />}
       {tapeRec && <TapeBar recording={tapeRec} paragraphStarts={tf.starts} onPrevParagraph={tf.map ? tf.prevParagraph : undefined} onNextParagraph={tf.map ? tf.nextParagraph : undefined} />}
       {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} onSync={(id) => { const r = recs.find((x) => x.id === id) ?? recs[0]; if (r) { setTapeOpen(false); setSyncing({ rec: r }) } }} />}
       {syncing && <TapeSyncEditor recording={syncing.rec} sermonId={sermonId} sermonTitle={title} dateCode={dateCode} language={language} onClose={() => { setSyncing(null); loadRecs(); setMapVersion((v) => v + 1) }} onSaved={() => { loadRecs(); setMapVersion((v) => v + 1) }} />}

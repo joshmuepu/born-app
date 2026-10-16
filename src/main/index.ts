@@ -20,6 +20,8 @@ import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHt
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
+import { lowerThirdNow } from '../shared/tapeScreen'
+import { tapeWirePosition } from '../shared/tapePlayback'
 import { registerTapeIpc, closeTape, setTapeFanout, hub as tapeHub } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
@@ -211,6 +213,8 @@ const isDev = process.env.NODE_ENV === 'development'
 
 /** One slide on the projector: quote text, a Bible verse, or a song section. */
 export interface SlidePayload {
+  /** A tape screen: the sermon's paragraphs and timing, drawn by the screen from the tape's own position (see shared/tapeScreen.ts). `text` is the paragraph at the moment of Take, for anything that cannot draw it. */
+  tape?: import('../shared/tapeScreen').TapeScreenSpec
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: SlideMedia
@@ -336,12 +340,18 @@ function describeObservabilityDestination(
  *  channel, what's live and whether each place it's routed to is actually
  *  reaching someone — built directly on channelRoutingSnapshot() so this
  *  stays a read, never a second source of truth for the registry itself. */
+/** A slide as outside observers (the automation API, the health snapshot) see it: a tape screen's paragraphs and timing are left out — only what it is. */
+function publicSlide(s: SlidePayload | null): SlidePayload | null {
+  if (!s || !s.tape) return s
+  const { tape, ...rest } = s
+  return { ...rest, tape: { v: 1, recordingId: tape.recordingId, sermonId: tape.sermonId, title: tape.title, mode: tape.mode, leadSec: tape.leadSec, pinned: tape.pinned, items: [], marks: [], regions: [] } }
+}
 export function observabilitySnapshot(): ObservabilityChannel[] {
   const display = displayInfoPayload()
   return channelRoutingSnapshot().map(({ channel, destinations: routed }) => ({
     id: channel.id,
     label: channel.label,
-    current: channel.current,
+    current: publicSlide(channel.current),
     blanked: channel.blanked,
     destinations: routed.map((d) => describeObservabilityDestination(d.id, d.ready, display))
   }))
@@ -1178,15 +1188,33 @@ function withBackground(destinationId: string, channelId: ChannelId, slide: Slid
   return b ? { ...slide, background: b } : slide
 }
 
+/** Where the tape is now, if it is this recording (else the start). */
+function tapePositionFor(recordingId: string): number {
+  const w = tapeHub.get()
+  return w && w.recordingId === recordingId ? tapeWirePosition(w, 0) : 0
+}
+/** The page each channel's Graphics outputs last got for a tape screen — a new page is pushed only when it changes. */
+const tapeGraphicsPage = new Map<string, string>()
+function tickTapeGraphics(): void {
+  for (const [id, c] of channels) {
+    const t = c.current?.tape
+    if (!t || c.blanked) { tapeGraphicsPage.delete(id); continue }
+    const now = lowerThirdNow(t, tapePositionFor(t.recordingId))
+    const key = `${t.recordingId}|${t.pinned ?? ''}|${now ? now.index : 'none'}`
+    if (tapeGraphicsPage.get(id) !== key) { tapeGraphicsPage.set(id, key); pushGraphicsForChannel(id) }
+  }
+}
 function toGraphicsSlide(
   slide: SlidePayload | null,
   bg?: SlideBackground | null
 ): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media']; background?: SlidePayload['background'] } | null {
   if (!slide) return null
+  // A tape screen on a Graphics output (OBS, a browser) is drawn as paced lower-third pages: the page is worked out here, from the tape's own clock
+  const tapeNow = slide.tape ? lowerThirdNow(slide.tape, tapePositionFor(slide.tape.recordingId)) : null
   return {
-    text: slide.text,
+    text: tapeNow ? tapeNow.text : slide.text,
     label: slide.label,
-    marker: slide.marker,
+    marker: tapeNow ? tapeNow.marker : slide.marker,
     reference: slide.reference,
     kind: slide.kind,
     ...(slide.media ? { media: slide.media } : {}),
@@ -1473,7 +1501,7 @@ function automationState(): AutomationChannelState[] {
   return [...channels.values()].map((c) => ({
     id: c.id,
     label: c.label,
-    current: c.current,
+    current: publicSlide(c.current),
     blanked: c.blanked
   }))
 }
@@ -3057,6 +3085,7 @@ app.whenReady().then(async () => {
   registerMediaIpc(() => mainWindow)
   registerYouTubeIpc()
   registerTapeIpc(() => mainWindow)
+  setInterval(tickTapeGraphics, 300).unref()
   setTapeFanout({
     state: (w) => {
       sendToMain('tape:state', w)

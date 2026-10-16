@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { SlidePayload } from './types'
 import { useAutoFitFontSize } from './useAutoFitFontSize'
 import ProjectionVideo from './components/ProjectionVideo'
+import TapeScreen from './components/TapeScreen'
 import ProjectionYouTube from './components/ProjectionYouTube'
 import type { PlaybackWire } from '../../shared/videoPlayback'
 
@@ -116,6 +117,15 @@ export default function ProjectionApp() {
   if (!slide || blanked) {
     // Pure black — nothing branded is ever shown to the congregation.
     return <div className="projection-idle">{alertBanner}</div>
+  }
+
+  if (slide.tape) {
+    return (
+      <div className="projection-active projection-tape">
+        <TapeScreen spec={slide.tape} baseRem={baseRem} />
+        {alertBanner}
+      </div>
+    )
   }
 
   if (slide.kind === 'media' && slide.media?.type === 'youtube' && slide.media.youtubeId) {
