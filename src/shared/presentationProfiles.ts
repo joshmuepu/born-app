@@ -185,8 +185,10 @@ const LOWER_THIRD: PresentationProfile = {
     },
     label: {
       display: 'block',
-      'text-align': 'left',
-      'font-size': 'clamp(0.7rem, 1.3vw, 1rem)',
+      // `start` + `unicode-bidi: plaintext`: left for English, right for Arabic/Hebrew, decided per line from its own letters
+      'text-align': 'start',
+      'unicode-bidi': 'plaintext',
+      'font-size': 'clamp(0.8rem, 1.4vw, 1.1rem)',
       'font-weight': '600',
       'letter-spacing': '0.12em',
       'text-transform': 'uppercase',
@@ -196,15 +198,22 @@ const LOWER_THIRD: PresentationProfile = {
     text: {
       display: 'block',
       overflow: 'hidden',
+      // never taller than about half the picture, however long the verse; a very long unbroken word wraps instead of leaving the panel
+      'max-height': '52vh',
+      'overflow-wrap': 'anywhere',
       'line-height': '1.35',
       'white-space': 'pre-line',
-      'text-align': 'left',
-      'font-size': 'clamp(1rem, 2.1vw, 1.7rem)'
+      'text-align': 'start',
+      'unicode-bidi': 'plaintext',
+      // ~35 px on a 1080p stream (it was ~27 px: small on a phone)
+      'font-size': 'clamp(1rem, 2.1vw, 2.2rem)'
     },
     reference: {
       display: 'block',
-      'text-align': 'left',
-      'font-size': 'clamp(0.65rem, 1.1vw, 0.9rem)',
+      'text-align': 'start',
+      'unicode-bidi': 'plaintext',
+      // ~17 px on a 1080p stream (it was ~14 px)
+      'font-size': 'clamp(0.8rem, 1.4vw, 1.1rem)',
       color: '#d8cdb8',
       'letter-spacing': '0.02em',
       'margin-top': '6px'
