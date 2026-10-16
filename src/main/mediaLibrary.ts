@@ -33,6 +33,7 @@ import {
   writeFileSync
 } from 'fs'
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'path'
+import { longPath, renameRetry, unlinkRetry } from './winFs'
 import { migrateMediaDb } from './mediaSchema'
 import { orientedSize, readImageHeader, type SniffedFormat } from './imageHeader'
 import {
@@ -184,11 +185,12 @@ export class MediaLibrary {
     let src = srcPath
     if (!isAbsolute(src) || src.includes('\0')) return failure('not-found', srcPath)
     src = resolve(src)
+    const fsSrc = longPath(src) // a >260-character Windows path needs the extended (\\?\) form for file APIs
 
     // 1. what is it?
     let st
     try {
-      st = statSync(src)
+      st = statSync(fsSrc)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'not-found', src)
@@ -199,7 +201,7 @@ export class MediaLibrary {
 
     let head: Buffer
     try {
-      head = readHead(src, 64 * 1024)
+      head = readHead(fsSrc, 64 * 1024)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
@@ -219,7 +221,7 @@ export class MediaLibrary {
     // 2. identity (streamed, so a 2 GB file costs no memory)
     let hash: string
     try {
-      hash = await hashFile(src)
+      hash = await hashFile(fsSrc)
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
@@ -246,16 +248,28 @@ export class MediaLibrary {
     }
 
     // 4. HEIC / TIFF → JPEG, only where the OS can do it
-    let storeFrom = src
+    let storeFrom = fsSrc
     let convertedFrom: string | null = null
     let tmpConverted: string | null = null
     let ext = EXT_FOR[fmt] ?? 'jpg'
+    if (!needsConversion && fsSrc !== src) {
+      // Too-long Windows path: the decoder loads by file URL, which cannot carry the extended form, so work from a short-path copy.
+      tmpConverted = join(this.dir, `.convert-${randomBytes(4).toString('hex')}.${ext}`)
+      try {
+        copyFileSync(fsSrc, tmpConverted)
+      } catch (e) {
+        try { unlinkSync(tmpConverted) } catch { /* nothing to clean */ }
+        const code = (e as NodeJS.ErrnoException).code
+        return failure(code === 'EACCES' || code === 'EPERM' ? 'permission' : 'io', src)
+      }
+      storeFrom = tmpConverted
+    }
     if (needsConversion) {
       if (!this.decoder.convertToJpeg) return failure(fmt === 'heic' ? 'unsupported-heic' : 'unsupported', src)
       tmpConverted = join(this.dir, `.convert-${randomBytes(4).toString('hex')}.jpg`)
       let ok = false
       try {
-        ok = await this.decoder.convertToJpeg(src, tmpConverted)
+        ok = await this.decoder.convertToJpeg(fsSrc, tmpConverted)
       } catch {
         ok = false
       }
@@ -280,7 +294,9 @@ export class MediaLibrary {
       if (finalW * finalH > MEDIA_LIMITS.maxPixels) return failure('too-large-pixels', src)
 
       // 6. keep it
-      const storage: MediaStorage = opts.linkInPlace && !needsConversion ? 'linked' : 'managed'
+      const longSource = fsSrc !== src // a >260-character Windows path is copied in rather than linked (links to such paths are unreliable)
+      const storage: MediaStorage = opts.linkInPlace && !needsConversion && !longSource ? 'linked' : 'managed'
+      if (opts.linkInPlace && longSource) warnings.push('This file has a very long path, so it was copied into the library instead of linked.')
       let bytes = statSync(storeFrom).size
       let linkMtime: number | null = null
       if (storage === 'managed') {
@@ -293,7 +309,7 @@ export class MediaLibrary {
           try {
             copyFileSync(storeFrom, tmp)
             if (statSync(tmp).size !== bytes) throw new Error('copy size mismatch')
-            renameSync(tmp, dest)
+            renameRetry(tmp, dest)
           } catch (e) {
             try { unlinkSync(tmp) } catch { /* nothing to clean */ }
             const code = (e as NodeJS.ErrnoException).code
@@ -590,7 +606,7 @@ export class MediaLibrary {
         const stillUsed = this.db.prepare('SELECT 1 FROM media_items WHERE hash = ? AND id <> ? AND deleted_at IS NULL').get(r.hash, r.id)
         if (p && !stillUsed) {
           try {
-            unlinkSync(p)
+            unlinkRetry(p)
             filesDeleted++
           } catch { /* already gone */ }
         }
@@ -862,5 +878,5 @@ function writeBuffer(path: string, data: Buffer): void {
   mkdirSync(dirname(path), { recursive: true })
   const tmp = `${path}.tmp-${randomBytes(3).toString('hex')}`
   writeFileSync(tmp, data)
-  renameSync(tmp, path)
+  renameRetry(tmp, path)
 }

@@ -12,6 +12,7 @@ import { pathToFileURL } from 'url'
 import { join } from 'path'
 import { log } from './logger'
 import { testHook } from './testHooks'
+import { safeFileName } from './winFs'
 import { checkAndRecoverDatabase } from './dbIntegrity'
 import { MediaLibrary, type ImportOptions, type ListQuery } from './mediaLibrary'
 import { MediaDbTooNewError } from './mediaSchema'
@@ -194,7 +195,7 @@ export function registerMediaIpc(getMain: () => BrowserWindow | null): void {
     if (!(bytes instanceof ArrayBuffer) && !ArrayBuffer.isView(bytes)) return { ok: false, code: 'io', message: MEDIA_MESSAGES.io, path: '' } as MediaImportResult
     const dir = mkdtempSync(join(tmpdir(), 'born-paste-'))
     try {
-      const safe = (name || 'Pasted picture.png').replace(/[^A-Za-z0-9._ -]/g, '_').slice(0, 80)
+      const safe = safeFileName((name || 'Pasted picture.png').replace(/[^A-Za-z0-9._ -]/g, '_').slice(0, 80), 'Pasted picture.png')
       const p = join(dir, safe)
       writeFileSync(p, Buffer.from(bytes as ArrayBuffer))
       return await l.importFile(p, opts ?? {})
