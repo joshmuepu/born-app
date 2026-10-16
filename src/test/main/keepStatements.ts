@@ -1,13 +1,16 @@
 /**
  * Test-process workaround, not app code: with better-sqlite3 11 on Node 24, a prepared statement that is garbage-collected
- * inside vitest's sandbox aborts the whole test process ("Assertion failed: (env) != nullptr"). Tests that allocate a lot
- * (many zips, big buffers) make that GC happen mid-run. Keeping every statement referenced until the process ends avoids it.
+ * inside the test runner aborts the whole test process ("Assertion failed: (env) != nullptr"). Tests that allocate a lot make that
+ * GC happen mid-run, so which test it kills depends on timing. Keeping every statement referenced until the process ends avoids it.
+ * `pragma()` and `transaction()` prepare through the native database object, so that is where this hooks in.
  * The app itself (Electron 33 / Node 20) is not affected.
  */
-import Database from 'better-sqlite3'
+import { createRequire } from 'module'
 
 const keep: unknown[] = []
-const proto = Database.prototype as unknown as { prepare: (...a: unknown[]) => unknown; __kept?: boolean }
+const req = createRequire(import.meta.url)
+const native = req('better-sqlite3/build/Release/better_sqlite3.node') as { Database: { prototype: { prepare: (...a: unknown[]) => unknown; __kept?: boolean } } }
+const proto = native.Database.prototype
 if (!proto.__kept) {
   const orig = proto.prepare
   proto.prepare = function (this: unknown, ...a: unknown[]): unknown {

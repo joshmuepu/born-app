@@ -61,10 +61,12 @@ export function estimatePack(lib: MediaLibrary, rawQueue: unknown[], settings: P
   const queue = parsed(rawQueue)
   const media = collectPackMedia(queue, settings)
   const files: PackEstimate['files'] = []
+  const videos: PackEstimate['videos'] = []
   const missing: PackEstimate['missing'] = []
   for (const [id, roles] of media) {
     const src = lib.packSource(id)
     if (!src) { missing.push({ id, name: 'A picture', status: 'missing' }); continue }
+    if (src.rec.type === 'video') { videos.push({ id, name: src.rec.name }); continue } // a pack carries pictures only
     if (!src.path) { missing.push({ id, name: src.rec.name, status: src.status }); continue }
     files.push({ id, name: src.rec.name, bytes: src.rec.bytes, roles: [...roles] })
   }
@@ -89,6 +91,7 @@ export function estimatePack(lib: MediaLibrary, rawQueue: unknown[], settings: P
     tooMany: files.length > PACK_LIMITS.maxPictures,
     freeBytes,
     files,
+    videos,
     missing,
     groups
   }
@@ -107,6 +110,7 @@ export interface ExportOptions {
 export async function exportPack(lib: MediaLibrary, rawQueue: unknown[], opts: ExportOptions): Promise<PackResult<{ bytes: number; count: number; path: string }>> {
   const queue = parsed(rawQueue)
   const est = estimatePack(lib, rawQueue, opts.settings)
+  if (est.videos.length) return fail('has-video', est.videos.map((v) => v.name).join(', '))
   if (est.missing.length) return fail('missing-pictures', undefined, { missing: est.missing })
   if (est.tooMany) return fail('too-many')
   if (est.tooBig) return fail('too-big')

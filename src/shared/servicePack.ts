@@ -70,6 +70,7 @@ export type PackErrorCode =
   | 'bad-type'
   | 'no-space'
   | 'missing-pictures'
+  | 'has-video'
   | 'cancelled'
   | 'io'
   | 'permission'
@@ -85,6 +86,7 @@ export const PACK_MESSAGES: Record<PackErrorCode, string> = {
   'bad-type': 'The pack holds a file that is not a picture Born Again can show. For safety the whole pack was refused. Nothing was opened or run.',
   'no-space': 'There is not enough free disk space for the pictures in this pack. Free some space and try again. Nothing was copied.',
   'missing-pictures': 'Some pictures are missing or have changed on this computer, so nothing was saved. Use Check to find them, then save again.',
+  'has-video': "This service has a video, and a service pack can't carry videos yet (only pictures). Save it as a plain Save (.born) — the video file stays on this computer — or take the video out of the queue first.",
   cancelled: 'Cancelled. Nothing was changed.',
   io: 'Something went wrong reading or writing the file. Nothing was changed. Try again.',
   permission: "Born Again isn't allowed to read or write there. Choose another place, or check the file's permissions. Nothing was changed."
@@ -98,6 +100,8 @@ export interface PackEstimate {
   tooMany: boolean
   freeBytes: number | null
   files: Array<{ id: string; name: string; bytes: number; roles: PackRole[] }>
+  /** videos in the service: they cannot go in a pack (pictures only) */
+  videos: Array<{ id: string; name: string }>
   /** pictures that are not readable right now (offline drive, deleted, changed) */
   missing: Array<{ id: string; name: string; status: string }>
   /** grouped lines for the dialog */

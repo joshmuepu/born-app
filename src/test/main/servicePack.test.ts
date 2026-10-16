@@ -10,6 +10,8 @@ import { estimatePack, exportPack, importPack, inspectPack, collectPackMedia } f
 import { ZipWriter, crc32 } from '../../main/zipStore'
 import { mediaToItem, slideshowToItem, attachMediaRefs, serializeQueue, type QueueItem } from '../../shared/queueItem'
 import { PACK_FORMAT, PACK_VERSION } from '../../shared/servicePack'
+import { buildMp4 } from '../helpers/mp4Builder'
+import { videoToItem } from '../../shared/queueItem'
 
 const FX = join(__dirname, '../fixtures/media')
 const sha = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
@@ -23,6 +25,7 @@ const decoder = (over: Partial<MediaDecoder> = {}): MediaDecoder => ({
     if (!whole || !h.width) return { ok: false, reason: 'corrupt' }
     return { ok: true, width: h.width, height: h.height ?? 0, hasAlpha: !!h.hasAlpha, thumbs: [{ width: 320, height: 240, ext: 'jpg', data: Buffer.from('t1') }, { width: 960, height: 720, ext: 'jpg', data: Buffer.from('t2') }] }
   },
+  async decodeVideo() { return { ok: true, width: 1280, height: 720, duration: 10, hasAudio: true, thumbs: [{ width: 320, height: 180, ext: 'jpg', data: Buffer.from('p1') }, { width: 960, height: 540, ext: 'jpg', data: Buffer.from('p2') }] } },
   ...over
 })
 
@@ -157,6 +160,22 @@ describe('service pack: round trip between two separate profiles', () => {
     const imp = await importPack(B, dest)
     expect(imp.ok).toBe(true)
     expect(Object.keys(B.findByHashes([rec.hash]))).toHaveLength(1) // the identity the queue refs carry
+  })
+})
+
+describe('service pack: videos', () => {
+  it('a service with a video cannot be made into a pack yet — it says so, names the video, and writes nothing', async () => {
+    const pics = await addPics(A, 1)
+    const vp = join(root, 'v.mp4'); writeFileSync(vp, buildMp4({ mdatBytes: 3000 }))
+    const v = await A.importFile(vp)
+    expect(v.ok).toBe(true)
+    const rec = (v as { item: { id: string; name: string } }).item
+    const queue = serializeQueue(attachMediaRefs([mediaToItem(pics[0]), videoToItem(rec)], () => null))
+    expect(estimatePack(A, queue, {}).videos.map((x) => x.name)).toEqual([rec.name])
+    const dest = join(root, 'out', 'v.bornpack')
+    const r = await exportPack(A, queue, { dest, title: 't', appVersion: '2', settings: {} })
+    expect(r).toMatchObject({ ok: false, code: 'has-video' })
+    expect(existsSync(dest)).toBe(false)
   })
 })
 
