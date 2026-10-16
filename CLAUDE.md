@@ -59,3 +59,9 @@ UI. In short:
 - Media follow-ups: packaged-app checks are in `scripts/packaged-check/`; Windows is only ever built by the manual workflow
   `.github/workflows/v2-dev-build.yml` (never the release workflow).
 
+
+## YouTube (official player only)
+
+YouTube items play only in YouTube's own embedded player, on the main output only (`src/main/youtubeHost.ts`). Never download, cache, extract streams, block or skip ads,
+scrape, or draw anything over the player. Alerts go to the stage monitor only while one is live (`YOUTUBE_ALERT_POLICY` in `src/shared/youtube.ts`). Open legal questions:
+`docs/notes/youtube-needs-counsel.md`.
