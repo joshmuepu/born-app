@@ -73,6 +73,8 @@ describe('the Graphics page and its playback feed', () => {
     expect(page).toMatch(/vidEl\.muted = true/)
     expect(page).not.toMatch(/vidEl\.muted = false/)
     expect(page).not.toMatch(/\bcontrols\b/) // no controls to click on an OBS page
+    // a Lower-third output (over a camera) never draws a video: the video branch only runs on the fullscreen profile
+    expect(page).toMatch(/dataset\.profile === 'fullscreen' && s\.media && s\.media\.type === 'video'/)
     unregisterGraphicsDestination(ID)
   })
 
