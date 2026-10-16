@@ -74,6 +74,12 @@ export class PlaybackHub {
     this.put(channelId, playbackBlank(s, this.deps.now()))
   }
 
+  /** Send the current record again (e.g. after a Graphics page was re-created by an unblank). */
+  resend(channelId: string): void {
+    const s = this.states.get(channelId)
+    if (s) this.deps.emit(toWire(channelId, s, this.deps.now()))
+  }
+
   /** What was live is gone. */
   stop(channelId: string): void {
     if (this.states.delete(channelId)) this.deps.emitStop(channelId)

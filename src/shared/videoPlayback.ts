@@ -144,63 +144,80 @@ export type FollowerAction =
   | { kind: 'seek'; to: number }
   | { kind: 'still' }
 
+export interface FollowerMemory {
+  lastSeekAt: number
+  farChecksSinceSeek: number
+  still: boolean
+}
+export const newFollowerMemory = (): FollowerMemory => ({ lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false })
+
 /**
- * Decides what a follower should do. Call about once a second with the leader's position (already advanced to
- * "now") and the follower's own. Keeps the little memory it needs (when it last seeked, how many checks since were still
- * far out) so one bad second cannot flip the screen to a still, and a screen in "still" comes back when it is close again.
+ * Decides what a follower should do; call about once a second with the leader's position (already advanced to "now") and the
+ * follower's own. Keeps the little memory it needs in `mem` (when it last seeked, how many checks since were still far out) so one
+ * bad second cannot flip the screen to a still, and a screen in "still" comes back when it is close again.
+ *
+ * Written as ONE self-contained function with no outside references (only its arguments and Math), because the Graphics page —
+ * a plain browser page served over HTTP — embeds this exact source (`followerStep.toString()`), so the page and the tests can
+ * never disagree about the rule.
  */
-export class FollowerController {
-  private lastSeekAt = -Infinity
-  private farChecksSinceSeek = 0
-  private still = false
-
-  tick(leaderPos: number, myPos: number, nowMs: number, opts: { loop?: boolean; duration?: number | null } = {}): FollowerAction {
-    let err = myPos - leaderPos // positive: I am ahead
-    // across the loop point the shorter way round is the real error
-    if (opts.loop && opts.duration && opts.duration > 0) {
-      const d = opts.duration
-      if (err > d / 2) err -= d
-      else if (err < -d / 2) err += d
-    }
-    const ms = Math.abs(err) * 1000
-    if (ms <= SYNC.seekMs && this.still && ms <= SYNC.ignoreMs * 2) {
-      this.still = false
-      this.farChecksSinceSeek = 0
-    }
-    if (this.still) {
-      // keep trying to recover: a fresh seek, rate-limited
-      if (nowMs - this.lastSeekAt >= SYNC.settleMs) {
-        this.lastSeekAt = nowMs
-        return { kind: 'seek', to: leaderPos }
-      }
-      return { kind: 'still' }
-    }
-    if (ms <= SYNC.ignoreMs) {
-      this.farChecksSinceSeek = 0
-      return { kind: 'rate', rate: 1 }
-    }
-    if (ms <= SYNC.seekMs) {
-      this.farChecksSinceSeek = 0
-      return { kind: 'rate', rate: err > 0 ? 1 - SYNC.rateDelta : 1 + SYNC.rateDelta }
-    }
-    // far out
-    if (nowMs - this.lastSeekAt < SYNC.settleMs) return { kind: 'rate', rate: 1 }
-    if (this.lastSeekAt > -Infinity) this.farChecksSinceSeek++
-    if (this.farChecksSinceSeek >= SYNC.stillAfterChecks) {
-      this.still = true
-      return { kind: 'still' }
-    }
-    this.lastSeekAt = nowMs
-    return { kind: 'seek', to: leaderPos }
+export function followerStep(
+  mem: FollowerMemory,
+  cfg: { ignoreMs: number; seekMs: number; rateDelta: number; settleMs: number; stillAfterChecks: number },
+  leaderPos: number,
+  myPos: number,
+  nowMs: number,
+  loop: boolean,
+  duration: number | null
+): FollowerAction {
+  var err = myPos - leaderPos // positive: I am ahead
+  // across the loop point the shorter way round is the real error
+  if (loop && duration && duration > 0) {
+    if (err > duration / 2) err -= duration
+    else if (err < -duration / 2) err += duration
   }
+  var ms = Math.abs(err) * 1000
+  if (mem.still && ms <= cfg.ignoreMs * 2) {
+    mem.still = false
+    mem.farChecksSinceSeek = 0
+  }
+  if (mem.still) {
+    // keep trying to recover: a fresh seek, rate-limited
+    if (nowMs - mem.lastSeekAt >= cfg.settleMs) {
+      mem.lastSeekAt = nowMs
+      return { kind: 'seek', to: leaderPos }
+    }
+    return { kind: 'still' }
+  }
+  if (ms <= cfg.ignoreMs) {
+    mem.farChecksSinceSeek = 0
+    return { kind: 'rate', rate: 1 }
+  }
+  if (ms <= cfg.seekMs) {
+    mem.farChecksSinceSeek = 0
+    return { kind: 'rate', rate: err > 0 ? 1 - cfg.rateDelta : 1 + cfg.rateDelta }
+  }
+  // far out
+  if (nowMs - mem.lastSeekAt < cfg.settleMs) return { kind: 'rate', rate: 1 }
+  if (mem.lastSeekAt > -Infinity) mem.farChecksSinceSeek++
+  if (mem.farChecksSinceSeek >= cfg.stillAfterChecks) {
+    mem.still = true
+    return { kind: 'still' }
+  }
+  mem.lastSeekAt = nowMs
+  return { kind: 'seek', to: leaderPos }
+}
 
+/** Same rule as a small object, for the windows that use it directly. */
+export class FollowerController {
+  private mem = newFollowerMemory()
+  tick(leaderPos: number, myPos: number, nowMs: number, opts: { loop?: boolean; duration?: number | null } = {}): FollowerAction {
+    return followerStep(this.mem, SYNC, leaderPos, myPos, nowMs, !!opts.loop, opts.duration ?? null)
+  }
   get showingStill(): boolean {
-    return this.still
+    return this.mem.still
   }
   reset(): void {
-    this.lastSeekAt = -Infinity
-    this.farChecksSinceSeek = 0
-    this.still = false
+    this.mem = newFollowerMemory()
   }
 }
 

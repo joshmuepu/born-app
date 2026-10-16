@@ -2,6 +2,7 @@ import type { SlideMedia, SlideBackground } from '../shared/media'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { get as httpGet } from 'http'
 import { parseRange } from '../shared/httpRange'
+import { followerStep, SYNC } from '../shared/videoPlayback'
 import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
@@ -282,6 +283,8 @@ interface GraphicsEntry {
    *  showing. A client connecting mid-cycle sees exactly what every other
    *  connected client sees right now, not a reset back to page one. */
   lastPayload: GraphicsPayload
+  /** The live video's playback record (Phase 1b), for a client that connects mid-video. */
+  lastPlayback: unknown | null
   /** Broadcast-pagination cycling state for the slide currently live on
    *  this destination — see pushGraphicsUpdate. */
   cycleTimer: ReturnType<typeof setInterval> | null
@@ -298,6 +301,7 @@ export function registerGraphicsDestination(id: string, profileId: PresentationP
     autoProfile,
     clients: new Set(),
     lastPayload: { slide: null, blanked: true, profileId },
+    lastPlayback: null,
     cycleTimer: null,
     cyclePages: [],
     cycleIndex: 0
@@ -352,6 +356,24 @@ export function isGraphicsActive(id: string): boolean {
  *  tell those apart and doesn't need to. */
 export function graphicsClientCount(id: string): number {
   return graphicsDestinations.get(id)?.clients.size ?? 0
+}
+
+/**
+ * The playback record of the video live on this destination's channel, pushed (about once a second, and on every change) as its own
+ * SSE event so a video-following Graphics page can run the correction. `null` = the video is gone.
+ */
+export function pushGraphicsPlayback(id: string, record: unknown | null): void {
+  const entry = graphicsDestinations.get(id)
+  if (!entry) return
+  entry.lastPlayback = record
+  const data = record ? `event: playback\ndata: ${JSON.stringify(record)}\n\n` : 'event: playback-stop\ndata: {}\n\n'
+  for (const res of entry.clients) {
+    try {
+      res.write(data)
+    } catch {
+      entry.clients.delete(res)
+    }
+  }
 }
 
 /** Writes one frame to every client currently connected to this one
@@ -543,9 +565,74 @@ function buildGraphicsScript(id: string): string {
   var picEl = document.getElementById('pic');
   var bgEl = document.getElementById('bg');
   var bgVideoEl = document.getElementById('bgvideo');
+  var vidEl = document.getElementById('vid');
+  var stillEl = document.getElementById('vidstill');
+  var stillImgEl = document.getElementById('vidstillimg');
+  var leftEl = document.getElementById('vidleft');
   var bgDimEl = document.getElementById('bgdim');
   var TRANSITIONS = ${JSON.stringify(transitions)};
   var DEFAULT_PROFILE = ${JSON.stringify(PRESENTATION_PROFILES.fullscreen.id)};
+
+  // ── video: follow the main output's clock (spike 3's correction: nudge 40–500 ms, seek beyond, still frame when it cannot catch up) ──
+  var SYNC = ${JSON.stringify(SYNC)};
+  var followerStep = ${followerStep.toString()};
+  var mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+  var curVideo = null, wire = null, wireAt = 0, lastEpoch = null;
+  function clock(sec){
+    if (sec === null || sec === undefined || !isFinite(sec)) return '–:––';
+    var t = Math.max(0, Math.floor(sec)), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return h > 0 ? h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s : m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function wirePos(){
+    if (!wire) return 0;
+    if (wire.status !== 'playing') return wire.position;
+    var p = wire.position + Math.max(0, performance.now() - wireAt) / 1000;
+    if (wire.duration > 0) p = wire.loop ? p % wire.duration : Math.min(p, wire.duration);
+    return p;
+  }
+  function showStill(on){
+    if (on) {
+      stillImgEl.src = '/media/' + curVideo + '/display';
+      leftEl.textContent = wire && wire.duration ? clock(Math.max(0, Math.ceil(wire.duration - wirePos() - 0.001))) : '';
+      stillEl.style.display = 'block';
+    } else {
+      stillEl.style.display = 'none';
+    }
+  }
+  function stopVideo(){
+    curVideo = null; wire = null; lastEpoch = null;
+    mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+    vidEl.style.display = 'none'; try { vidEl.pause(); } catch (e) {}
+    vidEl.removeAttribute('src'); vidEl.load();
+    stillEl.style.display = 'none';
+  }
+  function startVideo(mediaId, loop){
+    curVideo = mediaId; lastEpoch = null; wire = null;
+    mem = { lastSeekAt: -Infinity, farChecksSinceSeek: 0, still: false };
+    vidEl.muted = true; vidEl.loop = !!loop;
+    vidEl.poster = '/media/' + mediaId + '/display';
+    vidEl.src = '/media/' + mediaId + '/file';
+    vidEl.style.display = 'block';
+    vidEl.onerror = function(){ showStill(true); };
+  }
+  function applyPlayback(){
+    if (!curVideo || !wire || wire.mediaId !== curVideo) return;
+    vidEl.muted = true; vidEl.loop = !!wire.loop;
+    if (wire.epoch !== lastEpoch) {
+      lastEpoch = wire.epoch;
+      mem.farChecksSinceSeek = 0;
+      try { vidEl.currentTime = wirePos(); } catch (e) {}
+    }
+    if (wire.status === 'playing') { if (vidEl.paused) vidEl.play().catch(function(){}); }
+    else { if (!vidEl.paused) vidEl.pause(); showStill(false); }
+  }
+  setInterval(function(){
+    if (!curVideo || !wire || wire.status !== 'playing' || vidEl.style.display === 'none') return;
+    var act = followerStep(mem, SYNC, wirePos(), vidEl.currentTime, performance.now(), !!wire.loop, wire.duration);
+    if (act.kind === 'rate') { if (vidEl.playbackRate !== act.rate) vidEl.playbackRate = act.rate; showStill(false); if (vidEl.paused) vidEl.play().catch(function(){}); }
+    else if (act.kind === 'seek') { try { vidEl.currentTime = act.to; } catch (e) {} vidEl.playbackRate = 1; }
+    else if (act.kind === 'still') { if (!vidEl.paused) vidEl.pause(); showStill(true); }
+  }, 1000);
 
   function esc(s){
     return (s || '').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; });
@@ -563,6 +650,7 @@ function buildGraphicsScript(id: string): string {
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
     picEl.style.display = 'none'; picEl.removeAttribute('src');
+    stopVideo();
     bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
     bgVideoEl.style.display = 'none'; bgVideoEl.pause(); bgVideoEl.removeAttribute('src');
     if (!payload || !payload.slide || payload.blanked) {
@@ -589,6 +677,11 @@ function buildGraphicsScript(id: string): string {
       // A picture is a full frame: drawn only on a Full-screen output. On a lower-third (camera
       // overlay) output nothing is drawn, so a picture never covers the camera by accident.
       labelEl.textContent = ''; textInnerEl.textContent = ''; refEl.textContent = ''; refDetailEl.textContent = '';
+      if (stageEl.dataset.profile === 'fullscreen' && s.media && s.media.type === 'video' && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
+        // A video: played MUTED here, following the main output's clock; never any sound from a browser output.
+        startVideo(s.media.mediaId, !!s.media.loop);
+        return;
+      }
       if (stageEl.dataset.profile === 'fullscreen' && s.media && /^m_[0-9a-f]{12}$/.test(s.media.mediaId)) {
         picEl.className = 'fit-' + (s.media.fit || 'fit');
         picEl.src = '/media/' + s.media.mediaId + '/display';
@@ -625,6 +718,10 @@ function buildGraphicsScript(id: string): string {
       discEl.style.display = 'none';
       try { render(JSON.parse(ev.data)); } catch (e) {}
     };
+    es.addEventListener('playback', function(ev){
+      try { wire = JSON.parse(ev.data); wireAt = performance.now(); applyPlayback(); } catch (e) {}
+    });
+    es.addEventListener('playback-stop', function(){ wire = null; });
     es.onerror = function(){
       discEl.style.display = 'block';
     };
@@ -682,7 +779,11 @@ ${profileCSS}
   #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; background: #000; }
   #bgdim { position: fixed; inset: 0; display: none; z-index: 1; }
   #stage { z-index: 2; }
-  #pic { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
+  #pic, #vid { position: fixed; inset: 0; width: 100%; height: 100%; display: none; background: #000; z-index: 5; }
+  #vid { object-fit: contain; }
+  #vidstill { position: fixed; inset: 0; display: none; background: #000; z-index: 6; }
+  #vidstillimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #vidleft { position: absolute; right: 3vw; bottom: 3vh; font: 800 8vh/1 -apple-system, 'Segoe UI', sans-serif; color: #fff; text-shadow: 0 0 12px #000; font-variant-numeric: tabular-nums; }
   #pic.fit-fit { object-fit: contain; } #pic.fit-fill { object-fit: cover; }
   #pic.fit-stretch { object-fit: fill; } #pic.fit-center { object-fit: none; }
   #disconnected { position: fixed; top: 10px; right: 14px; font-size: 0.75rem; color: #a33;
@@ -700,6 +801,8 @@ ${profileCSS}
 </div>
 <img id="bg" alt=""/><video id="bgvideo" muted loop playsinline preload="auto"></video><div id="bgdim"></div>
 <img id="pic" alt=""/>
+<video id="vid" muted playsinline preload="auto"></video>
+<div id="vidstill"><img id="vidstillimg" alt=""/><div id="vidleft"></div></div>
 <div id="disconnected">RECONNECTING…</div>
 <script>${buildGraphicsScript(id)}</script>
 </body>
@@ -1020,6 +1123,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       Connection: 'keep-alive'
     })
     res.write(`data: ${JSON.stringify(entry.lastPayload)}\n\n`)
+    if (entry.lastPlayback) res.write(`event: playback\ndata: ${JSON.stringify(entry.lastPlayback)}\n\n`)
     entry.clients.add(res)
     req.on('close', () => entry.clients.delete(res))
     return

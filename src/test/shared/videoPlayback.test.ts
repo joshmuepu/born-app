@@ -167,3 +167,18 @@ describe('what travels to the other screens', () => {
     expect(wirePosition(w, 3000)).toBeCloseTo(2)
   })
 })
+
+import { followerStep, newFollowerMemory } from '../../shared/videoPlayback'
+describe('the rule the Graphics page embeds', () => {
+  it('followerStep is self-contained: rebuilt from its own source it gives the same answers', () => {
+    // exactly what the Graphics page does: evaluate the function's source text with nothing else in scope
+    const rebuilt = new Function('return ' + followerStep.toString())() as typeof followerStep
+    const a = newFollowerMemory()
+    const b = newFollowerMemory()
+    let t = 0
+    for (const [leader, mine] of [[10, 10.01], [10, 10.2], [10, 9.7], [30, 10], [31, 10], [34, 10], [40, 10], [50, 10], [60, 60.01]]) {
+      expect(rebuilt(b, SYNC, leader, mine, t, false, null)).toEqual(followerStep(a, SYNC, leader, mine, t, false, null))
+      t += 1200
+    }
+  })
+})

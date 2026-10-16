@@ -74,6 +74,15 @@ describe('PlaybackHub', () => {
     expect(hub.get('main')!.position).toBeCloseTo(7)
   })
 
+  it('resend repeats the current record (used when a screen rebuilds its video)', () => {
+    hub.take('main', 'm_1', { duration: 10 })
+    const n = sent.length
+    hub.resend('main')
+    expect(sent).toHaveLength(n + 1)
+    hub.resend('other')
+    expect(sent).toHaveLength(n + 1)
+  })
+
   it('stop forgets the video and tells everyone once', () => {
     hub.take('main', 'm_1', { duration: 10 })
     hub.stop('main')

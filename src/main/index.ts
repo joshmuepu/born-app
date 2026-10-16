@@ -58,6 +58,7 @@ import {
   setGraphicsProfile,
   setGraphicsAutoProfile,
   graphicsClientCount,
+  pushGraphicsPlayback as webPushGraphicsPlayback,
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
@@ -1246,6 +1247,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
     stage.send('stage:set-blank', blank || stage.suppressed)
   }
   pushGraphicsForChannel(channelId)
+  if (!blank) playbackHub.resend(channelId) // a Graphics page rebuilds its video on a new frame; tell it where the (paused) video is
   // Keep the operator console's blank state in sync (e.g. when the command came
   // from the projection window's Esc key or the phone web remote). Only 'main'
   // has an operator console concept today.
@@ -1385,9 +1387,9 @@ const playbackHub = new PlaybackHub({
 })
 setInterval(() => playbackHub.tick(), 1000).unref()
 
-/** Graphics (browser) outputs follow the playback record too — wired up in the Graphics slice. */
-function pushGraphicsPlayback(_channelId: ChannelId, _msg: PlaybackWire | null): void {
-  /* replaced below */
+/** Graphics (browser) outputs follow the playback record too: muted, correcting to the main clock (see the Graphics page script). */
+function pushGraphicsPlayback(channelId: ChannelId, msg: PlaybackWire | null): void {
+  for (const dest of destinationsFor(channelId)) if (dest.config.kind === 'browser') webPushGraphicsPlayback(dest.config.id, msg)
 }
 
 /** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
