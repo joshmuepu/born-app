@@ -31,6 +31,12 @@ See [If a phone can't connect](../operators/mobile-remote.md#if-a-phone-cant-con
 — the **Remote connection check** button reports exactly what's wrong, including a
 firewall hint specific to this computer.
 
+The most common cause on a computer with a network cable *and* WiFi: the QR code
+is for a network the phone isn't on. Open **Remote**, click the other network in
+the list (see
+[If this computer is on more than one network](../operators/mobile-remote.md#if-this-computer-is-on-more-than-one-network)),
+and scan again.
+
 ## BORN says the data was damaged
 
 See [Backups and a damaged database](data-recovery.md) — this is handled
