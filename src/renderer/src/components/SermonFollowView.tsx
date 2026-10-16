@@ -78,7 +78,7 @@ export default function SermonFollowView({
   const [loading, setLoading] = useState(true)
   const [tapeOpen, setTapeOpen] = useState(false)
   const [recs, setRecs] = useState<Array<TapeRecording & { status: TapeFileStatus }>>([])
-  const loadRecs = useCallback(() => { void window.electronAPI.tapeRecordings(sermonId).then(setRecs).catch(() => {}) }, [sermonId])
+  const loadRecs = useCallback(() => { void window.electronAPI.tapeRecordings?.(sermonId)?.then(setRecs).catch(() => {}) }, [sermonId])
   useEffect(() => { loadRecs() }, [loadRecs])
   // What to keep in view: the projected paragraph if we're live, else the
   // paragraph the operator opened the sermon on.
