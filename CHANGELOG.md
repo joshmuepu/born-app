@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.1
+
+**Fixed**
+- On a computer connected to two networks at once (for example a network cable *and* the church WiFi), the phone remote's QR code and address pointed at only one of them — sometimes the one the phone couldn't reach, so the phone couldn't connect and there was no way to see or choose the other. BORN now lists every network the remote is available on, and the QR code and address follow the one you pick.
+- BORN now shows the network it picked first and why — your WiFi if you have one, otherwise the cable — and remembers which network a phone last connected from, so it shows that one first next time.
+- The phone remote's name on the local network (`born-remote.local`) is now announced on every network, not just one.
+
+**Improved**
+- The Remote panel names the network it's showing (for WiFi, the WiFi's own name where the computer allows it to be read). VPNs, virtual adapters and unconnected ports are hidden, with a **Show all** link if you need them.
+- **Remote connection check** now tests every address of this computer and says which ones answer, shows whether any phone has connected and from which network, gives a plain hint when a phone is likely on the wrong network, and on Windows shows the two PowerShell commands to check the network type and allow the remote through Windows Firewall (BORN never changes firewall settings itself). The Help manual has been updated to match.
+
 ## 1.13.0
 
 **New**
