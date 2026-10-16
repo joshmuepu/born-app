@@ -19,6 +19,8 @@ import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './librar
 import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
+import { registerYouTubeIpc } from './youtubeService'
+import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
 import {
@@ -463,7 +465,8 @@ function getSettingsSafe(): AppSettings {
       ],
       automationToken: null,
       mediaBackgrounds: { destinations: {}, channels: {} },
-      remoteLastPhoneNetwork: null
+      remoteLastPhoneNetwork: null,
+      youtubeRecents: []
     }
   }
 }
@@ -1395,6 +1398,11 @@ function pushGraphicsPlayback(channelId: ChannelId, msg: PlaybackWire | null): v
 
 /** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
 function syncPlaybackToSlide(channelId: ChannelId, slide: SlidePayload | null): void {
+  // A YouTube video is taken paused too (the congregation window cues it); its length is learned from the player.
+  if (slide && slide.kind === 'media' && slide.media?.type === 'youtube' && isYouTubeMediaId(slide.media.mediaId)) {
+    playbackHub.take(channelId, slide.media.mediaId, { duration: null, loop: false })
+    return
+  }
   const m = slide && slide.kind === 'media' && slide.media?.type === 'video' ? slide.media : null
   if (!m) {
     playbackHub.stop(channelId)
@@ -1542,8 +1550,15 @@ ipcMain.on(
     const message = typeof payload === 'string' ? payload : payload.message
     const target = typeof payload === 'string' ? 'congregation' : payload.target ?? 'congregation'
     if (!message?.trim()) return
-    if (target === 'congregation' || target === 'both') sendToProjection('projection:alert', message)
-    if (target === 'stage' || target === 'both') sendToStage('stage:alert', message)
+    // Nothing may be drawn over YouTube's player (its rules): while a YouTube video is live on the congregation screen the
+    // alert goes to the stage monitor only. The one policy switch is YOUTUBE_ALERT_POLICY in shared/youtube.ts.
+    const congChannel = channelOfDestination('congregation')
+    const live = congChannel ? channels.get(congChannel) : null
+    const ytLive = !!live && !live.blanked && live.current?.kind === 'media' && live.current.media?.type === 'youtube'
+    const t = alertTargetsFor(target as AlertTarget, ytLive)
+    if (t.congregation) sendToProjection('projection:alert', message)
+    if (t.stage) sendToStage('stage:alert', message)
+    if (t.withheld) sendToMain('operator:notice', 'A YouTube video is on the screen, so the alert went to the stage monitor only.')
   }
 )
 
@@ -3023,6 +3038,7 @@ app.whenReady().then(async () => {
   getMediaLibrary()
   setMediaResolver(resolveMediaForHttp)
   registerMediaIpc(() => mainWindow)
+  registerYouTubeIpc()
   registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
   createMainWindow()
 

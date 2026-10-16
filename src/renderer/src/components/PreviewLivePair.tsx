@@ -212,7 +212,7 @@ export default function PreviewLivePair({
         </div>
       </div>
 
-      {liveSlide?.kind === 'media' && liveSlide.media?.type === 'video' && !blanked && <VideoBar key={liveSlide.media.mediaId} channelId={id} mediaId={liveSlide.media.mediaId} />}
+      {liveSlide?.kind === 'media' && (liveSlide.media?.type === 'video' || liveSlide.media?.type === 'youtube') && !blanked && <VideoBar key={liveSlide.media.mediaId} channelId={id} mediaId={liveSlide.media.mediaId} online={liveSlide.media.type === 'youtube'} />}
 
       <div className="plp-actions">
         {isMain ? (

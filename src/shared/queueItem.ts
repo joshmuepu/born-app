@@ -6,6 +6,7 @@
 import type { SlideMedia, SlideBackground } from './media'
 import { paginateText } from './paginate'
 import { parseParagraphRef } from './paragraphRef'
+import { isVideoId, youtubeDisplayName, ytMediaId } from './youtube'
 
 export interface Quote {
   text: string
@@ -138,7 +139,32 @@ export interface UnknownItem extends QueueItemBase {
   raw: unknown
 }
 
-export type QueueItem = QuoteItem | BibleItem | SongItem | MediaItem | UnknownItem
+/**
+ * A YouTube video (Phase 2a). Only the video id and a few settings are ever stored — never video, never a thumbnail
+ * (see docs/design/media/06-youtube.md §9). It plays online, in YouTube's own embedded player, on the main screen only.
+ * Written to `.born` as a compat shell, like pictures, so an older BORN opens the file and shows a harmless row.
+ */
+export interface YouTubeFallback {
+  /** A library item (picture or video) to put on the screen instead if YouTube fails. Absent with `blank` = a black screen. */
+  mediaId?: string
+  name?: string
+  blank?: boolean
+}
+export interface YouTubeItem extends QueueItemBase {
+  kind: 'youtube'
+  videoId: string
+  /** YouTube's title when it could be read, else ''. A display hint only: re-read when the item is checked (YouTube asks that stored data not go stale). */
+  title: string
+  /** The operator's own name for it; shown instead of the title when set. Lets a church use it with no title lookup at all. */
+  label?: string
+  /** When `title` was last read from YouTube (ms since epoch). */
+  titleAt?: number
+  fallback?: YouTubeFallback
+  _ext?: Record<string, unknown>
+  _top?: Record<string, unknown>
+}
+
+export type QueueItem = QuoteItem | BibleItem | SongItem | MediaItem | YouTubeItem | UnknownItem
 
 export const NEWER_VERSION_LABEL = 'Made by a newer version of BORN'
 export const UNREADABLE_LABEL = "Couldn't read this item"
@@ -340,6 +366,34 @@ export function slideshowToItem(recs: Array<{ id: string; name: string }>, name?
   }
 }
 
+/** The one slide a YouTube item has: its name on a title card for every screen that does not play the video. */
+export function youtubeSlides(videoId: string, name: string): Slide[] {
+  return [{ text: name, label: 'YouTube', media: { mediaId: ytMediaId(videoId), type: 'youtube', youtubeId: videoId } }]
+}
+
+export function youtubeToItem(videoId: string, opts: { title?: string; label?: string; titleAt?: number; fallback?: YouTubeFallback } = {}): YouTubeItem {
+  const title = opts.title ?? ''
+  return {
+    kind: 'youtube',
+    id: makeId('yt'),
+    videoId,
+    title,
+    ...(opts.label?.trim() ? { label: opts.label.trim() } : {}),
+    ...(opts.titleAt ? { titleAt: opts.titleAt } : {}),
+    ...(opts.fallback ? { fallback: opts.fallback } : {}),
+    slides: youtubeSlides(videoId, youtubeDisplayName({ title, label: opts.label, videoId }))
+  }
+}
+
+/** A copy with new settings; the slide's name is rebuilt from the title/label. */
+export function withYouTubeSettings(item: YouTubeItem, patch: Partial<Pick<YouTubeItem, 'title' | 'label' | 'titleAt' | 'fallback'>>): YouTubeItem {
+  const next: YouTubeItem = { ...item, ...patch }
+  if ('label' in patch && !patch.label?.trim()) delete next.label
+  if ('fallback' in patch && !patch.fallback) delete next.fallback
+  next.slides = youtubeSlides(next.videoId, youtubeDisplayName(next))
+  return next
+}
+
 /** A copy of `item` with new display settings; slides are rebuilt so the fit applies per slide. */
 export function withMediaSettings(
   item: MediaItem,
@@ -391,6 +445,33 @@ function knownShapeOk(kind: string, e: Obj): boolean {
 
 /** `ext.kind` values this build can promote back into a real item. */
 const EXT_READERS: Record<string, (e: Obj, ext: Obj) => QueueItem | null> = {
+  youtube: (e, ext) => {
+    if (!isVideoId(ext.videoId)) return null
+    const { v: _v, kind: _k, videoId, title, label, titleAt, fallback, ...extra } = ext
+    const { kind: _kk, id, slides: _s, quote: _q, ext: _e, source, ...top } = e
+    const fb = isObj(fallback)
+      ? {
+          ...(typeof fallback.mediaId === 'string' && fallback.mediaId ? { mediaId: fallback.mediaId } : {}),
+          ...(typeof fallback.name === 'string' ? { name: fallback.name } : {}),
+          ...(fallback.blank === true ? { blank: true } : {})
+        }
+      : null
+    const t = typeof title === 'string' ? title : ''
+    const l = typeof label === 'string' && label.trim() ? label.trim() : undefined
+    return {
+      kind: 'youtube',
+      id: typeof id === 'string' && id ? id : makeId('yt'),
+      slides: youtubeSlides(videoId, youtubeDisplayName({ title: t, label: l, videoId })),
+      source: source as YouTubeItem['source'],
+      videoId,
+      title: t,
+      ...(l ? { label: l } : {}),
+      ...(typeof titleAt === 'number' && Number.isFinite(titleAt) ? { titleAt } : {}),
+      ...(fb && Object.keys(fb).length ? { fallback: fb } : {}),
+      ...(Object.keys(extra).length ? { _ext: extra } : {}),
+      ...(Object.keys(top).length ? { _top: top } : {})
+    }
+  },
   media: (e, ext) => {
     if (typeof ext.mediaId !== 'string' || !ext.mediaId) return null
     if (ext.mediaKind !== 'image' && ext.mediaKind !== 'slideshow' && ext.mediaKind !== 'video') return null
@@ -491,6 +572,28 @@ export function unprojectableReason(item: QueueItem): string | null {
  */
 export function serializeItem(item: QueueItem): unknown {
   if (item.kind === 'unknown') return item.raw
+  if (item.kind === 'youtube') {
+    const name = youtubeDisplayName(item)
+    const text = `${name} — YouTube video (${NEWER_VERSION_LABEL.toLowerCase()})`
+    return {
+      ...(item._top ?? {}),
+      kind: 'quote',
+      id: item.id,
+      slides: [{ text }],
+      quote: { text, sermonTitle: `${name} (needs a newer BORN)`, dateCode: '', sermonId: -1, paragraphIndex: 0, paragraphRef: '' },
+      ...(item.source ? { source: item.source } : {}),
+      ext: {
+        ...(item._ext ?? {}),
+        v: EXT_VERSION,
+        kind: 'youtube',
+        videoId: item.videoId,
+        title: item.title,
+        ...(item.label ? { label: item.label } : {}),
+        ...(item.titleAt ? { titleAt: item.titleAt } : {}),
+        ...(item.fallback ? { fallback: item.fallback } : {})
+      }
+    }
+  }
   if (item.kind === 'media') {
     const text = `${item.name} — ${item.mediaKind === 'slideshow' ? 'slideshow' : 'picture'} (${NEWER_VERSION_LABEL.toLowerCase()})`
     return {
@@ -540,6 +643,8 @@ export function itemTitle(item: QueueItem): string {
       return item.title
     case 'media':
       return item.name
+    case 'youtube':
+      return youtubeDisplayName(item)
     case 'unknown':
       return item.label
     default:

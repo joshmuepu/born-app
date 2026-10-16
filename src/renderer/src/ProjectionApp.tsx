@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { SlidePayload } from './types'
 import { useAutoFitFontSize } from './useAutoFitFontSize'
 import ProjectionVideo from './components/ProjectionVideo'
+import ProjectionYouTube from './components/ProjectionYouTube'
 import type { PlaybackWire } from '../../shared/videoPlayback'
 
 export default function ProjectionApp() {
@@ -115,6 +116,16 @@ export default function ProjectionApp() {
   if (!slide || blanked) {
     // Pure black — nothing branded is ever shown to the congregation.
     return <div className="projection-idle">{alertBanner}</div>
+  }
+
+  if (slide.kind === 'media' && slide.media?.type === 'youtube' && slide.media.youtubeId) {
+    // No alert banner here on purpose: nothing may be drawn over YouTube's player (YOUTUBE_ALERT_POLICY in shared/youtube.ts;
+    // main also keeps alerts away from this screen, this is the second lock).
+    return (
+      <div className="projection-active projection-media projection-media--yt">
+        <ProjectionYouTube videoId={slide.media.youtubeId} mediaId={slide.media.mediaId} playback={playback} />
+      </div>
+    )
   }
 
   if (slide.kind === 'media' && slide.media?.type === 'video') {

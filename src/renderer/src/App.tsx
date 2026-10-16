@@ -26,6 +26,7 @@ import MediaPanel from './components/MediaPanel'
 import Preflight from './components/Preflight'
 import MediaImportReview, { type ReviewRequest } from './components/MediaImportReview'
 import { PackExportDialog, PackImportDialog } from './components/PackDialogs'
+import YouTubeAdd, { type YouTubeChoice } from './components/YouTubeAdd'
 import type { PackReview, PackImportSummary } from '../../shared/servicePack'
 import HelpViewer from './components/HelpViewer'
 import type {
@@ -44,7 +45,7 @@ import type {
   Songbook,
   QueueSource
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, slideshowToItem, withMediaSettings, attachMediaRefs, mediaIdsInQueue, collectMediaRefs, remapMediaIds, type MediaItem, type MediaRef } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, serializeQueue, isProjectable, mediaToItem, youtubeToItem, slideshowToItem, withMediaSettings, attachMediaRefs, mediaIdsInQueue, collectMediaRefs, remapMediaIds, type MediaItem, type MediaRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -117,6 +118,11 @@ function slidePayload(item: QueueItem, slide: number): SlidePayload | null {
   if (item.kind === 'media') {
     if (!s.media) return null
     return { kind: 'media', text: item.mediaIds && item.mediaIds.length > 1 ? `${item.name} — ${slide + 1} of ${item.mediaIds.length}` : item.name, media: s.media }
+  }
+  if (item.kind === 'youtube') {
+    if (!s.media) return null
+    // Rides as a media slide: the congregation window turns it into YouTube's player, every other screen shows the name.
+    return { kind: 'media', text: s.text, label: 'YouTube', media: s.media }
   }
   return {
     kind: item.kind,
@@ -967,6 +973,16 @@ export default function App() {
     },
     [bibleTranslation, mutateQueue, pushToast]
   )
+  /** "Add a YouTube video": appends, with an Undo. Never changes what is live and never starts anything playing. */
+  const handleAddYouTube = useCallback(
+    (c: YouTubeChoice) => {
+      setYoutubeOpen(false)
+      const item = youtubeToItem(c.videoId, c)
+      mutateQueue((q) => [...q, item])
+      pushToast({ message: `Added “${itemTitle(item)}” (YouTube, online) to the queue`, actionLabel: 'Undo', timeoutMs: 5000, onAction: () => mutateQueue((q) => removeById(q, item.id)) })
+    },
+    [mutateQueue, pushToast]
+  )
   /** "Add to queue" from the Media area: appends, with an Undo. Never changes what is live. */
   const handleAddMediaToQueue = useCallback(
     (recs: Array<{ id: string; name: string; animated?: boolean }>) => {
@@ -1440,6 +1456,7 @@ export default function App() {
       { id: 'go-songs', label: 'Go to Songs', keywords: 'hymns music lyrics', run: () => setTopTab('songs') },
       { id: 'preflight', label: "Check that tonight's service is ready", keywords: 'preflight check ready missing files problems', run: () => setPreflightOpen(true) },
       { id: 'logo', label: 'Show the church logo', keywords: 'panic blank logo', hint: 'Ctrl+Shift+L', run: () => void showLogo() },
+      { id: 'yt-add', label: 'Add a YouTube video…', keywords: 'youtube video link online paste', run: () => setYoutubeOpen(true) },
       { id: 'go-media', label: 'Go to Media', keywords: 'pictures photos images slides library backgrounds', run: () => setTopTab('media') },
       { id: 'media-add', label: 'Add pictures to the library…', keywords: 'import photos images media', run: () => { setTopTab('media'); void window.electronAPI.mediaPickAndImport({}) } },
       {
@@ -1778,6 +1795,7 @@ export default function App() {
 
   // Service pack: the queue and its pictures in one .bornpack (design: docs/design/media/07-service-pack.md)
   const [packExport, setPackExport] = useState<unknown[] | null>(null)
+  const [youtubeOpen, setYoutubeOpen] = useState(false)
   const [packReview, setPackReview] = useState<PackReview | null>(null)
   const handleSavePack = useCallback(async () => {
     const withRefs = await withMediaRefs(serviceQueue)
@@ -2460,6 +2478,7 @@ export default function App() {
               visible={topTab === 'media'}
               onAddToQueue={handleAddMediaToQueue}
               onAddSlideshow={handleAddSlideshow}
+              onAddYouTube={() => setYoutubeOpen(true)}
               pushToast={pushToast}
               focusId={mediaFocusId}
               onFocused={() => setMediaFocusId(null)}
@@ -2709,6 +2728,7 @@ export default function App() {
         })()}
 
       <MediaImportReview request={mediaReview} />
+      {youtubeOpen && <YouTubeAdd onClose={() => setYoutubeOpen(false)} onAdd={handleAddYouTube} />}
       {packExport && <PackExportDialog queue={packExport} title="Sunday service" onClose={() => setPackExport(null)} onSaved={(_p, n) => { setPackExport(null); pushToast({ message: `Saved a service pack with ${n} picture${n === 1 ? '' : 's'}.` }) }} />}
       {packReview && <PackImportDialog review={packReview} onClose={() => setPackReview(null)} onOpened={(sum) => void handlePackOpened(sum)} />}
 

@@ -101,3 +101,11 @@
 .st-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .st-bg-dim { position: absolute; inset: 0; }
 .slide-thumb-stage > :not(.st-bg) { z-index: 1; }
+
+/* YouTube item: still preview picture (when it loads) with the name and an Online chip. Never a player.
+   Colours are the content tokens (Online uses the Screens pair, which the contrast test guards). */
+.slide-thumb-yt { position: absolute; inset: 0; background: var(--bg-panel); display: flex; align-items: flex-end; overflow: hidden; }
+.slide-thumb-yt > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .5; }
+.slide-thumb-yt-label { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; width: 100%; background: var(--bg-panel); color: var(--text-primary); border-top: 1px solid var(--border); }
+.slide-thumb-yt-badge { align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--screens); color: var(--on-screens); }
+.slide-thumb-yt-title { font-size: 12px; line-height: 1.25; font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

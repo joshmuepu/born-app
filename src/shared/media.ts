@@ -16,7 +16,9 @@ export interface SlideMedia {
   mediaId: string
   fit?: 'fit' | 'fill' | 'stretch' | 'center'
   /** Present for a video. Its play/pause/position come from the main process's playback record, never from the slide. */
-  type?: 'video'
+  type?: 'video' | 'youtube'
+  /** YouTube items only: the video. `mediaId` is `yt-<id>` and names the playback record; it is never a library id. */
+  youtubeId?: string
   /** A video that starts over when it ends. */
   loop?: boolean
 }

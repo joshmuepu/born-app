@@ -17,3 +17,8 @@
 .preflight-fix { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
 .preflight-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; font-size: var(--text-xs); color: var(--text-muted); }
 .preflight-foot button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Add-a-YouTube-video dialog */
+.modal-label { display: block; margin: 10px 0 4px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.yt-recents { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.yt-recents li { display: flex; align-items: center; gap: 4px; }

@@ -15,6 +15,10 @@ function useClock(): string {
 }
 
 /** The stage screen does not decode the video — it shows the time left in huge type and a progress bar, from the main output's clock. */
+/** A video, local or YouTube: the stage monitor shows its name and the time left instead of the picture. */
+const isTimedMedia = (s: SlidePayload): boolean => s.kind === 'media' && (s.media?.type === 'video' || s.media?.type === 'youtube')
+
+/** The stage screen does not decode the video — it shows the time left in huge type and a progress bar, from the main output's clock. */
 function StageVideo({ slide, wire, receivedAt }: { slide: SlidePayload; wire: PlaybackWire | null; receivedAt: number }): JSX.Element {
   const [, force] = useState(0)
   useEffect(() => {
@@ -128,9 +132,9 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && current!.kind === 'media' && current!.media?.type === 'video' && <StageVideo slide={current!} wire={wire} receivedAt={wireAt} />}
+      {!nothingUp && isTimedMedia(current!) && <StageVideo slide={current!} wire={wire} receivedAt={wireAt} />}
 
-      {!nothingUp && !(current!.kind === 'media' && current!.media?.type === 'video') && view === 'congregation' && (
+      {!nothingUp && !(isTimedMedia(current!)) && view === 'congregation' && (
         <div className="stage-congregation">
           {current!.label && <div className="stage-cg-label">{current!.label}</div>}
           <div className={`stage-cg-text${preClass(current)}`}>
@@ -141,7 +145,7 @@ export default function StageApp() {
         </div>
       )}
 
-      {!nothingUp && !(current!.kind === 'media' && current!.media?.type === 'video') && view === 'stage' && (
+      {!nothingUp && !(isTimedMedia(current!)) && view === 'stage' && (
         <>
           <div className="stage-current">
             {current!.label && <div className="stage-current-label">{current!.label}</div>}

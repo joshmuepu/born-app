@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Mic, BookOpen, Music, Check, Image as ImageIcon, FileQuestion } from 'lucide-react'
+import { Mic, BookOpen, Music, Check, Image as ImageIcon, FileQuestion, Globe } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
 import PreviewLivePair from './PreviewLivePair'
 import { isQueueDrag, readQueueDrag, type QueueDragPayload } from '../dragItem'
@@ -89,6 +89,7 @@ const KIND_BADGE: Record<QueueItem['kind'], string> = {
   bible: 'Bible',
   song: 'Song',
   media: 'Media',
+  youtube: 'YouTube · Online',
   unknown: 'Unavailable'
 }
 
@@ -101,6 +102,7 @@ const KIND_ICON: Record<QueueItem['kind'], typeof Mic> = {
   bible: BookOpen,
   song: Music,
   media: ImageIcon,
+  youtube: Globe,
   unknown: FileQuestion
 }
 

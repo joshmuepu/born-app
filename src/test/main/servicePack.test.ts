@@ -11,7 +11,7 @@ import { ZipWriter, crc32 } from '../../main/zipStore'
 import { mediaToItem, slideshowToItem, attachMediaRefs, serializeQueue, type QueueItem } from '../../shared/queueItem'
 import { PACK_FORMAT, PACK_VERSION } from '../../shared/servicePack'
 import { buildMp4 } from '../helpers/mp4Builder'
-import { videoToItem } from '../../shared/queueItem'
+import { videoToItem, youtubeToItem } from '../../shared/queueItem'
 
 const FX = join(__dirname, '../fixtures/media')
 const sha = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
@@ -164,6 +164,23 @@ describe('service pack: round trip between two separate profiles', () => {
 })
 
 describe('service pack: videos', () => {
+  it('YouTube items travel as a link only: no video is ever copied, and they survive the round trip', async () => {
+    const pics = await addPics(A, 1)
+    const yt = youtubeToItem('dQw4w9WgXcQ', { title: 'How Great', fallback: { blank: true } })
+    const sq = serializeQueue(typedRefs(A, [mediaToItem(pics[0]), yt]))
+    const est = estimatePack(A, sq, { backgrounds: { destinations: {}, channels: {} }, logoId: null })
+    expect(est.videos).toEqual([]) // a YouTube link is not a video file
+    expect(est.count).toBe(1)
+    const dest = join(root, 'out', 'yt.bornpack')
+    const r = await exportPack(A, sq, { dest, title: 'Sunday', appVersion: '2.0.0-dev.1', settings: { backgrounds: { destinations: {}, channels: {} }, logoId: null } })
+    expect(r).toMatchObject({ ok: true, count: 1 })
+    const imp = await importPack(B, dest)
+    expect(imp.ok).toBe(true)
+    const q = imp.ok ? imp.summary.queue : []
+    expect(JSON.stringify(q)).toContain('dQw4w9WgXcQ')
+    expect(readFileSync(dest).includes(Buffer.from('googlevideo'))).toBe(false)
+  })
+
   it('a service with a video cannot be made into a pack yet — it says so, names the video, and writes nothing', async () => {
     const pics = await addPics(A, 1)
     const vp = join(root, 'v.mp4'); writeFileSync(vp, buildMp4({ mdatBytes: 3000 }))

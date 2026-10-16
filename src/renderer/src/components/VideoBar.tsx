@@ -8,7 +8,7 @@ import './VideoBar.css'
  * output REALLY reports (the playback record the main output keeps), never what was asked for. Taking a video shows it paused;
  * nothing plays until Play is pressed here.
  */
-export default function VideoBar({ channelId, mediaId }: { channelId: string; mediaId: string }): JSX.Element {
+export default function VideoBar({ channelId, mediaId, online = false }: { channelId: string; mediaId: string; online?: boolean }): JSX.Element {
   const [wire, setWire] = useState<PlaybackWire | null>(null)
   const receivedAt = useRef(performance.now())
   const [, force] = useState(0)
@@ -34,17 +34,18 @@ export default function VideoBar({ channelId, mediaId }: { channelId: string; me
   }, [channelId, mediaId])
 
   const send = (action: Parameters<typeof window.electronAPI.mediaPlaybackCommand>[1]): void => { void window.electronAPI.mediaPlaybackCommand(channelId, action) }
-  if (!wire) return <div className="vbar vbar--idle" role="group" aria-label="Video controls"><span className="vbar-note">Loading the video…</span></div>
+  if (!wire) return <div className="vbar vbar--idle" role="group" aria-label="Video controls"><span className="vbar-note">{online ? 'Getting YouTube ready…' : 'Loading the video…'}</span></div>
 
   const pos = seeking ?? wirePosition(wire, performance.now() - receivedAt.current)
   const dur = wire.duration
   const left = dur !== null ? Math.max(0, Math.ceil(dur - pos - 0.001)) : null
   const playing = wire.status === 'playing'
   const note =
-    wire.status === 'error' ? `This video stopped: ${wire.error ?? 'it could not be played'}. Press Clear, or take it again.`
+    wire.status === 'error' ? `This video stopped: ${wire.error ?? 'it could not be played'}. Press Clear${online ? ' and use your backup' : ''}, or take it again.`
+    : wire.stalled && online ? 'Playing — time not advancing. This can be an ad, or the internet slowing down. Wait, or press Clear and use your backup.'
     : wire.stalled ? 'The picture has stopped moving. If it does not recover, press Pause, then Play — or Clear the screen.'
     : wire.status === 'ended' ? 'Finished. Press Play to start it again.'
-    : !wire.hasPlayedOnce && wire.status === 'paused' ? 'Ready on its first frame. Nothing plays until you press Play.'
+    : !wire.hasPlayedOnce && wire.status === 'paused' ? (online ? 'Online (YouTube). Nothing plays until you press Play. Ads may appear.' : 'Ready on its first frame. Nothing plays until you press Play.')
     : null
 
   return (
@@ -76,9 +77,9 @@ export default function VideoBar({ channelId, mediaId }: { channelId: string; me
           {wire.muted ? <VolumeX width={15} height={15} aria-hidden="true" /> : <Volume2 width={15} height={15} aria-hidden="true" />}
         </button>
         <input className="vbar-vol" type="range" min={0} max={100} value={Math.round(wire.volume * 100)} aria-label="Volume" onChange={(e) => send({ type: 'volume', value: Number(e.target.value) / 100 })} />
-        <button className={`btn-quiet btn-sm vbar-icon${wire.loop ? ' is-on' : ''}`} onClick={() => send({ type: 'loop', value: !wire.loop })} aria-pressed={wire.loop} aria-label="Loop" title={wire.loop ? 'Loops — click to stop looping' : 'Loop (start over when it ends)'}>
+        {!online && <button className={`btn-quiet btn-sm vbar-icon${wire.loop ? ' is-on' : ''}`} onClick={() => send({ type: 'loop', value: !wire.loop })} aria-pressed={wire.loop} aria-label="Loop" title={wire.loop ? 'Loops — click to stop looping' : 'Loop (start over when it ends)'}>
           <Repeat width={15} height={15} aria-hidden="true" />
-        </button>
+        </button>}
       </div>
       {note && <div className={`vbar-note${wire.status === 'error' || wire.stalled ? ' is-warn' : ''}`} role="status">{note}</div>}
     </div>

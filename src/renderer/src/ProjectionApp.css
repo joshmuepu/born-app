@@ -149,6 +149,7 @@ body {
 /* Pictures: black behind, the picture never covers the alert banner (it is drawn after). */
 .projection-media { background: #000; padding: 0; }
 .projection-pic { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #000; }
+.projection-yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; /* the operator drives it; a click or key in the room never reaches YouTube's player */ pointer-events: none; }
 .projection-pic--fit { object-fit: contain; }
 .projection-pic--fill { object-fit: cover; }
 .projection-pic--stretch { object-fit: fill; }

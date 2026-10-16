@@ -74,6 +74,8 @@ export interface AppSettings {
    *  Remote panel shows this network first next time. Null until a phone
    *  has connected. */
   remoteLastPhoneNetwork: { name: string; address: string } | null
+  /** YouTube links the operator has used (id + names only — never video, never a thumbnail). Newest first, at most 30. */
+  youtubeRecents: Array<{ videoId: string; title: string; label?: string; at: number }>
 }
 
 const DEFAULTS: AppSettings = {
@@ -96,7 +98,8 @@ const DEFAULTS: AppSettings = {
   ],
   automationToken: null,
   mediaBackgrounds: { destinations: {}, channels: {} },
-  remoteLastPhoneNetwork: null
+  remoteLastPhoneNetwork: null,
+  youtubeRecents: []
 }
 
 let cache: AppSettings | null = null
