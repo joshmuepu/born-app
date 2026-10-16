@@ -77,6 +77,17 @@ describe('the Graphics page, when nothing is live', () => {
   })
 })
 
+describe('backgrounds on a Graphics output', () => {
+  it("the full-screen panel's opaque backdrop is made transparent while a still or motion background is drawn (it sat above the background and hid it), and restored after", async () => {
+    registerGraphicsDestination('g-bg', 'fullscreen', false)
+    const html = (await getPage('/output/graphics/g-bg')).body
+    const script = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'))
+    expect(script).toMatch(/panelEl\.style\.background = '';\s*picEl\.style\.display = 'none'/)
+    expect(script).toMatch(/bgDimEl\.style\.display = 'block';[^}]*panelEl\.style\.background = 'transparent'/s)
+    unregisterGraphicsDestination('g-bg')
+  })
+})
+
 describe('?profile= — one Graphics output, several layouts', () => {
   it('only real profile names count; anything else (including "auto") means "use the output setting"', () => {
     expect(parseProfileParam('lower-third')).toBe('lower-third')

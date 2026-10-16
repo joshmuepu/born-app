@@ -739,6 +739,7 @@ function buildGraphicsScript(id: string): string {
 
   function applyFrame(payload){
     stageEl.dataset.profile = (payload && payload.profileId) || DEFAULT_PROFILE;
+    panelEl.style.background = '';
     picEl.style.display = 'none'; picEl.removeAttribute('src');
     stopVideo();
     bgEl.style.display = 'none'; bgEl.removeAttribute('src'); bgDimEl.style.display = 'none';
@@ -766,6 +767,8 @@ function buildGraphicsScript(id: string): string {
       }
       bgDimEl.style.background = 'rgba(0,0,0,' + (Math.max(0, Math.min(80, s.background.dim)) / 100) + ')';
       bgDimEl.style.display = 'block';
+      // The Full-screen panel is an opaque black backdrop that sits ABOVE the background layers: let the background show through it.
+      panelEl.style.background = 'transparent';
     }
     if (s.kind === 'media') {
       panelEl.style.display = 'none'; // a picture/video is its own frame (and nothing at all on a lower-third): no empty text panel
