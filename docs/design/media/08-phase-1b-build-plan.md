@@ -85,7 +85,9 @@ Each failure says what is wrong and a fix in plain words, e.g. "This video uses 
 - 4K on weak PCs: warning only; the 4K soak was 20 minutes.
 - A custom-protocol video needs `stream` privileges (already set for `born-media`).
 
-## YouTube next (not started; Phase 2a)
+## YouTube (built on branch v2-youtube — see docs/qa/v2-youtube-report.md)
+
+*Original plan, kept for the record:*
 
 What the roadmap and [06-youtube.md](06-youtube.md) say: long videos should play from YouTube **inside the app with the official embedded player only** (no downloading, no scraping, no changing the player), as an item with an *Online* badge, an online preflight, a **local fallback** per item (which is why local video had to exist first), Test play, and **Play/Pause/Blank only** from the phone.
 - **Can be built before counsel review:** the item type and queue shell, URL parsing, the player host window with the required `Referer`/origin fix for **Error 153** (identify the app to YouTube), the playback bar reuse (position, time left, stalled/error states), the online preflight (reachability, embeddable flag via the official player), the fallback item, and offline behaviour.

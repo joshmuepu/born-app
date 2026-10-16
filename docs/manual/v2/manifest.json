@@ -72,6 +72,11 @@
           "file": "operators/media-video.md"
         },
         {
+          "id": "media-youtube",
+          "title": "Using YouTube",
+          "file": "operators/media-youtube.md"
+        },
+        {
           "id": "media-ready",
           "title": "Is tonight ready? Sharing with pictures",
           "file": "operators/media-ready-and-sharing.md"

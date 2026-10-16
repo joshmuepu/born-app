@@ -76,3 +76,11 @@ How fast big iPhone photos are on *this* PC, whether antivirus slows copying, an
 On the same PC, with the installed or unpacked app, PowerShell can run the packaged-app smoke test:
 `./scripts/smoke-windows-packaged.ps1 -Exe "C:\Users\<you>\AppData\Local\Programs\Branham or Nothing (v2 dev)\Branham or Nothing (v2 dev).exe"`
 It starts the app with a throw-away data folder, checks the window loads and the picture library is created, and closes it.
+
+## YouTube (v2-youtube) — by hand on the church PC
+- [ ] Add a public video; Take: it shows paused, no sound; Play works; Esc closes it at once.
+- [ ] Check "Is tonight ready?" with the internet on, then **unplug the internet** and check again (should say "Can't check — offline"; item stays).
+- [ ] **Drop the internet mid-video**: the bar should say time is not advancing; Clear + backup works.
+- [ ] A video whose owner disabled embedding: plain message, backup offered.
+- [ ] Ads: note whether ads appear with and without YouTube Premium signed in on this PC (not confirmed anywhere).
+- [ ] No "Error 153" on Windows (the player page origin is the proof point).
