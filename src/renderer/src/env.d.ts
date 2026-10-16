@@ -172,6 +172,11 @@ declare global {
       mediaLocateFolder: (wanted: Array<{ hash: string; bytes: number }>) => Promise<{ canceled: boolean; found: Record<string, string>; scanned: number }>
       mediaPreflight: (ids: string[]) => Promise<import('../../shared/media').MediaPreflightResult[]>
       mediaPrepareDisplay: (id: string) => Promise<{ ok: boolean; status: import('../../shared/media').MediaStatus }>
+      mediaPlaybackCommand: (channelId: string, action: import('../../shared/videoPlayback').PlaybackAction) => Promise<import('../../shared/videoPlayback').PlaybackWire | null>
+      mediaPlaybackGet: (channelId: string) => Promise<import('../../shared/videoPlayback').PlaybackWire | null>
+      mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => void
+      onMediaPlayback: (cb: (m: import('../../shared/videoPlayback').PlaybackWire) => void) => () => void
+      onMediaPlaybackStop: (cb: (channelId: string) => void) => () => void
       packEstimate: (queue: unknown) => Promise<import('../../shared/servicePack').PackEstimate | null>
       packExport: (queue: unknown, title: string) => Promise<import('../../shared/servicePack').PackResult<{ bytes: number; count: number; path: string }> & { canceled?: boolean }>
       packPickAndInspect: () => Promise<import('../../shared/servicePack').PackResult<{ review: import('../../shared/servicePack').PackReview }> & { canceled?: boolean }>

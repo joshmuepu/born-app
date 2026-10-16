@@ -8,6 +8,7 @@ import type {
   SlidePayload
 } from '../types'
 import SlideThumb from './SlideThumb'
+import VideoBar from './VideoBar'
 import './PreviewLivePair.css'
 
 /** How often the pair re-reads the output state on its own. Pushes arrive on
@@ -210,6 +211,8 @@ export default function PreviewLivePair({
           </div>
         </div>
       </div>
+
+      {liveSlide?.kind === 'media' && liveSlide.media?.type === 'video' && !blanked && <VideoBar key={liveSlide.media.mediaId} channelId={id} mediaId={liveSlide.media.mediaId} />}
 
       <div className="plp-actions">
         {isMain ? (

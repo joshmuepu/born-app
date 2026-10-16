@@ -16,6 +16,7 @@ import {
   Trash2,
   X,
   Film,
+  Play,
   Layers,
   FileText
 } from 'lucide-react'
@@ -23,6 +24,7 @@ import MediaBackgrounds, { useBackgroundTargets } from './MediaBackgrounds'
 import DrillShell, { ViewToggle, useBrowseView, useBackslashToggle } from './DrillShell'
 import VirtualList from './VirtualList'
 import { driveRootOf, driveLabel } from '../../../shared/driveRoot'
+import { formatClock } from '../../../shared/videoPlayback'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { ToastSpec } from './Toasts'
 import { useAppActions } from '../AppActions'
@@ -37,6 +39,7 @@ type Category =
   | { kind: 'favorites' }
   | { kind: 'recent' }
   | { kind: 'attention' }
+  | { kind: 'videos' }
   | { kind: 'backgrounds' }
   | { kind: 'folder'; id: string }
   | { kind: 'tag'; tag: string }
@@ -155,6 +158,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     if (cat.kind === 'favorites') l = l.filter((i) => i.favorite)
     else if (cat.kind === 'recent') l = l.filter((i) => i.lastUsedAt).sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? ''))
     else if (cat.kind === 'attention') l = l.filter((i) => status.has(i.id))
+    else if (cat.kind === 'videos') l = l.filter((i) => i.type === 'video')
     else if (cat.kind === 'folder') l = l.filter((i) => i.folderId === cat.id)
     else if (cat.kind === 'tag') l = l.filter((i) => i.tags.includes(cat.tag))
     return l
@@ -444,9 +448,10 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
           {r.favorite && <span className="media-badge media-badge--fav" title="Favorite"><Star size={12} fill="currentColor" /></span>}
           {r.storage === 'linked' && <span className="media-badge media-badge--link" title="Linked: the original stays where it is"><Link2 size={12} /></span>}
           {r.animated && <span className="media-badge media-badge--anim" title="Animated"><Film size={12} /></span>}
+          {r.type === 'video' && <span className="media-badge media-badge--video" title="Video"><Play size={11} fill="currentColor" /> {formatClock(r.durationSec)}</span>}
         </div>
         <div className="media-card-name" title={r.name}>{r.name}</div>
-        <div className="media-card-meta">{r.width}×{r.height} · {fmtBytes(r.bytes)}</div>
+        <div className="media-card-meta">{r.width}×{r.height}{r.type === 'video' ? ` · ${formatClock(r.durationSec)}` : ''} · {fmtBytes(r.bytes)}</div>
       </div>
     )
   }
@@ -471,7 +476,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
       >
         <img src={mediaThumbUrl(r.id)} alt="" loading="lazy" draggable={false} />
         <span className="media-row-name">{r.name}{r.favorite && <Star size={12} fill="currentColor" className="media-row-fav" />}</span>
-        <span className="media-row-dim">{r.width}×{r.height}</span>
+        <span className="media-row-dim">{r.width}×{r.height}{r.type === 'video' ? ` · ${formatClock(r.durationSec)}` : ''}</span>
         <span className="media-row-size">{fmtBytes(r.bytes)}</span>
         {st ? <span className="media-row-state warn"><AlertTriangle size={12} /> {STATUS_TEXT[st as Exclude<MediaStatus, 'ok'>]}</span> : <span className="media-row-state">{fmtDate(r.addedAt)}</span>}
       </div>
@@ -514,6 +519,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
         {catBtn({ kind: 'favorites' }, <Star size={15} />, 'Favorites')}
         {catBtn({ kind: 'recent' }, <Clock size={15} />, 'Recently used')}
         {catBtn({ kind: 'attention' }, <AlertTriangle size={15} />, 'Needs attention', attentionCount || undefined)}
+        {catBtn({ kind: 'videos' }, <Film size={15} />, 'Videos', items.filter((i) => i.type === 'video').length || undefined)}
         {catBtn({ kind: 'backgrounds' }, <Layers size={15} />, 'Backgrounds')}
         <div className="media-cats-head">
           Folders
@@ -559,7 +565,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
             <span className="media-multi">
               {checked.size} selected
               <button className="btn-quiet btn-sm" onClick={() => addToQueue(orderedChecked())}><Plus size={13} /> Each to queue</button>
-              <button className="btn-quiet btn-sm" onClick={() => onAddSlideshow(orderedChecked().filter((i) => !status.has(i.id)))}><ImageIcon size={13} /> As one slideshow</button>
+              <button className="btn-quiet btn-sm" onClick={() => onAddSlideshow(orderedChecked().filter((i) => !status.has(i.id) && i.type !== 'video'))}><ImageIcon size={13} /> As one slideshow</button>
               <button className="btn-quiet btn-sm" onClick={() => void remove([...checked])}><Trash2 size={13} /> Remove</button>
             </span>
           )}
@@ -787,7 +793,13 @@ function Detail({
         </div>
       </div>
       <dl className="media-facts">
-        <div><dt>Size</dt><dd>{r.width} × {r.height}{big ? ' — very large; it will be reduced for the screen' : ''}</dd></div>
+        <div><dt>Size</dt><dd>{r.width} × {r.height}{big && r.type !== 'video' ? ' — very large; it will be reduced for the screen' : ''}</dd></div>
+        {r.type === 'video' && (
+          <>
+            <div><dt>Video</dt><dd>{formatClock(r.durationSec)} long · H.264{r.fps ? ` · ${Math.round(r.fps)} fps` : ''}{r.bitrate ? ` · ${(r.bitrate / 1e6).toFixed(1)} Mbit/s` : ''}</dd></div>
+            <div><dt>Sound</dt><dd>{r.audioCodec ? 'Has sound (AAC)' : 'No sound'}</dd></div>
+          </>
+        )}
         <div><dt>File</dt><dd>{r.ext.toUpperCase()} · {fmtBytes(r.bytes)}{r.animated ? ' · animated' : ''}{r.hasAlpha ? ' · transparent' : ''}</dd></div>
         <div><dt>Stored</dt><dd>{r.storage === 'linked' ? `Linked in place — ${r.linkPath}` : "Copied into BORN's library"}{r.convertedFrom ? ` · converted from ${r.convertedFrom.toUpperCase()}` : ''}</dd></div>
         <div><dt>Original name</dt><dd>{r.origFilename}</dd></div>

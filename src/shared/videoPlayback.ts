@@ -30,6 +30,9 @@ export interface PlaybackState {
   /** The output reported that frames stopped advancing while it should be playing. */
   stalled: boolean
   error: string | null
+  /** Bumped whenever the position jumps because of a COMMAND (take, seek, start over) — the leader window seeks only when it changes,
+   *  never because of its own position reports. */
+  epoch: number
 }
 
 export type PlaybackAction =
@@ -56,7 +59,8 @@ export function initialPlayback(mediaId: string, opts: { duration?: number | nul
     loop: opts.loop ?? false,
     hasPlayedOnce: false,
     stalled: false,
-    error: null
+    error: null,
+    epoch: 1
   }
 }
 
@@ -84,7 +88,7 @@ export function playbackReduce(s: PlaybackState, a: PlaybackAction, now = Date.n
     case 'play': {
       if (s.status === 'error') return s
       const restart = s.status === 'ended' || (s.duration !== null && here >= s.duration - 0.05 && !s.loop)
-      return { ...s, status: 'playing', position: restart ? 0 : here, at: now, hasPlayedOnce: true, stalled: false }
+      return { ...s, status: 'playing', position: restart ? 0 : here, at: now, hasPlayedOnce: true, stalled: false, epoch: restart ? s.epoch + 1 : s.epoch }
     }
     case 'pause':
       return s.status === 'playing' ? { ...s, status: 'paused', position: here, at: now, stalled: false } : s
@@ -93,7 +97,7 @@ export function playbackReduce(s: PlaybackState, a: PlaybackAction, now = Date.n
     case 'seek': {
       const max = s.duration !== null ? s.duration : Infinity
       const to = Math.max(0, Math.min(Number.isFinite(a.to) ? a.to : 0, max))
-      return { ...s, position: to, at: now, status: s.status === 'ended' ? 'paused' : s.status }
+      return { ...s, position: to, at: now, status: s.status === 'ended' ? 'paused' : s.status, epoch: s.epoch + 1 }
     }
     case 'volume':
       return { ...s, volume: clamp01(a.value) }
@@ -245,4 +249,48 @@ export function judgeVideo(f: VideoFacts): VideoVerdict {
   const limit = fourK ? VIDEO_LIMITS.warnBitrate4k : VIDEO_LIMITS.warnBitrate1080
   if (f.bitrate !== null && f.bitrate > limit) warnings.push(`Very high bit rate (${(f.bitrate / 1e6).toFixed(0)} Mbit/s). It may play poorly on a slower computer — a smaller export (under ${limit / 1e6} Mbit/s) is safer.`)
   return { ok: true, warnings }
+}
+
+// ── what travels to the other screens ────────────────────────────────────────
+
+/** One message to a follower or the operator's bar: everything it needs, with the position already advanced to "now". */
+export interface PlaybackWire {
+  channelId: string
+  mediaId: string
+  status: PlaybackStatus
+  /** Position (s) at the moment of sending. A follower on another computer extrapolates from ITS OWN clock, so clocks never need to agree. */
+  position: number
+  duration: number | null
+  volume: number
+  muted: boolean
+  loop: boolean
+  hasPlayedOnce: boolean
+  stalled: boolean
+  error: string | null
+  epoch: number
+}
+
+export function toWire(channelId: string, s: PlaybackState, now: number): PlaybackWire {
+  return {
+    channelId,
+    mediaId: s.mediaId,
+    status: s.status,
+    position: positionNow(s, now),
+    duration: s.duration,
+    volume: s.volume,
+    muted: s.muted,
+    loop: s.loop,
+    hasPlayedOnce: s.hasPlayedOnce,
+    stalled: s.stalled,
+    error: s.error,
+    epoch: s.epoch
+  }
+}
+
+/** Where a received message says the video is, `sinceReceivedMs` after it arrived (on the receiver's own clock). */
+export function wirePosition(w: PlaybackWire, sinceReceivedMs: number): number {
+  if (w.status !== 'playing') return w.position
+  let p = w.position + Math.max(0, sinceReceivedMs) / 1000
+  if (w.duration && w.duration > 0) p = w.loop ? p % w.duration : Math.min(p, w.duration)
+  return p
 }

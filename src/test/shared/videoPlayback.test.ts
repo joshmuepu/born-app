@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { initialPlayback, playbackReduce as R, positionNow, timeRemaining, playbackBlank, FollowerController, SYNC, formatClock, judgeVideo } from '../../shared/videoPlayback'
+import { toWire, wirePosition, initialPlayback, playbackReduce as R, positionNow, timeRemaining, playbackBlank, FollowerController, SYNC, formatClock, judgeVideo } from '../../shared/videoPlayback'
 
 const T0 = 1_000_000
 const fresh = (o = {}) => initialPlayback('m_1', { duration: 60, ...o }, T0)
@@ -138,5 +138,32 @@ describe('what a file may be (the resolved limits)', () => {
     expect(hi.ok && hi.warnings).toHaveLength(2)
     const k2 = judgeVideo({ ...ok, width: 3840, height: 2160, bitrate: 45_000_000 })
     expect(k2.ok && k2.warnings).toHaveLength(2)
+  })
+})
+
+describe('what travels to the other screens', () => {
+  it('a message carries the position at send time and a receiver extrapolates on its own clock', () => {
+    const p = R(fresh({ duration: 100 }), { type: 'play' }, T0)
+    const w = toWire('main', p, T0 + 20_000)
+    expect(w).toMatchObject({ channelId: 'main', mediaId: 'm_1', status: 'playing', duration: 100 })
+    expect(w.position).toBeCloseTo(20)
+    expect(wirePosition(w, 1500)).toBeCloseTo(21.5)
+    expect(wirePosition({ ...w, status: 'paused' }, 5000)).toBeCloseTo(20)
+  })
+  it('the epoch changes only on commands that move the position, never on the leader\'s own reports', () => {
+    let s = fresh()
+    const e0 = s.epoch
+    s = R(s, { type: 'play' }, T0)
+    expect(s.epoch).toBe(e0)
+    s = R(s, { type: 'report', position: 4, playing: true }, T0 + 4000)
+    expect(s.epoch).toBe(e0)
+    s = R(s, { type: 'seek', to: 30 }, T0 + 5000)
+    expect(s.epoch).toBe(e0 + 1)
+    s = R(s, { type: 'pause' }, T0 + 6000)
+    expect(s.epoch).toBe(e0 + 1)
+  })
+  it('wraps a looping position', () => {
+    const w = toWire('main', R(fresh({ duration: 10, loop: true }), { type: 'play' }, T0), T0 + 9000)
+    expect(wirePosition(w, 3000)).toBeCloseTo(2)
   })
 })

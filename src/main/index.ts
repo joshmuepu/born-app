@@ -18,6 +18,8 @@ import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHttp } from './mediaService'
 import { registerPackIpc } from './packService'
+import { PlaybackHub } from './mediaPlayback'
+import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
 import {
   getBibleTranslations,
@@ -1229,6 +1231,7 @@ function setDestinationSuppressed(id: string, suppressed: boolean): void {
 function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   const channel = channels.get(channelId)
   if (!channel) return
+  if (blank) playbackHub.blank(channelId) // silence at once — Esc, the phone's Blank and the logo key all come through here
   channels.set(channelId, patchChannel(channel, { blanked: blank }))
   pushLive()
   const congregation = destinations.get('congregation')
@@ -1249,6 +1252,7 @@ function setChannelBlank(channelId: ChannelId, blank: boolean): void {
 function clearChannel(channelId: ChannelId): void {
   const channel = channels.get(channelId)
   if (!channel) return
+  playbackHub.stop(channelId)
   channels.set(channelId, patchChannel(channel, { current: null, next: null, blanked: false }))
   pushLive()
   const congregation = destinations.get('congregation')
@@ -1355,6 +1359,45 @@ function cascadeFollowSlide(sourceChannelId: ChannelId, slide: SlidePayload): vo
   }
 }
 
+// ── Video playback (Phase 1b) ─────────────────────────────────────────────────
+// One playback record per channel; the congregation window is the leader (it plays, with sound, and reports its real position), the
+// operator's bar, the stage monitor and any Graphics page follow it. See docs/design/media/08-phase-1b-build-plan.md.
+function channelOfDestination(destId: string): ChannelId | null {
+  return destinations.get(destId)?.config.channelId ?? null
+}
+const playbackHub = new PlaybackHub({
+  now: () => Date.now(),
+  emit: (msg: PlaybackWire) => {
+    if (channelOfDestination('congregation') === msg.channelId) sendToProjection('media:playback', msg)
+    if (channelOfDestination('stage') === msg.channelId) sendToStage('media:playback', msg)
+    sendToMain('media:playback', msg)
+    pushGraphicsPlayback(msg.channelId, msg)
+  },
+  emitStop: (channelId) => {
+    if (channelOfDestination('congregation') === channelId) sendToProjection('media:playback-stop', channelId)
+    if (channelOfDestination('stage') === channelId) sendToStage('media:playback-stop', channelId)
+    sendToMain('media:playback-stop', channelId)
+    pushGraphicsPlayback(channelId, null)
+  }
+})
+setInterval(() => playbackHub.tick(), 1000).unref()
+
+/** Graphics (browser) outputs follow the playback record too — wired up in the Graphics slice. */
+function pushGraphicsPlayback(_channelId: ChannelId, _msg: PlaybackWire | null): void {
+  /* replaced below */
+}
+
+/** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
+function syncPlaybackToSlide(channelId: ChannelId, slide: SlidePayload | null): void {
+  const m = slide && slide.kind === 'media' && slide.media?.type === 'video' ? slide.media : null
+  if (!m) {
+    playbackHub.stop(channelId)
+    return
+  }
+  const rec = getMediaLibrary()?.get(m.mediaId)
+  playbackHub.take(channelId, m.mediaId, { duration: rec?.durationSec ?? null, loop: !!m.loop })
+}
+
 function showChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   applyChannelSlide(channelId, slide)
   cascadeFollowSlide(channelId, slide)
@@ -1368,6 +1411,7 @@ function applyChannelSlide(channelId: ChannelId, slide: SlidePayload): void {
   if (congregation && congregation.config.channelId === channelId && !congregation.suppressed) {
     congregation.send('projection:show-slide', withBackground('congregation', channelId, slide))
   }
+  syncPlaybackToSlide(channelId, slide)
   pushLive()
   // A fresh slide always un-blanks — keep the stage screen in step so it
   // doesn't stay stuck on the clock after an Esc blackout (unless it's
@@ -1402,6 +1446,37 @@ function automationState(): AutomationChannelState[] {
     blanked: c.blanked
   }))
 }
+
+// ── Video playback IPC ─────────────────────────────────────────────────────────
+const PLAYBACK_COMMANDS = ['play', 'pause', 'toggle', 'seek', 'volume', 'muted', 'loop']
+ipcMain.handle('media:playback-command', (_e, channelId: string, action: PlaybackAction) => {
+  if (typeof channelId !== 'string' || !action || typeof action !== 'object' || !PLAYBACK_COMMANDS.includes((action as { type: string }).type)) return null
+  const a = action as PlaybackAction
+  // only plain values from the window: never trust shapes (a `report` is reserved for the leader window below)
+  const safe: PlaybackAction | null =
+    a.type === 'seek' ? { type: 'seek', to: Number((a as { to: number }).to) || 0 }
+    : a.type === 'volume' ? { type: 'volume', value: Number((a as { value: number }).value) }
+    : a.type === 'muted' ? { type: 'muted', value: !!(a as { value: boolean }).value }
+    : a.type === 'loop' ? { type: 'loop', value: !!(a as { value: boolean }).value }
+    : { type: a.type } as PlaybackAction
+  const s = playbackHub.command(channelId, safe)
+  return s ? playbackHub.get(channelId) : null
+})
+ipcMain.handle('media:playback-get', (_e, channelId: string) => (typeof channelId === 'string' ? playbackHub.get(channelId) : null))
+// The leader window (the congregation output) reports where it really is, about once a second.
+ipcMain.on('media:playback-report', (e, r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => {
+  if (!projectionWindow || projectionWindow.isDestroyed() || e.sender !== projectionWindow.webContents) return
+  const channelId = channelOfDestination('congregation')
+  if (!channelId || !r || typeof r.position !== 'number' || !Number.isFinite(r.position)) return
+  playbackHub.report(channelId, {
+    position: Math.max(0, r.position),
+    playing: !!r.playing,
+    duration: typeof r.duration === 'number' && Number.isFinite(r.duration) ? r.duration : undefined,
+    ended: !!r.ended,
+    stalled: !!r.stalled,
+    error: typeof r.error === 'string' ? r.error.slice(0, 200) : null
+  })
+})
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
 

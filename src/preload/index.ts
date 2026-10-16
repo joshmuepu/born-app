@@ -427,6 +427,19 @@ const api = {
   mediaPreflight: (ids: string[]): Promise<unknown[]> => ipcRenderer.invoke('media:preflight', ids),
   mediaPrepareDisplay: (id: string): Promise<{ ok: boolean; status: string }> => ipcRenderer.invoke('media:prepare-display', id),
   /** Real file-system paths of dropped File objects (Electron 33: File.path is gone). */
+  mediaPlaybackCommand: (channelId: string, action: unknown): Promise<unknown> => ipcRenderer.invoke('media:playback-command', channelId, action),
+  mediaPlaybackGet: (channelId: string): Promise<unknown> => ipcRenderer.invoke('media:playback-get', channelId),
+  mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }): void => ipcRenderer.send('media:playback-report', r),
+  onMediaPlayback: (cb: (m: import('../shared/videoPlayback').PlaybackWire) => void): (() => void) => {
+    const h = (_e: unknown, m: import('../shared/videoPlayback').PlaybackWire): void => cb(m)
+    ipcRenderer.on('media:playback', h)
+    return () => ipcRenderer.removeListener('media:playback', h)
+  },
+  onMediaPlaybackStop: (cb: (channelId: string) => void): (() => void) => {
+    const h = (_e: unknown, c: string): void => cb(c)
+    ipcRenderer.on('media:playback-stop', h)
+    return () => ipcRenderer.removeListener('media:playback-stop', h)
+  },
   packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
   packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),
   packPickAndInspect: (): Promise<unknown> => ipcRenderer.invoke('pack:pick-and-inspect'),
