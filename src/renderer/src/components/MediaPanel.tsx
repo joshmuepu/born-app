@@ -496,7 +496,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
       {items.length === 0 ? (
         <>
           <h3>No pictures yet</h3>
-          <p>Drop pictures here, paste one, or press <b>Add pictures</b>. BORN keeps its own copy, so a missing USB stick never breaks a service.</p>
+          <p>Drop pictures or videos here, paste a picture, or press <b>Add pictures</b>. BORN keeps its own copy, so a missing USB stick never breaks a service.</p>
           <div className="media-empty-actions">
             <button className="btn-primary" onClick={() => void pick(false)}><Upload size={15} /> Add pictures</button>
             <button className="btn-quiet" onClick={() => void pick(true)}><FolderOpen size={15} /> Add a folder</button>
@@ -515,7 +515,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddSlideshow, push
     <div className="media-left" onKeyDown={onKeyDown}>
       <div className="media-cats">
         <div className="media-cats-head">Library</div>
-        {catBtn({ kind: 'all' }, <ImageIcon size={15} />, 'All pictures', items.length)}
+        {catBtn({ kind: 'all' }, <ImageIcon size={15} />, 'All media', items.length)}
         {catBtn({ kind: 'favorites' }, <Star size={15} />, 'Favorites')}
         {catBtn({ kind: 'recent' }, <Clock size={15} />, 'Recently used')}
         {catBtn({ kind: 'attention' }, <AlertTriangle size={15} />, 'Needs attention', attentionCount || undefined)}

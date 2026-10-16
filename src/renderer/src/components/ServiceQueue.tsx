@@ -285,6 +285,8 @@ export default function ServiceQueue({
         })
       )
       out.push({ id: 'loop', label: check(!!item.loop) + 'Loop (start over after the last)', onSelect: () => onMediaSettings(index, { loop: !item.loop }) })
+    } else if (item.mediaKind === 'video') {
+      out.push({ id: 'loop', label: check(!!item.loop) + 'Loop the video (start over when it ends)', separatorBefore: true, onSelect: () => onMediaSettings(index, { loop: !item.loop }) })
     }
     return out
   }
@@ -418,7 +420,7 @@ export default function ServiceQueue({
             {item.kind === 'media' && (
               <div className="queue-row-detail">
                 {[
-                  item.slides.length > 1 ? `${item.slides.length} pictures` : 'Picture',
+                  item.mediaKind === 'video' ? 'Video' : item.slides.length > 1 ? `${item.slides.length} pictures` : 'Picture',
                   item.slides.length > 1 ? (item.autoAdvanceSec ? `auto ${item.autoAdvanceSec} s` : 'by hand') : null,
                   item.loop ? 'loop' : null,
                   item.fit && item.fit !== 'fit' ? item.fit : null
