@@ -18,7 +18,7 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 | S1 attach/import, filename matching, preflight | **done** (tests: +64; real tape: import 53 ms, 2:24:47.89, exact match to sermon 1115, original untouched) |
 | S2 audio engine + player bar | **done** (suite 1366 → 1418) |
 | S3 sync map + tap editor | **done** |
-| S4 follow-along in the reader | — |
+| S4 follow-along in the reader | **done** (live check on the real tape waits for a real map from the S8 aligner) |
 | S5 projection (a highlight, b one-at-a-time, c lower third/stage/Graphics) | — |
 | S6 languages | — |
 | S7 phone remote + automation API | — |
@@ -45,3 +45,14 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 - **Real sermon 65-0418M has 363 numbered paragraphs** (133 rows, 113 range rows).
 - Real app, real tape: 3 Space taps 2 s apart produced marks 4336.06 / 4338.06 / 4340.07 (exactly 2.00 s apart minus reaction 0.25 s), saved, shared as a times-only file (no text/audio/path), reopened.
 - Fixed while testing: reaction default read as 0 when unset (localStorage null → 0); CSS used a non-existent `--text-muted` token (now `--text-tertiary`).
+
+
+### S4 (done)
+- Reader highlights the paragraph the tape is in (follow mode); free-browse toggle; tap a paragraph seeks (Undo toast); prev/next paragraph keys (prev: >3 s in goes to paragraph start, else previous); ticks on the seek bar.
+- Decision: follow state is per view (not saved); a seek never changes what is live. Alternative (saved follow state) rejected: surprising on reopening.
+- Tests: SermonFollowTape.test.tsx (13). Suite 1492 passed.
+
+### S8 core (started early, pure logic only)
+- `src/shared/tapeAlign.ts`: word anchors (3-word groups unique on both sides, longest increasing chain), per-paragraph start + confidence, gap regions, whisper JSON reader. Tests: tapeAlign.test.ts (12). Not wired to UI yet; nothing is ever auto-applied.
+- Decision: built before S5 so a real map can be made from the real tape's whisper output and S4/S5 can be checked live.
+- Resume: next is a script/IPC that feeds whisper JSON into alignParagraphs and saves as a proposed map; then S5.

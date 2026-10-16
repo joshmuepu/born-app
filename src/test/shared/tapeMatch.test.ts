@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseTapeName, matchSermon, durationPlausible, titleSimilarity } from '../../shared/tapeMatch'
-import { numberedParagraphs, numberAgreement } from '../../shared/tapeParagraphs'
+import { numberedParagraphs, numberAgreement, baseNumber, flatIndexFor } from '../../shared/tapeParagraphs'
 import type { Quote } from '../../shared/queueItem'
 
 const S = [
@@ -95,5 +95,32 @@ describe('numbered paragraphs (the unit a tape is synchronised to)', () => {
     expect(numberAgreement([1, 2, 3, 4], [1, 2, 3, 4])).toMatchObject({ ok: true, common: 4 })
     const a = numberAgreement([1, 2, 3, 4, 5], [1, 2, 4, 5, 6])
     expect(a).toMatchObject({ ok: false, textOnly: [3], mapOnly: [6], common: 4 })
+  })
+})
+
+describe('finding the tape\'s place in the reader list', () => {
+  it('a marker belongs to its paragraph number, whatever the page letter', () => {
+    expect(baseNumber('14')).toBe(14)
+    expect(baseNumber('14a')).toBe(14)
+    expect(baseNumber('header')).toBeNull()
+    expect(baseNumber(undefined)).toBeNull()
+  })
+  const markers = ['header', '1a', '1b', '2', '3a', '3b', '3c', '4']
+  it('one card per page: the card for the paragraph, and the PAGE by progress through a long one', () => {
+    expect(flatIndexFor(markers, 2, 0.5)).toBe(3)
+    expect(flatIndexFor(markers, 1, 0)).toBe(1)
+    expect(flatIndexFor(markers, 1, 0.99)).toBe(2)
+    expect(flatIndexFor(markers, 3, 0.1)).toBe(4)
+    expect(flatIndexFor(markers, 3, 0.5)).toBe(5)
+    expect(flatIndexFor(markers, 3, 0.9)).toBe(6)
+    expect(flatIndexFor(markers, 3, null)).toBe(4) // the last paragraph has no end: its first page
+  })
+  it('a paragraph that is not in the list, or before the first timed one, is -1', () => {
+    expect(flatIndexFor(markers, 99, 0)).toBe(-1)
+    expect(flatIndexFor(markers, null, 0)).toBe(-1)
+  })
+  it('progress outside 0-1 is clamped', () => {
+    expect(flatIndexFor(markers, 3, 5)).toBe(6)
+    expect(flatIndexFor(markers, 3, -2)).toBe(4)
   })
 })

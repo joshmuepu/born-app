@@ -4,6 +4,8 @@ import TapeAttach from './TapeAttach'
 import TapeBar from './TapeBar'
 import TapeSyncEditor from './TapeSyncEditor'
 import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
+import { baseNumber, flatIndexFor } from '../../../shared/tapeParagraphs'
+import { useTapeFollow } from '../useTapeFollow'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
 import { quoteToItem } from '../../../shared/queueItem'
@@ -81,6 +83,8 @@ export default function SermonFollowView({
   const [tapeOpen, setTapeOpen] = useState(false)
   const [syncing, setSyncing] = useState<{ rec: TapeRecording & { status: TapeFileStatus } } | null>(null)
   const [recs, setRecs] = useState<Array<TapeRecording & { status: TapeFileStatus }>>([])
+  const [mapVersion, setMapVersion] = useState(0)
+  const [jump, setJump] = useState<{ n: number; id: number } | null>(null)
   const loadRecs = useCallback(() => { void window.electronAPI.tapeRecordings?.(sermonId)?.then(setRecs).catch(() => {}) }, [sermonId])
   useEffect(() => { loadRecs() }, [loadRecs])
   // What to keep in view: the projected paragraph if we're live, else the
@@ -97,6 +101,23 @@ export default function SermonFollowView({
     }
     return out
   }, [paras])
+
+  // ── the tape (docs/design/sermon-audio): the highlight is the TAPE's, the scroll is the user's ──
+  const tapeRec = recs[0] && recs[0].status === 'ok' ? recs[0] : null
+  const tf = useTapeFollow(tapeRec, language, mapVersion)
+  const tapeActive = !!tapeRec && tf.mine && !!tf.map && !!tf.here
+  const tapeNumber = tapeActive ? tf.here!.n : null
+  const tapeIndex = useMemo(() => (tapeActive ? flatIndexFor(flatSlides.map((f) => f.marker), tf.here!.n, tf.here!.progress) : -1), [tapeActive, flatSlides, tf.here])
+  useEffect(() => {
+    if (!jump) return
+    const t = window.setTimeout(() => setJump(null), 8000)
+    return () => window.clearTimeout(t)
+  }, [jump])
+  const jumpToPara = (n: number): boolean => {
+    if (!tf.jumpToParagraph(n)) return false
+    setJump({ n, id: Date.now() })
+    return true
+  }
 
   useEffect(() => {
     let alive = true
@@ -127,7 +148,25 @@ export default function SermonFollowView({
   const dateCode = paras[0]?.dateCode ?? ''
 
   return (
-    <div className="follow-view">
+    <div
+      className={`follow-view${tapeActive ? ' follow-view--tape' : ''}`}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        // tape keys (only while a tape is attached and the focus is not in a field or on a control that uses the key itself)
+        if (!tapeRec) return
+        const t = e.target as HTMLElement
+        if (t.closest('input, select, textarea, [role=slider]')) return
+        const onButton = !!t.closest('button, [role=button]')
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        if (e.key === ' ' && !onButton) { e.preventDefault(); if (tf.mine) tf.command({ type: 'toggle' }); else void tf.load(tapeRec.id, { play: true }) }
+        else if (e.key === 'ArrowLeft' && !onButton) { e.preventDefault(); tf.mine ? tf.command({ type: 'skip', by: e.shiftKey ? -30 : -10 }) : undefined }
+        else if (e.key === 'ArrowRight' && !onButton) { e.preventDefault(); tf.mine ? tf.command({ type: 'skip', by: e.shiftKey ? 30 : 10 }) : undefined }
+        else if (e.key === '[') { e.preventDefault(); tf.prevParagraph() }
+        else if (e.key === ']') { e.preventDefault(); tf.nextParagraph() }
+        else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); tf.setFollow(!tf.follow) }
+        else if (e.key === 'm' || e.key === 'M') { e.preventDefault(); if (tf.wire) tf.command({ type: 'muted', value: !tf.wire.muted }) }
+      }}
+    >
       <div className="follow-head">
         <button className="btn-quiet btn-sm btn-icon-text" onClick={onBack}>
           <ChevronLeft width={14} height={14} strokeWidth={2.2} aria-hidden="true" /> Results
@@ -165,11 +204,17 @@ export default function SermonFollowView({
           items={flatSlides}
           estimateSize={150}
           threshold={400}
+          scrollerProps={{
+            // the reader's scroll is the user's: a hand on the wheel, the scrollbar or the screen turns follow off (the highlight stays the tape's)
+            onWheel: () => { if (tapeActive) tf.setFollow(false) },
+            onTouchMove: () => { if (tapeActive) tf.setFollow(false) },
+            onPointerDown: (e) => { if (tapeActive && e.target === e.currentTarget) tf.setFollow(false) }
+          }}
           gap={6}
           paddingStart={8}
           paddingEnd={24}
           itemKey={(fs) => `${fs.quote.paragraphRef}:${fs.slideIndex}`}
-          focusIndex={focusIndex >= 0 ? focusIndex : null}
+          focusIndex={tapeActive && tf.follow && tapeIndex >= 0 ? tapeIndex : focusIndex >= 0 && !(tapeActive && tf.follow) ? focusIndex : null}
           renderItem={(fs) => {
             // Exact match, not refsOverlap: this list is already flattened to
             // one card per page ("1a", "1b", …), so liveRef — the specific
@@ -182,12 +227,14 @@ export default function SermonFollowView({
             // match: it falls back to the whole clicked/merged anchorRef
             // when nothing from this sermon is live yet.
             const live = liveRef !== null && liveRef === fs.marker
+            const onTape = tapeNumber !== null && baseNumber(fs.marker) === tapeNumber
             const focused = !live && refsOverlap(focusRef, fs.marker)
             return (
               <div
                 className={[
                   'follow-para',
                   live ? 'follow-para--on-screen' : '',
+                  onTape ? 'follow-para--tape' : tapeActive ? 'follow-para--tape-dim' : '',
                   focused ? 'follow-para--focus' : ''
                 ].filter(Boolean).join(' ')}
                 role="button"
@@ -202,11 +249,19 @@ export default function SermonFollowView({
                     openSermon: false
                   })
                 )}
-                title="Put this paragraph on the screen — or drag it into the queue"
-                onClick={(e) => { onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
+                title={tapeActive ? 'Move the tape to this paragraph — or drag it into the queue' : 'Put this paragraph on the screen — or drag it into the queue'}
+                onClick={(e) => {
+                  // with a timed tape loaded, a click moves the TAPE here (Project on the card still puts just this paragraph on the screen)
+                  const n = baseNumber(fs.marker)
+                  if (tapeActive && n !== null && jumpToPara(n)) { tf.setFollow(true); e.currentTarget.blur(); return }
+                  onProject(fs.quote, fs.slideIndex)
+                  e.currentTarget.blur()
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
+                    const n = baseNumber(fs.marker)
+                    if (tapeActive && n !== null && jumpToPara(n)) { tf.setFollow(true); e.currentTarget.blur(); return }
                     onProject(fs.quote, fs.slideIndex)
                     e.currentTarget.blur()
                   }
@@ -237,9 +292,21 @@ export default function SermonFollowView({
         />
       )}
       {ctx.element}
-      {recs.length > 0 && recs[0].status === 'ok' && <TapeBar recording={recs[0]} />}
+      {tapeRec && (
+        <div className="tape-follow-row">
+          <button className={`tape-toggle${tf.follow ? ' on' : ''}`} role="switch" aria-checked={tf.follow} onClick={() => tf.setFollow(!tf.follow)} title="The reader scrolls to keep the paragraph being spoken in view (F)">
+            <i aria-hidden="true" /> Reader follows the tape
+          </button>
+          {tapeActive && !tf.follow && <button className="btn-secondary btn-sm" onClick={() => tf.setFollow(true)}>Back to the tape</button>}
+          {!tf.map && <span className="tape-faint">No timing yet — the text can’t follow this recording. Use “Tap to sync”.</span>}
+          {jump && (
+            <span className="tape-jump" role="status">Jumped to ¶{jump.n} <button className="btn-quiet btn-sm" onClick={() => { tf.undoJump(); setJump(null) }}>Undo</button></span>
+          )}
+        </div>
+      )}
+      {tapeRec && <TapeBar recording={tapeRec} paragraphStarts={tf.starts} onPrevParagraph={tf.map ? tf.prevParagraph : undefined} onNextParagraph={tf.map ? tf.nextParagraph : undefined} />}
       {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} onSync={(id) => { const r = recs.find((x) => x.id === id) ?? recs[0]; if (r) { setTapeOpen(false); setSyncing({ rec: r }) } }} />}
-      {syncing && <TapeSyncEditor recording={syncing.rec} sermonId={sermonId} sermonTitle={title} dateCode={dateCode} language={language} onClose={() => { setSyncing(null); loadRecs() }} onSaved={loadRecs} />}
+      {syncing && <TapeSyncEditor recording={syncing.rec} sermonId={sermonId} sermonTitle={title} dateCode={dateCode} language={language} onClose={() => { setSyncing(null); loadRecs(); setMapVersion((v) => v + 1) }} onSaved={() => { loadRecs(); setMapVersion((v) => v + 1) }} />}
     </div>
   )
 }

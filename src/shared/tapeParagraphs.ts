@@ -58,3 +58,22 @@ export function numberAgreement(textNumbers: number[], mapNumbers: number[]): { 
   for (const n of T) if (M.has(n)) common++
   return { textOnly, mapOnly, common, ok: textOnly.length === 0 && mapOnly.length === 0 }
 }
+
+/** The paragraph number a reader marker belongs to: "14" and "14a" and "14b" are all paragraph 14; "header" has none. */
+export function baseNumber(marker: string | undefined | null): number | null {
+  const m = /^\s*(\d+)/.exec(marker ?? '')
+  return m ? parseInt(m[1], 10) : null
+}
+
+/**
+ * Where in the reader's flat list (one card per PAGE of a paragraph) the tape is: the card for paragraph `n`, and — when the paragraph is long
+ * enough to be several pages — the page the tape is up to, by how far through the paragraph it is. -1 when `n` is not in the list.
+ */
+export function flatIndexFor(markers: Array<string | undefined>, n: number | null, progress: number | null): number {
+  if (n === null) return -1
+  const idx: number[] = []
+  markers.forEach((mk, i) => { if (baseNumber(mk) === n) idx.push(i) })
+  if (idx.length === 0) return -1
+  const k = progress === null ? 0 : Math.min(idx.length - 1, Math.floor(Math.max(0, Math.min(0.999999, progress)) * idx.length))
+  return idx[k]
+}
