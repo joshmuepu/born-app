@@ -112,6 +112,8 @@ export interface OutputInfo {
   channelId: string
   kind: 'window' | 'browser'
   url: string | null
+  /** For OBS on the same computer: `http://127.0.0.1:<port>/…` (see main/index.ts). */
+  localUrl?: string | null
   profileId: PresentationProfileId | null
   autoProfile: boolean
   suppressed: boolean

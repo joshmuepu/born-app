@@ -176,6 +176,14 @@ describe('keeping the live feed alive', () => {
     expect(html).toMatch(/readyState === 2\) setTimeout\(function\(\)\{ if \(live === es\) connect\(\); \}, 2000\)/)
     unregisterGraphicsDestination('g-w')
   })
+  it('a lost feed clears the frame after 10 s (no stale verse on a livestream) and never draws the red RECONNECTING text inside OBS', async () => {
+    registerGraphicsDestination('g-stale', 'fullscreen', false)
+    const html = (await getPage('/output/graphics/g-stale')).body
+    expect(html).toMatch(/if \(!window\.obsstudio\) discEl\.style\.display = 'block'/)
+    expect(html).toMatch(/staleTimer = setTimeout\(function\(\)\{ staleTimer = null; applyFrame\(null\); \}, 10000\)/)
+    expect(html).toMatch(/if \(staleTimer\) \{ clearTimeout\(staleTimer\)/)
+    unregisterGraphicsDestination('g-stale')
+  })
   it('a removed output answers 404, so a stale OBS source says so instead of looking connected', async () => {
     registerGraphicsDestination('g-gone', 'fullscreen', false)
     unregisterGraphicsDestination('g-gone')

@@ -817,7 +817,14 @@ function buildGraphicsScript(id: string): string {
   }
 
   // ?profile=lower-third|fullscreen on the page address picks this page's layout (the output's own setting is the default).
-  var live = null, lastHeard = Date.now();
+  var live = null, lastHeard = Date.now(), staleTimer = null;
+  // Feed lost. Keep the last frame through a short blip, but never leave an old verse on a livestream for minutes: after 10 s with no
+  // feed the frame is cleared. The red "RECONNECTING…" text is for people looking at the page in a browser, not for a livestream
+  // (inside OBS, window.obsstudio exists), so it is not drawn there.
+  function showDisconnected(){
+    if (!window.obsstudio) discEl.style.display = 'block';
+    if (!staleTimer) staleTimer = setTimeout(function(){ staleTimer = null; applyFrame(null); }, 10000);
+  }
   function connect(){
     if (live) { try { live.close(); } catch (e) {} }
     lastHeard = Date.now();
@@ -825,6 +832,7 @@ function buildGraphicsScript(id: string): string {
     live = es;
     es.onmessage = function(ev){
       lastHeard = Date.now();
+      if (staleTimer) { clearTimeout(staleTimer); staleTimer = null; }
       discEl.style.display = 'none';
       try { render(JSON.parse(ev.data)); } catch (e) {}
     };
@@ -836,14 +844,14 @@ function buildGraphicsScript(id: string): string {
     es.addEventListener('playback-stop', function(){ wire = null; });
     es.addEventListener('ping', function(){ lastHeard = Date.now(); });
     es.onerror = function(){
-      discEl.style.display = 'block';
+      showDisconnected();
       // The browser retries a dropped connection by itself, but gives up for good on an HTTP error (for example 404 while BORN is
       // still starting): start over ourselves.
       if (es.readyState === 2) setTimeout(function(){ if (live === es) connect(); }, 2000);
     };
   }
   // A connection that died silently (Wi-Fi change, sleep/wake) says nothing at all: no pings for this long = start over.
-  setInterval(function(){ if (Date.now() - lastHeard > ${graphicsTiming.silenceMs}) { discEl.style.display = 'block'; connect(); } }, 5000);
+  setInterval(function(){ if (Date.now() - lastHeard > ${graphicsTiming.silenceMs}) { showDisconnected(); connect(); } }, 5000);
   connect();
 })();
 `

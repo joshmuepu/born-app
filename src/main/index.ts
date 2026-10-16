@@ -600,6 +600,9 @@ export interface OutputInfo {
   channelId: ChannelId
   kind: DestinationConfig['kind']
   url: string | null
+  /** The same page by this computer's own address: for an OBS on the SAME computer (needs no network and no name lookup, and reconnects
+   *  within seconds after BORN restarts, where a `.local` name can take over a minute). */
+  localUrl: string | null
   profileId: PresentationProfileId | null
   autoProfile: boolean
   suppressed: boolean
@@ -614,6 +617,7 @@ function outputsSnapshot(): OutputInfo[] {
       channelId: d.config.channelId,
       kind: d.config.kind,
       url: base ? `${base}/output/graphics/${d.config.id}` : null,
+      localUrl: base ? `http://127.0.0.1:${REMOTE_PORT}/output/graphics/${d.config.id}` : null,
       profileId: d.config.profileId ?? null,
       autoProfile: d.config.autoProfile ?? false,
       suppressed: d.suppressed
