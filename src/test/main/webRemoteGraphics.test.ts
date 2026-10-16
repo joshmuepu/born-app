@@ -88,6 +88,27 @@ describe('backgrounds on a Graphics output', () => {
   })
 })
 
+describe('text direction and size on the lower third', () => {
+  it('right-to-left lines (Arabic, Hebrew) align right on their own: start-aligned, bidi decided per line, in the profile AND on the inner text block', async () => {
+    const { PRESENTATION_PROFILES } = await import('../../shared/presentationProfiles')
+    const lt = PRESENTATION_PROFILES['lower-third'].regions
+    for (const r of [lt.label, lt.text, lt.reference]) {
+      expect(r['text-align']).toBe('start')
+      expect(r['unicode-bidi']).toBe('plaintext')
+    }
+    registerGraphicsDestination('g-rtl', 'lower-third', false)
+    const html = (await getPage('/output/graphics/g-rtl')).body
+    expect(html).toMatch(/#text-inner \{ width: 100%; unicode-bidi: plaintext; \}/)
+    unregisterGraphicsDestination('g-rtl')
+  })
+  it('a very long word wraps and the text never grows past about half the picture', async () => {
+    const { PRESENTATION_PROFILES } = await import('../../shared/presentationProfiles')
+    const t = PRESENTATION_PROFILES['lower-third'].regions.text
+    expect(t['overflow-wrap']).toBe('anywhere')
+    expect(t['max-height']).toBe('52vh')
+  })
+})
+
 describe('?profile= — one Graphics output, several layouts', () => {
   it('only real profile names count; anything else (including "auto") means "use the output setting"', () => {
     expect(parseProfileParam('lower-third')).toBe('lower-third')
