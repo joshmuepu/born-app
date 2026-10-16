@@ -189,6 +189,13 @@ declare global {
       tapeScanFolder: () => Promise<import('../../shared/tape').TapeFolderHit[]>
       tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>) => Promise<import('../../shared/tape').TapeImportResult[]>
       tapePreflight: (recordingId: string, extra?: { browserDurationSec?: number | null; paragraphNumbers?: number[]; outputDevice?: { present: boolean; label?: string } | null }) => Promise<import('../../shared/tape').TapePreflight | null>
+      tapeMapGet: (recordingId: string, textLanguage: string | null) => Promise<import('../../shared/tape').SyncMap | null>
+      tapeMapLanguages: (recordingId: string) => Promise<Array<string | null>>
+      tapeMapSave: (recordingId: string, textLanguage: string | null, source: import('../../shared/tape').SyncSource, marks: import('../../shared/tape').SyncMark[], regions: import('../../shared/tape').SyncRegion[]) => Promise<{ ok: true; map: import('../../shared/tape').SyncMap; issues: import('../../shared/tapeSync').MapIssue[] } | { ok: false; issues: import('../../shared/tapeSync').MapIssue[] }>
+      tapeMapDelete: (recordingId: string, textLanguage: string | null) => Promise<boolean>
+      tapeMapExport: (recordingId: string, textLanguage: string | null) => Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }>
+      tapeMapImport: (recordingId: string) => Promise<{ ok: true; marks: import('../../shared/tape').SyncMark[]; regions: import('../../shared/tape').SyncRegion[]; textLanguage: string | null; warnings: string[] } | { ok: false; canceled?: boolean; message: string }>
+      tapeActivity: (recordingId: string, bins: number) => Promise<{ values: number[]; durationSec: number } | null>
       tapeOpenAudioPage: () => Promise<boolean>
       tapePathsForFiles: (files: File[]) => string[]
       onTapeEngine: (cb: (m: any) => void) => () => void

@@ -15,11 +15,14 @@ import { getSettings, updateSettings, TAPE_DEFAULTS, type TapeSettings } from '.
 import { TapeDb } from './tapeDb'
 import { TapeLibrary } from './tapeLibrary'
 import { TapeHub } from './tapeHub'
-import { AUDIO_EXTENSIONS } from './audioProbe'
+import { AUDIO_EXTENSIONS, audioActivity } from './audioProbe'
+import { readFileSync, writeFileSync } from 'fs'
 import { parseRange } from '../shared/httpRange'
 import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import type { TapeAction, TapeWire } from '../shared/tapePlayback'
+import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
+import type { SyncMark, SyncMap, SyncRegion, SyncSource } from '../shared/tape'
 
 // `born-tape://file/<t_id>` — how the hidden audio engine reads a tape without ever being given a path. Must be declared before the app is ready.
 protocol.registerSchemesAsPrivileged([{ scheme: 'born-tape', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
@@ -333,6 +336,82 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     if (!l || !db) return null
     const rec = db.getRecording(String(recordingId))
     return l.preflight(String(recordingId), { durationMin: rec ? sermonDurationMin(rec.sermonId) : undefined }, extra ?? {})
+  })
+
+  // ── sync maps (docs/design/sermon-audio/02 §4) ──
+  const cleanMarks = (x: unknown): SyncMark[] =>
+    (Array.isArray(x) ? x : [])
+      .filter((m) => m && Number.isInteger(m.n) && m.n >= 1 && m.n < 100000 && (m.kind === 'start' || m.kind === 'skip'))
+      .map((m) => ({ n: m.n as number, t: m.kind === 'skip' ? null : Number.isFinite(m.t) ? (m.t as number) : null, confidence: typeof m.confidence === 'number' ? Math.min(1, Math.max(0, m.confidence)) : null, kind: m.kind as 'start' | 'skip' }))
+  const cleanRegions = (x: unknown): SyncRegion[] =>
+    (Array.isArray(x) ? x : [])
+      .filter((r) => r && (r.kind === 'gap' || r.kind === 'differs') && Number.isFinite(r.start) && Number.isFinite(r.end))
+      .map((r) => ({ kind: r.kind as 'gap' | 'differs', start: r.start as number, end: r.end as number, note: typeof r.note === 'string' ? r.note.slice(0, 200) : undefined }))
+  const lang = (x: unknown): string | null => (typeof x === 'string' && /^[a-z]{2,3}$/.test(x) ? x : null)
+
+  ipcMain.handle('tape:map-get', (_e, recordingId: string, textLanguage: string | null): SyncMap | null => getTapeDb()?.getMap(String(recordingId), lang(textLanguage)) ?? null)
+  ipcMain.handle('tape:map-languages', (_e, recordingId: string) => getTapeDb()?.listMapLanguages(String(recordingId)) ?? [])
+  ipcMain.handle('tape:map-save', (_e, recordingId: string, textLanguage: string | null, source: SyncSource, marks: unknown, regions: unknown): { ok: true; map: SyncMap; issues: MapIssue[] } | { ok: false; issues: MapIssue[] } => {
+    const db = getTapeDb()
+    const rec = db?.getRecording(String(recordingId))
+    if (!db || !rec) return { ok: false, issues: [{ level: 'error', code: 'range', message: 'This recording is no longer attached to the sermon.' }] }
+    const m = cleanMarks(marks), r = cleanRegions(regions)
+    const issues = validateMap(m, r, rec.file.durationSec)
+    if (issues.some((i) => i.level === 'error')) return { ok: false, issues }
+    const src: SyncSource = source === 'auto' || source === 'imported' ? source : 'tap'
+    return { ok: true, map: db.saveMap(rec.id, lang(textLanguage), src, m, r), issues }
+  })
+  ipcMain.handle('tape:map-delete', (_e, recordingId: string, textLanguage: string | null) => { getTapeDb()?.deleteMap(String(recordingId), lang(textLanguage)); return true })
+  ipcMain.handle('tape:map-export', async (_e, recordingId: string, textLanguage: string | null): Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }> => {
+    const db = getTapeDb()
+    const rec = db?.getRecording(String(recordingId))
+    const map = db && rec ? db.getMap(rec.id, lang(textLanguage)) : null
+    if (!rec || !map) return { ok: false, message: 'There is no timing to export yet.' }
+    const dateCode = sermonRefs().find((x) => x.id === rec.sermonId)?.date_code ?? ''
+    const body = JSON.stringify(toTimingFile(map, { hash: rec.file.hash, durationSec: rec.file.durationSec, language: rec.language }, { id: rec.sermonId, dateCode }), null, 1)
+    let path = testHook('BORN_TEST_TAPE_EXPORT', app.isPackaged)
+    if (!path) {
+      const r = await dialog.showSaveDialog(getMain() ?? undefined!, { title: 'Save the timing file', defaultPath: `${dateCode || 'tape'} timing.born-sync.json`, filters: [{ name: 'BORN timing', extensions: ['json'] }] })
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true }
+      path = r.filePath
+    }
+    try { writeFileSync(path, body, 'utf8') } catch (e) { return { ok: false, message: `The file could not be saved (${(e as Error).message}).` } }
+    return { ok: true, path }
+  })
+  ipcMain.handle('tape:map-import', async (_e, recordingId: string): Promise<{ ok: true; marks: SyncMark[]; regions: SyncRegion[]; textLanguage: string | null; warnings: string[] } | { ok: false; canceled?: boolean; message: string }> => {
+    const rec = getTapeDb()?.getRecording(String(recordingId))
+    if (!rec) return { ok: false, message: 'This recording is no longer attached to the sermon.' }
+    let path = testHook('BORN_TEST_TAPE_IMPORT', app.isPackaged)
+    if (!path) {
+      const r = await dialog.showOpenDialog(getMain() ?? undefined!, { title: 'Choose a BORN timing file', properties: ['openFile'], filters: [{ name: 'BORN timing', extensions: ['json'] }] })
+      if (r.canceled || r.filePaths.length === 0) return { ok: false, canceled: true, message: '' }
+      path = r.filePaths[0]
+    }
+    let text: string
+    try {
+      if (statSync(path).size > 2 * 1024 * 1024) return { ok: false, message: 'This file is too large to be a timing file.' }
+      text = readFileSync(path, 'utf8')
+    } catch { return { ok: false, message: 'This file could not be read.' } }
+    const p = parseTimingFile(text)
+    if (!p.ok) return { ok: false, message: p.message }
+    const warnings: string[] = []
+    if (p.file.recording.hash !== rec.file.hash) warnings.push('This timing was made for a different file of this recording. If the two recordings are not the same (same length, same start), the times will be off.')
+    if (Math.abs(p.file.recording.durationSec - rec.file.durationSec) > 5) warnings.push(`It was made for a ${Math.round(p.file.recording.durationSec / 60)}-minute recording; this one is ${Math.round(rec.file.durationSec / 60)} minutes.`)
+    if (p.file.sermon.id !== rec.sermonId) warnings.push('It was made for a different sermon.')
+    return { ok: true, marks: p.marks, regions: p.regions, textLanguage: p.file.textLanguage, warnings }
+  })
+  const activityCache = new Map<string, { values: number[]; durationSec: number } | null>()
+  ipcMain.handle('tape:activity', (_e, recordingId: string, bins: number) => {
+    const db = getTapeDb(), l = getTapeLibrary()
+    const rec = db?.getRecording(String(recordingId))
+    if (!db || !l || !rec) return null
+    const n = Math.max(50, Math.min(2000, Math.round(Number(bins) || 600)))
+    const key = `${rec.file.id}:${n}`
+    if (!activityCache.has(key)) {
+      const p = l.resolvePath(rec.file)
+      activityCache.set(key, p ? audioActivity(p, n) : null)
+    }
+    return activityCache.get(key) ?? null
   })
 
   ipcMain.handle('tape:open-audio-page', async () => {

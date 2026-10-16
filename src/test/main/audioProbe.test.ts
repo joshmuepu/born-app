@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'fs'
 import { tmpdir, homedir } from 'os'
 import { join } from 'path'
-import { probeAudio } from '../../main/audioProbe'
+import { probeAudio, audioActivity } from '../../main/audioProbe'
 
 /** Files are BUILT HERE at test time (tiny, generated): no audio is ever stored in the repo. */
 let dir: string
@@ -135,6 +135,36 @@ describe('WAV, FLAC, OGG and refusals', () => {
     expect(probeAudio(put('e.mp3', Buffer.alloc(0)))).toMatchObject({ ok: false, reason: 'empty' })
     expect(probeAudio(put('t.mp3', Buffer.from('this is just text, not audio at all, really')))).toMatchObject({ ok: false, reason: 'not-audio' })
     expect(probeAudio(join(dir, 'does-not-exist.m4a'))).toMatchObject({ ok: false, reason: 'unreadable' })
+  })
+})
+
+describe('a rough loudness picture from the index (for the sync editor)', () => {
+  /** an M4A whose per-frame sizes follow `sizes` (tiny = silence) */
+  function withSizes(sizes: number[] | 'constant'): Buffer {
+    const ts = 44100
+    const frames = sizes === 'constant' ? 4000 : sizes.length
+    const table = Buffer.alloc(12 + (sizes === 'constant' ? 0 : frames * 4))
+    table.writeUInt32BE(sizes === 'constant' ? 200 : 0, 4); table.writeUInt32BE(frames, 8)
+    if (sizes !== 'constant') sizes.forEach((v, i) => table.writeUInt32BE(v, 12 + i * 4))
+    const stsz = box('stsz', table)
+    const mvhd = box('mvhd', Buffer.alloc(4), u32(0), u32(0), u32(ts), u32(frames * 1024), Buffer.alloc(80))
+    const hdlr = box('hdlr', Buffer.alloc(4), u32(0), Buffer.from('soun', 'latin1'), Buffer.alloc(13))
+    const moov = box('moov', mvhd, box('trak', box('mdia', hdlr, box('minf', box('stbl', stsz)))))
+    return Buffer.concat([box('ftyp', Buffer.from('M4A ', 'latin1'), u32(0), Buffer.from('M4A isom', 'latin1')), moov, box('mdat', Buffer.alloc(1000))])
+  }
+  it('shows where the sound was busy and where there was a pause', () => {
+    // 4000 frames: speech (300 bytes) with a silent stretch (5 bytes) in the middle
+    const sizes = Array.from({ length: 4000 }, (_, i) => (i >= 1800 && i < 2200 ? 5 : 280 + (i % 40)))
+    const r = audioActivity(put('act.m4a', withSizes(sizes)), 100)!
+    expect(r.values).toHaveLength(100)
+    expect(r.values[10]).toBeGreaterThan(0.6)
+    expect(r.values[50]).toBeLessThan(0.1)
+    expect(r.durationSec).toBeCloseTo((4000 * 1024) / 44100, 1)
+  })
+  it('says nothing for constant frame sizes, other containers and unreadable files (no invented picture)', () => {
+    expect(audioActivity(put('c.m4a', withSizes('constant')), 100)).toBeNull()
+    expect(audioActivity(put('c.mp3', mp3(300)), 100)).toBeNull()
+    expect(audioActivity(join(dir, 'nope.m4a'), 100)).toBeNull()
   })
 })
 

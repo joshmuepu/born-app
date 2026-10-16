@@ -455,6 +455,13 @@ const api = {
   tapeScanFolder: (): Promise<unknown[]> => ipcRenderer.invoke('tape:scan-folder'),
   tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>): Promise<unknown[]> => ipcRenderer.invoke('tape:import-confirmed', items),
   tapePreflight: (recordingId: string, extra?: unknown): Promise<unknown> => ipcRenderer.invoke('tape:preflight', recordingId, extra),
+  tapeMapGet: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-get', recordingId, textLanguage),
+  tapeMapLanguages: (recordingId: string): Promise<Array<string | null>> => ipcRenderer.invoke('tape:map-languages', recordingId),
+  tapeMapSave: (recordingId: string, textLanguage: string | null, source: string, marks: unknown, regions: unknown): Promise<unknown> => ipcRenderer.invoke('tape:map-save', recordingId, textLanguage, source, marks, regions),
+  tapeMapDelete: (recordingId: string, textLanguage: string | null): Promise<boolean> => ipcRenderer.invoke('tape:map-delete', recordingId, textLanguage),
+  tapeMapExport: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-export', recordingId, textLanguage),
+  tapeMapImport: (recordingId: string): Promise<unknown> => ipcRenderer.invoke('tape:map-import', recordingId),
+  tapeActivity: (recordingId: string, bins: number): Promise<{ values: number[]; durationSec: number } | null> => ipcRenderer.invoke('tape:activity', recordingId, bins),
   tapeOpenAudioPage: (): Promise<boolean> => ipcRenderer.invoke('tape:open-audio-page'),
   tapePathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   // the Tape audio engine's own channel (the hidden audio window) and the operator's tape controls

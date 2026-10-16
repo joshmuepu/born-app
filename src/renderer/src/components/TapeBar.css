@@ -27,7 +27,7 @@
 .tape-menu { position: absolute; right: 0; bottom: 36px; z-index: 30; min-width: 240px; list-style: none; margin: 0; padding: 6px; background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.4)); }
 .tape-menu button { width: 100%; text-align: left; display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--text-primary); padding: 7px 10px; border-radius: var(--r-sm); cursor: pointer; font-size: var(--text-sm); }
 .tape-menu button:hover { background: var(--bg-hover); }
-.tape-menu-note { padding: 7px 10px; color: var(--text-muted); font-size: var(--text-xs); }
+.tape-menu-note { padding: 7px 10px; color: var(--text-tertiary); font-size: var(--text-xs); }
 .tape-note-line { font-size: var(--text-sm); color: var(--text-secondary); }
 .tape-note-line.is-warn { color: var(--warn); }
 .tape-bar--err .tape-note-line { color: var(--danger); }

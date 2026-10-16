@@ -301,3 +301,69 @@ function probeWav(fd: number, bytes: number): AudioInfo | AudioFail {
   if (tag !== 1 && tag !== 3 && tag !== 0xfffe) warnings.push('This WAV uses a compressed format that many computers cannot play. Convert it to M4A (AAC).')
   return { ok: true, container: 'wav', codec: 'pcm', durationSec, bitrate: Math.round(rate * channels * bits), vbr: null, seekTableOk: true, whole, indexFirst: null, bytes, warnings }
 }
+
+// ── a rough loudness picture from the file's own index (no decoding) ───────────────────────────
+
+/**
+ * For the sync editor's timeline: how busy the sound is across the tape, from the size of each compressed frame (silence compresses to
+ * almost nothing, speech and music do not). It is read from the M4A index in a fraction of a second — a 2½-hour tape is not decoded.
+ * Returns null when the file does not have varying frame sizes (constant-bitrate files tell us nothing this way) or is not an M4A.
+ * The picture is APPROXIMATE (it shows where the speaker paused or a song played, not true loudness) and is labelled that way.
+ */
+export function audioActivity(path: string, bins: number): { values: number[]; durationSec: number } | null {
+  let fd = -1
+  try {
+    fd = openSync(path, 'r')
+    const bytes = fstatSync(fd).size
+    const head = readAt(fd, 0, 16)
+    if (head.toString('latin1', 4, 8) !== 'ftyp') return null
+    let p = 0
+    let moovBox: Box | undefined
+    while (p + 8 <= bytes) {
+      const h = readAt(fd, p, 16)
+      if (h.length < 8) break
+      let size = h.readUInt32BE(0)
+      let header = 8
+      if (size === 1 && h.length >= 16) { size = Number(h.readBigUInt64BE(8)); header = 16 } else if (size === 0) size = bytes - p
+      if (size < header) break
+      if (h.toString('latin1', 4, 8) === 'moov') { moovBox = { type: 'moov', start: p, size, header }; break }
+      p += size
+    }
+    if (!moovBox || moovBox.size > 64 * 1024 * 1024) return null
+    const moov = readAt(fd, moovBox.start, Math.min(moovBox.size, bytes - moovBox.start))
+    const root: Box = { type: 'moov', start: 0, size: moov.length, header: moovBox.header }
+    const mvhd = child(moov, root, 'mvhd')
+    if (!mvhd) return null
+    const v = moov.readUInt8(mvhd.start + mvhd.header)
+    const ts = v === 1 ? moov.readUInt32BE(mvhd.start + mvhd.header + 20) : moov.readUInt32BE(mvhd.start + mvhd.header + 12)
+    const dur = v === 1 ? Number(moov.readBigUInt64BE(mvhd.start + mvhd.header + 24)) : moov.readUInt32BE(mvhd.start + mvhd.header + 16)
+    const durationSec = ts > 0 ? dur / ts : 0
+    for (const trak of boxesIn(moov, root.start + root.header, moov.length).filter((b) => b.type === 'trak')) {
+      const mdia = child(moov, trak, 'mdia'); const minf = mdia && child(moov, mdia, 'minf'); const stbl = minf && child(moov, minf, 'stbl'); const stsz = stbl && child(moov, stbl, 'stsz')
+      const hdlr = mdia && child(moov, mdia, 'hdlr')
+      if (!stsz || !hdlr || moov.toString('latin1', hdlr.start + hdlr.header + 8, hdlr.start + hdlr.header + 12) !== 'soun') continue
+      const o = stsz.start + stsz.header
+      const constant = moov.readUInt32BE(o + 4)
+      const count = moov.readUInt32BE(o + 8)
+      if (constant !== 0 || count < bins * 2 || o + 12 + count * 4 > moov.length) return null
+      const sums = new Float64Array(bins)
+      const ns = new Uint32Array(bins)
+      for (let i = 0; i < count; i++) {
+        const b = Math.min(bins - 1, Math.floor((i / count) * bins))
+        sums[b] += moov.readUInt32BE(o + 12 + i * 4)
+        ns[b]++
+      }
+      const mean = Array.from(sums, (s, i) => (ns[i] ? s / ns[i] : 0))
+      const sorted = [...mean].sort((a, b) => a - b)
+      const top = sorted[Math.floor(sorted.length * 0.95)] || 1
+      const lo = sorted[Math.floor(sorted.length * 0.02)] || 0
+      if (top - lo < top * 0.05) return null // practically constant: no information
+      return { values: mean.map((m) => Math.max(0, Math.min(1, (m - lo) / (top - lo)))), durationSec }
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    if (fd >= 0) try { closeSync(fd) } catch { /* already closed */ }
+  }
+}

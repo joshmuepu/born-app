@@ -17,7 +17,7 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 |---|---|
 | S1 attach/import, filename matching, preflight | **done** (tests: +64; real tape: import 53 ms, 2:24:47.89, exact match to sermon 1115, original untouched) |
 | S2 audio engine + player bar | **done** (suite 1366 → 1418) |
-| S3 sync map + tap editor | — |
+| S3 sync map + tap editor | **done** |
 | S4 follow-along in the reader | — |
 | S5 projection (a highlight, b one-at-a-time, c lower third/stage/Graphics) | — |
 | S6 languages | — |
@@ -39,3 +39,9 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 - **Real tape, real app (Chromium 130 in Electron):** loads in <3 s paused at resume position; position tracks wall clock within 40 ms over 5 s; 1.25× advanced 4.96 s in 4 s; device list shows names (5 outputs incl. built-in speakers, 2 HDMI monitors, Teams virtual); play/pause/seek exact.
 - **Seek accuracy on the real tape** (30 seeks, 0 → 8680 s, captured audio cross-correlated against an ffmpeg reference decode): constant offset −86 ms (output/capture latency), **stdev 32 ms** (one 4096-sample capture block = 93 ms), **no drift with position** (first 8 seeks median −77 ms, last 8 −86 ms); seek returns in 0–2 ms. One capture (5522 s) had no usable correlation (silence) and is excluded. VBR/seek-table check on the tape: AAC M4A, not applicable (index first, whole). Method script lives outside the repo (/tmp/born-tape-work/seek).
 - Deviation: tape not auto-loaded on opening a sermon; Play on the bar loads it (so nothing starts or occupies the audio window until asked).
+
+### S3 (done)
+- `shared/tapeSync.ts` (paragraphAt, validate, editor reducer + undo, nextTarget, tapTime, times-only timing file `born-sync` v1), `tapeDb` maps (already), `audioProbe.audioActivity` (approximate loudness picture from the M4A index — 4 ms for the real tape, 47 of 400 bins quiet), IPC `tape:map-*` / `tape:activity`, `TapeSyncEditor.tsx` (guide, Space tap with reaction offset, timeline with activity bars + draggable markers + regions, table with nudge/set-now/play-from/skip/clear, undo U/⌘Z, validation, save, share/open timing).
+- **Real sermon 65-0418M has 363 numbered paragraphs** (133 rows, 113 range rows).
+- Real app, real tape: 3 Space taps 2 s apart produced marks 4336.06 / 4338.06 / 4340.07 (exactly 2.00 s apart minus reaction 0.25 s), saved, shared as a times-only file (no text/audio/path), reopened.
+- Fixed while testing: reaction default read as 0 when unset (localStorage null → 0); CSS used a non-existent `--text-muted` token (now `--text-tertiary`).
