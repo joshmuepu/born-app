@@ -1,5 +1,4 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http'
-import { networkInterfaces } from 'os'
 import { get as httpGet } from 'http'
 import { createReadStream, existsSync, readFileSync } from 'fs'
 import { join } from 'path'
@@ -24,6 +23,7 @@ import {
   chooseDefault,
   isLoopbackAddress,
   listNetworks,
+  readInterfaces,
   looksVirtual,
   normalizeIp,
   subnetOf,
@@ -242,7 +242,7 @@ let searchHandlers: WebRemoteSearchHandlers | null = null
  *  the old "first private, non-virtual address in OS enumeration order" rule
  *  is what put the unreachable Ethernet address on the QR at church. */
 export function getLocalIP(remembered: RememberedNetwork | null = null): string {
-  const { network } = chooseDefault(listNetworks(networkInterfaces()), remembered)
+  const { network } = chooseDefault(listNetworks(readInterfaces()), remembered)
   return network?.address ?? 'localhost'
 }
 
@@ -444,7 +444,7 @@ export interface AdapterInfo {
 export function listAdapters(): AdapterInfo[] {
   const chosenIp = getLocalIP()
   const out: AdapterInfo[] = []
-  for (const [name, ifaces] of Object.entries(networkInterfaces())) {
+  for (const [name, ifaces] of Object.entries(readInterfaces())) {
     for (const net of ifaces ?? []) {
       if (net.family !== 'IPv4' || net.internal) continue
       out.push({ name, address: net.address, virtual: looksVirtual(name), chosen: net.address === chosenIp })
@@ -1146,7 +1146,7 @@ export function probeAddresses(addresses: string[], port: number, timeoutMs = 15
             })
             req.on('timeout', () => {
               req.destroy()
-              finish({ ok: false, error: 'no answer (timed out)', ms: null })
+              finish({ ok: false, error: 'timed out', ms: null })
             })
             req.on('error', (e: NodeJS.ErrnoException) =>
               finish({ ok: false, error: e.code === 'ECONNREFUSED' ? 'connection refused' : (e.code ?? e.message), ms: null })

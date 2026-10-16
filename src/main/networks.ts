@@ -11,7 +11,33 @@
  * nothing here affects what the server *answers on* — only what the operator
  * is shown and told to point a phone at.
  */
-import type { NetworkInterfaceInfo } from 'os'
+import { networkInterfaces, type NetworkInterfaceInfo } from 'os'
+
+/** The OS interface list — or, for dev/QA only, `BORN_FAKE_NETWORKS`
+ *  (JSON: `{"ifaces": <os.networkInterfaces() shape>, "ssids": {"Wi-Fi": "Name"}}`)
+ *  so a one-adapter dev machine can show the multi-adapter church layout in
+ *  the real app. Same spirit as BORN_REMOTE_PORT / BORN_MDNS_NAME: never set
+ *  for a real install. A malformed value is ignored. */
+export function readInterfaces(): NodeJS.Dict<NetworkInterfaceInfo[]> {
+  const fake = fakeNetworks()
+  return fake ? fake.ifaces : networkInterfaces()
+}
+
+export function fakeSsids(): Map<string, string> | null {
+  const fake = fakeNetworks()
+  return fake?.ssids ? new Map(Object.entries(fake.ssids)) : null
+}
+
+function fakeNetworks(): { ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>; ssids?: Record<string, string> } | null {
+  const raw = process.env.BORN_FAKE_NETWORKS
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed.ifaces === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
 
 export type NetworkKind = 'wifi' | 'ethernet' | 'vpn' | 'virtual' | 'other'
 
@@ -306,7 +332,10 @@ export function buildDiagnosticHints(input: {
 }): string[] {
   const hints: string[] = []
   const usable = input.networks.filter((n) => n.usable)
-  const failed = input.probes.filter((p) => !p.ok)
+  // Only networks the operator can actually pick matter here — a hidden VPN or
+  // virtual adapter failing its self-test is expected and not worth alarming over.
+  const usableAddrs = new Set(usable.map((n) => n.address))
+  const failed = input.probes.filter((p) => !p.ok && usableAddrs.has(p.address))
   if (failed.length > 0) {
     hints.push(
       `This computer could not reach itself at ${failed.map((p) => p.address).join(', ')}. ` +

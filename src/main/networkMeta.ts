@@ -10,6 +10,7 @@
  */
 import { execFile } from 'child_process'
 import {
+  fakeSsids,
   type NetworkMeta,
   parseAirportNetwork,
   parseHardwarePorts,
@@ -30,6 +31,8 @@ function run(cmd: string, args: string[]): Promise<string> {
 
 async function gather(): Promise<NetworkMeta> {
   const meta: NetworkMeta = {}
+  const fake = fakeSsids()
+  if (fake) return { ssidByAdapter: fake } // dev/QA seam, see readInterfaces()
   if (process.platform === 'win32') {
     meta.ssidByAdapter = parseNetshWlan(await run('netsh', ['wlan', 'show', 'interfaces']))
   } else if (process.platform === 'darwin') {

@@ -185,6 +185,12 @@ describe('diagnostic hints', () => {
     expect(h[0]).toMatch(/could not reach itself at 172\.30\.20\.126/)
   })
 
+  it('does not alarm about a hidden VPN/virtual adapter failing its self-test', () => {
+    const nets = listNetworks({ ...CHURCH_ETH_FIRST, 'vEthernet (WSL)': v4('172.22.0.1') }, SSID)
+    const probes = nets.map((n) => ({ address: n.address, ok: n.usable }))
+    expect(buildDiagnosticHints({ platform: 'darwin', networks: nets, probes, phoneCount: 1 })).toEqual([])
+  })
+
   it('gives the exact copyable firewall commands for the port', () => {
     expect(windowsFirewallCommands(4316)).toEqual([
       'Get-NetConnectionProfile',
