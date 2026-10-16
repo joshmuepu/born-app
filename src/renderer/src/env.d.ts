@@ -191,6 +191,20 @@ declare global {
       tapePreflight: (recordingId: string, extra?: { browserDurationSec?: number | null; paragraphNumbers?: number[]; outputDevice?: { present: boolean; label?: string } | null }) => Promise<import('../../shared/tape').TapePreflight | null>
       tapeOpenAudioPage: () => Promise<boolean>
       tapePathsForFiles: (files: File[]) => string[]
+      onTapeEngine: (cb: (m: any) => void) => () => void
+      tapeEngineReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null; errorKind?: 'file' | 'decode' | 'device' | null; ready?: boolean }) => void
+      tapeEngineDevices: (list: Array<{ id: string; label: string }>) => void
+      tapeEngineDeviceLost: () => void
+      tapeEngineReady: () => void
+      tapeLoad: (recordingId: string, opts?: { play?: boolean; position?: number }) => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeCommand: (action: import('../../shared/tapePlayback').TapeAction) => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeGet: () => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeUnload: () => Promise<boolean>
+      tapeDevices: () => Promise<Array<{ id: string; label: string }>>
+      tapeSetDevice: (id: string, label: string) => Promise<boolean>
+      tapeSettingsGet: () => Promise<import('../../shared/tape').TapeSettings>
+      tapeSettingsSet: (patch: Partial<import('../../shared/tape').TapeSettings>) => Promise<import('../../shared/tape').TapeSettings>
+      onTapeState: (cb: (w: import('../../shared/tapePlayback').TapeWire | null) => void) => () => void
       youtubeHostUrl: (videoId: string, start?: number) => Promise<string | null>
       youtubeLookup: (videoId: string) => Promise<{ title: string; author: string } | null>
       youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>) => Promise<Array<import('../../shared/youtube').YtPreflightVerdict & { videoId: string; duration: number | null }>>

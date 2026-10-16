@@ -3,7 +3,7 @@
  * the `born-tape://` protocol the audio engine reads files through (with Range, so seeking works), and the IPC the operator's screens use.
  * The rules live in tapeLibrary.ts / tapeDb.ts / shared/tape*.ts (Electron-free, tested directly).
  */
-import { app, dialog, ipcMain, BrowserWindow, protocol, shell } from 'electron'
+import { app, dialog, ipcMain, BrowserWindow, protocol, shell, powerMonitor } from 'electron'
 import Database from 'better-sqlite3'
 import { Readable } from 'stream'
 import { createReadStream, existsSync, statSync, statfsSync } from 'fs'
@@ -11,13 +11,15 @@ import { join } from 'path'
 import { log } from './logger'
 import { testHook } from './testHooks'
 import { getDb } from './db'
-import { getSettings, updateSettings } from './settings'
+import { getSettings, updateSettings, TAPE_DEFAULTS, type TapeSettings } from './settings'
 import { TapeDb } from './tapeDb'
 import { TapeLibrary } from './tapeLibrary'
+import { TapeHub } from './tapeHub'
 import { AUDIO_EXTENSIONS } from './audioProbe'
 import { parseRange } from '../shared/httpRange'
 import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
+import type { TapeAction, TapeWire } from '../shared/tapePlayback'
 
 // `born-tape://file/<t_id>` — how the hidden audio engine reads a tape without ever being given a path. Must be declared before the app is ready.
 protocol.registerSchemesAsPrivileged([{ scheme: 'born-tape', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
@@ -126,8 +128,147 @@ export function recordingsFor(sermonId: number): RecordingInfo[] {
   return db.listRecordings(sermonId).map((r) => ({ ...r, status: l.status(r.file) }))
 }
 
+// ── the audio engine (hidden window) and the one tape record ─────────────────────────────────────────────
+let engineWin: BrowserWindow | null = null
+let engineReady = false
+let engineQueue: unknown[] = []
+let outputDevices: Array<{ id: string; label: string }> = []
+
+export interface TapeFanout {
+  /** the record (or null = no tape) goes to every window that follows it */
+  state: (w: TapeWire | null) => void
+  /** a plain-words message for the operator ("The video was paused so the tape can play…") */
+  notice: (m: string) => void
+  /** one sound at a time: is a video / YouTube item playing, and pause it */
+  videoPlaying: () => boolean
+  pauseVideo: () => void
+}
+let fan: TapeFanout = { state: () => {}, notice: () => {}, videoPlaying: () => false, pauseVideo: () => {} }
+export function setTapeFanout(f: TapeFanout): void { fan = f }
+
+const tapeSettings = (): TapeSettings => ({ ...TAPE_DEFAULTS, ...getSettings().tape })
+
+function toEngine(m: unknown): void {
+  if (engineWin && !engineWin.isDestroyed() && engineReady) engineWin.webContents.send('tape:engine', m)
+  else engineQueue.push(m)
+}
+
+function ensureEngine(): void {
+  if (engineWin && !engineWin.isDestroyed()) return
+  engineReady = false
+  engineWin = new BrowserWindow({
+    show: false,
+    width: 200,
+    height: 100,
+    title: 'BORN tape audio',
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }
+  })
+  engineWin.webContents.on('render-process-gone', (_e, d) => {
+    log.error('tape engine gone', d)
+    engineReady = false
+    // the record says where it was: the engine is re-created and resumes PAUSED at that position, and the operator is told
+    const r = hub.record
+    if (r) {
+      hub.pauseFor('device')
+      fan.notice('The tape audio restarted. It is paused where it was — press Play to continue.')
+    }
+  })
+  const dev = process.env.NODE_ENV === 'development' && process.env['ELECTRON_RENDERER_URL']
+  if (dev) void engineWin.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/audio.html`)
+  else void engineWin.loadFile(join(__dirname, '../renderer/audio.html'))
+}
+
+export const hub: TapeHub = new TapeHub({
+  now: () => Date.now(),
+  emit: (w) => fan.state(w),
+  engine: (m) => { ensureEngine(); toEngine(m) },
+  savePosition: (id, sec) => { try { getTapeDb()?.setPosition(id, sec) } catch (e) { log.warn('tape: could not save position', e) } },
+  loadRecording: (id) => {
+    const db = getTapeDb()
+    const rec = db?.getRecording(id)
+    return db && rec ? { recording: rec, resume: db.getPosition(id) } : null
+  },
+  settings: () => ({ outputDeviceId: tapeSettings().outputDeviceId, outputDeviceLabel: tapeSettings().outputDeviceLabel }),
+  videoPlaying: () => fan.videoPlaying(),
+  pauseVideo: () => fan.pauseVideo(),
+  notice: (m) => fan.notice(m)
+})
+setInterval(() => hub.tick(), 1000).unref()
+
 export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
   registerTapeProtocol()
+
+  // the engine speaks only on these channels, and only the engine window may use them
+  const fromEngine = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => !!engineWin && !engineWin.isDestroyed() && e.sender === engineWin.webContents
+  ipcMain.on('tape:engine-ready', (e) => {
+    if (!fromEngine(e)) return
+    engineReady = true
+    const q = engineQueue
+    engineQueue = []
+    for (const m of q) engineWin?.webContents.send('tape:engine', m)
+    // a re-created engine is told the record again (it will report ready, then resume where the record says)
+    if (hub.record && q.length === 0) hub.resend()
+  })
+  ipcMain.on('tape:engine-report', (e, r) => {
+    if (!fromEngine(e) || !r || typeof r.position !== 'number' || !Number.isFinite(r.position)) return
+    hub.report({
+      position: Math.max(0, r.position), playing: !!r.playing, duration: typeof r.duration === 'number' && Number.isFinite(r.duration) ? r.duration : undefined,
+      ended: !!r.ended, stalled: !!r.stalled, error: typeof r.error === 'string' ? r.error.slice(0, 300) : null,
+      errorKind: r.errorKind === 'file' || r.errorKind === 'device' || r.errorKind === 'decode' ? r.errorKind : null, ready: !!r.ready
+    })
+  })
+  ipcMain.on('tape:engine-devices', (e, list) => {
+    if (!fromEngine(e) || !Array.isArray(list)) return
+    outputDevices = list.filter((d) => d && typeof d.id === 'string').map((d) => ({ id: String(d.id), label: String(d.label ?? '') }))
+  })
+  ipcMain.on('tape:engine-device-lost', (e) => { if (fromEngine(e)) hub.deviceLost() })
+
+  // the operator's controls
+  ipcMain.handle('tape:load', (_e, recordingId: string, opts: { play?: boolean; position?: number } = {}) => {
+    ensureEngine()
+    hub.load(String(recordingId), { play: !!opts?.play, position: typeof opts?.position === 'number' ? opts.position : undefined })
+    return hub.get()
+  })
+  const VALID: TapeAction['type'][] = ['play', 'pause', 'toggle', 'seek', 'skip', 'speed', 'volume', 'muted']
+  ipcMain.handle('tape:command', (_e, a: TapeAction) => {
+    if (!a || typeof a !== 'object' || !VALID.includes(a.type)) return hub.get()
+    const x = a as { type: TapeAction['type']; to?: number; by?: number; value?: number | boolean }
+    // only plain values from the window: never trust shapes (a `report` is reserved for the engine)
+    const safe: TapeAction =
+      x.type === 'seek' ? { type: 'seek', to: Number(x.to) || 0 }
+      : x.type === 'skip' ? { type: 'skip', by: Number(x.by) || 0 }
+      : x.type === 'speed' ? { type: 'speed', value: Number(x.value) }
+      : x.type === 'volume' ? { type: 'volume', value: Number(x.value) }
+      : x.type === 'muted' ? { type: 'muted', value: !!x.value }
+      : ({ type: x.type } as TapeAction)
+    hub.command(safe)
+    return hub.get()
+  })
+  ipcMain.handle('tape:get', () => hub.get())
+  ipcMain.handle('tape:unload', () => { hub.unload(); return true })
+  ipcMain.handle('tape:devices', () => outputDevices)
+  ipcMain.handle('tape:set-device', (_e, id: string, label: string) => {
+    updateSettings({ tape: { ...tapeSettings(), outputDeviceId: String(id ?? ''), outputDeviceLabel: String(label ?? '') } })
+    hub.setDevice(String(id ?? ''), String(label ?? ''))
+    return true
+  })
+  ipcMain.handle('tape:settings-get', () => tapeSettings())
+  ipcMain.handle('tape:settings-set', (_e, patch: Partial<TapeSettings>) => {
+    const keys = Object.keys(TAPE_DEFAULTS) as Array<keyof TapeSettings>
+    const clean: Partial<TapeSettings> = {}
+    for (const k of keys) if (patch && k in patch && typeof (patch as Record<string, unknown>)[k] === typeof TAPE_DEFAULTS[k]) (clean as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k]
+    const next = { ...tapeSettings(), ...clean }
+    updateSettings({ tape: next })
+    return next
+  })
+
+  // sleep: the tape pauses and stays paused; the screens are re-told where it is on wake
+  try {
+    powerMonitor.on('suspend', () => hub.pauseFor('sleep'))
+    powerMonitor.on('resume', () => hub.resend())
+  } catch (e) {
+    log.warn('tape: power events unavailable', e)
+  }
 
   ipcMain.handle('tape:info', () => ({ available: !!getTapeDb(), message: unavailable, folder: getSettings().tapeFolder, audioPage: TAPE_AUDIO_PAGE }))
   ipcMain.handle('tape:recordings', (_e, sermonId: number) => (Number.isFinite(sermonId) ? recordingsFor(Number(sermonId)) : []))

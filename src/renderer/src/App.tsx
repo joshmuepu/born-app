@@ -1014,6 +1014,8 @@ export default function App() {
   }, [doProject, pushToast])
   const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
   useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
+  // plain-words messages from the main process (the tape paused a video, an alert was kept off the YouTube player, …)
+  useEffect(() => window.electronAPI.onOperatorNotice?.((message) => pushToast({ message, timeoutMs: 9000 })), [pushToast])
   useEffect(() => {
     const load = (): void => {
       void window.electronAPI.mediaBackgroundsGet().then((b) => setMainBackground(b.congregationMain)).catch(() => setMainBackground(null))

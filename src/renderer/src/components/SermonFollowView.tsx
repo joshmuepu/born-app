@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
 import TapeAttach from './TapeAttach'
+import TapeBar from './TapeBar'
 import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
@@ -229,6 +230,7 @@ export default function SermonFollowView({
         />
       )}
       {ctx.element}
+      {recs.length > 0 && recs[0].status === 'ok' && <TapeBar recording={recs[0]} />}
       {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} />}
     </div>
   )

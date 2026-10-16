@@ -457,6 +457,29 @@ const api = {
   tapePreflight: (recordingId: string, extra?: unknown): Promise<unknown> => ipcRenderer.invoke('tape:preflight', recordingId, extra),
   tapeOpenAudioPage: (): Promise<boolean> => ipcRenderer.invoke('tape:open-audio-page'),
   tapePathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
+  // the Tape audio engine's own channel (the hidden audio window) and the operator's tape controls
+  onTapeEngine: (cb: (m: unknown) => void): (() => void) => {
+    const h = (_e: unknown, m: unknown): void => cb(m)
+    ipcRenderer.on('tape:engine', h)
+    return () => ipcRenderer.removeListener('tape:engine', h)
+  },
+  tapeEngineReport: (r: unknown): void => ipcRenderer.send('tape:engine-report', r),
+  tapeEngineDevices: (list: unknown): void => ipcRenderer.send('tape:engine-devices', list),
+  tapeEngineDeviceLost: (): void => ipcRenderer.send('tape:engine-device-lost'),
+  tapeEngineReady: (): void => ipcRenderer.send('tape:engine-ready'),
+  tapeLoad: (recordingId: string, opts?: { play?: boolean; position?: number }): Promise<unknown> => ipcRenderer.invoke('tape:load', recordingId, opts),
+  tapeCommand: (action: unknown): Promise<unknown> => ipcRenderer.invoke('tape:command', action),
+  tapeGet: (): Promise<unknown> => ipcRenderer.invoke('tape:get'),
+  tapeUnload: (): Promise<boolean> => ipcRenderer.invoke('tape:unload'),
+  tapeDevices: (): Promise<Array<{ id: string; label: string }>> => ipcRenderer.invoke('tape:devices'),
+  tapeSetDevice: (id: string, label: string): Promise<boolean> => ipcRenderer.invoke('tape:set-device', id, label),
+  tapeSettingsGet: (): Promise<unknown> => ipcRenderer.invoke('tape:settings-get'),
+  tapeSettingsSet: (patch: unknown): Promise<unknown> => ipcRenderer.invoke('tape:settings-set', patch),
+  onTapeState: (cb: (w: unknown) => void): (() => void) => {
+    const h = (_e: unknown, w: unknown): void => cb(w)
+    ipcRenderer.on('tape:state', h)
+    return () => ipcRenderer.removeListener('tape:state', h)
+  },
   youtubeHostUrl: (videoId: string, start?: number): Promise<string | null> => ipcRenderer.invoke('youtube:host-url', videoId, start),
   youtubeLookup: (videoId: string): Promise<{ title: string; author: string } | null> => ipcRenderer.invoke('youtube:lookup', videoId),
   youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>): Promise<unknown[]> => ipcRenderer.invoke('youtube:preflight', items),

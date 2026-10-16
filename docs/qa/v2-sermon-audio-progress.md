@@ -16,7 +16,7 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 | Slice | Status |
 |---|---|
 | S1 attach/import, filename matching, preflight | **done** (tests: +64; real tape: import 53 ms, 2:24:47.89, exact match to sermon 1115, original untouched) |
-| S2 audio engine + player bar | — |
+| S2 audio engine + player bar | **done** (suite 1366 → 1418) |
 | S3 sync map + tap editor | — |
 | S4 follow-along in the reader | — |
 | S5 projection (a highlight, b one-at-a-time, c lower third/stage/Graphics) | — |
@@ -33,3 +33,9 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 - "Get audio" opens https://branham.org/en/MessageAudio in the browser (no in-app download).
 - Test helper: `BORN_TEST_PICK_TAPE` / `BORN_TEST_TAPE_FOLDER` answer the pickers in dev/test only.
 - Real app run script: scratchpad `tape-start.sh` (isolated profile `/tmp/born-tape-profile`, port 4398, CDP 9346).
+
+### S2 (done)
+- `shared/tapePlayback.ts` (record + reducers), `main/tapeHub.ts` (hub; one sound source; resume position every 5 s; phone rules), hidden engine page `renderer/audio.html` + `src/audio.ts` (clock owner; seeks only on epoch change; 4 Hz reports; device loss), `tapeService.ts` (engine window, IPC, sleep/wake), `TapeBar.tsx` + `useTape.ts`, Shift+Esc / Esc rules and video-pauses-tape in `index.ts`; plain-words notices now reach the operator (`operator:notice` toast, which was previously not shown).
+- **Real tape, real app (Chromium 130 in Electron):** loads in <3 s paused at resume position; position tracks wall clock within 40 ms over 5 s; 1.25× advanced 4.96 s in 4 s; device list shows names (5 outputs incl. built-in speakers, 2 HDMI monitors, Teams virtual); play/pause/seek exact.
+- **Seek accuracy on the real tape** (30 seeks, 0 → 8680 s, captured audio cross-correlated against an ffmpeg reference decode): constant offset −86 ms (output/capture latency), **stdev 32 ms** (one 4096-sample capture block = 93 ms), **no drift with position** (first 8 seeks median −77 ms, last 8 −86 ms); seek returns in 0–2 ms. One capture (5522 s) had no usable correlation (silence) and is excluded. VBR/seek-table check on the tape: AAC M4A, not applicable (index first, whole). Method script lives outside the repo (/tmp/born-tape-work/seek).
+- Deviation: tape not auto-loaded on opening a sermon; Play on the bar loads it (so nothing starts or occupies the audio window until asked).

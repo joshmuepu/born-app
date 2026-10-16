@@ -10,6 +10,9 @@ import { log } from './logger'
 import type { NamedDisplay } from './displays'
 import type { ChannelDefinition, DestinationRoutingEntry } from '../shared/channels'
 
+import { TAPE_DEFAULTS, type TapeSettings } from '../shared/tape'
+export { TAPE_DEFAULTS, type TapeSettings }
+
 export interface AppSettings {
   /** Operator-given names for physical displays ("Sanctuary Projector"),
    *  matched back by model/resolution/internal-flag rather than Electron's
@@ -82,42 +85,6 @@ export interface AppSettings {
   tape: TapeSettings
 }
 
-export interface TapeSettings {
-  /** the sound output device id (a Chromium sinkId); '' = the system default */
-  outputDeviceId: string
-  outputDeviceLabel: string
-  /** seconds: show the next paragraph this long before the speaker reaches it (one-at-a-time view) */
-  leadSec: number
-  view: 'highlight' | 'single' | 'lower'
-  speedRange: 'wide' | 'narrow' | 'off'
-  /** what happens when the sound device is lost */
-  deviceLoss: 'pause' | 'default'
-  /** what a video / YouTube item does to a playing tape */
-  videoRule: 'pause' | 'stop'
-  /** Esc: blank only ('keep') or blank and pause ('pause') */
-  escRule: 'keep' | 'pause'
-  /** if numbering differs between the tape's map and the text language */
-  mismatchPolicy: 'ask' | 'never' | 'matching'
-  /** a whisper.cpp add-on (S8), set by the operator: nothing is bundled */
-  whisperPath: string
-  whisperModelPath: string
-  ffmpegPath: string
-}
-
-export const TAPE_DEFAULTS: TapeSettings = {
-  outputDeviceId: '',
-  outputDeviceLabel: '',
-  leadSec: 4,
-  view: 'highlight',
-  speedRange: 'wide',
-  deviceLoss: 'pause',
-  videoRule: 'pause',
-  escRule: 'keep',
-  mismatchPolicy: 'ask',
-  whisperPath: '',
-  whisperModelPath: '',
-  ffmpegPath: ''
-}
 
 const DEFAULTS: AppSettings = {
   namedDisplays: [],

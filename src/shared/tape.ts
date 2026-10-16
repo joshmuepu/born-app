@@ -115,3 +115,41 @@ export function formatTapeTime(sec: number | null | undefined, withHours = true)
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60
   return withHours || h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`
 }
+
+/** Tape service options (docs/design/sermon-audio/02-product-design.md §1). Every one applies to the next tape, never to what is on screen. */
+export interface TapeSettings {
+  /** the sound output device id (a Chromium sinkId); '' = the system default */
+  outputDeviceId: string
+  outputDeviceLabel: string
+  /** seconds: show the next paragraph this long before the speaker reaches it (one-at-a-time view) */
+  leadSec: number
+  view: 'highlight' | 'single' | 'lower'
+  speedRange: 'wide' | 'narrow' | 'off'
+  /** what happens when the sound device is lost */
+  deviceLoss: 'pause' | 'default'
+  /** what a video / YouTube item does to a playing tape */
+  videoRule: 'pause' | 'stop'
+  /** Esc: blank only ('keep') or blank and pause ('pause') */
+  escRule: 'keep' | 'pause'
+  /** if numbering differs between the tape's map and the text language */
+  mismatchPolicy: 'ask' | 'never' | 'matching'
+  /** a whisper.cpp add-on (S8), set by the operator: nothing is bundled */
+  whisperPath: string
+  whisperModelPath: string
+  ffmpegPath: string
+}
+
+export const TAPE_DEFAULTS: TapeSettings = {
+  outputDeviceId: '',
+  outputDeviceLabel: '',
+  leadSec: 4,
+  view: 'highlight',
+  speedRange: 'wide',
+  deviceLoss: 'pause',
+  videoRule: 'pause',
+  escRule: 'keep',
+  mismatchPolicy: 'ask',
+  whisperPath: '',
+  whisperModelPath: '',
+  ffmpegPath: ''
+}

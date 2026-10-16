@@ -20,7 +20,7 @@ import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHt
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
-import { registerTapeIpc, closeTape } from './tapeService'
+import { registerTapeIpc, closeTape, setTapeFanout, hub as tapeHub } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -740,9 +740,16 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     const mod = input.meta || input.control
-    if (input.key === 'Escape') {
+    if (input.key === 'Escape' && input.shift) {
+      // Shift+Esc: blank the screens AND pause the tape (plain Esc leaves the tape playing — the recording is the service)
       event.preventDefault()
-      setChannelBlank('main', !channels.get('main')!.blanked)
+      if (!channels.get('main')!.blanked) setChannelBlank('main', true)
+      tapeHub.pauseFor('panic')
+    } else if (input.key === 'Escape') {
+      event.preventDefault()
+      const blanking = !channels.get('main')!.blanked
+      setChannelBlank('main', blanking)
+      if (blanking && getSettingsSafe().tape.escRule === 'pause') tapeHub.pauseFor('panic')
     } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
       event.preventDefault()
       // Close whichever output window this fired from — this used to always
@@ -1383,6 +1390,8 @@ function channelOfDestination(destId: string): ChannelId | null {
 }
 const playbackHub = new PlaybackHub({
   now: () => Date.now(),
+  // one sound at a time: a video or YouTube item starting to play pauses the tape
+  onPlay: () => tapeHub.pauseFor('video'),
   emit: (msg: PlaybackWire) => {
     if (channelOfDestination('congregation') === msg.channelId) sendToProjection('media:playback', msg)
     if (channelOfDestination('stage') === msg.channelId) sendToStage('media:playback', msg)
@@ -1406,6 +1415,7 @@ function pushGraphicsPlayback(channelId: ChannelId, msg: PlaybackWire | null): v
 /** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
 function syncPlaybackToSlide(channelId: ChannelId, slide: SlidePayload | null): void {
   // A YouTube video is taken paused too (the congregation window cues it); its length is learned from the player.
+  if (slide && slide.kind === 'media' && (slide.media?.type === 'youtube' || slide.media?.type === 'video')) tapeHub.pauseFor('video')
   if (slide && slide.kind === 'media' && slide.media?.type === 'youtube' && isYouTubeMediaId(slide.media.mediaId)) {
     playbackHub.take(channelId, slide.media.mediaId, { duration: null, loop: false })
     return
@@ -3047,6 +3057,16 @@ app.whenReady().then(async () => {
   registerMediaIpc(() => mainWindow)
   registerYouTubeIpc()
   registerTapeIpc(() => mainWindow)
+  setTapeFanout({
+    state: (w) => {
+      sendToMain('tape:state', w)
+      sendToProjection('tape:state', w)
+      sendToStage('tape:state', w)
+    },
+    notice: (m) => sendToMain('operator:notice', m),
+    videoPlaying: () => playbackHub.isAnyPlaying(),
+    pauseVideo: () => playbackHub.pauseAll()
+  })
   registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
   createMainWindow()
 
@@ -3245,6 +3265,7 @@ app.on('window-all-closed', () => {
   closeDb()
   closeLibraryDb()
   closeMediaLibrary()
+  tapeHub.unload()
   closeTape()
   if (process.platform !== 'darwin') {
     app.quit()
