@@ -19,8 +19,16 @@ const {
   stopWebRemote,
   isWebRemoteAvailable,
   getConnectedPhoneCount,
-  buildRemoteConnectionInfo
+  buildRemoteConnectionInfo,
+  getPhoneConnections,
+  probeAddresses,
+  setPhoneViaListener,
+  REMOTE_BIND_HOST
 } = await import('../../main/webRemote')
+
+// The mocked 'os' above only fakes networkInterfaces(); the bind tests need the
+// machine's REAL addresses to prove the server answers on every one of them.
+const realOs = await vi.importActual<typeof import('os')>('os')
 
 // A dedicated test-only port — REMOTE_PORT (4316) may legitimately already
 // be held by a real BORN dev instance running on the same machine, which is
@@ -221,6 +229,94 @@ describe('getConnectedPhoneCount', () => {
       expect(getConnectedPhoneCount()).toBe(0)
       spy.mockRestore()
     } finally {
+      stopWebRemote()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  })
+})
+
+describe('church case (Ethernet 172.30.20.126 + Wi-Fi 10.1.10.102)', () => {
+  it('advertises the Wi-Fi address whichever order the OS lists the adapters in', () => {
+    mockInterfaces.mockReturnValue({ 'Ethernet 2': iface('172.30.20.126'), 'Wi-Fi': iface('10.1.10.102') })
+    expect(getLocalIP()).toBe('10.1.10.102')
+    mockInterfaces.mockReturnValue({ 'Wi-Fi': iface('10.1.10.102'), 'Ethernet 2': iface('172.30.20.126') })
+    expect(getLocalIP()).toBe('10.1.10.102')
+  })
+
+  it('honours the remembered phone network', () => {
+    mockInterfaces.mockReturnValue({ 'Ethernet 2': iface('172.30.20.126'), 'Wi-Fi': iface('10.1.10.102') })
+    expect(getLocalIP({ name: 'Ethernet 2', address: '172.30.20.126' })).toBe('172.30.20.126')
+  })
+})
+
+describe('bind address', () => {
+  it('binds every interface, not just the advertised one — and answers on loopback and every real local address', async () => {
+    // Advertise ONE fake address, to prove the bind does not follow it.
+    mockInterfaces.mockReturnValue({ 'Wi-Fi': iface('10.1.10.102') })
+    await new Promise<void>((resolve) => startWebRemote(() => {}, noopSearch, resolve, TEST_PORT))
+    try {
+      expect(REMOTE_BIND_HOST).toBe('0.0.0.0')
+      const real: string[] = ['127.0.0.1']
+      for (const entries of Object.values(realOs.networkInterfaces())) {
+        for (const e of entries ?? []) if (e.family === 'IPv4') real.push(e.address)
+      }
+      for (const addr of real) {
+        const res = await fetch(`http://${addr}:${TEST_PORT}/ping`)
+        expect(res.status, `answers on ${addr}`).toBe(200)
+      }
+    } finally {
+      stopWebRemote()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  })
+})
+
+describe('probeAddresses (connection-check self-test)', () => {
+  it('reports pass for an address that answers and fail for one that does not, without counting as a phone', async () => {
+    await new Promise<void>((resolve) => startWebRemote(() => {}, noopSearch, resolve, TEST_PORT))
+    try {
+      const results = await probeAddresses(['127.0.0.1'], TEST_PORT)
+      expect(results[0]).toMatchObject({ address: '127.0.0.1', ok: true, error: null })
+      expect(getConnectedPhoneCount()).toBe(0)
+
+      const closed = await probeAddresses(['127.0.0.1'], TEST_PORT + 1, 500)
+      expect(closed[0]).toMatchObject({ ok: false, error: 'connection refused' })
+    } finally {
+      stopWebRemote()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  })
+})
+
+describe('phone network tracking', () => {
+  it('reports the local address a phone reached us through, ignoring loopback clients', async () => {
+    const via = vi.fn()
+    setPhoneViaListener(via)
+    await new Promise<void>((resolve) => startWebRemote(() => {}, noopSearch, resolve, TEST_PORT))
+    try {
+      // A client on this machine over loopback: counted as connected, but it
+      // says nothing about which network a phone is on.
+      await fetch(`http://127.0.0.1:${TEST_PORT}/state`)
+      expect(getConnectedPhoneCount()).toBe(1)
+      expect(getPhoneConnections()).toEqual([])
+      expect(via).not.toHaveBeenCalled()
+
+      // Reaching the server through one of this machine's real LAN addresses
+      // does (the client address is then also non-loopback).
+      const lan = Object.values(realOs.networkInterfaces())
+        .flat()
+        .find((e) => e && e.family === 'IPv4' && !e.internal)?.address
+      if (lan) {
+        await fetch(`http://${lan}:${TEST_PORT}/state`)
+        await fetch(`http://${lan}:${TEST_PORT}/state`)
+        expect(via).toHaveBeenCalledTimes(1) // only on change
+        expect(via).toHaveBeenCalledWith(lan)
+        const conns = getPhoneConnections()
+        expect(conns[0]).toMatchObject({ viaAddress: lan, active: true })
+        expect(conns[0].subnet).toMatch(/\.0\/24$/)
+      }
+    } finally {
+      setPhoneViaListener(null)
       stopWebRemote()
       await new Promise((resolve) => setTimeout(resolve, 50))
     }

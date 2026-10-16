@@ -92,18 +92,63 @@ export interface SlidePayload {
 
 export interface RemoteAdapterInfo {
   name: string
+  /** Operator-facing name, e.g. "Wi-Fi (CBCI-3170)". */
+  label: string
   address: string
   virtual: boolean
+  /** Shown by default (false = VPN / virtual switch / link-local). */
+  usable: boolean
+  hiddenReason: string | null
+  /** This is the address the QR code is using. */
   chosen: boolean
+  /** Self-connect result; null when the server isn't running. */
+  reachable: boolean | null
+  reachError: string | null
+}
+
+export interface RemotePhoneConnection {
+  clientIp: string
+  subnet: string
+  viaAddress: string
+  active: boolean
+}
+
+export interface RemoteNetworkInfo {
+  id: string
+  name: string
+  label: string
+  address: string
+  kind: 'wifi' | 'ethernet' | 'vpn' | 'virtual' | 'other'
+  ssid: string | null
+  private: boolean
+  usable: boolean
+  hiddenReason: string | null
+}
+
+export interface WebRemoteInfo {
+  available: boolean
+  /** Address for the default network (kept for older callers). */
+  url: string
+  ipUrl: string
+  hostnameUrl: string | null
+  port: number
+  networks: RemoteNetworkInfo[]
+  selectedId: string | null
+  /** One short line explaining why selectedId was chosen; null for a single network. */
+  reason: string | null
 }
 
 export interface RemoteDiagnostics {
   available: boolean
   port: number
+  /** The address the QR code is currently using. */
   chosenIp: string
   adapters: RemoteAdapterInfo[]
   mdnsHostname: string | null
   connectedPhones: number
+  phones: RemotePhoneConnection[]
+  hints: string[]
+  firewallCommands: string[]
   recentLogLines: string[]
   platform: string
 }
@@ -365,13 +410,9 @@ const api = {
   },
 
   // Web remote
-  getWebRemoteURL: (): Promise<{
-    available: boolean
-    url: string
-    ipUrl: string
-    hostnameUrl: string | null
-  }> => ipcRenderer.invoke('webremote:ip'),
-  getWebRemoteDiagnostics: (): Promise<RemoteDiagnostics> => ipcRenderer.invoke('webremote:diagnostics'),
+  getWebRemoteURL: (): Promise<WebRemoteInfo> => ipcRenderer.invoke('webremote:ip'),
+  getWebRemoteDiagnostics: (selectedId?: string): Promise<RemoteDiagnostics> =>
+    ipcRenderer.invoke('webremote:diagnostics', selectedId),
   syncWebRemote: (state: {
     queue: Array<{
       id: string

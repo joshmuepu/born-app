@@ -48,6 +48,10 @@ export interface AppSettings {
    *  the key picker turns the common case into one tap instead of a search
    *  through all 24. */
   recentKeys: string[]
+  /** The adapter + address a phone last reached the remote through — the
+   *  Remote panel shows this network first next time. Null until a phone
+   *  has connected. */
+  remoteLastPhoneNetwork: { name: string; address: string } | null
 }
 
 const DEFAULTS: AppSettings = {
@@ -62,7 +66,8 @@ const DEFAULTS: AppSettings = {
   recentSongIds: [],
   recentQuotes: [],
   recentBibleRefs: [],
-  recentKeys: []
+  recentKeys: [],
+  remoteLastPhoneNetwork: null
 }
 
 let cache: AppSettings | null = null

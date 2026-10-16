@@ -59,9 +59,44 @@ declare global {
 
   interface RemoteAdapterInfo {
     name: string
+    label: string
     address: string
     virtual: boolean
+    usable: boolean
+    hiddenReason: string | null
     chosen: boolean
+    reachable: boolean | null
+    reachError: string | null
+  }
+
+  interface RemotePhoneConnection {
+    clientIp: string
+    subnet: string
+    viaAddress: string
+    active: boolean
+  }
+
+  interface RemoteNetworkInfo {
+    id: string
+    name: string
+    label: string
+    address: string
+    kind: 'wifi' | 'ethernet' | 'vpn' | 'virtual' | 'other'
+    ssid: string | null
+    private: boolean
+    usable: boolean
+    hiddenReason: string | null
+  }
+
+  interface WebRemoteInfo {
+    available: boolean
+    url: string
+    ipUrl: string
+    hostnameUrl: string | null
+    port: number
+    networks: RemoteNetworkInfo[]
+    selectedId: string | null
+    reason: string | null
   }
 
   interface RemoteDiagnostics {
@@ -71,6 +106,9 @@ declare global {
     adapters: RemoteAdapterInfo[]
     mdnsHostname: string | null
     connectedPhones: number
+    phones: RemotePhoneConnection[]
+    hints: string[]
+    firewallCommands: string[]
     recentLogLines: string[]
     platform: string
   }
@@ -178,13 +216,8 @@ declare global {
       notifyStageReady: () => void
       onStageClosed: (callback: () => void) => () => void
       // Web remote
-      getWebRemoteURL: () => Promise<{
-        available: boolean
-        url: string
-        ipUrl: string
-        hostnameUrl: string | null
-      }>
-      getWebRemoteDiagnostics: () => Promise<RemoteDiagnostics>
+      getWebRemoteURL: () => Promise<WebRemoteInfo>
+      getWebRemoteDiagnostics: (selectedId?: string) => Promise<RemoteDiagnostics>
       syncWebRemote: (state: {
         queue: Array<{
           /** Stable row id — remote commands address a row by this, never
