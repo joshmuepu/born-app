@@ -23,9 +23,9 @@ Answer the risky questions with throwaway prototypes **before** committing. ~M t
 
 | Spike | Question | Done when |
 |---|---|---|
-| S1 Playback | Do 1080p30/60 and 4K30 H.264 loop for 60 minutes without drops on a 5-year-old laptop (macOS + Windows)? Memory/CPU/GPU numbers | Table of results |
+| S1 Playback | Do 1080p30/60 and 4K30 H.264 loop for 60 minutes without drops on a 5-year-old laptop (macOS + Windows)? Memory/CPU/GPU numbers | **Done on the dev Mac 2026-10-16: 1080p safe, 4K safe with limits** — still to repeat on a church PC |
 | S2 HEVC | Does a real HEVC file play on our target OS/hardware? | Pass/fail per machine |
-| S3 Sync | Drift between Congregation, Graphics and a second window over 60 min; correction strategy | ≤ 80 ms or a better plan |
+| S3 Sync | Drift between Congregation, Graphics and a second window over 60 min; correction strategy | **Done 2026-10-16: corrected p95 46 ms, max 82 ms — passes** (15 min run) |
 | S4 Serving | Serve media to the Graphics page with range requests; works in OBS Browser Source | OBS test |
 | S5 Capture | `getUserMedia` for a USB capture card and NDI Virtual Input in Electron windows; permission flow | Works or documented limits |
 | S6 Convert | FFmpeg options: bundle vs. detect vs. none; size and licence advice | Recommendation + legal check |
@@ -49,6 +49,19 @@ clear message and never become a broken item.
 (play/pause, seek, loop, volume, fade, in/out, "when it ends"); Live readback; stalled-video watchdog;
 phone **Play/Pause live media only**; stage-monitor time left. **No FFmpeg.**
 **Effort:** L · **Risk:** medium–high until the spikes report.
+
+## Phase 1b gates — resolved (overnight run, 2026-10-16)
+
+Numbers and caveats: `spikes/1-long-run-stability.md` and `spikes/3-multi-screen-sync.md` on branch `v2-media-spikes` (summary: `spikes/PHASE-1B-GATES.md`). Machine: Apple M4 Max, run under load — **best-case hardware; not yet seen on a church PC**.
+
+| Gate | Decision |
+|---|---|
+| Looping motion backgrounds | **In 1b, with a caveat.** 1080p30 looped 2 h in two windows: 0 stalls, 0 dropped frames, memory flat after warm-up, 1.7% CPU. Repeat the soak on a church-class PC before the first video release; preflight carries a "test on this computer" note. |
+| 4K | **Supported with a warning** (not capped, not promised). 4K30 for 20 min: clean, but the memory threshold was exceeded on a run too short to judge; run 60+ min on the target PC. |
+| Other screens | **Play the video in step.** With the main process owning the clock and followers nudging their rate: p95 46 ms, max 82 ms, 0 hard seeks over 15 min (free-running drifts 32–45 ms/min). Fallback when a follower is > 500 ms out or correction is off: a still frame plus time remaining. |
+| Limits to enforce | 3840×2160 max, 30 fps verified (60 fps flagged "not soaked"), warn above 20 Mbit/s (1080p) / 40 Mbit/s (4K), H.264 + AAC only, no loop-length limit, correct every follower (nudge ±5% between 40–500 ms, seek beyond 500 ms). |
+
+Not measured: a Windows church PC, a slower laptop, thermal behaviour elsewhere, 60 fps and high-bitrate files, HEVC, a real projector, a 4K run over 20 minutes.
 
 ## Phase 2a — YouTube items (after 1b; only if spike 9 passes)
 
