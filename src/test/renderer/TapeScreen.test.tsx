@@ -117,10 +117,10 @@ describe('the operator controls', () => {
   const onTaken = vi.fn()
   const mount = async () => { const r = render(<TapeScreenControls recording={rec} sermonId={1} title="A Sermon" items={items} map={map} position={35} onTaken={onTaken} />); await act(async () => {}); return r }
 
-  it('nothing is shown until the operator presses Put on the screens, and then the payload carries the tape screen and the current paragraph', async () => {
+  it('nothing is shown until the operator presses Show on the screens, and then the payload carries the tape screen and the current paragraph', async () => {
     await mount()
     expect(showSlide).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Put on the screens/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Show on the screens/ }))
     const p = showSlide.mock.calls[0][0]
     expect(p.kind).toBe('quote')
     expect(p.text).toBe('Second paragraph, page a.')
@@ -129,12 +129,12 @@ describe('the operator controls', () => {
     expect(onTaken).toHaveBeenCalledWith(items[1]) // "Recently played" learns which paragraph went up
     expect(window.electronAPI.updateStage).toHaveBeenCalledWith(p, null) // the stage monitor gets its own layout of the same screen
   })
-  it('choosing a view or colours changes nothing on the screens until Put on the screens', async () => {
+  it('choosing a view or colours changes nothing on the screens until Show on the screens', async () => {
     await mount()
     fireEvent.click(screen.getByRole('radio', { name: 'One at a time' }))
     fireEvent.change(screen.getByLabelText('Screen colours'), { target: { value: 'light' } })
     expect(showSlide).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Put on the screens/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Show on the screens/ }))
     expect(showSlide.mock.calls[0][0].tape).toMatchObject({ mode: 'one', palette: 'light' })
     expect(window.electronAPI.tapeSettingsSet).toHaveBeenCalledWith({ view: 'single' })
   })
@@ -160,10 +160,10 @@ describe('the operator controls', () => {
     fireEvent.click(screen.getByRole('button', { name: /Apply to the screens/ }))
     expect(showSlide.mock.calls[0][0].tape).toMatchObject({ mode: 'one', pinned: null })
   })
-  it('"Take off the screens" clears the screen; a blanked screen is not reported as showing the tape', async () => {
+  it('"Remove from the screens" clears the screen; a blanked screen is not reported as showing the tape', async () => {
     await mount()
     await act(async () => { liveCb([{ id: 'main', label: 'Main', blanked: false, next: null, current: { kind: 'quote', text: 'x', tape: spec() } }]) })
-    fireEvent.click(screen.getByRole('button', { name: /Take off the screens/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Remove from the screens/ }))
     expect(window.electronAPI.clearProjection).toHaveBeenCalled()
     await act(async () => { liveCb([{ id: 'main', label: 'Main', blanked: true, next: null, current: { kind: 'quote', text: 'x', tape: spec() } }]) })
     expect(screen.queryByRole('switch', { name: /Screens follow/ })).toBeNull()

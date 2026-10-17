@@ -83,17 +83,17 @@ describe('PreviewLivePair', () => {
     await waitFor(() => expect(seen('Romans 8:1 · KJV')).toBe(true))
   })
 
-  it('marks a hidden screen as hidden and offers Show', async () => {
+  it('marks a hidden screen as hidden and offers Show screen', async () => {
     const onToggleBlank = vi.fn()
     window.electronAPI.getLiveState = vi.fn(() => Promise.resolve([main({ blanked: true })]))
     const user = userEvent.setup()
     render(<PreviewLivePair {...baseProps({ onToggleBlank })} />)
     await waitFor(() => expect(seen('Hidden')).toBe(true))
-    await user.click(screen.getByRole('button', { name: /Show/ }))
+    await user.click(screen.getByRole('button', { name: 'Show screen' }))
     expect(onToggleBlank).toHaveBeenCalledOnce()
   })
 
-  it('Take runs the take action; a staged item shows its title and can be unstaged', async () => {
+  it('Show runs the take action; a staged item shows its title and can be unstaged', async () => {
     const onTake = vi.fn()
     const onUnstage = vi.fn()
     const user = userEvent.setup()
@@ -108,7 +108,7 @@ describe('PreviewLivePair', () => {
       />
     )
     expect(seen('Genesis 1:1')).toBe(true)
-    await user.click(screen.getByRole('button', { name: 'Take' }))
+    await user.click(screen.getByRole('button', { name: 'Show' }))
     expect(onTake).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'Unstage' }))
     expect(onUnstage).toHaveBeenCalledOnce()
@@ -153,7 +153,7 @@ describe('PreviewLivePair', () => {
     await user.click(screen.getByRole('tab', { name: 'Spanish' }))
     await waitFor(() => expect(seen('Juan 3:16 · RVR')).toBe(true))
     expect(seen('Follows Main automatically')).toBe(true)
-    await user.click(screen.getByRole('button', { name: /Clear/ }))
+    await user.click(screen.getByRole('button', { name: /Hide screen|Clear/ }))
     expect(onClearChannel).toHaveBeenCalledWith('ch2')
   })
 })

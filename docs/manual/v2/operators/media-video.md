@@ -23,7 +23,7 @@ then add that file."* A file that was **cut short** (an unfinished copy or downl
 ## Playing a video
 
 1. Put the video in the queue (**Q**, double-click, or drag). In the queue row's menu you can choose **Loop the video**.
-2. **Take** it. The video appears on the screen **paused on its first frame**. **Nothing plays by itself, and no sound starts when you Take.**
+2. **Show** it. The video appears on the screen **paused on its first frame**. **Nothing plays by itself, and no sound starts when you Show.**
 3. Press **Play** in the bar under the Live picture. You can **pause**, **drag the position**, change the **volume**, **mute**, and turn **loop** on or off.
 
 ![The Live panel with the video bar: Play/Pause, the time, time left, position, volume and loop.](../images/media-video-live.png)

@@ -44,9 +44,9 @@ correct and expected.
 > frozen desktop image, not a Born Again logo) — and the button that said "Open projection"
 > now shows the Hide/Show-screen controls instead.
 
-## 4. Put it on the screen
+## 4. Show it on the screen
 
-Every result has a **Project** button on it. Click it and that result appears on
+Every result has a **Show** button on it. Click it and that result appears on
 the Congregation screen immediately. (To line several things up first instead of
 projecting one at a time, see the next step.)
 
@@ -56,7 +56,7 @@ Instead of projecting one thing at a time, click **Add to Queue** (sermon quotes
 or **+ Queue** (Bible verses, songs) on anything you find, and it lines up in the
 queue panel on the right, in
 order. The panel opens by itself once something is queued or projecting; the
-**Queue** button on the left rail shows or hides it. Drag to reorder. Click any queued item's **Project** button (it reads
+**Queue** button on the left rail shows or hides it. Drag to reorder. Click any queued item's **Show** button (it reads
 **Restart here** once it's live) to jump straight to it.
 
 ## 6. Move through it

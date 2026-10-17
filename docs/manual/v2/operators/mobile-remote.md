@@ -52,7 +52,7 @@ the setup by hand.
 
 ## Using it
 
-The phone has its own transport bar (**Prev** / **Next** / **Blank**) always
+The phone has its own transport bar (**Prev** / **Next** / **Hide screen**) always
 visible at the top, and four tabs at the bottom: **Queue**, **Sermons**, **Bible**,
 **Songs** — the same searches as the desktop app, sized for a phone screen.
 
@@ -68,7 +68,7 @@ Next: [The Screens menu](screens-menu.md).
 ### Pictures
 
 Picture and slideshow items show a small thumbnail in the queue and in the item's slide list, and the picture that is on screen
-shows its thumbnail under **Now**. **Next / Prev** step a slideshow and **Blank** hides the screen. The phone has no seek or
+shows its thumbnail under **Now**. **Next / Prev** step a slideshow and **Hide screen** hides the screen. The phone has no seek or
 sound controls.
 
 ![A queue with a picture and a slideshow on a phone.](../images/media-remote-iphone.png)

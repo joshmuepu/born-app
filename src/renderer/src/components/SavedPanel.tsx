@@ -100,7 +100,7 @@ export default function SavedPanel({
               const I = Icon(f.kind)
               return (
                 <div key={f.id} className={`saved-row saved-row--${f.kind}`}>
-                  <button className="saved-open" onClick={() => openFav(f)} title="Open — this does not put it on the screen">
+                  <button className="saved-open" onClick={() => openFav(f)} title="Open — this does not show it on the screen">
                     <I width={15} height={15} strokeWidth={2} aria-hidden="true" />
                     <span className="saved-text">
                       <span className="saved-title">{f.title}</span>

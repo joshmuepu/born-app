@@ -1524,7 +1524,7 @@ export default function App() {
         { id: 'tape-fwd', label: 'Tape: forward 10 seconds', keywords: 'tape skip', hint: 'Ctrl+Shift+→', run: () => t()?.forward() },
         { id: 'tape-prev', label: 'Tape: previous paragraph', keywords: 'tape paragraph back', hint: 'Ctrl+Shift+[', run: () => t()?.prevParagraph() },
         { id: 'tape-next', label: 'Tape: next paragraph', keywords: 'tape paragraph skip', hint: 'Ctrl+Shift+]', run: () => t()?.nextParagraph() },
-        { id: 'tape-screens', label: 'Tape: put its text on the screens (or take it off)', keywords: 'tape screens projector follow text', run: () => t()?.screens() }
+        { id: 'tape-screens', label: 'Tape: show its text on the screens (or remove it)', keywords: 'tape screens projector follow text', run: () => t()?.screens() }
       )
     }
     if (projectionOpen) {
@@ -2695,7 +2695,7 @@ export default function App() {
               <div><dt><kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Back / forward through what you opened</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> on a queue row</dt><dd>Move that row up / down</dd></div>
               <div><dt><kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd></dt><dd>Open the right-click menu on the focused item</dd></div>
-              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Show the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
               <div><dt><kbd>F1</kbd></dt><dd>Open / close the Born Again manual</dd></div>

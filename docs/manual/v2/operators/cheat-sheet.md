@@ -18,16 +18,16 @@ sound desk.*
 | To do this | Do this |
 |---|---|
 | Jump to the search box from anywhere | Press **/** |
-| Find a sermon quote | Type a word/phrase in the search box → click a result's **Project** |
-| Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → **Project** |
-| Find a song | Click **Songs** → search → **Project** |
+| Find a sermon quote | Type a word/phrase in the search box → click a result's **Show** |
+| Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → **Show** |
+| Find a song | Click **Songs** → search → **Show** |
 | Move to the next slide | Press **→** or **Space**, or click **Next** |
 | Go back a slide | Press **←**, or click **Back** |
 | Black out the screen | Press **Esc**, or click **Hide screen** — it turns amber and relabels to **Show screen** while hidden |
 | Bring it back | Press **Esc** again, or click **Show screen** |
 | Show a one-off announcement | Click **Message** → type it → **Show message** (clears itself after ~10s) |
 
-The two small pictures above the Back/Next bar show **Preview** (what Next or Take
+The two small pictures above the Back/Next bar show **Preview** (what Next or Show
 will put up) and **Live** (what is on the screen right now, read back from the
 screen itself). If Live says "Hidden" or "Projection closed," that's why nothing is
 showing.

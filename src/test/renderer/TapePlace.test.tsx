@@ -128,7 +128,7 @@ describe('the Follow tab', () => {
     await open()
     expect(await screen.findByLabelText('Text language')).toBeTruthy()
     expect(screen.getByText(/Tape EN/)).toBeTruthy()
-    expect(await screen.findByRole('button', { name: /Put on the screens/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Show on the screens/ })).toBeTruthy()
   })
   it('without timing it says the text cannot follow and where to fix it', async () => {
     api.tapeMapGet.mockResolvedValue(null)

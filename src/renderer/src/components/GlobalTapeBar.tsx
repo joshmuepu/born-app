@@ -119,7 +119,7 @@ export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (
           className={`gtb-screens${screen.onScreens ? ' is-on' : ''}`}
           onClick={() => (screen.onScreens ? screen.takeOff() : screen.take())}
           disabled={!screen.onScreens && !screen.ready}
-          title={screen.onScreens ? 'The tape’s text is on the screens — click to take it off' : n.hasTiming ? 'Put the tape’s text on the screens' : 'This tape has no timing yet, so its text cannot follow it'}
+          title={screen.onScreens ? 'The tape’s text is on the screens — click to remove it' : n.hasTiming ? 'Show the tape’s text on the screens' : 'This tape has no timing yet, so its text cannot follow it'}
         >
           {screen.onScreens ? <MonitorOff width={14} height={14} aria-hidden="true" /> : <MonitorPlay width={14} height={14} aria-hidden="true" />}
           <span className="gtb-screens-text">{screen.onScreens ? 'Text on the screens' : 'Text: not on the screens'}</span>

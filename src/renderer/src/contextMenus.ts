@@ -36,7 +36,7 @@ export function quoteMenu(
 ): MenuItem[] {
   const ref = `${q.sermonTitle} ${q.dateCode} ¶${q.paragraphRef}`
   const items: MenuItem[] = []
-  if (h.project) items.push({ id: 'project', label: 'Project now', onSelect: h.project })
+  if (h.project) items.push({ id: 'project', label: 'Show now', onSelect: h.project })
   if (h.addToQueue) items.push({ id: 'queue', label: 'Add to queue', onSelect: h.addToQueue })
   items.push({
     id: 'next',
@@ -79,7 +79,7 @@ export function verseMenu(
   h: { actions: AppActions; project?: () => void; addToQueue?: () => void; openChapter?: boolean }
 ): MenuItem[] {
   const items: MenuItem[] = []
-  if (h.project) items.push({ id: 'project', label: 'Project now', onSelect: h.project })
+  if (h.project) items.push({ id: 'project', label: 'Show now', onSelect: h.project })
   if (h.addToQueue) items.push({ id: 'queue', label: 'Add to queue', onSelect: h.addToQueue })
   items.push({
     id: 'next',
@@ -127,7 +127,7 @@ export function songMenu(
   h: { actions: AppActions; project?: () => void; addToQueue?: () => void }
 ): MenuItem[] {
   const items: MenuItem[] = []
-  if (h.project) items.push({ id: 'project', label: 'Project now', onSelect: h.project })
+  if (h.project) items.push({ id: 'project', label: 'Show now', onSelect: h.project })
   if (h.addToQueue) items.push({ id: 'queue', label: 'Add to queue', onSelect: h.addToQueue })
   items.push({
     id: 'next',

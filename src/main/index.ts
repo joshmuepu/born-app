@@ -1275,7 +1275,7 @@ function setDestinationSuppressed(id: string, suppressed: boolean): void {
 function setChannelBlank(channelId: ChannelId, blank: boolean): void {
   const channel = channels.get(channelId)
   if (!channel) return
-  if (blank) playbackHub.blank(channelId) // silence at once — Esc, the phone's Blank and the logo key all come through here
+  if (blank) playbackHub.blank(channelId) // silence at once — Esc, the phone's Hide screen and the logo key all come through here
   channels.set(channelId, patchChannel(channel, { blanked: blank }))
   pushLive()
   const congregation = destinations.get('congregation')

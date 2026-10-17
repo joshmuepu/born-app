@@ -246,7 +246,7 @@ export default function SermonFollowView({
                     openSermon: false
                   })
                 )}
-                title="Put this paragraph on the screen — or drag it into the queue"
+                title="Show this paragraph — or drag it into the queue"
                 onClick={(e) => {
                   // the card only ever puts the paragraph on the screen (as it always did); moving the TAPE is the paragraph NUMBER's job
                   onProject(fs.quote, fs.slideIndex)
@@ -286,7 +286,7 @@ export default function SermonFollowView({
                     className="btn-primary btn-sm"
                     onClick={(e) => { e.stopPropagation(); onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
                   >
-                    {live ? 'Restart here' : 'Project'}
+                    {live ? 'Restart here' : 'Show'}
                   </button>
                 </div>
               </div>

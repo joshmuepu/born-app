@@ -14,7 +14,7 @@ narrow by year range, an exact date, or a sermon title — and to switch matchin
 between **Phrase** (exact wording), **All words** (every word, any order), and
 **Any** (word). **Clear filters** resets all of it.
 
-Each result shows **Add to Queue** and **Project** — click **Project** to put it on
+Each result shows **Add to Queue** and **Show** — click **Show** to put it on
 the screen immediately, or **Add to Queue** to line it up for later.
 
 **How to know it worked:** the quote's text appears on the Congregation screen,
@@ -34,7 +34,7 @@ switch sermons without going back.
   the **\\** key) to slide the left side away; click it again to bring it back.
 - **Small windows:** the two panes become one column, with a **Back** button.
 
-Each paragraph has its own **+ Queue** and **Project** buttons.
+Each paragraph has its own **+ Queue** and **Show** buttons.
 
 ## Bible
 
@@ -72,7 +72,7 @@ abbreviations and full names.
 
 ![The Bible Browse tab: a grid of Old and New Testament book abbreviations.](../images/operator-bible-browse.png)
 
-Every verse shown has its own **+ Queue** / **Project** buttons.
+Every verse shown has its own **+ Queue** / **Show** buttons.
 
 **How to know it worked:** the verse number and text on the Congregation screen
 match the reference shown in Born Again.
@@ -81,7 +81,7 @@ match the reference shown in Born Again.
 
 Click **Songs** on the left rail and type part of the title or a lyric into **"Search
 titles & lyrics…"**. Each result shows the song's verses, chorus, and bridge
-labelled separately, and its key when known. **+ Queue** / **Project** work the
+labelled separately, and its key when known. **+ Queue** / **Show** work the
 same as everywhere else — projecting a song starts at its first labelled section;
 use **Back**/**Next** to move through the rest.
 

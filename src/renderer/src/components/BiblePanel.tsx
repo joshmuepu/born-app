@@ -426,7 +426,7 @@ export default function BiblePanel({
                     }
                   )
                 )}
-                title={`Put verse ${v.verse} on the screen — or drag it into the queue`}
+                title={`Show verse ${v.verse} — or drag it into the queue`}
                 onClick={(e) => { project(); e.currentTarget.blur() }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -453,10 +453,10 @@ export default function BiblePanel({
                   </button>
                   <button
                     className="btn-secondary btn-sm"
-                    title={`Put verse ${v.verse} on the screen`}
+                    title={`Show verse ${v.verse}`}
                     onClick={(e) => { e.stopPropagation(); project(); e.currentTarget.blur() }}
                   >
-                    {live ? 'Restart here' : 'Project'}
+                    {live ? 'Restart here' : 'Show'}
                   </button>
                 </div>
               </div>
@@ -595,7 +595,7 @@ export default function BiblePanel({
                 <span className="bible-passage-ref">{passage.reference} · {passage.translation}</span>
                 <div className="result-actions">
                   <button className="btn-secondary btn-sm" onClick={(e) => { addPassage(passage); e.currentTarget.blur() }}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={(e) => { projectPassage(passage, 0); e.currentTarget.blur() }}>Project</button>
+                  <button className="btn-primary btn-sm" onClick={(e) => { projectPassage(passage, 0); e.currentTarget.blur() }}>Show</button>
                 </div>
               </div>
               <div className="bible-verses">
@@ -638,14 +638,14 @@ export default function BiblePanel({
                       </button>
                       <button
                         className="btn-secondary btn-sm"
-                        title={`Put verse ${v.verse} on the screen`}
+                        title={`Show verse ${v.verse}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           projectPassage(passage, passage.slideStarts[i] ?? 0)
                           e.currentTarget.blur()
                         }}
                       >
-                        Project
+                        Show
                       </button>
                     </div>
                   </div>
@@ -703,8 +703,8 @@ export default function BiblePanel({
                   <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={(e) => { queueRef(h.reference); e.currentTarget.blur() }}>
                     + Queue
                   </button>
-                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={(e) => { projectRef(h.reference); e.currentTarget.blur() }}>
-                    Project
+                  <button className="btn-secondary btn-sm" title="Show this verse" onClick={(e) => { projectRef(h.reference); e.currentTarget.blur() }}>
+                    Show
                   </button>
                 </div>
               </div>

@@ -31,12 +31,12 @@ Everything stays on this computer. Born Again **does not download or stream** re
 
 ## During the service
 
-- **Take** puts text on the screens. **Nothing plays and no sound starts when you Take.** Press **Play** in the bar when you want sound — Play is only ever in the bar and the Tape place, never next to Take or Project.
+- **Show** puts text on the screens. **Nothing plays and no sound starts when you Show.** Press **Play** in the bar when you want sound — Play is only ever in the bar and the Tape place, never next to Show.
 - The bar has the recording and the paragraph being spoken, **Play/Pause**, **back / forward 10 s**, **previous / next paragraph**, the time and time left with a seek bar that has a mark at every paragraph start, **volume**,
   where the sound comes out, one word for how it is going (*In sync*, *Sound stopped*, *Output lost*, *Paused for video*…), and **Text: not on the screens / Text on the screens**.
 - **Follow along.** In the Tape place the text follows the tape; scroll away to read ahead and a **Back to the tape** button brings you back. In the Sermons reader the same highlight shows on the sermon you have open.
 - **Moving the tape.** Click a paragraph's **number** (in the Tape place or the Sermons reader) to move the tape there — an **Undo** appears. Clicking the text of a paragraph never moves the tape. You can also click the seek bar, or use ±10 s and the paragraph buttons.
-- **Put the text on the screens** with the bar's **Text: not on the screens** button, or in the Tape place:
+- **Show the text on the screens** with the bar's **Text: not on the screens** button, or in the Tape place:
   - **Highlight** — a screenful of the sermon; the paragraph being spoken is bright with a large number, the rest is dimmed, and the text glides along.
   - **One at a time** — one paragraph fills the screen. **Next early** (0–10 s) switches a little before the speaker starts the next paragraph; a slim bar and **NEXT ¶** show what is coming.
   - Long paragraphs are shown a page at a time, moving with the tape.
@@ -50,7 +50,7 @@ Everything stays on this computer. Born Again **does not download or stream** re
 
 ### Moving around while the tape plays
 
-- Go to **Songs, Bible or Media** — the tape keeps playing and the bar stays. Put a **verse** or an **announcement** on the screens and the tape keeps playing; its text is off the screens, and a note offers **Back to the tape text**.
+- Go to **Songs, Bible or Media** — the tape keeps playing and the bar stays. Show a **verse** or an **announcement** on the screens and the tape keeps playing; its text is off the screens, and a note offers **Back to the tape text**.
 - A **video or YouTube** item **pauses the tape** and the bar says **Paused for video**, with a **Resume the tape** button. Only one thing makes sound at a time.
 - **Alerts** (like a nursery call) show on top of the tape as usual.
 

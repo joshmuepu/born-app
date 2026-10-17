@@ -712,7 +712,7 @@ export function buildAppBody(): string {
     <div class="transport">
       <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
       <button id="next-p" class="btn-next"><span>Next</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
-      <button class="blank" id="blank-p">Blank</button>
+      <button class="blank" id="blank-p">Hide screen</button>
     </div>
     <div class="scroll">
       <div class="view active" data-view="queue" id="view-queue"></div>
@@ -736,7 +736,7 @@ export function buildAppBody(): string {
       <button class="sidebar-tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
       <div class="sidebar-spacer"></div>
-      <button class="blank" id="blank-t">Blank</button>
+      <button class="blank" id="blank-t">Hide screen</button>
       <div class="conn bad" id="conn-t" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="tablet-main">
@@ -838,8 +838,8 @@ function saveDraft(items){
    persists so it never nags). "Operator" is a reserved label, not just a
    free-typed name: getContributorLabel() === 'Operator' is what unlocks
    the grouped queue view in restOfQueueHtml() above, since that's the one
-   role actually running the live service from this device. Project,
-   Next/Prev and Blank were never gated behind any role — every phone can
+   role actually running the live service from this device. Show,
+   Next/Prev and Hide screen were never gated behind any role — every phone can
    already do all of that — so picking a role here only adds the grouped
    view, it never takes anything away from Song Leader/Preacher. */
 var ROLE_OPTIONS = ['Song Leader', 'Preacher', 'Operator'];
@@ -1129,7 +1129,7 @@ function setConn(ok){
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){
     var b = $(id); if(!b) return;
-    b.textContent = state.qs.blanked ? 'Restore' : 'Blank';
+    b.textContent = state.qs.blanked ? 'Show screen' : 'Hide screen';
     b.classList.toggle('active', !!state.qs.blanked);
   });
 }
@@ -1342,7 +1342,7 @@ function ensureTapeList(tp){
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
   if(!on){
-    return '<div class="queue-empty-card">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>' + tapeControlsHtml();
+    return '<div class="queue-empty-card">Nothing on screen yet.<br>Show something from Sermons, Bible or Songs.</div>' + tapeControlsHtml();
   }
   var blanked = !!state.qs.blanked;
   var refClass = kindClass(on.kind);
@@ -1592,7 +1592,7 @@ function renderTabletPreview(){
     return;
   }
   if(!state.selected){
-    setHtmlPreservingScroll(pane, '<div class="preview-empty">Select a result on the left to preview it here.<br>Nothing goes on screen until you tap Project.</div>', 'empty', null);
+    setHtmlPreservingScroll(pane, '<div class="preview-empty">Select a result on the left to preview it here.<br>Nothing goes on screen until you tap Show.</div>', 'empty', null);
     return;
   }
   var selectedKey = 'selected-' + state.selected.kind + '|' + (state.selected.title || '') + '|' + (state.selected.meta || '');
@@ -1609,8 +1609,8 @@ function queueDetailInnerHtml(i){
   var html = '<div class="sheet-title">' + esc(it.title) + '</div>'
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
-    html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:\\'' + it.id + '\\'})">Project ▸</button></div>';
+    html += '<div class="empty">No detail text available — Show will still show the title slide.</div>'
+      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:\\'' + it.id + '\\'})">Show ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
@@ -1908,7 +1908,7 @@ function selectSermon(i){
    Shown in place of the empty-search hint. Date and Series both drill into
    a sermon's full paragraph list (tap any part to project it, same freedom
    as the queue detail view); Recent re-opens a past quote the same way a
-   fresh search result does — Queue/Project, nothing projects by accident. */
+   fresh search result does — Queue/Show, nothing is shown by accident. */
 function sermonBrowseChipsHtml(){
   return '<div class="browse-chip-row">'
     + '<button class="browse-chip" onclick="openOnThisDay()">' + ICON_CALENDAR + '<span>Date</span></button>'
@@ -2554,11 +2554,11 @@ function previewInnerHtml(item){
   } else if(item.html){
     bodyHtml = '<div class="sheet-text">' + item.html + '</div>';
   } else {
-    bodyHtml = '<div class="sheet-text">' + esc(item.full || 'Tap Project to send this live.') + '</div>';
+    bodyHtml = '<div class="sheet-text">' + esc(item.full || 'Tap Show to send this live.') + '</div>';
   }
   var hint = (isSlidesItem && item.slides.length > 1)
     ? 'Tap any verse to put it on screen instantly'
-    : 'Nothing goes on screen until you tap Project';
+    : 'Nothing goes on screen until you tap Show';
   var keyEditHtml = item.kind === 'song'
     ? '<button class="key-edit-btn" onclick="openKeyPickerSheet()">' + (item.songKey ? 'Change key' : '+ Add key') + '</button>'
     : '';
@@ -2569,7 +2569,7 @@ function previewInnerHtml(item){
     + '<div class="sheet-footer">'
     + '<div class="sheet-actions">'
     + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'
-    + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Project ▸</button>'
+    + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Show ▸</button>'
     + '</div>'
     + '<button class="btn-draft" onclick="sheetAction(\\'draft\\')" title="Build up your own list privately, then send it all at once">'
     + ICON_PLUS + ' Add to My List</button>'

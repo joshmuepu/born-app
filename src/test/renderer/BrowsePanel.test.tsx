@@ -154,7 +154,7 @@ describe('BrowsePanel', () => {
     await waitFor(() => screen.getByText('In the beginning'))
 
     expect(screen.getByRole('button', { name: '+ Queue' })).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Project' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Show' })).toBeDefined()
   })
 
   it('calls onAddToQueue when + Queue clicked', async () => {
@@ -175,7 +175,7 @@ describe('BrowsePanel', () => {
     )
   })
 
-  it('calls onSendToProjection when Project clicked', async () => {
+  it('calls onSendToProjection when Show clicked', async () => {
     const onSendToProjection = vi.fn()
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={onSendToProjection} />)
@@ -185,7 +185,7 @@ describe('BrowsePanel', () => {
     await waitFor(() => screen.getByText('Sermon One'))
     await user.click(screen.getByText('Sermon One'))
     await waitFor(() => screen.getByText('In the beginning'))
-    await user.click(screen.getByRole('button', { name: 'Project' }))
+    await user.click(screen.getByRole('button', { name: 'Show' }))
 
     expect(onSendToProjection).toHaveBeenCalledOnce()
   })
@@ -250,7 +250,7 @@ describe('BrowsePanel', () => {
     expect(screen.getByText(/show up here/i)).toBeDefined()
   })
 
-  it('Recently Played tab lists past quotes and can project one', async () => {
+  it('Recently Played tab lists past quotes and can show one', async () => {
     window.electronAPI.getRecentSermons = vi.fn(() =>
       Promise.resolve([
         {
@@ -269,7 +269,7 @@ describe('BrowsePanel', () => {
     await user.click(screen.getByRole('button', { name: /^Recently Played/ }))
     await waitFor(() => expect(screen.getByText(/Come Follow Me/)).toBeDefined())
 
-    await user.click(screen.getByRole('button', { name: 'Project' }))
+    await user.click(screen.getByRole('button', { name: 'Show' }))
     expect(onSendToProjection).toHaveBeenCalledWith(
       expect.objectContaining({ sermonTitle: 'Come Follow Me' }),
       0

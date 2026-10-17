@@ -251,7 +251,7 @@ export default function ResultsList({
                 className="btn-primary btn-sm"
                 onClick={() => onSendToProjection(quote)}
               >
-                Project
+                Show
               </button>
             </div>
           </div>

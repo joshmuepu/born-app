@@ -221,9 +221,9 @@ export default function PreviewLivePair({
               className="btn-primary btn-sm plp-take"
               onClick={onTake}
               disabled={!canTake}
-              title={staged ? 'Put the staged item on the screen' : 'Put what Next will bring up on the screen'}
+              title={staged ? 'Show the staged item' : 'Show what Next will bring up'}
             >
-              Take{staged ? '' : ' next'}
+              Show{staged ? '' : ' next'}
             </button>
             <button
               className={`btn-secondary btn-sm plp-clear${blanked ? ' is-hidden' : ''}`}
@@ -232,7 +232,7 @@ export default function PreviewLivePair({
               title={blanked ? 'Bring the screen back' : 'Black out the screen — your place is kept'}
             >
               {blanked ? <Eye width={13} height={13} strokeWidth={2.2} aria-hidden="true" /> : <EyeOff width={13} height={13} strokeWidth={2.2} aria-hidden="true" />}
-              {blanked ? 'Show' : 'Clear'}
+              {blanked ? 'Show screen' : 'Hide screen'}
             </button>
           </>
         ) : (

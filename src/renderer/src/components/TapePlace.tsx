@@ -80,7 +80,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
       </header>
       {hint.show && (
         <div className="tp-hint" role="note">
-          <span><b>Welcome to the Tape place.</b> Recordings live here: add one, time it once, and the text follows it. The player is the bar at the bottom of every section; <b>Put on the screens</b> shows the text to the congregation. Nothing plays until you press Play.</span>
+          <span><b>Welcome to the Tape place.</b> Recordings live here: add one, time it once, and the text follows it. The player is the bar at the bottom of every section; <b>Show on the screens</b> shows the text to the congregation. Nothing plays until you press Play.</span>
           <button className="btn-quiet btn-sm" onClick={hint.dismiss}>Got it</button>
         </div>
       )}

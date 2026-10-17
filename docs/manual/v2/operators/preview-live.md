@@ -12,11 +12,12 @@ At the bottom of the queue panel are two small pictures of the screen:
   goes up. A red dot and the word **LIVE** mean something is showing; **Hidden** means the
   screen is blacked out.
 
-**Take** puts the staged item up (or, with nothing staged, does what **Next** does).
-**Clear** blacks the screen out and keeps your place — the same as **Hide screen**; it
-becomes **Show**.
+**Show** puts the staged item up (or, with nothing staged, does what **Next** does).
+**Hide screen** blacks the screen out and keeps your place (it is the same as pressing
+**Esc**); it becomes **Show screen**. **Clear** (on a second channel) removes that
+channel's text.
 
-Staging never changes what the congregation sees. Only **Take**, **Project**, **Next**
+Staging never changes what the congregation sees. Only **Show**, **Next**
 or **Back** do.
 
 If you have more than one channel, tabs above the pictures let you look at each one. A
@@ -55,7 +56,7 @@ puts anything on the screen.
 ## Right-click menus
 
 Right-click (or press the **Menu** key / **Shift+F10** on a focused item) on a paragraph,
-verse, song or queue row for: Project now, Add to queue, Add next in queue, Favorite, Copy
+verse, song or queue row for: Show now, Add to queue, Add next in queue, Favorite, Copy
 reference, and Open. Nothing is highlighted when the menu opens, so a stray Enter does
 nothing. **Esc** closes the menu (and does not black out the screen).
 
@@ -83,6 +84,6 @@ Next: [Hiding, clearing, and messages](blank-clear.md).
 
 ## Pictures
 
-Pictures and slideshows work the same way: staging one in **Preview** changes nothing; only **Take**, **Project**, **Next** or **Back**
+Pictures and slideshows work the same way: staging one in **Preview** changes nothing; only **Show**, **Next** or **Back**
 does. Preview and Live show the picture (and, for text, the background behind it). If a picture's file is missing when you take it,
 the screen is left as it was. See [Pictures on the screen](media-on-screen.md).

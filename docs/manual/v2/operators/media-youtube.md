@@ -24,7 +24,7 @@ never downloads, saves or changes a YouTube video. That is the rule YouTube sets
 
 ## Playing it
 
-1. **Take** it. YouTube's player appears **paused**. **Nothing plays by itself and no sound starts when you Take.**
+1. **Show** it. YouTube's player appears **paused**. **Nothing plays by itself and no sound starts when you Show.**
 2. Press **Play** in the bar under the Live picture. You can pause, drag the position, change the volume, and mute. (There is no Loop for YouTube.)
 3. **Esc** (or **Clear**, or **Ctrl/Cmd+Shift+L** for the logo) stops it **at once** and blacks the screen. The player is closed completely. Showing the screen again brings it back
    **paused** where it was — it never starts by itself.
@@ -32,7 +32,7 @@ never downloads, saves or changes a YouTube video. That is the rule YouTube sets
 **Only the main screen plays the video.** The **stage monitor** shows its name, the **time left** and a bar. A **Graphics / OBS** output shows the **name only** — never a second
 player, because a second player would have its own internet, its own ads and its own clock. If the church streams the service, the video is part of what the camera or capture sees.
 
-**The phone remote** can **Play**, **Pause** and **Blank** a YouTube video that is live. It can only **Play** after you have started the video once on this computer, so a phone
+**The phone remote** can **Play**, **Pause** and **Hide screen** a YouTube video that is live. It can only **Play** after you have started the video once on this computer, so a phone
 can never be the first thing that makes sound. There is no seek and no volume on the phone.
 
 **Alerts:** nothing may be drawn over YouTube's player. While a YouTube video is on the screen, an alert (for example the nursery) goes to the **stage monitor only**, and you are

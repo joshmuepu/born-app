@@ -2,7 +2,7 @@
 
 ## In the queue
 
-Press **Add to queue** (or **Q**, or drag a picture onto the queue). A picture is a normal queue item: **Project** puts it
+Press **Add to queue** (or **Q**, or drag a picture onto the queue). A picture is a normal queue item: **Show** puts it
 up, clicking the row stages it in **Preview**, and **Next/Back** move on. Nothing changes what is **Live** until you take it.
 
 ![A slideshow's menu in the queue: fit, auto-advance and loop.](../images/media-queue-menu.png)

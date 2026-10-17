@@ -369,7 +369,7 @@ export default function BrowsePanel({
                     + Queue
                   </button>
                   <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q, slideIndex)}>
-                    Project
+                    Show
                   </button>
                 </div>
               </div>
@@ -745,7 +745,7 @@ export default function BrowsePanel({
                   <div className="browse-para-actions">
                     <button className="btn-secondary btn-sm" onClick={() => onAddToQueue(q)}>+ Queue</button>
                     <button className="btn-primary btn-sm" onClick={() => onSendToProjection(q, slideIndex)}>
-                      {live ? 'Restart here' : 'Project'}
+                      {live ? 'Restart here' : 'Show'}
                     </button>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ Press **Check** at the top of the queue (or **Ctrl/⌘+K → Check that tonight'
 | The file is there | A moved or unplugged file is found tonight, not on stage |
 | It is **byte-for-byte what was added** | Catches a half-copied or damaged file that is still the right size |
 | It really **opens** as a picture | |
-| A large picture's **screen-sized copy** is built now | So the first Take is instant |
+| A large picture's **screen-sized copy** is built now | So the first Show is instant |
 | Sensible size; animated or linked-in-place noted | |
 | Background pictures, free disk space, Graphics outputs that won't draw pictures | |
 | Items made by a newer BORN, or damaged ones | They will be skipped |

@@ -11,7 +11,7 @@ type Mode = Extract<TapeScreenMode, 'highlight' | 'one'>
 const MODE_LABEL: Record<Mode, string> = { highlight: 'Highlight', one: 'One at a time' }
 
 /**
- * Put the sermon on the congregation screen as a TAPE screen (the paragraph being spoken follows the tape), choose how it looks, and decide whether the
+ * Show the sermon on the congregation screen as a TAPE screen (the paragraph being spoken follows the tape), choose how it looks, and decide whether the
  * screens follow the tape. Nothing here starts sound or moves the tape. Taking is an explicit button — nothing changes what is live by itself.
  */
 export default function TapeScreenControls({ recording, sermonId, title, items, rows, map, position, onTaken, textLanguage }: {
@@ -56,10 +56,10 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
             <i aria-hidden="true" /> Screens follow the tape
           </button>
           {t.changed && <button className="btn-primary btn-sm" onClick={t.apply}>Apply to the screens</button>}
-          <button className="btn-secondary btn-sm" onClick={t.takeOff}><MonitorOff width={13} height={13} aria-hidden="true" /> Take off the screens</button>
+          <button className="btn-secondary btn-sm" onClick={t.takeOff}><MonitorOff width={13} height={13} aria-hidden="true" /> Remove from the screens</button>
         </>
       ) : (
-        <button className="btn-primary btn-sm" onClick={t.take} disabled={!t.ready}><MonitorPlay width={13} height={13} aria-hidden="true" /> Put on the screens</button>
+        <button className="btn-primary btn-sm" onClick={t.take} disabled={!t.ready}><MonitorPlay width={13} height={13} aria-hidden="true" /> Show on the screens</button>
       )}
       {noFont.length > 0 && (
         <p className="tape-screen-warn" role="alert"><AlertTriangle width={13} height={13} aria-hidden="true" /> This text uses {noFont.join(', ')} script, and this computer has no font for it — the screens would show empty boxes. Install a font for it first.</p>

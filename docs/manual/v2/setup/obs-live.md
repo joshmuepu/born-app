@@ -44,7 +44,7 @@ One BORN output can feed **two different layouts at once**. The address ends wit
 | **4 Video clip** | The video clip from BORN, silent (see Sound) | A short testimony or welcome clip |
 | **5 YouTube** | Camera with the lower third. **BORN never puts a YouTube video into a Graphics output** (see below) | A YouTube video is playing in the room |
 | **6 Starting Soon** | "Starting soon" on a dark background | Before the service starts and after it ends |
-| **Blank** | Nothing | Emergencies |
+| **Hide screen** | Nothing | Emergencies |
 
 The "Camera placeholder" in the scenes is just a flat colour. **Replace it** (right-click → *Properties*, or delete it and add your own *Video Capture Device*). Keep it
 **below** the BORN source.
@@ -97,7 +97,7 @@ prompt; try it before the service.) YouTube's ads and any rights questions are t
 ## Alerts and the panic key
 
 - **Alerts** (nursery calls and so on) are for the **room** and the **stage monitor**. They are never drawn on the stream.
-- **Clear / Esc / the phone's Blank** clear the room **and** the stream output at the same time. A lower third fades out in about a third of a second.
+- **Clear / Esc / the phone's Hide screen** clear the room **and** the stream output at the same time. A lower third fades out in about a third of a second.
 - If BORN stops while a verse is on the stream, the words stay for about **10 seconds**, then clear by themselves.
 
 ## If BORN or the network drops

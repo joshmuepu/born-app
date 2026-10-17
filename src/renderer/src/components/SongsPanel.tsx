@@ -417,8 +417,8 @@ export default function SongsPanel({
           <button className="btn-quiet btn-sm" title="Add to the queue" onClick={() => queueSong(s.id)}>
             + Queue
           </button>
-          <button className="btn-secondary btn-sm" title="Put on the screen now" onClick={() => projectSong(s.id)}>
-            Project
+          <button className="btn-secondary btn-sm" title="Show now" onClick={() => projectSong(s.id)}>
+            Show
           </button>
         </div>
       </div>
@@ -458,7 +458,7 @@ export default function SongsPanel({
                 + Queue
               </button>
               <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
-                Project
+                Show
               </button>
               {selected.source === 'import' && (
                 <button
@@ -514,7 +514,7 @@ export default function SongsPanel({
                   className={`song-slide${live ? ' song-slide--on-screen' : ''}`}
                   role="button"
                   tabIndex={0}
-                  title="Put this slide on the screen"
+                  title="Show this slide"
                   onClick={(e) => {
                     onProjectSong(selected, i)
                     e.currentTarget.blur()
@@ -536,7 +536,7 @@ export default function SongsPanel({
                     className="btn-secondary btn-sm song-slide-project"
                     onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
                   >
-                    {live ? 'Restart here' : 'Project'}
+                    {live ? 'Restart here' : 'Show'}
                   </button>
                 </div>
               )

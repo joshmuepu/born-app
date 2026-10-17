@@ -2,6 +2,20 @@
 
 Plain-language definitions, using the exact words you'll see in Born Again itself.
 
+**Show** — Send this to the screens now. One word, everywhere: the **Show** button on a
+verse, paragraph, song, picture or search result, **Show next** in the live box, and
+**Show on the screens** for the tape's text. (Older versions said "Project" and "Take".)
+
+**Next / Back** — Step through the service queue. They never hide anything.
+
+**Hide screen / Show screen** — The blackout: the screens go black and your place is
+kept. **Esc** does the same; **Shift+Esc** also pauses the tape. On the phone it is the
+same pair of words.
+
+**Clear** — Remove the text from a channel's output but keep the screens on.
+
+**Projection** — The window the congregation sees: **Open projection** / **Close projection**.
+
 **Channel** — A separate, independent feed of live content. Most services use
 only the built-in **Main** channel; a church running a second language can add a
 second channel that tracks Main's navigation (**Follow Main**) while showing its

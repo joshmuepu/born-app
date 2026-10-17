@@ -299,7 +299,7 @@ export default function ServiceQueue({
     return [
       ...(playableItem
         ? [
-            { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Project now', onSelect: () => onProject(index) },
+            { id: 'project', label: index === activeIndex ? 'Restart from the top' : 'Show now', onSelect: () => onProject(index) },
             { id: 'stage', label: 'Stage in Preview', hint: 'goes live only when taken', onSelect: () => onSelect(index) }
           ]
         : []),
@@ -393,7 +393,7 @@ export default function ServiceQueue({
               ? `${whyNot ?? 'Not available'} — it stays in your service file; it cannot be shown here`
               : played
                 ? 'Already shown — click to go to it'
-                : 'Go to this item to read it — use Project to put it on screen'
+                : 'Go to this item to read it — use Show to put it on screen'
           }
           aria-disabled={!playable || undefined}
           onClick={() => playable && onSelect(index)}
@@ -436,7 +436,7 @@ export default function ServiceQueue({
             )}
           </div>
           <span className="queue-row-actions">
-            {playable && <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Project</button>}
+            {playable && <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Show</button>}
             <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
           </span>
         </div>
