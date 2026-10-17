@@ -40,6 +40,7 @@
   font: inherit;
   font-size: var(--text-md);
 }
+.palette-input-row:focus-within { box-shadow: inset 0 -2px 0 var(--accent); } /* the field has no ring of its own: the row shows where the keyboard is */
 .palette-input::placeholder { color: var(--text-tertiary); }
 .palette-busy {
   width: 14px;

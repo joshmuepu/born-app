@@ -419,7 +419,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddYouTube, onAddS
       aria-current={sameCat(cat, c) ? 'true' : undefined}
     >
       {icon}
-      <span className="media-cat-label">{label}</span>
+      <span className="media-cat-label" title={label}>{label}</span>
       {count !== undefined && <span className="media-cat-count">{count}</span>}
     </button>
   )

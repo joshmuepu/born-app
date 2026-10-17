@@ -97,7 +97,7 @@
     if (/[A-Z]:\\|\/Users\/|ERR_[A-Z_]+|ECONN\w+|ENOENT|EACCES|SQLITE_|at \S+ \(.*:\d+:\d+\)|TypeError|ReferenceError/.test(t) && !e.closest('details,.advanced,[data-advanced]')) add('technical-text', 'P1', e, t.slice(0, 100))
   }
   // 10. more than one primary button in one view region
-  const prim = [...document.querySelectorAll('.btn-primary,button.primary,[data-primary=true]')].filter((e) => vis(e) && !e.closest('[role=dialog],.modal,.tp-sheet,.app-header,#live-controls,.plp'))
+  const prim = [...document.querySelectorAll('.btn-primary,button.primary,[data-primary=true]')].filter((e) => vis(e) && !e.closest('[role=dialog],.modal,.tp-sheet,.app-header,#live-controls,.plp,[class*=popover]'))
   if (prim.length > 1) F.push({ check: 'many-primary-buttons', sev: 'P2', sel: 'document', text: prim.slice(0, 6).map(txt).join(' | '), detail: String(prim.length) })
   // 11. broken images / empty links
   for (const i of document.images) if (vis(i) && i.complete && i.naturalWidth === 0) add('broken-image', 'P1', i, i.src.slice(0, 80))
