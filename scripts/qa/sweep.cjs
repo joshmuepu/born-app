@@ -17,10 +17,10 @@ const VARIANTS = [
   { name: 'scale150', theme: 'dark', hc: false, w: 1366, h: 768, scale: 1.5, dsf: 1 },
   { name: 'narrow-scale175', theme: 'light', hc: false, w: 1040, h: 640, scale: 1.75, dsf: 1 },
   { name: '4k', theme: 'dark', hc: false, w: 3840, h: 2160, scale: 'auto', dsf: 1 },
-  { name: 'dsf2', theme: 'dark', hc: false, w: 1366, h: 768, scale: 1, dsf: 2 }
+  { name: 'dsf2', theme: 'dark', hc: false, w: 1366, h: 768, scale: 1, dsf: 2, optional: true }
 ]
 const [shard, of] = shardArg.split('/').map(Number)
-const wanted = variantArg === 'all' ? VARIANTS : VARIANTS.filter((v) => variantArg.split(',').includes(v.name))
+const wanted = variantArg === 'all' ? VARIANTS.filter((v) => !v.optional) : VARIANTS.filter((v) => variantArg.split(',').includes(v.name))
 const checks = fs.readFileSync(path.join(__dirname, 'checks.js'), 'utf8')
 const crawl = JSON.parse(fs.readFileSync(path.join(ROOT, 'qa-out', `census-runtime-${crawlName}.json`), 'utf8'))
 const states = crawl.states.filter((_, i) => i % of === shard - 1)

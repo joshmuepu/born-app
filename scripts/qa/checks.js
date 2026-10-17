@@ -37,7 +37,8 @@
     const a = inter[i], b = inter[j]; if (a.contains(b) || b.contains(a)) continue
     const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect()
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
-    if (w > 6 && h > 6 && !(getComputedStyle(a).position === 'absolute' || getComputedStyle(b).position === 'absolute')) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
+    const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
+    if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
   }
   // 5. targets
   for (const e of inter) {

@@ -72,6 +72,11 @@ const slidesOf = (t) => [{ label: t[1], text: t[2] }, { label: 'Chorus', text: '
     paras.slice(2, 6).forEach((p, i) => items.push(mk(p, i)))
     const verse = await ev(`window.electronAPI.lookupPassage('John 3:16','KJV')`).catch(() => null)
     log('bible lookup', JSON.stringify(verse).slice(0, 120))
+    if (verse && verse.verses) items.push({ kind: 'bible', id: 'qa-b1', translation: 'KJV', reference: 'John 3:16', bookNum: 43, chapter: 3, verseStart: 16, verseEnd: 16, slides: [{ text: verse.verses.map((v) => v.text).join(' '), reference: 'John 3:16 · KJV', marker: '16' }] })
+    const mlist = await ev(`window.electronAPI.mediaList({})`).catch(() => null)
+    const mitems = (mlist && (mlist.items || mlist)) || []
+    if (Array.isArray(mitems) && mitems[0]) items.push({ kind: 'media', id: 'qa-m1', slides: [{ text: mitems[0].name + ' — picture (made by a newer version of born)' }], quote: { text: mitems[0].name, sermonTitle: mitems[0].name + ' (needs a newer BORN)', dateCode: '', sermonId: -1, paragraphIndex: 0, paragraphRef: '' }, ext: { v: 1, kind: 'media', mediaId: mitems[0].id, mediaKind: 'image', name: mitems[0].name } })
+    items.push({ kind: 'quote', id: 'qa-yt1', slides: [{ text: 'Me at the zoo — YouTube video (made by a newer version of born)' }], quote: { text: 'Me at the zoo', sermonTitle: 'Me at the zoo (needs a newer BORN)', dateCode: '', sermonId: -1, paragraphIndex: 0, paragraphRef: '' }, ext: { v: 1, kind: 'youtube', videoId: 'jNQXAC9IVRw', title: 'Me at the zoo', titleAt: Date.now() } })
     if (search && search[0]) for (const s of search.slice(0, 3)) items.push({ kind: 'song', id: 'qa-s' + s.id, songId: s.id, title: s.title, author: 'QA', slides: slidesOf(['', 'Verse 1', 'Line one\nLine two']) })
     fs.writeFileSync(path.join(profile, '_qa-queue.json'), JSON.stringify(items))
     await ev(`window.electronAPI.saveQueue(${JSON.stringify(items)})`)

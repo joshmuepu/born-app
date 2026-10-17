@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>QA self-test: known defects</title>
+<body style="background:#fff;color:#000;margin:0;font:16px sans-serif">
+<main>
+<p id="lowc" style="color:#bbb">Low contrast text that must be flagged</p>
+<button id="tiny" style="width:10px;height:10px;padding:0"></button>
+<button id="noname"><svg width="20" height="20"><circle cx="10" cy="10" r="8"/></svg></button>
+<div id="clip" style="width:60px;overflow:hidden;white-space:nowrap">This text is much longer than its box and has no ellipsis</div>
+<div id="ell" style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Ellipsised without a tooltip</div>
+<div style="position:relative;height:60px"><button id="ov1" style="position:absolute;left:0;top:0;width:100px;height:40px">One</button><button id="ov2" style="position:absolute;left:50px;top:10px;width:100px;height:40px">Two</button></div>
+<h2 id="raw">Total: undefined</h2>
+<div id="wide" style="width:3000px;height:4px;background:red"></div>
+<button id="nofocus" style="outline:none;border:0;background:#ddd;height:34px">No focus ring</button>
+<div role="dialog" id="dlg">Dialog without a name</div>
+<button id="ok" style="height:34px">Fine button</button>
+</main></body>
