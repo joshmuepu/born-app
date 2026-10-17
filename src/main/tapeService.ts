@@ -22,6 +22,8 @@ import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResu
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import { sanitizeTapeAction, type TapeWire } from '../shared/tapePlayback'
 import { cleanOverrides } from '../shared/tapeLanguage'
+import { streamPageUrl, findAudioUrl, downloadFileName, downloadProblem } from '../shared/tapeDownload'
+import { mkdirSync, createWriteStream, renameSync, unlinkSync } from 'fs'
 import { cleanSyncMarks, cleanSyncRegions, cleanTextLanguage, cleanTapeSettingsPatch } from '../shared/tapeClean'
 import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
 import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
@@ -438,6 +440,72 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
       activityCache.set(key, p ? audioActivity(p, n) : null)
     }
     return activityCache.get(key) ?? null
+  })
+
+  // Download the tape from the publisher's own site, on the operator's click (see shared/tapeDownload.ts): one file, into the Tape audio folder, then added like any file
+  let dlAbort: AbortController | null = null
+  ipcMain.handle('tape:download-cancel', () => { dlAbort?.abort(); return true })
+  ipcMain.handle('tape:download', async (e, sermonId: number): Promise<{ ok: true; results: TapeImportResult[]; bytes: number } | { ok: false; message: string }> => {
+    if (dlAbort) return { ok: false, message: 'A download is already running.' }
+    const ref = sermonRefs().find((x) => x.id === Number(sermonId))
+    const page = ref ? streamPageUrl(ref.date_code) : null
+    if (!ref || !page) return { ok: false, message: downloadProblem('no-page') }
+    const ctl = new AbortController()
+    dlAbort = ctl
+    const send = (received: number, total: number | null): void => { try { e.sender.send('tape:download-progress', { sermonId: ref.id, received, total }) } catch { /* the window closed */ } }
+    const dir = getSettings().tapeFolder || join(app.getPath('userData'), 'tape-downloads')
+    const final = join(dir, downloadFileName(ref.date_code))
+    const part = final + '.part'
+    try {
+      let res: Response
+      try { res = await fetch(page, { signal: ctl.signal, headers: { 'User-Agent': `Born/${app.getVersion()}` } }) } catch (err) { if (ctl.signal.aborted) return { ok: false, message: downloadProblem('cancelled') }; log.warn(`tape download: page ${String(err)}`); return { ok: false, message: downloadProblem('offline') } }
+      if (res.status === 404) return { ok: false, message: downloadProblem('no-page') }
+      if (!res.ok) return { ok: false, message: downloadProblem('http', res.status) }
+      const audioUrl = findAudioUrl(await res.text())
+      if (!audioUrl) return { ok: false, message: downloadProblem('no-audio') }
+      if (existsSync(final) && statSync(final).size > 1_000_000) {
+        const results = await importPaths([final], { sermonId: ref.id, language: 'en' })
+        return { ok: true, results, bytes: statSync(final).size }
+      }
+      mkdirSync(dir, { recursive: true })
+      let file: Response
+      try { file = await fetch(audioUrl, { signal: ctl.signal, headers: { 'User-Agent': `Born/${app.getVersion()}` } }) } catch (err) { if (ctl.signal.aborted) return { ok: false, message: downloadProblem('cancelled') }; return { ok: false, message: downloadProblem('offline') } }
+      if (!file.ok || !file.body) return { ok: false, message: downloadProblem('http', file.status) }
+      const total = Number(file.headers.get('content-length')) || null
+      const out = createWriteStream(part)
+      let received = 0
+      let lastSent = 0
+      try {
+        const reader = file.body.getReader()
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          received += value.length
+          if (!out.write(Buffer.from(value))) await new Promise<void>((r) => out.once('drain', () => r()))
+          if (Date.now() - lastSent > 250) { lastSent = Date.now(); send(received, total) }
+        }
+        await new Promise<void>((r, j) => out.end((er: Error | null | undefined) => (er ? j(er) : r())))
+      } catch (err) {
+        out.destroy()
+        try { unlinkSync(part) } catch { /* nothing to remove */ }
+        if (ctl.signal.aborted) return { ok: false, message: downloadProblem('cancelled') }
+        log.warn(`tape download: ${String(err)}`)
+        return { ok: false, message: (err as NodeJS.ErrnoException).code === 'ENOSPC' || (err as NodeJS.ErrnoException).code === 'EACCES' ? downloadProblem('disk') : downloadProblem('short') }
+      }
+      if (received < 1_000_000 || (total !== null && received < total)) { try { unlinkSync(part) } catch { /* */ } return { ok: false, message: downloadProblem('short') } }
+      renameSync(part, final)
+      send(received, total)
+      log.info(`tape download: ${ref.date_code} ${received} bytes`)
+      const results = await importPaths([final], { sermonId: ref.id, language: 'en' })
+      // no Tape audio folder chosen: the file sat in BORN's own downloads folder only to be added, and BORN keeps its own copy now — do not keep two
+      if (!getSettings().tapeFolder && results.some((r) => r.ok)) { try { unlinkSync(final) } catch { /* it stays */ } }
+      return { ok: true, results, bytes: received }
+    } catch (err) {
+      log.warn(`tape download: ${String(err)}`)
+      return { ok: false, message: downloadProblem('unknown') }
+    } finally {
+      dlAbort = null
+    }
   })
 
   ipcMain.handle('tape:open-audio-page', async () => {

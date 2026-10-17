@@ -33,3 +33,9 @@
 .tape-banner > span:first-of-type { flex: 1; min-width: 220px; }
 .tape-foot { display: flex; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--border); margin-top: 10px; }
 html[data-w~='720'] .tape-cards { grid-template-columns: 1fr; } html[data-w~='720'] .tape-checks { grid-template-columns: 1fr; }
+.tape-download p { margin: 0 0 8px; }
+.tape-dl-progress { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; font-size: var(--text-sm); color: var(--text-secondary); }
+.tape-dl-bar { flex: 1 1 160px; min-width: 120px; height: 8px; border-radius: 4px; background: var(--bg-active); overflow: hidden; }
+.tape-dl-bar i { display: block; height: 100%; background: var(--accent); transition: width var(--dur-fast) var(--ease-out); }
+.tape-dl-credit { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .tape-dl-bar i { transition: none; } }

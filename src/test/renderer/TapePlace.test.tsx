@@ -86,7 +86,7 @@ describe('the library', () => {
     await open(null, null)
     expect(await screen.findByText('No recordings yet')).toBeTruthy()
     expect(screen.getByText(/Everything stays on this computer/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Get audio/ })).toBeTruthy()
+    expect(screen.getByText('Get audio')).toBeTruthy()
     expect(screen.getByText(/Your “Tape audio” folder/)).toBeTruthy()
   })
 })
@@ -180,9 +180,10 @@ describe('the other tabs', () => {
     await waitFor(() => expect(api.tapeImportConfirmed).toHaveBeenCalledWith([{ path: '/tmp/Tape audio/65-0418M It Is.m4a', sermonId: 5 }]))
     expect(screen.getByText(/no sermon recognised/)).toBeTruthy()
   })
-  it('Get audio only opens the publisher\'s page', async () => {
+  it('Get audio needs a sermon first; the publisher\'s page opens either way', async () => {
     await open({ tab: 'add', nonce: 1 })
-    fireEvent.click(await screen.findByRole('button', { name: /Get audio/ }))
+    expect((await screen.findByRole('button', { name: /Download the tape/ }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()
   })
 })

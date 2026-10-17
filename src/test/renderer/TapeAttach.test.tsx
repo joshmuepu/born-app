@@ -30,16 +30,20 @@ afterEach(() => vi.restoreAllMocks())
 const open = (extra: Partial<Parameters<typeof TapeAttach>[0]> = {}) => render(<TapeAttach sermonId={1115} sermonTitle="Sample" dateCode="65-0418M" onClose={() => {}} onChanged={() => {}} {...extra} />)
 
 describe('Add the tape for this sermon', () => {
-  it('says the recording is used from this computer, is kept as a copy, and never downloaded by BORN', () => {
+  it('says the recording is used from this computer, is kept as a copy, and can be downloaded from the publisher on a click', () => {
     open()
     expect(screen.getByText(/never changes the original/i)).toBeTruthy()
-    expect(screen.getByText(/never downloads it for you/i)).toBeTruthy()
+    expect(screen.getByText(/Downloads this recording from the publisher’s own site/)).toBeTruthy()
     expect(screen.getByText('Recommended')).toBeTruthy()
     expect(screen.getByText('Not available yet')).toBeTruthy()
   })
-  it('"Get audio" opens the publisher page in the browser (BORN downloads nothing)', async () => {
+  it('"Get audio" downloads this sermon\'s tape on the click, and the publisher page is still one click away', async () => {
+    const dl = vi.fn(async () => ({ ok: true, bytes: 5_000_000, results: [] }))
+    Object.assign((window as unknown as { electronAPI: Record<string, unknown> }).electronAPI, { tapeDownload: dl, onTapeDownloadProgress: vi.fn(() => () => {}) })
     open()
-    fireEvent.click(screen.getByRole('button', { name: /^Get audio$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Download the tape for/ }))
+    await waitFor(() => expect(dl).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()
   })
   it('lists the folder files that match this sermon, and "Use this" adds it to THIS sermon', async () => {

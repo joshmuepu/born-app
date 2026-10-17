@@ -55,3 +55,7 @@ Plain language. Updated with every slice of the UX build.
 - **⌘/Ctrl+K → type a reference → Enter** now opens the verse and puts the keyboard on it, so **Enter** shows it: four keystrokes, no mouse (opening a verse from search, Saved or a link never shows it by itself).
 - The first-run checklist can no longer be cut off at the top of the queue column.
 - Esc that closes the manual, the Remote panel, the Screens menu or the ⚙ menu no longer also blanks the screens (found in the UX review; Shift+Esc always blanks).
+
+## Get audio now downloads the tape
+- On a sermon's **Add the tape** dialog and in the **Tape place → Add** tab, **Get audio** now has **Download the tape for 65-0418M** (English). It fetches the recording from the publisher's own site into your **Tape audio** folder and adds it, with a progress bar and **Cancel**. **Open the publisher's page** is still there for other languages.
+- **Change…** (the Tape audio folder) now says which folder you picked.

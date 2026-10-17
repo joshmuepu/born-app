@@ -1,3 +1,4 @@
+import TapeDownload from './TapeDownload'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Headphones, FolderOpen, Globe, RefreshCw, Check } from 'lucide-react'
 import type { TapeFolderHit, TapeImportResult } from '../../../shared/tape'
@@ -42,7 +43,10 @@ export default function TapeAddPanel({ preferredSermonId, onChanged }: { preferr
     setMessage(ok ? `Added “${h.name}”.` : bad ? bad.message : 'It could not be added.')
     if (ok) { onChanged(); emitTape('recordings-changed'); void scan() }
   }
-  const pickFolder = async (): Promise<void> => { if (await window.electronAPI.tapePickFolder()) await scan() }
+  const pickFolder = async (): Promise<void> => {
+    const f = await window.electronAPI.tapePickFolder()
+    if (f) { await scan(); setMessage(`Your “Tape audio” folder is now ${f}.`) }
+  }
 
   return (
     <div className="tpa">
@@ -61,9 +65,9 @@ export default function TapeAddPanel({ preferredSermonId, onChanged }: { preferr
         )}
         <div className="tpa-actions">
           <button className="btn-primary btn-sm" disabled={!chosen} onClick={() => setAttachOpen(true)}>Add a recording{chosen ? ` for “${chosen.title}”` : ''}…</button>
-          <button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.tapeOpenAudioPage()}><Globe width={13} height={13} aria-hidden="true" /> Get audio</button>
         </div>
-        <p className="tp-faint">Get audio only opens the publisher’s own page in your browser. BORN never downloads a recording for you, and keeps its own copy of the file you choose.</p>
+        <h4 className="tpa-get"><Globe width={15} height={15} aria-hidden="true" /> Get audio</h4>
+        <TapeDownload sermon={chosen ? { id: chosen.id, dateCode: chosen.dateCode, title: chosen.title } : null} onDone={() => { onChanged(); emitTape('recordings-changed'); void scan() }} />
       </section>
 
       <section className="tp-card">

@@ -478,6 +478,13 @@ const api = {
   tapeMapImport: (recordingId: string): Promise<unknown> => ipcRenderer.invoke('tape:map-import', recordingId),
   tapeActivity: (recordingId: string, bins: number): Promise<{ values: number[]; durationSec: number } | null> => ipcRenderer.invoke('tape:activity', recordingId, bins),
   tapeOpenAudioPage: (): Promise<boolean> => ipcRenderer.invoke('tape:open-audio-page'),
+  tapeDownload: (sermonId: number): Promise<{ ok: true; results: unknown[]; bytes: number } | { ok: false; message: string }> => ipcRenderer.invoke('tape:download', sermonId),
+  tapeDownloadCancel: (): Promise<boolean> => ipcRenderer.invoke('tape:download-cancel'),
+  onTapeDownloadProgress: (callback: (p: { sermonId: number; received: number; total: number | null }) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, p: { sermonId: number; received: number; total: number | null }): void => callback(p)
+    ipcRenderer.on('tape:download-progress', handler)
+    return () => ipcRenderer.removeListener('tape:download-progress', handler)
+  },
   tapePathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
   // the Tape audio engine's own channel (the hidden audio window) and the operator's tape controls
   onTapeEngine: (cb: (m: unknown) => void): (() => void) => {

@@ -1,3 +1,4 @@
+import TapeDownload from './TapeDownload'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { X, Headphones, FolderOpen, Upload, Globe, Zap, Check, AlertTriangle, XCircle, RefreshCw, Trash2, Wand2, Hand } from 'lucide-react'
 import type { TapeFolderHit, TapeImportResult, TapePreflight, TapeRecording, TapeFileStatus } from '../../../shared/tape'
@@ -90,7 +91,10 @@ export default function TapeAttach({
     report(await window.electronAPI.tapeImportConfirmed([{ path: h.path, sermonId: forSermon }]))
     setBusy(null)
   }
-  const pickFolder = async (): Promise<void> => { if (await window.electronAPI.tapePickFolder()) await scan() }
+  const pickFolder = async (): Promise<void> => {
+    const f = await window.electronAPI.tapePickFolder()
+    if (f) { await scan(); setNotes([`Your “Tape audio” folder is now ${f}.`]) }
+  }
 
   const mine = hits.filter((h) => h.match?.id === sermonId || h.candidates.some((c) => c.id === sermonId))
   const others = hits.filter((h) => !mine.includes(h))
@@ -131,8 +135,7 @@ export default function TapeAttach({
             </div>
             <div className="tape-card">
               <h4><Globe width={15} height={15} aria-hidden="true" /> Get audio</h4>
-              <p>Opens the publisher’s own download page in your browser. Save the recording, then choose it here. BORN never downloads it for you.</p>
-              <div className="tape-row"><button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.tapeOpenAudioPage()}><Globe width={13} height={13} aria-hidden="true" /> Get audio</button></div>
+              <TapeDownload sermon={{ id: sermonId, dateCode, title: sermonTitle }} onDone={(r) => report(r)} />
             </div>
           </div>
           <div className="tape-card tape-card--soon" aria-disabled="true">
