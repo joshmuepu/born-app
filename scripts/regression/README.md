@@ -9,6 +9,8 @@
 | az | songs A–Z, search and browse |
 | reg | Channels / Destinations / Profiles, Remote popover and connection check, Help viewer |
 | rem | phone remote layouts (Chromium + WebKit, themes, offline) |
-| gfx2 | Graphics page: blank, suppress, profile (creates the Graphics page it needs) |
+| gfx2 | Graphics page: blank, suppress, profile with Auto off (creates the Graphics page it needs) |
+| rtabs (`remote-tabs.cjs`) | phone and tablet remote: Media and Tape tabs, Show / + Queue, the SCREEN HIDDEN banner |
+| contrast | rendered text contrast of the main screens in all four themes (AA; AAA in high contrast) |
 
 Needs `npm run rebuild:native` (Electron build of better-sqlite3) and Playwright in `PW_DIR` (default /tmp/born-pw). Last run: hist 10/0, dnd 20/0, az 656/0, reg 43/0, rem 64/0, gfx2 7/0 (checks/failed).
