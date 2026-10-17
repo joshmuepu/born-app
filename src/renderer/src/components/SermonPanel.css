@@ -506,7 +506,7 @@
 /* Follow-along: the highlight is the tape's; the scroll is the user's (docs/design/sermon-audio/03-visual-design.md) */
 .follow-view { outline: none; }
 .follow-view--tape .follow-para { transition: background .25s, opacity .25s, box-shadow .25s; }
-.follow-para--tape-dim { opacity: .68; }
+.follow-para--tape-dim .follow-para-text { opacity: .68; } /* only the words are dimmed: the ¶ number and the buttons stay at full strength (contrast audit) */
 .follow-para--tape { opacity: 1; background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel)); box-shadow: inset 3px 0 0 var(--accent); }
 .follow-para--tape .follow-para-ref { color: var(--accent); font-size: 1.5rem; font-weight: 300; line-height: 1; letter-spacing: 0; }
 .follow-para--tape .follow-para-text { color: var(--text-primary); }

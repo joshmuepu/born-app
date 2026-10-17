@@ -7,10 +7,14 @@ Everything stays on this computer. Born Again **does not download or stream** re
 
 ## Getting ready (once per recording)
 
+![Adding the recording: use a file, the Tape audio folder, or Get audio; the checks that follow.](../images/tape-attach.png)
+
 1. **Open the sermon** in **Sermons** and press **Add the recording**. Pick the file, drop it on the window, or choose your **Tape audio folder** once and let Born Again find recordings in it.
    File names like `65-0418M It Is The Rising Of The Sun VGR.m4a` are matched to the sermon by their date code; if it is not certain, Born Again asks you to confirm.
 2. Born Again **checks the file** (it must be complete, with a length that fits the sermon) and keeps a **managed copy**, so a missing USB stick never breaks a service.
    **M4A/AAC** is best. A **variable-bit-rate MP3** can be a second off when you jump around (you are told when you add it). Very large **WAV** files are refused (convert them to M4A or FLAC).
+![The timing editor: a timeline with a mark for each paragraph, the paragraph list, and Tap, Undo, Suggest timing.](../images/tape-editor.png)
+
 3. **Time it once.** A recording only follows the text once it has *timing* — which paragraph starts when. Press **Tap to sync**, play the recording, and press **Space** at the start of each
    paragraph (the reaction time is taken off for you). You can nudge a time, drag a marker, mark a stretch **No text here** (a song, a prayer) or **Tape differs here**, and **Undo**.
    It saves when you press **Save**. **Share timing** writes a small times-only file you can give to another computer — it holds **no text and no audio**.
@@ -20,6 +24,8 @@ Everything stays on this computer. Born Again **does not download or stream** re
 
 ## During the service
 
+![The reader following the tape: the paragraph being spoken is highlighted; below it, the Put on the screens controls and the player bar.](../images/tape-reader.png)
+
 - **Take** puts the sermon text on the screens at the tape's place. **Nothing plays and no sound starts when you Take.** Press **Play** in the bar when you want sound.
 - The bar has **Play/Pause**, **−10 s / +10 s**, **previous / next paragraph**, **speed**, **volume**, the **sound output** (choose the room's speakers here), the time, and a seek bar with a mark for every paragraph.
   **Continue from where it stopped?** appears when you reopen a recording.
@@ -28,8 +34,10 @@ Everything stays on this computer. Born Again **does not download or stream** re
   - **Highlight** — a screenful of the sermon; the paragraph being spoken is bright with a large number, the rest is dimmed, and the text glides along.
   - **One at a time** — one paragraph fills the screen. **Next early** (0–10 s) switches a little before the speaker starts the next paragraph; a slim bar and **NEXT ¶** show what is coming.
   - Long paragraphs are shown a page at a time, moving with the tape.
+  ![The Highlight view on the congregation screen.](../images/tape-screen-highlight.png)
+  ![The One at a time view, with NEXT and its bar.](../images/tape-screen-one.png)
   Pick **Dark / Light / High contrast** colours. A change while the screens are up waits for **Apply to the screens**. **Screens follow the tape** off holds the paragraph that is up while the tape and your reader move on.
-- **Stage monitor** shows the time and time left, a bar, **NOW ¶** and **NEXT ¶ in 0:45**, and one plain word (*Playing*, *Paused*, *Sound has stopped moving*…).
+- **Stage monitor** (![the stage monitor](../images/tape-stage.png)) shows the time and time left, a bar, **NOW ¶** and **NEXT ¶ in 0:45**, and one plain word (*Playing*, *Paused*, *Sound has stopped moving*…).
 - **Graphics / OBS** shows the tape as **lower-third pages** (about two lines each), turning at the tape's pace.
 
 ### Esc and the big keys
@@ -56,6 +64,8 @@ numbered the same way**. If they are not, Born Again says where ("…205 numbers
 The phone remote shows a **Tape** card: **Play/Pause**, **−10 s / +10 s**, **previous / next paragraph**, **volume** (a little either side of the level you set), the time, a **sync** word, and a list of paragraphs that **follows the tape**.
 The rules are the video rules: **Play stays off until you have started the tape once on the computer**; there is **no seek bar**; **jumping to a paragraph asks first**, and an **Undo** appears on the computer.
 
+![The phone remote's Tape card.](../images/tape-phone.png)
+
 ## Is tonight ready?
 
 *Is tonight ready?* checks every sermon in the queue that has a recording: the file is there, its length fits, it has timing, and the chosen sound output is plugged in.
@@ -63,4 +73,6 @@ The rules are the video rules: **Play stays off until you have started the tape 
 ## Tape options
 
 **Tape options…** (next to the reader switch) holds the choices: projector view, next-paragraph lead, speed range, what a video does to the tape, what to do if the sound device is lost, what a language mismatch does, and what Esc does.
+![Tape options.](../images/tape-options.png)
+
 Defaults are the safe ones, and every option applies to the **next** tape, never to what is on the screen now.
