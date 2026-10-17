@@ -2185,7 +2185,7 @@ export default function App() {
           <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the Born Again manual (F1)">
             Help
           </button>
-          <button className="btn-quiet btn-sm" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
+          <button className="btn-quiet btn-sm header-shortcuts" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
             Shortcuts
           </button>
 

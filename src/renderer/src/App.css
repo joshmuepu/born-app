@@ -2633,14 +2633,20 @@ kbd {
   background: var(--bg-hover);
   color: var(--text-secondary);
 }
-@media (max-width: 1100px) {
-  /* a small laptop with the screens live (Hide screen, Message, Close projection): keep the header on one line instead of overlapping the logo */
-  .app-header { padding-left: 12px; padding-right: 12px; gap: 8px; }
-  .app-logo-word { display: none; }
-  .header-actions { gap: 6px; }
-  .palette-trigger { min-width: 34px; flex-shrink: 0; justify-content: center; padding: 0 10px; }
-  .palette-trigger span, .palette-trigger kbd { display: none; }
-}
+/* Narrow = 1100 CSS px or less, tight = 900 or less, measured after the interface scale (html[data-cssw], set in uiScale.ts), because media queries
+   would see the window and not the scaled page. */
+html[data-cssw='narrow'] .app-header, html[data-cssw='tight'] .app-header { padding-left: 12px; padding-right: 12px; gap: 8px; }
+html[data-cssw='narrow'] .app-logo-word, html[data-cssw='tight'] .app-logo-word { display: none; }
+html[data-cssw='narrow'] .header-actions, html[data-cssw='tight'] .header-actions { gap: 6px; }
+html[data-cssw='narrow'] .palette-trigger, html[data-cssw='tight'] .palette-trigger { min-width: 34px; flex-shrink: 0; justify-content: center; padding: 0 10px; }
+html[data-cssw='narrow'] .palette-trigger span, html[data-cssw='narrow'] .palette-trigger kbd,
+html[data-cssw='tight'] .palette-trigger span, html[data-cssw='tight'] .palette-trigger kbd { display: none; }
+
+/* Tight: rarely used header controls give way (Alt+←/→ and ? still work), and what is left wraps to a second row instead of being cut off the left edge
+   where it could not be clicked. */
+html[data-cssw='tight'] .nav-history, html[data-cssw='tight'] .header-shortcuts { display: none; }
+html[data-cssw='tight'] .app-header { flex-wrap: wrap; row-gap: 6px; }
+html[data-cssw='tight'] .header-actions { flex: 1 1 auto; flex-wrap: wrap; row-gap: 6px; }
 
 /* ── Status bar: what's live, at a glance ──────────────────── */
 .status-live {

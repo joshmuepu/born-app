@@ -41,10 +41,18 @@ export function currentUiZoom(): number {
   return Number.isFinite(v) && v > 0 ? v : 1
 }
 
+/** How wide the interface really is, in the units its CSS uses: the window width divided by the interface scale. Media queries cannot say this
+ *  (they see the window, not the scaled page), so a 1040 px window at 150 % was laid out as 693 px but styled as 1040. */
+export type WidthClass = 'wide' | 'narrow' | 'tight'
+export function widthClass(cssWidth: number): WidthClass {
+  return cssWidth <= 900 ? 'tight' : cssWidth <= 1100 ? 'narrow' : 'wide'
+}
+
 export function applyUiZoom(factor: number): void {
   const root = document.getElementById('root')
   document.documentElement.style.setProperty('--ui-zoom', String(factor))
   if (root) root.style.zoom = factor === 1 ? '' : String(factor)
+  document.documentElement.dataset.cssw = widthClass(window.innerWidth / factor)
 }
 
 export function useUiScale(): {
