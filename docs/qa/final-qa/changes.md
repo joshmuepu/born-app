@@ -21,3 +21,4 @@
 | F-017 | P1 | Phone remote first visit (`remoteAssets.ts`) | the "Add this to your Home Screen" sheet and the "Who's this?" prompt appeared at the same time, one on top of the other | the Home Screen sheet waits until the role prompt is answered or skipped | one question at a time | b0f2534 |
 | F-018 | P2 | Phone remote queue | a YouTube / picture item without a stored thumbnail showed a broken-image icon | the image removes itself when it cannot load | broken image | b0f2534 |
 | F-019 | P2 | Phone remote | "Skip for now" 23 px and "View all" 19 px high | 44 px touch targets | touch | b0f2534 |
+| F-020 | P2 | Remote + Graphics pages (`webRemote.ts`) | a 404 for /favicon.ico on the Graphics page and a console warning for the deprecated iOS web-app meta | an empty icon link and the standard meta | console cleanliness (OBS browser sources log these) | 5baaf8e |

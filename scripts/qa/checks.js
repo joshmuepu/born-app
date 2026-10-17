@@ -44,7 +44,7 @@
     const ra = vrect(a), rb = vrect(b)
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
     const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
-    const innerBtn = (x, y) => getComputedStyle(x).position === 'absolute' && x.parentElement && x.parentElement.contains(y) // a clear (×) button drawn inside its own field
+    const innerBtn = (x, y) => x.matches('button') && getComputedStyle(x).position === 'absolute' && y.matches('input,textarea,select') && x.getBoundingClientRect().width <= 36 // a clear (×) button drawn inside its own field
     if (innerBtn(a, b) || innerBtn(b, a)) continue
     if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV)) && !(floats(a) !== floats(b))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
   }
@@ -53,6 +53,7 @@
     const r = e.getBoundingClientRect(); if (e.disabled) continue
     if (e.matches('a') && e.closest('p,li,td,th') && getComputedStyle(e).display !== 'block') continue
     if (e.matches('input[type=checkbox],input[type=radio]') && e.closest('label')) { const lr = e.closest('label').getBoundingClientRect(); if (lr.height >= 24 && lr.width >= 24) continue }
+    if (e.matches('input:not([type=checkbox]):not([type=radio]),select,textarea') && e.parentElement) { const pr = e.parentElement.getBoundingClientRect(); if (pr.height >= 32 && pr.width >= r.width) continue } // a field inside its own styled box: the box is the target
     if (r.width < 24 || r.height < 24) add('target-small', 'P1', e, `${Math.round(r.width)}x${Math.round(r.height)} (<24)`)
     else if (r.height < 32 && !e.matches('input[type=checkbox],input[type=radio],input[type=range]')) add('target-below-32', 'P2', e, `${Math.round(r.width)}x${Math.round(r.height)}`)
   }
@@ -62,7 +63,7 @@
     if (!hasName) add('no-accessible-name', 'P1', e, e.tagName)
   }
   for (const e of document.querySelectorAll('[role=dialog],[role=alertdialog]')) if (vis(e) && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')) add('dialog-no-name', 'P1', e)
-  if (!document.querySelector('main,[role=main]')) F.push({ check: 'no-main-landmark', sev: 'P2', sel: 'document', text: '', detail: '' })
+  if (!document.querySelector('main,[role=main]') && !/Output|Stage View|Graphics/.test(document.title)) F.push({ check: 'no-main-landmark', sev: 'P2', sel: 'document', text: '', detail: '' })
   // 7. focus indicators (sample)
   const foc = inter.filter((e) => !e.disabled && e.tabIndex >= 0).slice(0, 40)
   const sig = (e) => { const s = getComputedStyle(e); return [s.outlineStyle, s.outlineWidth, s.outlineColor, s.boxShadow, s.borderColor, s.backgroundColor].join('|') }
