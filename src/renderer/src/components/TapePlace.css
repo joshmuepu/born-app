@@ -60,6 +60,11 @@
 .tp-empty .tpa { width: min(820px, 100%); text-align: left; }
 .tp-empty-ico { width: 64px; height: 64px; border-radius: 16px; background: var(--bg-active); display: grid; place-items: center; color: var(--text-primary); }
 .tp-options .tsp-note, .tp-options .tsp-fixed { max-width: 560px; }
+/* the Options tab shows the same sections as the old settings window, so it needs the same spacing, headings and selects (they were only styled inside .tsp) */
+.tp-options { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.tp-options h3 { font-size: var(--text-sm); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px; }
+.tp-options section { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.tp-options select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 4px 8px; min-height: var(--target-min, 32px); }
 html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } html[data-w~='1060'] .tp-lib { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); } html[data-w~='1060'] .tp-rec { min-width: 220px; }
 @media (prefers-reduced-motion: reduce) { .tfl { scroll-behavior: auto; } }
 

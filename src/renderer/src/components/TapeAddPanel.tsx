@@ -96,7 +96,7 @@ export default function TapeAddPanel({
       <section className="tp-card">
         <h4><FolderOpen width={15} height={15} aria-hidden="true" /> In your “Tape audio” folder</h4>
         <div className="tpa-actions">
-          <span className="tp-faint tpa-folder">{folder ?? 'Not chosen yet — pick the folder where you keep recordings and BORN will find them.'}</span>
+          <span className="tp-faint tpa-folder">{folder ?? 'Using your Downloads folder until you choose another — pick the folder where you keep recordings and BORN will find them.'}</span>
           <button className="btn-secondary btn-sm" onClick={() => void pickFolder()}>{folder ? 'Change…' : 'Choose a folder…'}</button>
           {folder && <button className="btn-quiet btn-sm" onClick={() => void lookAgain()} disabled={looking} title="Read the Tape audio folder again, for files you have put there since"><RefreshCw width={12} height={12} aria-hidden="true" className={looking ? 'tpa-spin' : undefined} /> {looking ? 'Looking…' : 'Look again'}</button>}
         </div>

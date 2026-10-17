@@ -193,6 +193,7 @@ describe('the one-time hint', () => {
     try { localStorage.removeItem('born.tape.hints.v1') } catch { /* */ }
     await open()
     expect(screen.getByRole('note').textContent).toMatch(/Welcome to the Tape place.*Nothing plays until you press Play/)
+    expect(screen.getByRole('note').textContent).not.toMatch(/time it once/)
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
     expect(screen.queryByRole('note')).toBeNull()
   })
@@ -272,5 +273,15 @@ describe('automatic timing', () => {
     await open({ recordingId: 'r_2', tab: 'timing', nonce: 1 }, wire({ recordingId: 'r_2' }))
     expect(await screen.findByText(/times every English recording by itself/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Tap to sync by hand…' })).toBeTruthy()
+  })
+})
+
+describe('the Tape audio folder before one is chosen', () => {
+  it('says the picker uses Downloads instead of claiming nothing is chosen while the picker opens somewhere', async () => {
+    library = []
+    api.tapeInfo.mockResolvedValue({ available: true, message: null, folder: null, audioPage: 'https://x' })
+    await open()
+    expect(await screen.findByText(/Using your Downloads folder until you choose another/)).toBeTruthy()
+    expect(screen.queryByText(/Not chosen yet/)).toBeNull()
   })
 })
