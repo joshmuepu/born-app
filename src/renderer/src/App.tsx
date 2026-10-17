@@ -158,6 +158,15 @@ const TRANSLATION_SERMON_LANGUAGE: Record<string, string> = {
   FRLSG: 'fr'
 }
 
+/** A verse was opened from ⌘K, Saved or a link: put the keyboard ON that verse once it is on the page, so Enter shows it (a deliberate second key; opening never shows by itself). */
+function focusOpenedVerse(): void {
+  let tries = 0
+  const t = window.setInterval(() => {
+    const row = document.querySelector<HTMLElement>('.bible-verse--focus')
+    if (row) { row.focus({ preventScroll: true }); window.clearInterval(t) } else if (++tries > 20) window.clearInterval(t)
+  }, 100)
+}
+
 export default function App() {
   const [searchResults, setSearchResults] = useState<Quote[]>([])
   /** When set, the search panel shows the whole sermon (scrolled to `anchorRef`)
@@ -1207,6 +1216,7 @@ export default function App() {
     setTopTab('bible')
     setBiblePreview(v)
     recordNav({ kind: 'bible', ...v })
+    focusOpenedVerse()
   }, [recordNav])
   const openSongById = useCallback((songId: number) => {
     setTopTab('songs')
@@ -2890,6 +2900,7 @@ export default function App() {
         onOpenVerse={(v) => {
           setTopTab('bible')
           setBiblePreview(v)
+          focusOpenedVerse()
         }}
       />
 

@@ -5,7 +5,7 @@
 cd "$(dirname "$0")/../.." || exit 1
 PW_DIR=${PW_DIR:-/tmp/born-pw}; export NODE_PATH="$PW_DIR/node_modules"
 OUT=${OUT:-/tmp/born-regression-out}; mkdir -p "$OUT"
-for s in ${@:-hist dnd az reg rem rtabs gfx2 contrast}; do
+for s in ${@:-hist dnd az reg rem rtabs gfx2 contrast flows}; do
   pkill -f "remoteDebuggingPort 9920" 2>/dev/null; pkill -f "remote-debugging-port=9920" 2>/dev/null
   for i in $(seq 1 15); do curl -s localhost:9920/json >/dev/null 2>&1 || break; sleep 1; done; sleep 1
   rm -rf "$OUT/profile"; mkdir -p "$OUT/profile"
