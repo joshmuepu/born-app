@@ -35,6 +35,8 @@
   }
   // the part of an element that can really be seen: cut by every scrolling / clipping ancestor
   const vrect = (e) => { const r = e.getBoundingClientRect(); let l = r.left, t = r.top, rr = r.right, b = r.bottom; let n = e.parentElement; while (n && n !== document.body) { const st = getComputedStyle(n); if (/(auto|scroll|hidden|clip)/.test(st.overflowX + st.overflowY)) { const p = n.getBoundingClientRect(); l = Math.max(l, p.left); t = Math.max(t, p.top); rr = Math.min(rr, p.right); b = Math.min(b, p.bottom) } n = n.parentElement } return { left: l, top: t, right: rr, bottom: b } }
+  // a floating layer (drawer, popover, dialog): something sitting on top of the page on purpose
+  const floats = (e) => { let n = e; while (n && n !== document.body) { const st = getComputedStyle(n); if (st.position === 'fixed' || (st.position === 'absolute' && parseInt(st.zIndex || '0') >= 10)) return true; n = n.parentElement } return false }
   // 4. overlapping interactive elements (not nested)
   const inter = all.filter((e) => e.matches('button,a[href],input,select,textarea,[role=button],[role=tab],[role=switch],[role=menuitem]')).slice(0, 400)
   for (let i = 0; i < inter.length; i++) for (let j = i + 1; j < inter.length; j++) {
@@ -42,7 +44,7 @@
     const ra = vrect(a), rb = vrect(b)
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
     const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
-    if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
+    if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV)) && !(floats(a) !== floats(b))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
   }
   // 5. targets
   for (const e of inter) {
