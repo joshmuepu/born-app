@@ -41,7 +41,7 @@ describe('Add the tape for this sermon', () => {
     const dl = vi.fn(async () => ({ ok: true, bytes: 5_000_000, results: [] }))
     Object.assign((window as unknown as { electronAPI: Record<string, unknown> }).electronAPI, { tapeDownload: dl, onTapeDownloadProgress: vi.fn(() => () => {}) })
     open()
-    fireEvent.click(screen.getByRole('button', { name: /Download the tape for/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Download 65-0418M/ }))
     await waitFor(() => expect(dl).toHaveBeenCalled())
     fireEvent.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()

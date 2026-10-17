@@ -7,9 +7,9 @@ import { libraryStatus, sortLibrary } from '../../../shared/tapeLibrary'
 import type { Quote } from '../types'
 import { emitTape, onTape, timingOf, useTimingState } from '../tapeBus'
 import { useTape } from '../useTape'
-import { useTapeHint } from '../tapeHint'
 import { useTapeFollow } from '../useTapeFollow'
-import TapeAddPanel, { type PendingFile } from './TapeAddPanel'
+import { AddButton, AddEmpty, DownloadDialog, FolderSetting, FolderStrip, PendingSheet, Sheet, mb, useFolderHits, type PendingFile, type SermonRef } from './TapeAddParts'
+import { ContextMenu } from './ContextMenu'
 import { addSummary } from '../../../shared/tapeAdd'
 import type { TapeAddOutcome } from '../../../shared/tape'
 import TapeFollowList from './TapeFollowList'
@@ -19,8 +19,9 @@ import { TapeSettingsForm } from './TapeSettingsPanel'
 import TapeSyncEditor from './TapeSyncEditor'
 import './TapePlace.css'
 
-export type TapeTab = 'follow' | 'timing' | 'options' | 'add'
-export interface TapePlaceTarget { recordingId?: string; sermonId?: number; tab?: TapeTab; nonce: number }
+/** 'add' is a request (from a sermon: "Add a recording"), not a tab: it opens the Add dialog for that sermon */
+export type TapeTab = 'follow' | 'timing' | 'options'
+export interface TapePlaceTarget { recordingId?: string; sermonId?: number; tab?: TapeTab | 'add'; nonce: number }
 type Entry = TapeRecording & { status: TapeFileStatus; sermonTitle: string; dateCode: string; timed: number }
 type Toast = (t: { message: string; actionLabel?: string; onAction?: () => void; timeoutMs?: number }) => void
 
@@ -38,14 +39,18 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
   const [selId, setSelId] = useState<string | null>(null)
   const [tab, setTab] = useState<TapeTab>('follow')
   const { wire } = useTape(1000)
-  const hint = useTapeHint('place')
   const timing = useTimingState()
   const picked = useRef(false) // the operator chose a recording themself: do not move the selection under their hand
   // adding: the picker opens in the Tape audio folder, a file named with its date code goes to its sermon at once, and the place lands on what was added
   const [adding, setAdding] = useState(false)
-  const [addMsg, setAddMsg] = useState<string | null>(null)
-  const [addProblems, setAddProblems] = useState<string[]>([])
   const [pending, setPending] = useState<PendingFile[]>([])
+  const [sermons, setSermons] = useState<SermonRef[]>([])
+  const [dlOpen, setDlOpen] = useState(false)
+  const [addFor, setAddFor] = useState<number | null>(null) // asked from a sermon: choose or download for THAT sermon
+  const [dl, setDl] = useState<{ received: number; total: number | null } | null>(null)
+  const [rowMenu, setRowMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [removeId, setRemoveId] = useState<string | null>(null)
+  const folder = useFolderHits(entries.length)
   const titles = useRef(new Map<number, string>())
 
   const reload = useCallback(async () => {
@@ -64,7 +69,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
       const bySermon = target.sermonId != null ? entries.find((e) => e.sermonId === target.sermonId) : undefined
       const hit = byRec ?? bySermon
       if (hit) setSelId(hit.id)
-      setTab(target.tab ?? (hit ? 'follow' : 'add'))
+      if (target.tab === 'add') { setTab('follow'); setAddFor(target.sermonId ?? 0) } else setTab(target.tab ?? 'follow')
       return
     }
     setSelId((cur) => (cur && entries.some((e) => e.id === cur) ? cur : (wire && entries.some((e) => e.id === wire.recordingId) ? wire.recordingId : entries[0]?.id ?? null)))
@@ -76,11 +81,10 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
     if (entries.some((e) => e.id === wire.recordingId)) setSelId(wire.recordingId)
   }, [visible, target, wire?.recordingId, entries]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { void Promise.resolve(window.electronAPI.tapeSermonList?.()).then((l) => { titles.current = new Map((l ?? []).map((s) => [s.id, `${s.dateCode} · ${s.title}`])) }) }, [])
+  useEffect(() => { void Promise.resolve(window.electronAPI.tapeSermonList?.()).then((l) => { titles.current = new Map((l ?? []).map((s) => [s.id, `${s.dateCode} · ${s.title}`])); setSermons(l ?? []) }) }, [])
+  useEffect(() => window.electronAPI.onTapeDownloadProgress?.((p) => setDl({ received: p.received, total: p.total })), [])
   const land = useCallback(async (o: TapeAddOutcome): Promise<void> => {
     const s = addSummary(o, (id) => titles.current.get(id) ?? 'the sermon')
-    setAddMsg(s.message)
-    setAddProblems(s.problems)
     setPending((cur) => [...cur.filter((c) => !o.pending.some((p) => p.path === c.path)), ...o.pending])
     if (o.added.some((r) => r.ok)) {
       emitTape('recordings-changed')
@@ -92,17 +96,17 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
         const lib = (await window.electronAPI.tapeLibrary?.()) ?? []
         const e = (lib as Entry[]).find((x) => x.id === s.recordingId)
         const auto = ((await window.electronAPI.tapeTimingState?.()) as { available?: boolean } | undefined)?.available
-        setTab(o.pending.length ? 'add' : e && e.timed === 0 && !auto ? 'timing' : 'follow')
+        setTab(e && e.timed === 0 && !auto ? 'timing' : 'follow')
         if (!o.pending.length && s.message) pushToast({ message: s.message + (e && e.timed === 0 ? (auto ? ' It plays now; the text follows once BORN has timed it.' : ' It has no timing yet.') : ''), timeoutMs: 7000 })
       }
-    } else if (o.pending.length || s.problems.length) setTab('add')
+    } else if (s.problems.length) pushToast({ message: s.problems[0], timeoutMs: 9000 })
   }, [reload, pushToast])
   const startAdd = useCallback(async (): Promise<void> => {
-    setAdding(true); setAddMsg(null); setAddProblems([])
+    setAdding(true)
     try { const o = await window.electronAPI.tapeAddFiles(); if (!o.canceled) await land(o) } finally { setAdding(false) }
   }, [land])
   const addPaths = useCallback(async (paths: string[]): Promise<void> => {
-    setAdding(true); setAddMsg(null); setAddProblems([])
+    setAdding(true)
     try { await land(await window.electronAPI.tapeAddPaths(paths)) } finally { setAdding(false) }
   }, [land])
   const resolve = useCallback(async (f: PendingFile, sermonId: number): Promise<void> => {
@@ -114,7 +118,12 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
     } finally { setAdding(false) }
   }, [land])
   const sel = entries.find((e) => e.id === selId) ?? null
-  const showAdd = tab === 'add' || (loaded && entries.length === 0)
+  const removing = entries.find((e) => e.id === removeId) ?? null
+  const afterDownload = useCallback((results: Array<{ ok: boolean }>): void => {
+    setDl(null)
+    if (results.some((r) => r.ok)) { emitTape('recordings-changed'); void reload() }
+  }, [reload])
+  const choose = (): void => { setAddFor(null); void startAdd() }
 
   return (
     <section className="tp" aria-label="Tape" onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault() }} onDrop={(e) => { const paths = window.electronAPI.tapePathsForFiles(Array.from(e.dataTransfer.files)); if (paths.length) { e.preventDefault(); void addPaths(paths) } }}>
@@ -124,50 +133,69 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
           <h2 className="tp-title"><Headphones width={18} height={18} aria-hidden="true" /> Recordings</h2>
         </div>
       </header>
-      {hint.show && (
-        <div className="tp-hint" role="note">
-          <span><b>Welcome to the Tape place.</b> Recordings live here: add one and it plays at once; BORN times it in the background so the text follows it. The player is the bar at the bottom of every section; <b>Show on the screens</b> shows the text to the congregation. Nothing plays until you press Play.</span>
-          <button className="btn-quiet btn-sm" onClick={hint.dismiss}>Got it</button>
+      <FolderStrip hits={folder.hits} busy={adding} onAdd={(p) => void addPaths(p)} />
+      {dl && !dlOpen && (
+        <div className="tp-dlrow" role="status" aria-live="polite">
+          <span>Downloading… {dl.total ? `${mb(dl.received)} of ${mb(dl.total)}` : 'starting'}</span>
+          <span className="tape-dl-bar" aria-hidden="true"><i style={{ width: `${dl.total ? Math.min(100, Math.round((dl.received / dl.total) * 100)) : 5}%` }} /></span>
+          <button className="btn-quiet btn-sm" onClick={() => void window.electronAPI.tapeDownloadCancel()}>Cancel</button>
         </div>
       )}
       {loaded && entries.length === 0 ? (
-        <div className="tp-empty">
-          <div className="tp-empty-ico"><Headphones width={28} height={28} aria-hidden="true" /></div>
-          <h3>No recordings yet</h3>
-          <p>Add a recorded sermon and BORN will play it and keep the text in step — on your screen, the congregation screen, the stage monitor and the phone. Everything stays on this computer.</p>
-          <TapeAddPanel busy={adding} message={addMsg} problems={addProblems} pending={pending} onAdd={() => void startAdd()} onDropPaths={(p) => void addPaths(p)} onResolve={(f, id) => void resolve(f, id)} onSkip={(f) => setPending((c) => c.filter((x) => x.path !== f.path))} onChanged={() => void reload()} />
-        </div>
+        <AddEmpty busy={adding} folder={folder.folder} onChoose={() => void startAdd()} onDownload={() => setDlOpen(true)} />
       ) : (
         <div className="tp-body">
           <ul className="tp-lib" aria-label="Recordings">
+            <li className="tp-lib-head" role="none"><AddButton busy={adding} onChoose={() => void startAdd()} onDownload={() => setDlOpen(true)} /></li>
             {entries.map((e) => {
               const st = libraryStatus(e, timingOf(timing, e.id))
               const Icon = TONE_ICON[st.tone]
               return (
-                <li key={e.id}>
-                  <button className={`tp-rec${e.id === selId ? ' is-sel' : ''}`} onClick={() => { picked.current = true; setSelId(e.id); if (tab === 'add') setTab('follow') }} aria-current={e.id === selId ? 'true' : undefined}>
+                <li key={e.id} className="tp-lib-item">
+                  <button className={`tp-rec${e.id === selId ? ' is-sel' : ''}`} onClick={() => { picked.current = true; setSelId(e.id) }} aria-current={e.id === selId ? 'true' : undefined}>
                     <span className="tp-rec-top"><b>{e.sermonTitle}</b><span className={`tp-chip tp-chip--${st.tone}`}><Icon width={12} height={12} aria-hidden="true" /> {st.label}</span></span>
                     <span className="tp-faint">{e.dateCode} · {formatTapeTime(e.file.durationSec)} · {e.file.ext.toUpperCase()}{wire?.recordingId === e.id ? ' · in the player' : ''}</span>
                   </button>
+                  <button className="tp-rec-more btn-quiet btn-sm" aria-label={`More for ${e.sermonTitle}`} aria-haspopup="menu" onClick={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setRowMenu({ id: e.id, x: r.left, y: r.bottom + 4 }) }}>⋯</button>
                 </li>
               )
             })}
-            <li><button className="btn-secondary btn-sm tp-addbtn" onClick={() => void startAdd()} disabled={adding}>{adding ? 'Adding…' : 'Add a recording…'}</button></li>
           </ul>
           <div className="tp-detail">
             <div className="tp-tabs" role="tablist" aria-label="Recording">
-              {(['follow', 'timing', 'options', 'add'] as const).map((t) => (
-                <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'is-on' : ''} onClick={() => setTab(t)}>{{ follow: 'Follow', timing: 'Timing', options: 'Options', add: 'Add' }[t]}</button>
+              {(['follow', 'timing', 'options'] as const).map((t) => (
+                <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'is-on' : ''} onClick={() => setTab(t)}>{{ follow: 'Follow', timing: 'Timing', options: 'Options' }[t]}</button>
               ))}
             </div>
             <div className="tp-pane" role="tabpanel">
               {tab === 'follow' && (sel ? <FollowTab key={sel.id} entry={sel} pushToast={pushToast} /> : <p className="tp-faint tp-pad">Choose a recording on the left.</p>)}
-              {tab === 'timing' && (sel ? <TimingTab key={sel.id} entry={sel} onChanged={() => { emitTape('map-changed'); void reload() }} onRemoved={() => { setSelId(null); emitTape('recordings-changed'); void reload() }} /> : <p className="tp-faint tp-pad">Choose a recording on the left.</p>)}
-              {tab === 'options' && <div className="tp-pad tp-options"><TapeSettingsForm /></div>}
-              {showAdd && tab === 'add' && <div className="tp-pad"><TapeAddPanel busy={adding} message={addMsg} problems={addProblems} pending={pending} onAdd={() => void startAdd()} onDropPaths={(p) => void addPaths(p)} onResolve={(f, id) => void resolve(f, id)} onSkip={(f) => setPending((c) => c.filter((x) => x.path !== f.path))} preferredSermonId={sel?.sermonId ?? null} onChanged={() => void reload()} /></div>}
+              {tab === 'timing' && (sel ? <TimingTab key={sel.id} entry={sel} onChanged={() => { emitTape('map-changed'); void reload() }} /> : <p className="tp-faint tp-pad">Choose a recording on the left.</p>)}
+              {tab === 'options' && <div className="tp-pad tp-options"><TapeSettingsForm /><FolderSetting /></div>}
             </div>
           </div>
         </div>
+      )}
+      {rowMenu && <ContextMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)} items={[{ id: 'remove', label: 'Remove this recording…', danger: true, onSelect: () => setRemoveId(rowMenu.id) }]} />}
+      {removing && (
+        <Sheet title={`Remove “${removing.sermonTitle}”?`} onClose={() => setRemoveId(null)}>
+          <p>This takes the recording off the sermon and forgets its timing. The sermon text and the original audio file are never deleted.</p>
+          <div className="tp-sheet-actions">
+            <button className="btn-danger" onClick={async () => { await window.electronAPI.tapeRemove(removing.id); setRemoveId(null); if (selId === removing.id) setSelId(null); emitTape('recordings-changed'); void reload() }}><Trash2 width={13} height={13} aria-hidden="true" /> Remove it</button>
+            <button className="btn-quiet" onClick={() => setRemoveId(null)}>Keep it</button>
+          </div>
+        </Sheet>
+      )}
+      {pending.length > 0 && <PendingSheet pending={pending} sermons={sermons} preferredSermonId={sel?.sermonId ?? null} onResolve={(f, id) => void resolve(f, id)} onSkip={(f) => setPending((c) => c.filter((x) => x.path !== f.path))} onClose={() => setPending([])} />}
+      {dlOpen && <DownloadDialog sermons={sermons} preferredSermonId={sel?.sermonId ?? null} onClose={() => setDlOpen(false)} onDone={afterDownload} />}
+      {addFor !== null && (
+        <Sheet title={`Add a recording${addFor && titles.current.get(addFor) ? ` for ${titles.current.get(addFor)}` : ''}`} onClose={() => setAddFor(null)}>
+          <p>Choose the file you have, or download it. BORN keeps its own copy and never changes your file.</p>
+          <div className="tp-sheet-actions">
+            <button className="btn-primary" onClick={choose}>Choose a file…</button>
+            <button className="btn-secondary" onClick={() => { setAddFor(null); setDlOpen(true) }}>Download…</button>
+            <button className="btn-quiet" onClick={() => setAddFor(null)}>Not now</button>
+          </div>
+        </Sheet>
       )}
     </section>
   )
@@ -234,10 +262,9 @@ function FollowTab({ entry, pushToast }: { entry: Entry; pushToast: Toast }): JS
   )
 }
 
-function TimingTab({ entry, onChanged, onRemoved }: { entry: Entry; onChanged: () => void; onRemoved: () => void }): JSX.Element {
+function TimingTab({ entry, onChanged }: { entry: Entry; onChanged: () => void }): JSX.Element {
   const [map, setMap] = useState<SyncMap | null>(null)
   const [editing, setEditing] = useState(false)
-  const [confirm, setConfirm] = useState(false)
   useEffect(() => { let a = true; void Promise.resolve(window.electronAPI.tapeMapGet?.(entry.id, null)).then((m) => { if (a) setMap((m as SyncMap | null) ?? null) }); return () => { a = false } }, [entry.id, entry.timed])
   const src = map ? ({ tap: 'made by tapping along', auto: 'timed automatically by BORN', imported: 'loaded from a timing file' } as Record<string, string>)[map.source] ?? map.source : null
   const timingState = useTimingState()
@@ -257,13 +284,6 @@ function TimingTab({ entry, onChanged, onRemoved }: { entry: Entry; onChanged: (
         </div>
         <p className="tp-faint">BORN times every English recording by itself, in the background, as soon as it is added — nothing to set up and no need to wait: the tape plays at once and the text follows when it finishes. Editing by hand is only for fixing something.</p>
         {entry.status !== 'ok' && <p className="tp-faint">The recording file has a problem ({st.label.toLowerCase()}), so it cannot be timed until that is fixed.</p>}
-      </div>
-      <div className="tp-card">
-        <h4>Remove this recording</h4>
-        <p className="tp-faint">This takes the recording off the sermon and forgets its timing. The sermon text and the original audio file are never deleted.</p>
-        {confirm ? (
-          <div className="tpa-actions"><button className="btn-danger btn-sm" onClick={async () => { await window.electronAPI.tapeRemove(entry.id); onRemoved() }}><Trash2 width={13} height={13} aria-hidden="true" /> Remove it</button><button className="btn-quiet btn-sm" onClick={() => setConfirm(false)}>Keep it</button></div>
-        ) : <button className="btn-secondary btn-sm" onClick={() => setConfirm(true)}>Remove this recording…</button>}
       </div>
       {editing && <TapeSyncEditor recording={entry} sermonId={entry.sermonId} sermonTitle={entry.sermonTitle} dateCode={entry.dateCode} onClose={() => { setEditing(false); onChanged() }} onSaved={onChanged} />}
     </div>

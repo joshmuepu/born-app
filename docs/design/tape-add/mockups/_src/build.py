@@ -69,7 +69,7 @@ cards = ''.join([
  card('R4', 'Download becomes a small dialog (and a progress row), not a card', 'Prefilled with the sermon when started from the reader. In-app download behaviour is unchanged.'),
  card('R5', 'Retire the welcome note', 'It repeats what the page says. (Its “time it once” sentence was already wrong: timing is automatic now — fixed on this branch.)'),
  card('R6', 'Cut the explanatory paragraphs to one line each', 'The “BORN keeps its own copy and never changes your file” promise moves to the Add confirmation and the empty page.'),
- card('R7', 'Rename: “Add a recording…” stays; “Get audio” becomes “Download from the publisher…”', 'Says where it comes from; matches the approved glossary style (one word per job).'),
+ card('R7', 'Rename: “Get audio” becomes “Download…” (owner: just “Download”)', 'Says where it comes from; matches the approved glossary style (one word per job).'),
  card('R8', 'Move “Remove this recording” from Timing to a ⋯ menu on the recording row', 'A destructive action should not live inside a tab named for something else. Remove keeps its confirmation.'),
 ])
 board = f"""<h1>Review board: Tape “Add”</h1><p class="lead">Read the <a href="compare.html">comparison</a>, try the flows, then mark each item. <b>Copy my decisions</b> gives you text to paste back to Claude. My recommendation is <b>A · One door</b>; it is a recommendation, not a decision.</p>

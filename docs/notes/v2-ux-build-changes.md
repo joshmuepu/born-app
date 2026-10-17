@@ -72,3 +72,10 @@ Plain language. Updated with every slice of the UX build.
 - Measured on the real 2½-hour tape (38 MB, mono AAC, 44.1 kHz): decode + listen + match in **82 s** on an Apple-silicon Mac, 356 of 363 paragraphs located (the optional tool-based run before found 349).
 - Found on the way: this file's AAC header says mono while its sample entry says stereo, which the browser decoder rejects — the header wins (`mp4Audio.ts`, with a test).
 - Not done yet: the macOS-Intel and Windows recogniser programs (built by hand or in CI and dropped into `resources/whisper/<platform>-<arch>/`, see `scripts/prepare-whisper.sh`); until then those builds simply do not time automatically (the tape still plays; tap-to-sync still works).
+
+## Tape: Add is one door (owner approved option A, 2026-10-17)
+- The **Add tab and the welcome note are gone**. One **＋ Add recording…** button on the list opens the picker in the Tape audio folder; its **▾** has **Download…** (just "Download", per the owner). Tabs are Follow · Timing · Options.
+- BORN **watches the Tape audio folder** (`watchTapeFolder` in `tapeService.ts`, debounced) and offers new files in a strip: "1 new recording in your Tape audio folder" with **Add N recognised** / **See them**. Nothing is added until you press Add. **Look again** is gone.
+- The folder setting moved to **Options → Tape audio folder** (Change…, Open folder). Download is a small dialog (prefilled from a sermon); while it runs and the dialog is closed a progress row with Cancel shows above the list. Files BORN cannot place ask in a small dialog. **Remove this recording…** moved to the row's ⋯ menu (still asks first).
+- The empty Tape place is one drop zone with **Choose a file…** and **Download…**.
+- Design record: `docs/design/tape-add/`. The R1–R8 items on the board were the parts of option A; the owner approved the option.

@@ -6,7 +6,7 @@
 import { app, dialog, ipcMain, BrowserWindow, protocol, shell, powerMonitor } from 'electron'
 import Database from 'better-sqlite3'
 import { Readable } from 'stream'
-import { createReadStream, existsSync, statSync, statfsSync } from 'fs'
+import { createReadStream, existsSync, statSync, statfsSync, watch, type FSWatcher } from 'fs'
 import { join, basename } from 'path'
 import { log } from './logger'
 import { testHook } from './testHooks'
@@ -220,8 +220,26 @@ export const hub: TapeHub = new TapeHub({
 })
 setInterval(() => hub.tick(), 1000).unref()
 
+/** BORN looks in the Tape audio folder by itself: when something in it changes the windows are told (they offer new recordings; nothing is added). */
+let folderWatcher: FSWatcher | null = null
+let folderTimer: NodeJS.Timeout | null = null
+export function watchTapeFolder(): void {
+  try { folderWatcher?.close() } catch { /* already closed */ }
+  folderWatcher = null
+  const folder = getSettings().tapeFolder
+  if (!folder) return
+  try {
+    folderWatcher = watch(folder, { persistent: false }, () => {
+      if (folderTimer) clearTimeout(folderTimer)
+      folderTimer = setTimeout(() => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('tape:folder-changed') }, 1500) // a copy in progress settles first
+    })
+    folderWatcher.on('error', () => { /* the drive went away: the next scan says so */ })
+  } catch (e) { log.debug(`tape folder watch: ${String(e)}`) }
+}
+
 export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
   registerTapeProtocol()
+  watchTapeFolder()
 
   // the engine speaks only on these channels, and only the engine window may use them
   const fromEngine = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => !!engineWin && !engineWin.isDestroyed() && e.sender === engineWin.webContents
@@ -366,8 +384,10 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
       folder = r.filePaths[0]
     }
     updateSettings({ tapeFolder: folder })
+    watchTapeFolder()
     return folder
   })
+  ipcMain.handle('tape:open-folder', async () => { const f = getSettings().tapeFolder; return f ? (await shell.openPath(f)) === '' : false })
   ipcMain.handle('tape:clear-folder', () => { updateSettings({ tapeFolder: null }); return true })
   ipcMain.handle('tape:scan-folder', (): TapeFolderHit[] => {
     const folder = getSettings().tapeFolder

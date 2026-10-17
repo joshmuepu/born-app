@@ -74,21 +74,22 @@ describe('the library', () => {
   })
   it('selects the recording that is in the player, and says so', async () => {
     await open()
-    expect(screen.getByRole('button', { name: /A Sample Message/ }).getAttribute('aria-current')).toBe('true')
+    expect(screen.getByRole('button', { name: /^A Sample Message/ }).getAttribute('aria-current')).toBe('true')
     expect(screen.getByText(/M4A · in the player/)).toBeTruthy()
   })
   it('landing on a sermon (from the bar or a chip) selects that sermon\'s recording', async () => {
     await open({ sermonId: 2, nonce: 1 }, null)
-    expect(screen.getByRole('button', { name: /Sunday Message/ }).getAttribute('aria-current')).toBe('true')
+    expect(screen.getByRole('button', { name: /^Sunday Message/ }).getAttribute('aria-current')).toBe('true')
   })
-  it('with no recordings at all it shows the friendly first-time state and the three ways to add one', async () => {
+  it('with no recordings at all it shows one drop zone with the two ways in, and says where the folder is', async () => {
     library = []
     await open(null, null)
-    expect(await screen.findByText('No recordings yet')).toBeTruthy()
-    expect(screen.getByText(/Everything stays on this computer/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Add a recording…/ })).toBeTruthy()
-    expect(screen.getByText(/Get audio/)).toBeTruthy()
-    expect(screen.getByText(/In your “Tape audio” folder/)).toBeTruthy()
+    expect(await screen.findByText('Add your first recording')).toBeTruthy()
+    expect(screen.getByText(/BORN keeps its own copy and never changes your file/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Choose a file…/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Download…/ })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Add' })).toBeNull()
+    expect(screen.getByText(/Or put files in/)).toBeTruthy()
   })
 })
 
@@ -154,47 +155,98 @@ describe('the other tabs', () => {
     expect(await screen.findByText(/Timing for “A Sample Message”/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit timing…' })).toBeTruthy()
     expect(screen.getByText(/made by tapping along/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Wednesday Evening/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Wednesday Evening/ }))
     expect((await screen.findByRole('button', { name: /Edit timing…|Tap to sync…/ }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/cannot be timed until that is fixed/)).toBeTruthy()
   })
-  it('Timing: removing a recording asks first, and says the sermon text and the audio file are never deleted', async () => {
-    await open({ recordingId: 'r_1', tab: 'timing', nonce: 1 })
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove this recording…' }))
+  it('Removing a recording is in the row’s ⋯ menu, asks first, and says the sermon text and the audio file are never deleted', async () => {
+    await open()
+    expect(screen.queryByRole('button', { name: 'Remove this recording…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More for A Sample Message' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Remove this recording…/ }))
+    expect(screen.getByRole('dialog', { name: /Remove “A Sample Message”\?/ })).toBeTruthy()
     expect(screen.getByText(/never deleted/)).toBeTruthy()
     expect(api.tapeRemove).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: /Remove it/ }))
     await waitFor(() => expect(api.tapeRemove).toHaveBeenCalledWith('r_1'))
+  })
+  it('Options holds the Tape audio folder, with Change… and Open folder', async () => {
+    api.tapeInfo.mockResolvedValue({ available: true, message: null, folder: '/tmp/Tape audio', audioPage: 'https://x' })
+    const open1 = vi.fn(async () => true)
+    Object.assign(window.electronAPI, { tapeOpenFolder: open1 })
+    await open({ tab: 'options', nonce: 1 })
+    expect(await screen.findByText('/tmp/Tape audio', { exact: false })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open folder' }))
+    expect(open1).toHaveBeenCalled()
+    api.tapePickFolder.mockResolvedValueOnce('/Volumes/Church/Tape')
+    fireEvent.click(screen.getByRole('button', { name: 'Change…' }))
+    expect(await screen.findByText(/Your “Tape audio” folder is now \/Volumes\/Church\/Tape/)).toBeTruthy()
   })
   it('Options: the real options are here (and change the settings)', async () => {
     await open({ tab: 'options', nonce: 1 })
     fireEvent.click(await screen.findByRole('radio', { name: 'Also pauses' }))
     await waitFor(() => expect(api.tapeSettingsSet).toHaveBeenCalledWith({ escRule: 'pause' }))
   })
-  it('Add: the folder scan lists files with the sermon they look like, and one click adds one to that sermon', async () => {
-    await open({ tab: 'add', nonce: 1 })
-    expect(await screen.findByText('65-0418M It Is.m4a')).toBeTruthy()
-    expect(screen.getByText(/no sermon recognised/)).toBeTruthy()
+})
+
+describe('new files in the Tape audio folder', () => {
+  it('are offered in a strip with the sermon they look like; one click adds the recognised ones, nothing is added by itself', async () => {
+    await open()
+    expect(await screen.findByText(/2 new recordings in your Tape audio folder/)).toBeTruthy()
+    expect(screen.getByText(/Nothing is added until you say/)).toBeTruthy()
     api.tapeAddPaths = vi.fn(async () => ({ canceled: false, added: [{ ok: true, file: { name: '65-0418M It Is', id: 'f1' }, recording: { id: 'r_ready', sermonId: 5 }, duplicate: false, warnings: [] }], pending: [] }))
     Object.assign(window.electronAPI, { tapeAddPaths: api.tapeAddPaths })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 recognised' }))
     await waitFor(() => expect(api.tapeAddPaths).toHaveBeenCalledWith(['/tmp/Tape audio/65-0418M It Is.m4a']))
   })
-  it('Get audio needs a sermon first; the publisher\'s page opens either way', async () => {
-    await open({ tab: 'add', nonce: 1 })
-    expect((await screen.findByRole('button', { name: /Download the tape/ }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
-    expect(api.tapeOpenAudioPage).toHaveBeenCalled()
+  it('See them lists each file and what it looks like; a file with no sermon says so', async () => {
+    await open()
+    fireEvent.click(await screen.findByRole('button', { name: 'See them' }))
+    const list = within(screen.getByRole('list', { name: 'New files' }))
+    expect(list.getByText(/65-0418M It Is\.m4a/)).toBeTruthy()
+    expect(list.getByText(/sermon unknown/)).toBeTruthy()
+    expect(list.getByRole('button', { name: 'Choose sermon…' })).toBeTruthy()
+  })
+  it('appear without any click: a change in the folder makes the page look again', async () => {
+    let changed: () => void = () => {}
+    Object.assign(window.electronAPI, { onTapeFolderChanged: vi.fn((cb: () => void) => { changed = cb; return vi.fn() }) })
+    api.tapeScanFolder.mockResolvedValue([])
+    await open()
+    await waitFor(() => expect(api.tapeScanFolder).toHaveBeenCalled())
+    expect(screen.queryByText(/new recording/)).toBeNull()
+    api.tapeScanFolder.mockResolvedValue([{ path: '/tmp/Tape audio/99-0404E.m4a', name: '99-0404E.m4a', bytes: 5 * 1048576, parsedCode: '99-0404E', match: { id: 9, dateCode: '99-0404E', title: 'Evening' }, candidates: [], confidence: 'exact', imported: false }])
+    await act(async () => { changed() })
+    expect(await screen.findByText(/1 new recording in your Tape audio folder/)).toBeTruthy()
   })
 })
 
-describe('the one-time hint', () => {
-  it('welcomes the operator once, in plain words, and can be dismissed for good', async () => {
+describe('Download…', () => {
+  it('opens from the ▾ of the Add button as a small dialog; nothing is fetched until the Download button, and the publisher’s page opens either way', async () => {
+    api.tapeDownload = vi.fn(async () => ({ ok: false, message: 'x' }))
+    Object.assign(window.electronAPI, { tapeDownload: api.tapeDownload })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'More ways to add' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Download…/ }))
+    const dlg = await screen.findByRole('dialog', { name: 'Download' })
+    expect(within(dlg).getByLabelText('Find the sermon to download')).toBeTruthy()
+    expect(api.tapeDownload).not.toHaveBeenCalled()
+    fireEvent.click(within(dlg).getByRole('button', { name: /Open the publisher’s page/ }))
+    expect(api.tapeOpenAudioPage).toHaveBeenCalled()
+  })
+  it('is prefilled with the sermon when asked from a sermon, and Esc closes it', async () => {
+    await open({ sermonId: 1, tab: 'add', nonce: 1 })
+    fireEvent.click(await screen.findByRole('button', { name: 'Download…' }))
+    const dlg = await screen.findByRole('dialog', { name: 'Download' })
+    expect(await within(dlg).findByText(/99-0101M · A Sample Message/)).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Download' })).toBeNull())
+  })
+})
+
+describe('no welcome note', () => {
+  it('the Tape place has no one-time note any more: the page says what to do', async () => {
     try { localStorage.removeItem('born.tape.hints.v1') } catch { /* */ }
     await open()
-    expect(screen.getByRole('note').textContent).toMatch(/Welcome to the Tape place.*Nothing plays until you press Play/)
-    expect(screen.getByRole('note').textContent).not.toMatch(/time it once/)
-    fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
     expect(screen.queryByRole('note')).toBeNull()
   })
 })
@@ -207,7 +259,7 @@ describe('Add a recording: one click, straight to the right place', () => {
     const fn = vi.fn(async () => { library = [E_READY, added]; return { canceled: false, added: [ok('65-0418M It Is', 5, 'r_new')], pending: [] } })
     Object.assign(window.electronAPI, { tapeAddFiles: fn })
     await open()
-    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    fireEvent.click(screen.getByRole('button', { name: /Add recording…/ }))
     await waitFor(() => expect(fn).toHaveBeenCalledOnce())
     // it lands on the new recording (selected in the list)
     await waitFor(() => expect(document.querySelector('.tp-rec.is-sel')?.textContent).toContain(added.sermonTitle))
@@ -217,7 +269,7 @@ describe('Add a recording: one click, straight to the right place', () => {
     const fn = vi.fn(async () => ({ canceled: true, added: [], pending: [] }))
     Object.assign(window.electronAPI, { tapeAddFiles: fn })
     await open()
-    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    fireEvent.click(screen.getByRole('button', { name: /Add recording…/ }))
     await waitFor(() => expect(fn).toHaveBeenCalled())
     expect(toast).not.toHaveBeenCalled()
   })
@@ -225,22 +277,11 @@ describe('Add a recording: one click, straight to the right place', () => {
     const fn = vi.fn(async () => ({ canceled: false, added: [], pending: [{ path: '/x/sermon part 2.m4a', name: 'sermon part 2.m4a', bytes: 9 * 1048576, candidates: [{ id: 5, dateCode: '65-0418M', title: 'It Is The Rising Of The Sun' }] }] }))
     Object.assign(window.electronAPI, { tapeAddFiles: fn })
     await open()
-    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    fireEvent.click(screen.getByRole('button', { name: /Add recording…/ }))
     expect(await screen.findByText(/sermon part 2.m4a/)).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Which sermon is it?' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Which sermon is this file for?' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /65-0418M · It Is The Rising Of The Sun/ }))
     await waitFor(() => expect(api.tapeImportConfirmed).toHaveBeenCalledWith([{ path: '/x/sermon part 2.m4a', sermonId: 5 }]))
-  })
-})
-
-describe('"Look again" in the Tape audio folder says what it found', () => {
-  it('rescans the folder and reports the count, so it never looks like nothing happened', async () => {
-    await open({ tab: 'add', nonce: 1 })
-    await screen.findByText('65-0418M It Is.m4a')
-    api.tapeScanFolder.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: /Look again/ }))
-    await waitFor(() => expect(api.tapeScanFolder).toHaveBeenCalledOnce())
-    expect(await screen.findByText(/Looked again: 2 audio files in the folder, 2 not added yet\./)).toBeTruthy()
   })
 })
 
@@ -280,8 +321,8 @@ describe('the Tape audio folder before one is chosen', () => {
   it('says the picker uses Downloads instead of claiming nothing is chosen while the picker opens somewhere', async () => {
     library = []
     api.tapeInfo.mockResolvedValue({ available: true, message: null, folder: null, audioPage: 'https://x' })
-    await open()
-    expect(await screen.findByText(/Using your Downloads folder until you choose another/)).toBeTruthy()
+    await open(null, null)
+    expect(await screen.findByText(/Or put files in your Downloads folder/)).toBeTruthy()
     expect(screen.queryByText(/Not chosen yet/)).toBeNull()
   })
 })

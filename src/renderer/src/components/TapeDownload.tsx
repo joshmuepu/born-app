@@ -38,7 +38,7 @@ export default function TapeDownload({
       {!compact && <p>Downloads this recording from the publisher’s own site (English, usually 30–60 MB) into your “Tape audio” folder, then adds it. One recording, only when you press the button.</p>}
       <div className="tape-row">
         <button className="btn-primary btn-sm" onClick={() => void run()} disabled={!sermon || !!progress}>
-          <Download width={13} height={13} aria-hidden="true" /> {sermon ? `Download the tape for ${sermon.dateCode}` : 'Download the tape'}
+          <Download width={13} height={13} aria-hidden="true" /> {sermon ? `Download ${sermon.dateCode}` : 'Download'}
         </button>
         <button className="btn-quiet btn-sm" onClick={() => void window.electronAPI.tapeOpenAudioPage()} title="Opens the publisher’s own audio page in your browser (other languages, or to choose the file yourself)">
           <Globe width={13} height={13} aria-hidden="true" /> Open the publisher’s page

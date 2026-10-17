@@ -25,20 +25,20 @@ Honest note on A: **download takes one more step than today** (▾, item, type, 
 | R1 | Remove the **Add** tab. Tabs become Follow · Timing · Options. |
 | R2 | **Tape audio folder** → Options (Change…, Open folder). **Look again** is removed: BORN reads the folder when the Tape place opens and while it is open. |
 | R3 | New files → one **strip**: "2 new recordings in your Tape audio folder — Add 1 recognised · See both". Never added silently. |
-| R4 | **Get audio** card → **Download from the publisher…** dialog (from ▾, or prefilled from the reader), then a progress row with Cancel. |
+| R4 | **Get audio** card → **Download…** dialog (from ▾, or prefilled from the reader), then a progress row with Cancel. |
 | R5 | Remove the welcome note. |
 | R6 | Remove the explanatory paragraphs; the "BORN keeps its own copy" promise moves to the empty page and the Added toast. |
-| R7 | Rename "Get audio" → "Download from the publisher…". Keep "Add recording…". |
+| R7 | Rename "Get audio" → "Download…". Keep "Add recording…". |
 | R8 | Move **Remove this recording…** from Timing to a ⋯ menu on the recording row (still confirms). |
 
 ## Copy (every string)
 - Button: **＋ Add recording…** (tooltip: "Choose a file (opens in your Tape audio folder)"); ▾ tooltip "More ways to add".
-- Menu: **Choose a file…** / "Opens in {folder} · or just drop a file here"; **Download from the publisher…** / "English · one recording, only when you press the button".
-- Empty page: **Add your first recording** / "Drop a recording here, or choose a file. A file named with its date code (like 99-0303M) goes to the right sermon by itself. BORN keeps its own copy and never changes your file." Buttons **Choose a file…**, **Download from the publisher…**. Line: "Or put files in {folder} and BORN will offer them here. Change folder". Drag-over: **Drop to add**.
+- Menu: **Choose a file…** / "Opens in {folder} · or just drop a file here"; **Download…** / "English · one recording, only when you press the button".
+- Empty page: **Add your first recording** / "Drop a recording here, or choose a file. A file named with its date code (like 99-0303M) goes to the right sermon by itself. BORN keeps its own copy and never changes your file." Buttons **Choose a file…**, **Download…**. Line: "Or put files in {folder} and BORN will offer them here. Change folder". Drag-over: **Drop to add**.
 - Folder strip: "**{n} new recordings in your Tape audio folder.** Found by BORN just now — nothing is added until you say." **Add {k} recognised** · **See both** (rows: file name → sermon, **Add**; unknown: **Choose sermon…**; **Add all**). No folder chosen yet: "Using your Downloads folder until you choose another."
 - Added toast: "Added “{title}” to {code} · plays now". Banner while timing: "This recording plays now. BORN is timing it in the background ({pct}%); the text will follow it when that finishes." Done: "Timing finished — the text now follows the tape ({n} of {m} paragraphs found)."
 - Several files: "Added {n} recordings. **{file}** needs a sermon." **Choose sermon**. Sheet: "Which sermon is “{file}”?" · **This one** · "Or type a title or date code" · **Not now**.
-- Download dialog: title **Download from the publisher**; field "Type a title or a date code, e.g. 99-0404E"; found chip "{code} · {title}"; "English, about {mb} MB. Goes into {folder} and is added. One recording, only when you press the button." **Download {code}** · **Cancel** · **Open the publisher's page**. Progress row: "Downloading {code} — {a} of {b} MB" · **Cancel**.
+- Download dialog: title **Download**; field "Type a title or a date code, e.g. 99-0404E"; found chip "{code} · {title}"; "English, about {mb} MB. Goes into {folder} and is added. One recording, only when you press the button." **Download {code}** · **Cancel** · **Open the publisher's page**. Progress row: "Downloading {code} — {a} of {b} MB" · **Cancel**.
 - Errors (never a stack trace; always what happened to their data): "The publisher's site did not answer. Nothing was added." **Try again** · **Open the publisher's page** · **Close**. "“{file}” is not an audio file BORN can play. Nothing was added." "That recording is already added — here it is." "BORN keeps its own copy of each recording, which needs {mb} MB; this computer has {free} MB free." **Use the file where it is** · **Cancel** + "If that drive is not plugged in during a service, the recording will not play." Timing: "This recording plays, but BORN could not time it automatically (it is not in English)." **Time it by hand…**
 
 ## Build plan (A) — small slices, each ships green

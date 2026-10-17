@@ -465,6 +465,12 @@ const api = {
   tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg'): Promise<string | null> => ipcRenderer.invoke('tape:pick-tool', which),
   tapeEsc: (shift: boolean, blanking: boolean): void => ipcRenderer.send('tape:esc', shift, blanking),
   tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>): Promise<unknown> => ipcRenderer.invoke('tape:align-run', recordingId, paragraphs),
+  tapeOpenFolder: (): Promise<boolean> => ipcRenderer.invoke('tape:open-folder'),
+  onTapeFolderChanged: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on('tape:folder-changed', h)
+    return () => ipcRenderer.removeListener('tape:folder-changed', h)
+  },
   tapeTimingState: (): Promise<unknown> => ipcRenderer.invoke('tape:timing-state'),
   tapeTimingStart: (recordingId: string): Promise<boolean> => ipcRenderer.invoke('tape:timing-start', recordingId),
   tapeTimingCancel: (recordingId?: string): Promise<boolean> => ipcRenderer.invoke('tape:timing-cancel', recordingId),
