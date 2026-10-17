@@ -102,3 +102,4 @@ html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: 
 .tp-sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .tp-folder-setting { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .tp-sheet .tape-download { display: flex; flex-direction: column; gap: 8px; } .tp-sheet .tape-download p { margin: 0; }
+.tp-lib-item .tp-rec { padding-right: 40px; } /* the row's ⋯ button sits in this gutter, not on top of the status chip */
