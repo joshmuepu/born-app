@@ -3,6 +3,7 @@
  * No Electron deps — fully testable in Node.js.
  */
 import { MAX_SEARCH_RESULTS } from '../shared/searchLimits'
+import { cleanSourceText } from '../shared/sourceText'
 
 export const SEARCH_BASE = `
   SELECT p.sermon_id       AS sermonId,
@@ -119,7 +120,7 @@ export function stableParagraphRef(ref: string | null | undefined, rowId: number
 
 export function rowToQuote(r: QuoteRow, matchType: MatchMode) {
   return {
-    text: r.text,
+    text: cleanSourceText(r.text),
     sermonTitle: r.sermonTitle,
     dateCode: r.dateCode,
     sermonId: r.sermonId,

@@ -22,6 +22,7 @@ import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
 import { lowerThirdNow, tapeGraphicsKey, withoutTapeBody } from '../shared/tapeScreen'
 import { numberedParagraphs } from '../shared/tapeParagraphs'
+import { cleanSourceText } from '../shared/sourceText'
 import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, type PhoneTapeDeps } from './tapePhone'
 import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
 import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, getTapeLibrary, hub as tapeHub } from './tapeService'
@@ -2677,7 +2678,7 @@ async function getSermonParagraphsFor(sermonId: number, language: string): Promi
         )
         .all(Number(sermonId))
       return rows.map((r, i) => ({
-        text: r.text,
+        text: cleanSourceText(r.text),
         sermonTitle: r.title,
         dateCode: r.date_code,
         sermonId: Number(sermonId),
@@ -2712,7 +2713,7 @@ async function getSermonParagraphsFor(sermonId: number, language: string): Promi
           )
           .get(sermonId)
         return cached.map((r) => ({
-          text: r.text,
+          text: cleanSourceText(r.text),
           sermonTitle: meta?.title ?? '',
           dateCode: meta?.date_code ?? '',
           sermonId,
@@ -3176,7 +3177,7 @@ app.whenReady().then(async () => {
           'SELECT p.id, p.paragraph_ref, p.text, s.date_code, s.title FROM paragraphs p JOIN sermons s ON s.id = p.sermon_id WHERE p.sermon_id = ? ORDER BY p.paragraph_index, p.id'
         )
         .all(w.sermonId)
-      const quotes = rows.map((r, i) => ({ text: r.text, sermonTitle: r.title, dateCode: r.date_code, sermonId: w.sermonId, paragraphIndex: i, paragraphRef: stableParagraphRef(r.paragraph_ref, r.id), language: 'en' }))
+      const quotes = rows.map((r, i) => ({ text: cleanSourceText(r.text), sermonTitle: r.title, dateCode: r.date_code, sermonId: w.sermonId, paragraphIndex: i, paragraphRef: stableParagraphRef(r.paragraph_ref, r.id), language: 'en' }))
       const texts = new Map(numberedParagraphs(quotes).map((p) => [p.n, p.text]))
       const value = { recordingId: w.recordingId, items: phoneParagraphList(m.marks, texts) }
       phoneListCache = { key, value }
