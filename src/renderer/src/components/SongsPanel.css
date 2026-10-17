@@ -928,3 +928,4 @@
 .songs-letter-head { position: static; }
 .songs-vrow--grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .songs-vrow--list { display: block; }
+.paste-song-textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); } /* the field fills its panel, so its ring is drawn inside */

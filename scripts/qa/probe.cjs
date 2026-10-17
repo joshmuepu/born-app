@@ -13,6 +13,7 @@ const [src, port, ...steps] = process.argv.slice(2)
     if (cmd === 'click') console.log('click', arg, await p.click(arg))
     else if (cmd === 'clicksel') console.log('clicksel', arg, await p.clickSel(arg))
     else if (cmd === 'mouse') { const [x, y] = arg.split(',').map(Number); await p.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }); await p.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }) }
+    else if (cmd === 'rmouse') { const [x, y] = arg.split(',').map(Number); for (const t of ['mousePressed', 'mouseReleased']) await p.send('Input.dispatchMouseEvent', { type: t, x, y, button: 'right', clickCount: 1, buttons: 2 }) }
     else if (cmd === 'wait') await sleep(+arg)
     else if (cmd === 'type') await p.type(arg)
     else if (cmd === 'key') { const [k, ...m] = arg.split('+').reverse(); await p.key(k, { ctrl: m.includes('ctrl'), meta: m.includes('meta'), shift: m.includes('shift'), alt: m.includes('alt') }) }

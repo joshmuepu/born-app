@@ -236,6 +236,7 @@
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 [tabindex]:focus-visible,
 .result-item:focus-visible,
 .queue-row:focus-visible,
