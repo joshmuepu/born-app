@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { initialTape, tapeReduce, tapePositionNow, toTapeWire, tapeWirePosition, tapeStatusNote, tapeTimeLeft, clampSpeed, TAPE_SPEEDS, escPausesTape } from '../../shared/tapePlayback'
+import { initialTape, tapeReduce, tapePositionNow, toTapeWire, tapeWirePosition, tapeStatusNote, tapeTimeLeft, clampSpeed, TAPE_SPEEDS, escPausesTape, sanitizeTapeAction } from '../../shared/tapePlayback'
 
 const T0 = 1_000_000
 const base = () => initialTape({ recordingId: 'r_1', fileId: 't_1', sermonId: 1115, position: 100, duration: 8688 }, T0)
@@ -144,5 +144,59 @@ describe('Esc and the tape (one rule for every window)', () => {
   })
   it('Shift+Esc is the panic key: it always pauses, whatever the setting', () => {
     for (const rule of ['keep', 'pause'] as const) for (const blanking of [true, false]) expect(escPausesTape(rule, true, blanking)).toBe(true)
+  })
+})
+
+describe('seeking works in every state', () => {
+  const states: Array<[string, () => ReturnType<typeof base>]> = [
+    ['loading (not ready yet)', () => base()],
+    ['loaded, never played', () => ready()],
+    ['playing', () => tapeReduce(ready(), { type: 'play' }, T0)],
+    ['paused after playing', () => tapeReduce(tapeReduce(ready(), { type: 'play' }, T0), { type: 'pause' }, T0 + 2000)],
+    ['stalled', () => tapeReduce(tapeReduce(ready(), { type: 'play' }, T0), { type: 'report', position: 100, playing: true, stalled: true }, T0 + 1000)],
+    ['ended', () => tapeReduce(ready(), { type: 'report', position: 8688, playing: false, ended: true }, T0)]
+  ]
+  for (const [name, make] of states) {
+    it(`${name}: a seek lands on the time asked and bumps the epoch so the sound follows`, () => {
+      const s = make()
+      const r = tapeReduce(s, { type: 'seek', to: 3000 }, T0 + 5000)
+      expect(r.position).toBe(3000)
+      expect(r.epoch).toBe(s.epoch + 1)
+      expect(r.status).toBe(s.status === 'ended' ? 'paused' : s.status)
+    })
+    it(`${name}: a seek never leaves the recording (clamped to 0 and to the length)`, () => {
+      expect(tapeReduce(make(), { type: 'seek', to: -5 }, T0).position).toBe(0)
+      expect(tapeReduce(make(), { type: 'seek', to: 99999 }, T0).position).toBe(8688)
+    })
+  }
+  it('a seek while the file is still loading is kept (the engine applies it when the file is ready)', () => {
+    const r = tapeReduce(base(), { type: 'seek', to: 3000 }, T0)
+    expect(r.status).toBe('loading')
+    expect(r.position).toBe(3000)
+  })
+})
+
+describe('commands from a window are checked', () => {
+  it('passes plain, finite values', () => {
+    expect(sanitizeTapeAction({ type: 'seek', to: 1200 })).toEqual({ type: 'seek', to: 1200 })
+    expect(sanitizeTapeAction({ type: 'skip', by: -10 })).toEqual({ type: 'skip', by: -10 })
+    expect(sanitizeTapeAction({ type: 'volume', value: 0.2 })).toEqual({ type: 'volume', value: 0.2 })
+    expect(sanitizeTapeAction({ type: 'toggle' })).toEqual({ type: 'toggle' })
+  })
+  it('drops a seek with no time instead of jumping to the start (the old behaviour read it as 0)', () => {
+    expect(sanitizeTapeAction({ type: 'seek', position: 1200 })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'seek' })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'seek', to: null })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'seek', to: '20' })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'seek', to: NaN })).toBeNull()
+  })
+  it('drops a skip, speed or volume with no number, and anything the engine alone may send', () => {
+    expect(sanitizeTapeAction({ type: 'skip' })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'speed', value: undefined })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'volume', value: Infinity })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'report', position: 1, playing: true })).toBeNull()
+    expect(sanitizeTapeAction({ type: 'device-lost' })).toBeNull()
+    expect(sanitizeTapeAction(null)).toBeNull()
+    expect(sanitizeTapeAction('seek')).toBeNull()
   })
 })

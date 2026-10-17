@@ -75,6 +75,22 @@ export type TapeAction =
   /** what the engine window actually reports */
   | { type: 'report'; position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null; errorKind?: TapeErrorKind; ready?: boolean }
 
+/** The commands a window may send. Only plain, finite values pass; a malformed one (e.g. a seek without a time) is dropped instead of being read as 0. `report` and `device-lost` belong to the engine. */
+export function sanitizeTapeAction(a: unknown): TapeAction | null {
+  if (!a || typeof a !== 'object') return null
+  const x = a as { type?: unknown; to?: unknown; by?: unknown; value?: unknown }
+  const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+  switch (x.type) {
+    case 'play': case 'pause': case 'toggle': return { type: x.type }
+    case 'seek': return num(x.to) ? { type: 'seek', to: x.to } : null
+    case 'skip': return num(x.by) ? { type: 'skip', by: x.by } : null
+    case 'speed': return num(x.value) ? { type: 'speed', value: x.value } : null
+    case 'volume': return num(x.value) ? { type: 'volume', value: x.value } : null
+    case 'muted': return { type: 'muted', value: !!x.value }
+    default: return null
+  }
+}
+
 export function tapeReduce(s: TapeRecord, a: TapeAction, now = Date.now()): TapeRecord {
   const here = tapePositionNow(s, now)
   switch (a.type) {

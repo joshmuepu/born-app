@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { parseRange } from '../shared/httpRange'
 import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
-import type { TapeAction, TapeWire } from '../shared/tapePlayback'
+import { sanitizeTapeAction, type TapeWire } from '../shared/tapePlayback'
 import { cleanOverrides } from '../shared/tapeLanguage'
 import { cleanSyncMarks, cleanSyncRegions, cleanTextLanguage, cleanTapeSettingsPatch } from '../shared/tapeClean'
 import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
@@ -250,19 +250,10 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     hub.load(String(recordingId), { play: !!opts?.play, position: typeof opts?.position === 'number' ? opts.position : undefined })
     return hub.get()
   })
-  const VALID: TapeAction['type'][] = ['play', 'pause', 'toggle', 'seek', 'skip', 'speed', 'volume', 'muted']
-  ipcMain.handle('tape:command', (_e, a: TapeAction) => {
-    if (!a || typeof a !== 'object' || !VALID.includes(a.type)) return hub.get()
-    const x = a as { type: TapeAction['type']; to?: number; by?: number; value?: number | boolean }
-    // only plain values from the window: never trust shapes (a `report` is reserved for the engine)
-    const safe: TapeAction =
-      x.type === 'seek' ? { type: 'seek', to: Number(x.to) || 0 }
-      : x.type === 'skip' ? { type: 'skip', by: Number(x.by) || 0 }
-      : x.type === 'speed' ? { type: 'speed', value: Number(x.value) }
-      : x.type === 'volume' ? { type: 'volume', value: Number(x.value) }
-      : x.type === 'muted' ? { type: 'muted', value: !!x.value }
-      : ({ type: x.type } as TapeAction)
-    hub.command(safe)
+  ipcMain.handle('tape:command', (_e, a: unknown) => {
+    // only plain values from the window: never trust shapes (a `report` is reserved for the engine); a malformed command is ignored
+    const safe = sanitizeTapeAction(a)
+    if (safe) hub.command(safe)
     return hub.get()
   })
   ipcMain.handle('tape:get', () => hub.get())
