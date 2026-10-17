@@ -28,7 +28,7 @@ const queueCount = (p) => p.ev(`document.body.innerText.match(/(\\d+) in queue/)
   }
   // R3: a picture file missing; R4: tape file missing
   { const { app, page, prof } = await open('missing', base + 2)
-    const media = path.join(prof, 'media'); const files = execSync(`find ${media} -type f \\( -name "*.png" -o -name "*.jpg" \\) | head -3`).toString().split('\n').filter(Boolean)
+    const media = path.join(prof, 'media'); const files = execSync(`find ${media}/files -type f \\( -name "*.png" -o -name "*.jpg" \\) | head -3`).toString().split('\n').filter(Boolean)
     for (const f of files) fs.rmSync(f); rec.note('R3 removed ' + files.length + ' picture files')
     await page.send('Page.reload'); await sleep(3000); await page.click('Media'); await sleep(1500); await rec.capture(page, 'r3-media-missing', 'pictures missing from disk'); await page.click('Needs attention'); await sleep(1000); await rec.capture(page, 'r3-needs-attention', 'Media › Needs attention')
     await page.click('Is tonight ready'); await sleep(2000); await rec.capture(page, 'r3-readiness', 'readiness with missing pictures'); await page.key('Escape'); await sleep(300)

@@ -2816,3 +2816,7 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 .media-link-toggle, .am-check { display: inline-flex; align-items: center; gap: 8px; }
 .tsp-seg button, .tape-ico, .tape-chipbtn, .tfl-jump, .tp-input { min-height: var(--target-min, 32px); }
 .tse-seg button, .tse-react input { min-height: var(--target-min, 32px); }
+
+/* A select with no style of its own (the interface-size choice in the ⚙ menu was a bright white native box on the dark menu) takes the app's field look. Classed selects keep their own rules. */
+select { background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 4px 8px; font: inherit; }
+select option { background-color: var(--bg-secondary); color: var(--text-primary); }
