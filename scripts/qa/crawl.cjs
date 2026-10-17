@@ -8,6 +8,7 @@ const { launch, sleep, ROOT } = require('./lib.cjs')
 const [profile = '/tmp/qa-populated', port = '9961', maxStates = '260', maxDepth = '3', start = ''] = process.argv.slice(2)
 const name = path.basename(profile) + (start ? '-' + start.toLowerCase().replace(/\W+/g, '') : '')
 const RAIL = ['Sermons', 'Bible', 'Songs', 'Media', 'Saved', 'Tape', 'Queue']
+const GLOBAL = /^(born again|back|forward|search everything|screens|open projection|remote|settings and help|app info|file|run view|is tonight ready)/i // header/rail/dock: explored once, by the HOME crawl
 const SKIP = /(^|\s)(remove|delete|clear|forget|reset|quit|exit|close projection|open projection|show|hide screen|blackout|unlink|purge|empty|discard|restore defaults|new service|uninstall|restart|relaunch|install|update now)\b|open [a-z ]*folder|reveal|show in finder|show in folder|go live|take\b|project\b|stop indexing|re-?index/i // native dialogs answer 'cancel' by themselves in a QA launch (BORN_TEST_AUTO_CANCEL_DIALOGS)
 const CANDS = `(() => {
   const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth }
@@ -62,19 +63,23 @@ const TEXTS = `(() => { const t = new Set(); const add = (s) => { s = (s || '').
   while (queue.length && states.size < +maxStates) {
     const pth = queue.shift(); const depth = pth.length
     await reset(); if (!(await replay(pth))) continue
-    const cands = JSON.parse(JSON.stringify(await page.ev(CANDS)))
+    const cands = JSON.parse(JSON.stringify(await page.ev(CANDS))).slice(0, 45)
+    const parentSig = await page.ev(SIG)
+    let dirty = false
     for (const c of cands) {
       if (states.size >= +maxStates) break
       const key = c.role + '|' + c.label
       if (SKIP.test(c.label.toLowerCase())) { skipped.add(c.label); continue }
       if (start && (depth === 0 || (depth === 1 && !first.length)) && RAIL.some((r) => c.label.startsWith(r)) && start !== 'HOME' ) continue
       if (start === 'HOME' && RAIL.some((r) => c.label.startsWith(r)) ) continue
-      if (depth > 0 && !c.inDialog && depth >= 2) continue // deep: only things inside what we opened
-      await reset(); if (!(await replay(pth))) break
+      if (start && start !== 'HOME' && GLOBAL.test(c.label)) continue
+      if (start === 'HOME' && depth >= 1 && !c.inDialog) continue // HOME: the global controls and what they open
+      if (dirty) { await reset(); if (!(await replay(pth))) break; dirty = false }
       const ok = await page.click(c.label.split(' ').slice(0, 5).join(' '))
       if (!ok) continue
       await sleep(450); n++
       const r = await record([...pth, c], depth + 1)
+      if ((await page.ev(SIG)) !== parentSig) dirty = true
       for (const l of page.takeLogs()) errors.push({ at: [...pth, c].map((x) => x.label).join(' > '), ...l })
       if (r.isNew && depth + 1 < +maxDepth) queue.push([...pth, c])
     }
