@@ -1793,7 +1793,13 @@ export default function App() {
   useEffect(() => refreshRecents(), [refreshRecents])
 
   useEffect(() => {
-    window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
+    window.electronAPI.getDataRecoveryInfo().then((info) => {
+      setDataRecovery(info)
+      // a damaged file is never fixed silently: say so once, where the operator will see it
+      if (info.queue?.recovered) pushToast({ message: 'Your last queue could not be read, so the queue starts empty. The damaged file was kept in the data folder.', actionLabel: 'Open data folder', onAction: () => void window.electronAPI.openDataFolder(), timeoutMs: 20000 })
+      if (info.library.recovered) pushToast({ message: 'Your songs and Bible data were damaged and have been reset. The damaged file was kept in the data folder.', actionLabel: 'Open data folder', onAction: () => void window.electronAPI.openDataFolder(), timeoutMs: 20000 })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /** Everything a destructive queue action changes, so Undo can put it all

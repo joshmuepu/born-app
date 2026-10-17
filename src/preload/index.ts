@@ -247,6 +247,7 @@ export interface DbRecoveryStatus {
 export interface DataRecoveryInfo {
   sermons: DbRecoveryStatus
   library: DbRecoveryStatus
+  queue?: DbRecoveryStatus
 }
 
 const api = {

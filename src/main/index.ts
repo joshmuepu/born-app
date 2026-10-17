@@ -11,7 +11,7 @@ import {
   shell
 } from 'electron'
 import { basename, join } from 'path'
-import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, renameSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
@@ -1669,7 +1669,8 @@ ipcMain.handle('app:quit', () => app.quit())
  *  that, never as "needs an internet connection." */
 ipcMain.handle('app:data-recovery-info', () => ({
   sermons: getDbRecoveryInfo(),
-  library: getLibraryDbRecoveryInfo()
+  library: getLibraryDbRecoveryInfo(),
+  queue: queueRecovery
 }))
 
 /** Opens the folder holding the local databases/settings, so a support
@@ -2122,11 +2123,28 @@ ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
 
 // ── Queue persistence ─────────────────────────────────────────────────────────
 
+/** Set when the saved queue could not be read: the damaged file is kept (renamed), never overwritten, and the window says so. */
+let queueRecovery: { recovered: boolean; quarantinedTo?: string } = { recovered: false }
 ipcMain.handle('queue:load', () => {
+  const queuePath = join(app.getPath('userData'), 'queue.json')
+  let raw: string
   try {
-    const queuePath = join(app.getPath('userData'), 'queue.json')
-    return JSON.parse(readFileSync(queuePath, 'utf-8'))
+    raw = readFileSync(queuePath, 'utf-8')
   } catch {
+    return [] // no saved queue yet
+  }
+  try {
+    return JSON.parse(raw)
+  } catch (e) {
+    try {
+      const kept = join(app.getPath('userData'), `queue.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`)
+      renameSync(queuePath, kept)
+      queueRecovery = { recovered: true, quarantinedTo: kept }
+      log.warn(`queue.json could not be read (${String(e)}); kept as ${kept}`)
+    } catch (e2) {
+      log.warn(`queue.json could not be read and could not be set aside: ${String(e2)}`)
+      queueRecovery = { recovered: true }
+    }
     return []
   }
 })
