@@ -13,6 +13,7 @@ import PanelResizer from './components/PanelResizer'
 import { escBlanksScreens, overlayIsOpen, trackEscOverlay } from './escRule'
 import { SECTION_NAMES, cycleRegion } from './regions'
 import SkipLinks from './components/SkipLinks'
+import AppearanceMenu from './components/AppearanceMenu'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
@@ -265,7 +266,7 @@ export default function App() {
    *  and auto-recovered at startup, so the status line can say exactly
    *  that instead of a generic "needs an internet connection" message. */
   const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
-  const { theme, toggle: toggleTheme, contrast, toggleContrast } = useTheme()
+  const { theme, toggle: toggleTheme, set: setTheme, contrast, toggleContrast } = useTheme()
 
   // Channels beyond Main (Phase 5) — each with its own label, persisted
   // translation, and outputs. Empty for every user who hasn't added one.
@@ -2170,119 +2171,108 @@ export default function App() {
             <span>Search everything</span>
             <kbd>{/Mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
           </button>
-          <button
-            className="btn-icon"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? (
-              <Sun width={16} height={16} strokeWidth={2} aria-hidden="true" />
-            ) : (
-              <Moon width={16} height={16} strokeWidth={2} aria-hidden="true" />
+          <span className="header-grow" />
+          <div className={`onair-cluster${projectionOpen ? (isScreenBlanked ? ' is-hidden' : ' is-live') : ''}`} role="group" aria-label="Screens">
+            <span className="onair-label" aria-live="polite">
+              <span className="onair-dot" aria-hidden="true" />
+              {projectionOpen ? (isScreenBlanked ? 'SCREEN HIDDEN' : 'ON AIR') : 'OFF AIR'}
+            </span>
+            <ScreensMenu
+              displayInfo={displayInfo}
+              projectionOpen={projectionOpen}
+              stageOpen={stageOpen}
+              fontSize={fontSize}
+              onToggleProjection={handleToggleProjection}
+              onToggleStage={handleToggleStage}
+              onSetProjectionDisplay={(id) => window.electronAPI.setProjectionDisplay(id).then(setDisplayInfo)}
+              onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
+              onFontSize={handleFontSizeChange}
+              onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
+              onDisplayInfoChange={setDisplayInfo}
+              outputs={outputs}
+              onAddGraphicsOutput={(channelId) =>
+                window.electronAPI.addGraphicsOutput(channelId).then(setOutputs)
+              }
+              onRemoveOutput={(id) => window.electronAPI.removeOutput(id).then(setOutputs)}
+              onSetOutputProfile={(id, profileId) =>
+                window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
+              }
+              onSetOutputAutoProfile={(id, autoProfile) =>
+                window.electronAPI.setOutputAutoProfile(id, autoProfile).then(setOutputs)
+              }
+              onSetOutputSuppressed={(id, suppressed) =>
+                window.electronAPI.setDestinationSuppressed(id, suppressed).then(setOutputs)
+              }
+              channels={channels.filter((c) => c.id !== 'main')}
+              availableTranslations={availableTranslations}
+              songbooks={songbooks}
+              onAddChannel={handleAddChannel}
+              onRemoveChannel={handleRemoveChannel}
+              onSetChannelTranslation={handleSetChannelTranslation}
+              onSetChannelSongbook={(id, songbookId) =>
+                window.electronAPI.setChannelSongbook(id, songbookId).then(setChannels)
+              }
+              onSetChannelSync={(id, sync) => window.electronAPI.setChannelSync(id, sync).then(setChannels)}
+              onOpenChannel={(id) => {
+                setChannelModalTab('bible')
+                setOpenChannelId(id)
+              }}
+            />
+
+            {projectionOpen && (
+              <>
+                <button
+                  className={`btn-secondary btn-icon-text${isScreenBlanked ? ' btn-toggle-on' : ''}`}
+                  onClick={handleToggleBlank}
+                  title="Black out the congregation screen (Esc)"
+                >
+                  {isScreenBlanked ? (
+                    <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                  ) : (
+                    <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
+                  )}
+                  {isScreenBlanked ? 'Show screen' : 'Hide screen'}
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    // Defaulting to Stage monitor unconditionally used to send a
+                    // message nowhere visible whenever no stage monitor was on
+                    // for that session — default to it only when it's actually
+                    // showing something, Main screen otherwise.
+                    setAlertTarget(stageOpen ? 'stage' : 'congregation')
+                    setShowAlertDialog(true)
+                  }}
+                  title={
+                    stageOpen
+                      ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
+                      : 'Show a short message across the bottom of a screen (defaults to the main screen)'
+                  }
+                >
+                  Message
+                </button>
+              </>
             )}
-          </button>
-          <button
-            className={`btn-icon${contrast ? ' btn-toggle-on' : ''}`}
-            onClick={toggleContrast}
-            aria-pressed={contrast}
-            title={contrast ? 'High contrast is on' : 'Turn on high contrast'}
-            aria-label="High contrast"
-          >
-            <Contrast width={16} height={16} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <button className="btn-quiet btn-sm" onClick={() => setShowHelp(true)} title="Open the Born Again manual (F1)">
-            Help
-          </button>
-          <button className="btn-quiet btn-sm header-shortcuts" onClick={() => setShowShortcuts(true)} title="See keyboard shortcuts">
-            Shortcuts
-          </button>
 
-          {projectionOpen && (
-            <>
-              <button
-                className={`btn-secondary btn-icon-text${isScreenBlanked ? ' btn-toggle-on' : ''}`}
-                onClick={handleToggleBlank}
-                title="Black out the congregation screen (Esc)"
-              >
-                {isScreenBlanked ? (
-                  <EyeOff width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                ) : (
-                  <Eye width={14} height={14} strokeWidth={2.2} aria-hidden="true" />
-                )}
-                {isScreenBlanked ? 'Show screen' : 'Hide screen'}
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  // Defaulting to Stage monitor unconditionally used to send a
-                  // message nowhere visible whenever no stage monitor was on
-                  // for that session — default to it only when it's actually
-                  // showing something, Main screen otherwise.
-                  setAlertTarget(stageOpen ? 'stage' : 'congregation')
-                  setShowAlertDialog(true)
-                }}
-                title={
-                  stageOpen
-                    ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
-                    : 'Show a short message across the bottom of a screen (defaults to the main screen)'
-                }
-              >
-                Message
-              </button>
-            </>
-          )}
-
-          <ScreensMenu
-            displayInfo={displayInfo}
-            projectionOpen={projectionOpen}
-            stageOpen={stageOpen}
-            fontSize={fontSize}
-            onToggleProjection={handleToggleProjection}
-            onToggleStage={handleToggleStage}
-            onSetProjectionDisplay={(id) => window.electronAPI.setProjectionDisplay(id).then(setDisplayInfo)}
-            onSetStageDisplay={(id) => window.electronAPI.setStageDisplay(id).then(setDisplayInfo)}
-            onFontSize={handleFontSizeChange}
-            onRefreshDisplays={() => window.electronAPI.listDisplays().then(setDisplayInfo)}
-            onDisplayInfoChange={setDisplayInfo}
-            outputs={outputs}
-            onAddGraphicsOutput={(channelId) =>
-              window.electronAPI.addGraphicsOutput(channelId).then(setOutputs)
-            }
-            onRemoveOutput={(id) => window.electronAPI.removeOutput(id).then(setOutputs)}
-            onSetOutputProfile={(id, profileId) =>
-              window.electronAPI.setOutputProfile(id, profileId).then(setOutputs)
-            }
-            onSetOutputAutoProfile={(id, autoProfile) =>
-              window.electronAPI.setOutputAutoProfile(id, autoProfile).then(setOutputs)
-            }
-            onSetOutputSuppressed={(id, suppressed) =>
-              window.electronAPI.setDestinationSuppressed(id, suppressed).then(setOutputs)
-            }
-            channels={channels.filter((c) => c.id !== 'main')}
-            availableTranslations={availableTranslations}
-            songbooks={songbooks}
-            onAddChannel={handleAddChannel}
-            onRemoveChannel={handleRemoveChannel}
-            onSetChannelTranslation={handleSetChannelTranslation}
-            onSetChannelSongbook={(id, songbookId) =>
-              window.electronAPI.setChannelSongbook(id, songbookId).then(setChannels)
-            }
-            onSetChannelSync={(id, sync) => window.electronAPI.setChannelSync(id, sync).then(setChannels)}
-            onOpenChannel={(id) => {
-              setChannelModalTab('bible')
-              setOpenChannelId(id)
-            }}
-          />
-
+            <button
+              className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
+              onClick={handleToggleProjection}
+            >
+              {projectionOpen ? 'Close projection' : 'Open projection'}
+            </button>
+          </div>
           <RemotePanel />
 
-          <button
-            className={projectionOpen ? 'btn-danger' : 'btn-primary btn-lg'}
-            onClick={handleToggleProjection}
-          >
-            {projectionOpen ? 'Close projection' : 'Open projection'}
-          </button>
+          <AppearanceMenu
+            theme={theme}
+            onTheme={setTheme}
+            contrast={contrast}
+            onContrast={(on) => { if (on !== contrast) toggleContrast() }}
+            uiScale={uiScale}
+            onUiScale={setUiScale}
+            onHelp={() => setShowHelp(true)}
+            onShortcuts={() => setShowShortcuts(true)}
+          />
         </div>
       </header>
 

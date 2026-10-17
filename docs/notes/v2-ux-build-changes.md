@@ -19,3 +19,8 @@ Plain language. Updated with every slice of the UX build.
 ## The left rail
 - Three labelled groups: **Find** (Sermons, Bible, Songs, Media, Saved), **Listen** (Tape) and **Service** (Queue). The selected section is always the same plum colour — before, each section had its own colour.
 - The **Open** button moved into **File → Open a saved service…** at the top of the queue (and is still on the start screen of an empty queue).
+
+## The top bar
+- The screens controls are now together in one outlined group: a label (**ON AIR** in red while the screens are live, **SCREEN HIDDEN** in amber while they are blacked out, **OFF AIR** otherwise), **Screens ▾**, **Hide screen**, **Message** and **Open / Close projection**. Remote sits next to it.
+- The things you set once — light/dark, **High contrast**, **Interface size** — plus **Help** (F1) and **Keyboard shortcuts** (?) moved into one **⚙** menu at the far right. The sun and half-circle buttons, Help and Shortcuts are no longer in the bar. Interface size used to be found only through ⌘K.
+- On a small window the label and Remote shrink to their icons so nothing is cut off.

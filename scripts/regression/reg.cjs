@@ -178,7 +178,7 @@ const check = (name, ok, detail = '') => { results.push({ area: cur, name, ok, d
 
   // ================= Help viewer =================
   area('Help viewer')
-  await main.click('button:has-text("Help")'); await sleep(1200)
+  await main.click('button[aria-label="Settings and help"]'); await sleep(300); await main.click('button:has-text("Open the manual")'); await sleep(1200)
   const pages = await main.$$eval('.help-sidebar button', (b) => b.map((x) => x.textContent.trim()))
   check('Help lists the manual pages including the new one', pages.length >= 20 && pages.some((p) => /Preview, Live/.test(p)), `${pages.length} pages`)
   let broken = 0, empty = 0

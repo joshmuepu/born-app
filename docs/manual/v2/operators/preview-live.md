@@ -34,8 +34,8 @@ with it.
 ## Bigger interface on a big screen
 
 On a large monitor (2560 pixels wide and up) Born Again makes its own controls larger
-automatically; the projection output is never affected. To choose a size yourself, press
-**Ctrl+K** (**⌘K**) and pick **Interface size: …**.
+automatically; the projection output is never affected. To choose a size yourself, open the **⚙** menu at the top right and set **Interface size** (or
+press **Ctrl+K** / **⌘K** and pick **Interface size: …**).
 
 ## Undo
 

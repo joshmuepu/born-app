@@ -49,7 +49,7 @@ export function widthClass(cssWidth: number): WidthClass {
 }
 
 /** The other breakpoints the interface uses, as tokens for `html[data-w~='1060']`: every one that the scaled width is at or below. */
-export const WIDTH_BREAKPOINTS = [1180, 1060, 820, 720] as const
+export const WIDTH_BREAKPOINTS = [1240, 1180, 1060, 820, 720] as const
 export const widthTokens = (cssWidth: number): string => WIDTH_BREAKPOINTS.filter((b) => cssWidth <= b).join(' ')
 
 export function applyUiZoom(factor: number): void {

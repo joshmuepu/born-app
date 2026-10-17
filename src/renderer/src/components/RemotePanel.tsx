@@ -242,7 +242,7 @@ export default function RemotePanel(): JSX.Element {
         ) : (
           <Smartphone width={14} height={14} strokeWidth={2} aria-hidden="true" />
         )}
-        Remote
+        <span className="remote-text">Remote</span>
       </button>
 
       {open && (

@@ -9,8 +9,8 @@ following on top — nothing was removed.
 The app is now called **Born Again**. The look is new too: a left rail for
 **Sermons / Bible / Songs**, a service queue that slides away when you don't need
 it, and the same drill-down everywhere — pick on the left, read and project on the
-right. Press **Ctrl+K** (**⌘K** on a Mac) to search everything from one box. There
-is also a **high-contrast** button next to the light/dark toggle, and the phone
+right. Press **Ctrl+K** (**⌘K** on a Mac) to search everything from one box. The light/dark
+toggle and **High contrast** are in the **⚙** menu at the top right (with the interface size), and the phone
 remote follows your phone's light or dark setting. Everything from before is still
 there.
 

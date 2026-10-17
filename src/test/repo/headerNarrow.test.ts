@@ -14,7 +14,7 @@ describe('the header on a small laptop, live (1040 px) and at a large interface 
   })
   it('wraps instead of cutting the header off the left edge when it is tight', () => {
     expect(css).toMatch(/html\[data-cssw='tight'\] \.app-header \{ flex-wrap: wrap;/)
-    expect(css).toMatch(/html\[data-cssw='tight'\] \.nav-history, html\[data-cssw='tight'\] \.header-shortcuts \{ display: none; \}/)
+    expect(css).toMatch(/html\[data-cssw='tight'\] \.nav-history \{ display: none; \}/)
   })
   it('is keyed to the width after the interface scale, not a media query (which sees the window, not the scaled page)', () => {
     expect(widthClass(1366)).toBe('wide')
@@ -26,9 +26,10 @@ describe('the header on a small laptop, live (1040 px) and at a large interface 
   })
   it('every other breakpoint is keyed the same way (no @media width rules left, which ignore the interface scale)', () => {
     expect(widthTokens(1366)).toBe('')
-    expect(widthTokens(1150)).toBe('1180')
-    expect(widthTokens(1040)).toBe('1180 1060')
-    expect(widthTokens(1040 / 1.5)).toBe('1180 1060 820 720')
+    expect(widthTokens(1210)).toBe('1240')
+    expect(widthTokens(1150)).toBe('1240 1180')
+    expect(widthTokens(1040)).toBe('1240 1180 1060')
+    expect(widthTokens(1040 / 1.5)).toBe('1240 1180 1060 820 720')
     for (const f of ['App.css', 'components/GlobalTapeBar.css', 'components/TapePlace.css', 'components/TapeAttach.css']) {
       const t = readFileSync(join(__dirname, '../../renderer/src', f), 'utf8')
       expect(t, f).not.toMatch(/@media \((max|min)-width/)

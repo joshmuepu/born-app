@@ -322,10 +322,25 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 }
+.header-grow { flex: 1; }
+/* The ON AIR cluster (P-01): the controls you use during a service, together, outlined red while the screens are live and amber while they are hidden. */
+.onair-cluster {
+  display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--bg-primary);
+}
+.onair-cluster.is-live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
+.onair-cluster.is-hidden { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.onair-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-2xs); font-weight: 700; letter-spacing: 0.09em; color: var(--text-secondary); white-space: nowrap; }
+.onair-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
+.is-live .onair-label { color: var(--live); }
+.is-live .onair-dot { background: var(--live); }
+.is-hidden .onair-label { color: var(--warn); }
+.is-hidden .onair-dot { background: var(--warn); }
 
 /* Grouped cluster of projector controls — always in the same spot so a
    volunteer's muscle memory holds during a live service. */
@@ -2650,9 +2665,16 @@ html[data-cssw='narrow'] .palette-trigger, html[data-cssw='tight'] .palette-trig
 html[data-cssw='narrow'] .palette-trigger span, html[data-cssw='narrow'] .palette-trigger kbd,
 html[data-cssw='tight'] .palette-trigger span, html[data-cssw='tight'] .palette-trigger kbd { display: none; }
 
+/* Narrow and tight: the ON AIR label shrinks to its dot and Remote to its phone icon (their names stay for screen readers via the title / group label). */
+html[data-w~='1240'] .onair-label { font-size: 0; gap: 0; }
+html[data-w~='1240'] .onair-label .onair-dot { width: 10px; height: 10px; }
+html[data-w~='1240'] .remote-text { display: none; }
+html[data-w~='1240'] .palette-trigger { min-width: 34px; flex-shrink: 0; justify-content: center; padding: 0 10px; }
+html[data-w~='1240'] .palette-trigger span, html[data-w~='1240'] .palette-trigger kbd { display: none; }
+
 /* Tight: rarely used header controls give way (Alt+←/→ and ? still work), and what is left wraps to a second row instead of being cut off the left edge
    where it could not be clicked. */
-html[data-cssw='tight'] .nav-history, html[data-cssw='tight'] .header-shortcuts { display: none; }
+html[data-cssw='tight'] .nav-history { display: none; }
 html[data-cssw='tight'] .app-header { flex-wrap: wrap; row-gap: 6px; }
 html[data-cssw='tight'] .header-actions { flex: 1 1 auto; flex-wrap: wrap; row-gap: 6px; }
 
