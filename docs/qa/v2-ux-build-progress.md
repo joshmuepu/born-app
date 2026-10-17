@@ -56,3 +56,6 @@ Recorded under Decisions above (arrows beside Show next not in the Preview heade
 
 ## Bundled automatic timing (2026-10-17)
 - Built-in whisper.cpp + English model, background queue, tape plays at once. Real 2½-hour tape: 82 s dev / 81 s packaged (macOS arm64), 356 of 363 paragraphs; startup scan of an untimed recording verified (78 s); typecheck clean; `npm test` 137 files / 1853 tests pass. Not run this slice: the Playwright regression scripts (Playwright is not installed on this machine) - only tape UI changed; Intel Mac and Windows recogniser programs not built yet (CI step added, untested).
+
+## Tape "Add" redesign (branch `v2-tape-add-redesign`) — awaiting owner choice
+Review, four options and a recommendation (A · One door) are in `docs/design/tape-add/` (open `mockups/index.html`). Three small bugs were fixed on the branch (stale welcome note, unstyled Options tab, "Not chosen yet" contradiction). Nothing from the proposals is implemented.

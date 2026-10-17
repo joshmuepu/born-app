@@ -1,0 +1,624 @@
+<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tape Add — B · One page</title><style>/* Born Again — design tokens (Phase 1 proposal).
+   Namespaced --ba-* so it can sit beside the current App.css variables while
+   the prototype is evaluated; Phase 2 migrates the app onto it and retires
+   the old names. Dark is the default (dim booth). */
+
+
+:root,
+:root[data-theme='dark'] {
+  /* surfaces: 5 steps, each ~+4% lightness; depth comes from step + hairline, not shadow alone */
+  --ba-bg-0: #08080a; /* app canvas / behind everything */
+  --ba-bg-1: #0f0f12; /* panes */
+  --ba-bg-2: #16161a; /* raised: cards, columns */
+  --ba-bg-3: #1e1e23; /* hover */
+  --ba-bg-4: #27272d; /* pressed / selected */
+  --ba-line: #26262c; /* hairline */
+  --ba-line-strong: #3a3a42;
+
+  --ba-text-1: #f4f2ee; /* 17.6:1 on bg-0 */
+  --ba-text-2: #b2afaa; /* 9.4:1  */
+  --ba-text-3: #8a8782; /* 5.4:1 — the floor for any readable text */
+
+  /* v1 identity, kept: Plum is the one action colour */
+  --ba-accent: #9a80e6;
+  --ba-accent-hi: #ad97f0;
+  --ba-accent-lo: #6f56bd;
+  --ba-on-accent: #120d1e;
+  --ba-accent-wash: rgba(154, 128, 230, 0.14);
+  --ba-focus: #c1affa;
+
+  /* v1 content identity, kept: Stone / Sage / Amber (+ Ice for Screens) */
+  --ba-sermons: #cfc8ba;
+  --ba-bible: #7ab487;
+  --ba-songs: #d49a4c;
+  --ba-screens: #5db4ea;
+
+  --ba-live: #ff4d4f; /* ON AIR. Red is reserved for live + destructive. */
+  --ba-live-wash: rgba(255, 77, 79, 0.14);
+  --ba-ok: #4cc17f;
+  --ba-warn: #f0983e;
+  --ba-danger: #ff5b61;
+
+  --ba-scrim: rgba(4, 4, 6, 0.64);
+  --ba-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ba-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(0, 0, 0, 0.56), 0 0 0 1px var(--ba-line-strong);
+}
+
+:root[data-theme='light'] {
+  --ba-bg-0: #f4f1ea;
+  --ba-bg-1: #fbfaf7;
+  --ba-bg-2: #ffffff;
+  --ba-bg-3: #f0ece3;
+  --ba-bg-4: #e6e0d3;
+  --ba-line: #e3ddcf;
+  --ba-line-strong: #cfc7b5;
+  --ba-text-1: #1a1814;
+  --ba-text-2: #55503f;
+  --ba-text-3: #6d6755;
+  --ba-accent: #5b3fb0;
+  --ba-accent-hi: #4a3294;
+  --ba-accent-lo: #7a60c8;
+  --ba-on-accent: #ffffff;
+  --ba-accent-wash: rgba(91, 63, 176, 0.1);
+  --ba-focus: #5b3fb0;
+  --ba-sermons: #7d745a;
+  --ba-bible: #38703f;
+  --ba-songs: #86581a;
+  --ba-screens: #1a6aa0;
+  --ba-live: #d3202a;
+  --ba-live-wash: rgba(211, 32, 42, 0.1);
+  --ba-ok: #1b7544;
+  --ba-warn: #9a520c;
+  --ba-danger: #c22530;
+  --ba-scrim: rgba(20, 16, 8, 0.4);
+  --ba-shadow-1: 0 1px 2px rgba(20, 16, 8, 0.08);
+  --ba-shadow-2: 0 8px 24px rgba(20, 16, 8, 0.1), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(20, 16, 8, 0.18), 0 0 0 1px var(--ba-line-strong);
+}
+
+/* High contrast: pure black/white, 2px lines, no translucency. WCAG AAA text. */
+:root[data-theme='contrast'] {
+  --ba-bg-0: #000;
+  --ba-bg-1: #000;
+  --ba-bg-2: #0a0a0a;
+  --ba-bg-3: #1a1a1a;
+  --ba-bg-4: #2e2e2e;
+  --ba-line: #8c8c8c;
+  --ba-line-strong: #ffffff;
+  --ba-text-1: #ffffff;
+  --ba-text-2: #ffffff;
+  --ba-text-3: #d6d6d6;
+  --ba-accent: #c9b6ff;
+  --ba-accent-hi: #ffffff;
+  --ba-accent-lo: #c9b6ff;
+  --ba-on-accent: #000;
+  --ba-accent-wash: rgba(201, 182, 255, 0.28);
+  --ba-focus: #ffe14d;
+  --ba-live: #ff6b6b;
+  --ba-live-wash: rgba(255, 107, 107, 0.3);
+  --ba-sermons: #ffffff;
+  --ba-bible: #8dff9f;
+  --ba-songs: #ffcf70;
+  --ba-screens: #8fd3ff;
+  --ba-shadow-2: 0 0 0 2px var(--ba-line-strong);
+  --ba-shadow-3: 0 0 0 2px var(--ba-line-strong);
+}
+
+:root {
+  /* type: Inter (kept) + JetBrains Mono for codes. Scale ratio ~1.125, UI is
+     dense by design; reading text (sermon paragraphs) has its own tier. */
+  --ba-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ba-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --ba-fs-xs: 0.72rem;
+  --ba-fs-sm: 0.8rem;
+  --ba-fs-md: 0.9rem;
+  --ba-fs-lg: 1.02rem;
+  --ba-fs-xl: 1.25rem;
+  --ba-fs-2xl: 1.6rem;
+  --ba-fs-read: 1.18rem; /* sermon / lyric reading pane */
+  --ba-lh-tight: 1.25;
+  --ba-lh-read: 1.6;
+  --ba-tracking-caps: 0.09em;
+
+  /* spacing: 4px base */
+  --ba-1: 4px; --ba-2: 8px; --ba-3: 12px; --ba-4: 16px; --ba-5: 24px; --ba-6: 32px; --ba-7: 48px;
+
+  /* radius: slightly rounder than v1 for a softer, premium feel */
+  --ba-r-sm: 6px; --ba-r-md: 10px; --ba-r-lg: 14px; --ba-r-pill: 999px;
+
+  /* density: comfortable (default) / compact via [data-density] */
+  --ba-row-h: 44px;
+  --ba-hit: 40px; /* min interactive target; 48px under [data-touch] */
+
+  /* motion — purposeful, interruptible (CSS transitions, never keyframe locks) */
+  --ba-dur-1: 90ms;  /* hover, press */
+  --ba-dur-2: 180ms; /* small state change */
+  --ba-dur-3: 280ms; /* column slide / panel */
+  --ba-ease: cubic-bezier(0.2, 0.7, 0.2, 1);       /* decelerate-in: default */
+  --ba-ease-inout: cubic-bezier(0.65, 0, 0.35, 1); /* panel slide */
+
+  /* z layers */
+  --ba-z-base: 0;
+  --ba-z-pane: 10;
+  --ba-z-sticky: 20;
+  --ba-z-popover: 40;
+  --ba-z-modal: 60;
+  --ba-z-toast: 80;
+  --ba-z-palette: 90;
+}
+:root[data-density='compact'] { --ba-row-h: 34px; --ba-hit: 32px; }
+:root[data-touch='true'] { --ba-hit: 48px; --ba-row-h: 52px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ba-dur-1: 0ms; --ba-dur-2: 0ms; --ba-dur-3: 0ms; }
+}
+
+/* Born Again UX review mockups — shared styles. Tokens are the --ba-* set from docs/design/tokens.css (copied in by build.py). Placeholder content only. */
+*{box-sizing:border-box}
+html{color-scheme:dark}
+html[data-theme='light']{color-scheme:light}
+body{margin:0;background:var(--ba-bg-0);color:var(--ba-text-1);font:14px/1.45 var(--ba-font)}
+a{color:var(--ba-accent-hi)}
+button{font:inherit;color:inherit;cursor:pointer}
+.sr{position:absolute;left:-9999px}
+
+/* page chrome (not part of the app being mocked) */
+.page{max-width:1240px;margin:0 auto;padding:28px 24px 70px}
+.page h1{font-size:28px;margin:0 0 6px}
+.page h2{font-size:21px;margin:34px 0 6px}
+.page p.lead{color:var(--ba-text-2);max-width:900px;margin:4px 0 14px}
+.topnav{position:sticky;top:0;z-index:50;display:flex;gap:14px;align-items:center;padding:10px 24px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line);flex-wrap:wrap}
+.topnav a{color:var(--ba-text-2);text-decoration:none;font-size:13.5px}.topnav a:hover,.topnav a.on{color:var(--ba-text-1)}
+.topnav .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);overflow:hidden}
+.seg button{background:var(--ba-bg-2);border:0;padding:6px 12px;font-size:13px;color:var(--ba-text-2)}
+.seg button+button{border-left:1px solid var(--ba-line-strong)}
+.seg button[aria-pressed='true']{background:var(--ba-accent);color:var(--ba-on-accent);font-weight:600}
+.seg.approve button[aria-pressed='true'][data-v='approve']{background:var(--ba-ok);color:#06140d}
+.seg.approve button[aria-pressed='true'][data-v='reject']{background:var(--ba-danger);color:#1a0507}
+.seg.approve button[aria-pressed='true'][data-v='discuss']{background:var(--ba-warn);color:#1a0d02}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--ba-line-strong);color:var(--ba-text-2);margin-right:5px}
+.pill.s{color:var(--ba-ok);border-color:var(--ba-ok)}.pill.m{color:var(--ba-warn);border-color:var(--ba-warn)}.pill.l{color:var(--ba-danger);border-color:var(--ba-danger)}
+.pill.hi{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.card{background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-lg);padding:16px 18px;margin:16px 0}
+.card h3{margin:0 0 4px;font-size:17px}
+.card .meta{margin:6px 0 10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.stage{background:var(--ba-bg-1);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);padding:10px;overflow:auto}
+.stage .lab{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);margin:0 0 6px}
+textarea.note{width:100%;min-height:54px;background:var(--ba-bg-1);color:var(--ba-text-1);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-sm);padding:8px;font:inherit}
+.summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);margin:14px 0;position:sticky;top:48px;z-index:40}
+.big{background:var(--ba-accent);color:var(--ba-on-accent);border:0;border-radius:var(--ba-r-md);padding:8px 16px;font-weight:700}
+.tgl{display:inline-flex;gap:0}
+
+/* ---- the mocked app ---- */
+.app{--w:1366px;width:var(--w);height:768px;display:grid;grid-template-rows:52px 1fr auto;background:var(--ba-bg-0);border:1px solid var(--ba-line-strong);border-radius:8px;overflow:hidden;font-size:13px;position:relative}
+.app.s1040{--w:1040px;height:640px}.app.s1920{--w:1920px;height:1080px}
+.scale{transform-origin:top left}
+.hdr{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line)}
+.logo{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;margin-right:6px}.logo i{color:var(--ba-accent);font-style:normal}.logo span{font-weight:300;color:var(--ba-accent)}
+.hb{height:32px;padding:0 12px;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);color:var(--ba-text-1);font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.hb.q{background:transparent;border-color:transparent;color:var(--ba-text-2)}
+.hb.ic{width:32px;padding:0;justify-content:center}
+.hb.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.hb.live{background:var(--ba-live);color:#fff;border-color:var(--ba-live);font-weight:700}
+.hb.srch{min-width:190px;justify-content:space-between;color:var(--ba-text-2)}
+.hb kbd,.k{font:11px var(--ba-mono);background:var(--ba-bg-3);border:1px solid var(--ba-line);border-radius:4px;padding:1px 5px;color:var(--ba-text-2)}
+.grow{flex:1}
+.cluster{display:inline-flex;gap:6px;align-items:center;padding:3px 6px;border:1px solid var(--ba-line-strong);border-radius:12px;background:var(--ba-bg-0)}
+.cluster.onair{border-color:var(--ba-live);box-shadow:0 0 0 1px var(--ba-live-wash)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ba-text-3);display:inline-block}.dot.live{background:var(--ba-live)}.dot.ok{background:var(--ba-ok)}.dot.warn{background:var(--ba-warn)}
+
+.body{display:grid;grid-template-columns:68px minmax(0,1fr) 340px;min-height:0}
+.body.noq{grid-template-columns:68px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;gap:4px;padding:8px 6px;background:var(--ba-bg-1);border-right:1px solid var(--ba-line);overflow:hidden}
+.rb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-size:11px;font-weight:600;position:relative}
+.rb svg,.rb .g{font-size:17px;line-height:1}
+.rb.on{background:var(--ba-bg-3);color:var(--ba-text-1);border-color:var(--ba-line-strong)}
+.rb.on.c-bible{border-color:var(--ba-bible);color:var(--ba-bible)}.rb.on.c-songs{border-color:var(--ba-songs);color:var(--ba-songs)}.rb.on.c-media{border-color:#4fb8a8;color:#4fb8a8}.rb.on.c-queue{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+.rb.on.neutral{border-color:var(--ba-accent);color:var(--ba-accent-hi);background:var(--ba-accent-wash)}
+.rb .bdg{position:absolute;top:2px;right:6px;font-size:10px;background:var(--ba-accent);color:var(--ba-on-accent);border-radius:9px;padding:0 5px}
+.rsep{height:1px;background:var(--ba-line);margin:4px 8px}.rgrow{flex:1}
+.rlab{font-size:9.5px;letter-spacing:.09em;color:var(--ba-text-3);text-align:center;margin:4px 0 0;text-transform:uppercase}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--ba-bg-0)}
+.tabs{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--ba-line);align-items:center}
+.tab{height:28px;padding:0 12px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-weight:600}
+.tab.on{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.cont{flex:1;min-height:0;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.drill{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;flex:1;min-height:0}
+.drill .col{border-right:1px solid var(--ba-line);padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start}
+.chbtn{height:34px;border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);border-radius:var(--ba-r-sm);font-weight:700;color:var(--ba-text-1)}
+.read{padding:10px 16px;overflow:hidden}
+.verse{display:grid;grid-template-columns:26px 1fr auto auto;gap:10px;align-items:start;padding:8px 8px;border-radius:var(--ba-r-md);border:1px solid transparent;font-size:17px;line-height:1.45}
+.verse .n{color:var(--ba-text-3);font-size:13px;padding-top:4px}
+.verse.sel{background:var(--ba-bg-2);border-color:var(--ba-accent)}
+.verse .a{display:flex;gap:6px;align-items:center;font-size:12.5px}
+.sm{height:26px;padding:0 10px;border-radius:var(--ba-r-sm);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);color:var(--ba-text-1);font-size:12.5px;display:inline-flex;align-items:center}
+.sm.q{border-color:transparent;background:none;color:var(--ba-text-2)}
+.sm.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.sm.hot{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+
+.queue{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--ba-line);background:var(--ba-bg-1)}
+.qh{padding:10px 14px 4px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700}
+.qtools{display:flex;flex-wrap:wrap;gap:2px 10px;padding:2px 14px 8px;color:var(--ba-text-2)}
+.qtools span{padding:3px 0;font-size:13px}.qtools .dis{color:var(--ba-text-3)}
+.qlist{flex:1;min-height:0;overflow:hidden;padding:4px 10px;display:flex;flex-direction:column;gap:5px}
+.qrow{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:7px 9px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md)}
+.qrow b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qrow small{color:var(--ba-text-2);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow.up{border-color:var(--ba-accent)}.qrow.live{border-color:var(--ba-live);background:var(--ba-live-wash)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.06em;border-radius:5px;border:1px solid var(--ba-line-strong);padding:1px 6px;color:var(--ba-text-2)}.tag.live{color:var(--ba-live);border-color:var(--ba-live)}.tag.up{color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.pl{padding:10px 14px;border-top:1px solid var(--ba-line);display:grid;gap:8px}
+.pv{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:center}
+.scr{aspect-ratio:16/9;background:#000;border-radius:8px;border:2px dashed var(--ba-line-strong);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#cfcfcf;text-align:center;padding:4px}
+.scr.live{border:2px solid var(--ba-live)}
+.scr.empty{color:var(--ba-text-3)}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700;display:flex;gap:6px;align-items:center}
+.big2{height:38px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--ba-text-1)}
+.big2.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent)}
+.big2.dim{color:var(--ba-text-3)}
+.row2{display:grid;gap:6px}.row2.c2{grid-template-columns:1fr 1fr}.row2.c3{grid-template-columns:2fr 1fr}
+
+.status{display:flex;gap:16px;align-items:center;padding:5px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);font:12px var(--ba-mono);color:var(--ba-text-2)}
+.status .r{margin-left:auto;display:flex;gap:16px}.status .live{color:var(--ba-live);font-weight:700}
+.tbar{display:flex;gap:10px;align-items:center;padding:7px 14px;background:var(--ba-bg-2);border-top:1px solid var(--ba-line);min-height:52px}
+.tbar .ti{min-width:150px}.tbar .ti small{display:block;color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.tbar .seek{flex:1;height:6px;background:var(--ba-bg-4);border-radius:3px;position:relative;min-width:60px}.tbar .seek i{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ba-accent);border-radius:3px}
+.cb{height:34px;min-width:34px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);display:inline-flex;align-items:center;justify-content:center;padding:0 8px}
+.cb.play{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);width:42px;border-radius:50%}
+.dock{display:grid;grid-template-columns:minmax(240px,1.1fr) minmax(0,2fr) auto;gap:14px;align-items:center;padding:7px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);min-height:56px}
+.dock .live-z{display:flex;gap:10px;align-items:center;padding:4px 10px;border:1px solid var(--ba-live);border-radius:var(--ba-r-md);background:var(--ba-live-wash);min-height:42px}
+.dock .live-z.off{border-color:var(--ba-line-strong);background:var(--ba-bg-2)}
+.dock .live-z b{display:block;font-size:13px}.dock .live-z small{color:var(--ba-text-2);font-size:11.5px}
+.dock .tape-z{display:flex;gap:8px;align-items:center}
+.dock .chips{display:flex;gap:8px;font-size:12px;color:var(--ba-text-2);align-items:center}
+.pop{position:absolute;z-index:20;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-lg);box-shadow:var(--ba-shadow-3);padding:10px;min-width:230px}
+.pop h4{margin:0 0 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}
+.pop .it{display:flex;justify-content:space-between;padding:6px 6px;border-radius:6px;color:var(--ba-text-1)}.pop .it:hover{background:var(--ba-bg-3)}
+.glos{width:100%;border-collapse:collapse;font-size:13.5px}.glos th,.glos td{border-bottom:1px solid var(--ba-line);padding:7px 8px;text-align:left;vertical-align:top}.glos th{color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.ba-toggle{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+[data-view='before'] .after,[data-view='after'] .before{display:none}
+.callout{border-left:3px solid var(--ba-accent);padding:6px 12px;color:var(--ba-text-2);margin:8px 0;background:var(--ba-bg-1)}
+.fix{outline:2px dashed var(--ba-warn);outline-offset:2px}
+.mini{display:inline-block;vertical-align:top}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+.tag,.sm,.k,.pill,.hb{white-space:nowrap}
+.qh .sm{text-transform:none;letter-spacing:0;font-weight:600}
+.lbl{white-space:nowrap}
+.qrow>div{min-width:0}
+.fitbox{width:100%;max-width:100%;overflow:hidden}
+.fitbox>.scale{width:max-content}
+.cmp>div{min-width:0}
+.cluster b{white-space:nowrap}
+.dock .live-z>div{min-width:0}.dock .live-z small{white-space:nowrap}
+/* Tape "Add" redesign mockups — the Tape place pieces. Tokens are the --ba-* set (copied in by build.py). Placeholder titles only. */
+.tpw{display:grid;grid-template-columns:268px minmax(0,1fr);min-height:0;flex:1}
+.narrow .tpw{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+.tplib{border-right:1px solid var(--ba-line);padding:10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;background:var(--ba-bg-0)}
+.narrow .tplib{flex-direction:row;border-right:0;border-bottom:1px solid var(--ba-line);align-items:stretch;overflow:hidden;flex-wrap:nowrap}
+.narrow .tplib .rec{min-width:170px}
+.tplib .lh{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative}
+.narrow .tplib .lh{flex:0 0 auto}
+.tplib h3{margin:0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}
+.rec{display:block;text-align:left;width:100%;background:var(--ba-bg-1);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);padding:8px 10px;color:var(--ba-text-1)}
+.rec.sel{border-color:var(--ba-accent);box-shadow:0 0 0 1px var(--ba-accent)}
+.rec b{font-size:13px;display:inline}.rec small{display:block;color:var(--ba-text-2);font-size:12px;margin-top:2px}
+.chip{display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--ba-line-strong);color:var(--ba-text-2);margin-left:6px;white-space:nowrap}
+.chip.ok{color:var(--ba-ok);border-color:var(--ba-ok)}.chip.warn{color:var(--ba-warn);border-color:var(--ba-warn)}.chip.bad{color:var(--ba-danger);border-color:var(--ba-danger)}
+.tpm{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;position:relative}
+.tptabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--ba-line)}
+.tptabs button{background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--ba-text-2);font-weight:600}
+.tptabs button.on{color:var(--ba-text-1);border-bottom-color:var(--ba-accent)}
+.tpc{padding:14px;overflow:hidden;display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+.c2{background:var(--ba-bg-1);border:1px solid var(--ba-line);border-radius:var(--ba-r-lg);padding:12px 14px}
+.c2 h4{margin:0 0 6px;font-size:14px;display:flex;gap:8px;align-items:center}
+.c2 p{margin:4px 0;color:var(--ba-text-2)}
+.faint{color:var(--ba-text-3)}
+.btn{height:32px;padding:0 14px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);color:var(--ba-text-1);font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.btn.q{background:none;border-color:transparent;color:var(--ba-text-2)}
+.btn.big{height:40px;padding:0 20px;font-size:14px}
+.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dz{border:2px dashed var(--ba-line-strong);border-radius:var(--ba-r-lg);padding:26px 18px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;background:var(--ba-bg-1)}
+.dz.hot{border-color:var(--ba-accent);background:var(--ba-accent-wash)}
+.dz h4{margin:0;font-size:17px}.dz p{margin:0;color:var(--ba-text-2);max-width:520px}
+.strip{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--ba-accent);background:var(--ba-accent-wash);border-radius:var(--ba-r-md)}
+.strip b{color:var(--ba-text-1)}
+.menu{position:absolute;z-index:30;top:34px;left:0;min-width:250px;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);box-shadow:var(--ba-shadow-3);padding:6px}
+.menu button{display:flex;width:100%;gap:10px;align-items:flex-start;text-align:left;background:none;border:0;border-radius:6px;padding:8px;color:var(--ba-text-1)}
+.menu button:hover{background:var(--ba-bg-3)}.menu small{display:block;color:var(--ba-text-2);font-size:11.5px}
+.toast{position:absolute;z-index:40;left:50%;transform:translateX(-50%);bottom:12px;background:var(--ba-bg-3);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);box-shadow:var(--ba-shadow-3);padding:9px 14px;display:flex;gap:12px;align-items:center;max-width:90%}
+.toast.bad{border-color:var(--ba-danger)}.toast.ok{border-color:var(--ba-ok)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:35;display:flex;align-items:center;justify-content:center}
+.sheet{width:min(560px,92%);background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-lg);box-shadow:var(--ba-shadow-3);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.sheet h4{margin:0;font-size:16px}
+.fld{height:34px;border:1px solid var(--ba-line-strong);background:var(--ba-bg-1);border-radius:var(--ba-r-md);padding:0 10px;display:flex;align-items:center;color:var(--ba-text-1);min-width:0}
+.fld.ph{color:var(--ba-text-3)}
+.prog{height:8px;border-radius:4px;background:var(--ba-bg-4);overflow:hidden}.prog i{display:block;height:100%;background:var(--ba-accent)}
+.bn{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);background:var(--ba-bg-1);color:var(--ba-text-2)}
+.bn.warn{border-color:var(--ba-warn)}.bn.bad{border-color:var(--ba-danger)}
+.fl{display:flex;flex-direction:column;gap:0;border:1px solid var(--ba-line);border-radius:var(--ba-r-md);overflow:hidden}
+.fl>div{display:flex;gap:10px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--ba-line);background:var(--ba-bg-1)}.fl>div:last-child{border-bottom:0}
+.fl .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--ba-line);background:var(--ba-bg-1)}
+.res:last-child{border-bottom:0}.res small{color:var(--ba-text-2);display:block}
+.verselines p{margin:0 0 6px;color:var(--ba-text-2)}.verselines p.cur{color:var(--ba-text-1);background:var(--ba-accent-wash);border-left:3px solid var(--ba-accent);padding:4px 8px;border-radius:4px}
+.opt{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid var(--ba-line);color:var(--ba-text-2)}
+.hintbar{display:flex;gap:12px;align-items:center;padding:7px 14px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line);color:var(--ba-text-2);font-size:12.5px}
+.tpbody{display:flex;flex-direction:column;min-height:0;flex:1}
+.tph{padding:8px 14px;display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--ba-line)}
+.tph small{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}.tph h2{margin:0;font-size:19px}
+.mark{outline:2px dashed var(--ba-warn);outline-offset:2px}
+/* the demo shell around the frame (not part of the app) */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media(max-width:1100px){.demo{grid-template-columns:1fr}}
+.narr{position:sticky;top:60px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-lg);padding:14px 16px}
+.narr h3{margin:0 0 6px;font-size:15px}.narr .stepn{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}
+.scen{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.scen button{background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:999px;padding:5px 12px;color:var(--ba-text-2);font-size:13px}
+.scen button[aria-pressed='true']{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.frame{overflow:hidden}
+.app .tpbody{min-height:0}
+.dock2{display:flex;gap:14px;align-items:center;padding:7px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);min-height:50px;color:var(--ba-text-2)}
+.dock2 .t{flex:1;min-width:0}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}.tbl th,.tbl td{border-bottom:1px solid var(--ba-line);padding:8px 10px;text-align:left;vertical-align:top}.tbl th{color:var(--ba-text-3);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+.rec-row{background:var(--ba-accent-wash)}
+
+/* frame-only mode, for screenshots */
+.frameonly .topnav,.frameonly .narr,.frameonly .scen,.frameonly .page>h1,.frameonly .page>p,.frameonly .page>.callout,.frameonly [data-opt]>.scen{display:none!important}
+.frameonly .page{padding:0;max-width:none}.frameonly .demo{display:block}.frameonly .stage{padding:0;border:0;border-radius:0;background:none}
+</style></head><body><div class="topnav"><b>Tape · Add</b><a href="index.html" class="">Review board</a><a href="compare.html" class="">Compare</a><a href="recommended.html" class="">Recommended (A)</a><a href="today.html" class="">Today</a><a href="option-a.html" class="">A · One door</a><a href="option-b.html" class="on">B · One page</a><a href="option-c.html" class="">C · Find a tape</a><a href="option-d.html" class="">D · Tidy only</a><span class="sp"></span><span class="seg" role="group" aria-label="Theme"><button data-theme-btn="dark" aria-pressed="true">Dark</button><button data-theme-btn="light" aria-pressed="false">Light</button><button data-theme-btn="contrast" aria-pressed="false">High contrast</button></span></div><div class="page"><h1>B · One page</h1><p class="lead">Keep the Add tab but make it one page: a drop zone first, “found in your folder” as a live list (no Look again), Download as one collapsed row.</p><p class="faint">Window size: <a href="?size=wide">wide 1366</a> · <a href="?size=narrow">narrow 1040</a></p><div data-opt="b"><div class="scen" role="group" aria-label="Situations"></div><div class="demo"><div class="stage"><div class="frame"></div></div><div class="narr" aria-live="polite"></div></div></div></div><script>/* Tape "Add" redesign mockups — behaviour. Placeholder content only; nothing is stored except the chosen theme and the board decisions (localStorage, wrapped). */
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s) }
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)) }
+  var store = { get: function (k) { try { return localStorage.getItem(k) } catch (e) { return null } }, set: function (k, v) { try { localStorage.setItem(k, v) } catch (e) {} } }
+  var qs = new URLSearchParams(location.search)
+
+  // ---- theme / size (also from the address, for screenshots)
+  function setTheme(t) { document.documentElement.setAttribute('data-theme', t); store.set('ba-tape-theme', t); $$('[data-theme-btn]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)) }) }
+  setTheme(qs.get('theme') || store.get('ba-tape-theme') || 'dark')
+  $$('[data-theme-btn]').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.themeBtn) }) })
+  var narrow = qs.get('size') === 'narrow'
+  if (qs.get('frame')) document.documentElement.classList.add('frameonly')
+  function fit() { $$('.fitbox').forEach(function (box) { var w = +box.dataset.w, h = +box.dataset.h, inner = box.firstElementChild; var s = Math.min(1, (box.parentElement.clientWidth - 2) / w); inner.style.transform = 'scale(' + s + ')'; inner.style.transformOrigin = 'top left'; box.style.width = Math.round(w * s) + 'px'; box.style.height = Math.round(h * s) + 'px' }) }
+  window.addEventListener('resize', fit)
+
+  // ---- invented placeholder data (no real sermons, no real text)
+  var LIB = [
+    { id: 'r1', t: 'A Sample Message', code: '99-0101M', len: '1:21:07' },
+    { id: 'r2', t: 'The Good Shepherd', code: '99-0202E', len: '1:46:55' },
+    { id: 'r3', t: 'Morning Light', code: '99-0303M', len: '2:24:47' }
+  ]
+  var NEW = { id: 'r4', t: 'Evening Hymn Service', code: '99-0404E', len: '1:12:30' }
+  var TEXT = ['The LORD is my shepherd; I shall not want.', 'He maketh me to lie down in green pastures: he leadeth me beside the still waters.', 'He restoreth my soul: he leadeth me in the paths of righteousness for his name’s sake.', 'Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me.']
+  var FOLDER = '~/Tape audio'
+
+  // ---- pieces
+  var I = { head: '🎧', up: '⇪', down: '⇩', globe: '◍', folder: '▭', ok: '✓', warn: '!', x: '✕', sp: '↻' }
+  function chip(kind, text) { return '<span class="chip ' + kind + '">' + text + '</span>' }
+  function rec(r, o) { o = o || {}; return '<button class="rec' + (o.sel ? ' sel' : '') + '" data-go="' + (o.go || '') + '"><b>' + r.t + '</b>' + (o.chip || chip('ok', I.ok + ' Timed')) + '<small>' + r.code + ' · ' + r.len + ' · M4A</small></button>' }
+  function btn(label, o) { o = o || {}; return '<button class="btn ' + (o.cls || '') + '"' + (o.go ? ' data-go="' + o.go + '"' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>' }
+  function toast(kind, html) { return '<div class="toast ' + kind + '" role="status">' + html + '</div>' }
+  function sheet(html) { return '<div class="scrim"><div class="sheet" role="dialog">' + html + '</div></div>' }
+  function tabs(list, on) { return '<div class="tptabs" role="tablist">' + list.map(function (t) { return '<button class="' + (t === on ? 'on' : '') + '" role="tab" data-go="' + (t === on ? '' : 'tab:' + t) + '">' + t + '</button>' }).join('') + '</div>' }
+  function hintBar() { return '<div class="hintbar"><span><b>Welcome to the Tape place.</b> Recordings live here: add one, time it once, and the text follows it. The player is the bar at the bottom of every section; <b>Show on the screens</b> shows the text to the congregation. Nothing plays until you press Play.</span><span style="margin-left:auto">Got it</span></div>' }
+  function follow(r, banner) {
+    return '<div class="tpc">' + (banner || '') + '<div class="row"><span class="faint">Text</span><span class="btn sm">English ▾</span><span class="faint">· Tape EN</span><span style="margin-left:auto" class="btn sm">Show on the screens</span></div><div class="verselines">' + TEXT.map(function (t, i) { return '<p class="' + (i === 1 ? 'cur' : '') + '"><b>' + (i + 1) + '</b> ' + t + '</p>' }).join('') + '</div></div>'
+  }
+  function timingTab(r) { return '<div class="tpc"><div class="c2"><h4>Timing for “' + r.t + '”</h4><p>' + chip('ok', I.ok + ' Timed') + ' 182 paragraphs have a time. It was timed automatically by BORN.</p><div class="row">' + btn('Time it again') + btn('Edit timing…') + '</div></div><div class="c2"><h4>Remove this recording</h4><p>Takes the recording off the sermon and forgets its timing. The sermon text and the original audio file are never deleted.</p>' + btn('Remove this recording…') + '</div></div>' }
+  function optionsTab(withFolder) {
+    return '<div class="tpc"><div class="c2"><h4>How the screens follow</h4><div class="opt"><span>Projector view</span><span class="btn sm">Highlight</span></div><div class="opt"><span>Show next paragraph early</span><span class="btn sm">4 s ▾</span></div></div><div class="c2"><h4>Sound</h4><div class="opt"><span>When a video plays</span><span class="btn sm">Tape pauses</span></div><div class="opt"><span>If the sound device is lost</span><span class="btn sm">Pause the tape</span></div></div>' +
+      (withFolder ? '<div class="c2 mark"><h4>' + I.folder + ' Tape audio folder</h4><div class="opt"><span>' + FOLDER + ' <span class="faint">· BORN looks here by itself</span></span><span class="row">' + btn('Change…', { cls: 'sm' }) + btn('Open folder', { cls: 'sm' }) + '</span></div></div>' : '') + '</div>'
+  }
+  function dock(r, playing) { return '<div class="dock2"><span>● Screens are off — Open projection to start</span><span class="t"></span>' + (r ? '<span>' + I.head + ' <b style="color:var(--ba-text-1)">' + r.t + '</b> ▶ 12:04 / ' + r.len + '</span>' : '<span class="faint">No tape loaded</span>') + '</div>' }
+  function rail() {
+    function b(g, l, on) { return '<span class="rb' + (on ? ' on neutral' : '') + '"><span class="g">' + g + '</span>' + l + '</span>' }
+    return '<div class="rail"><div class="rlab">Find</div>' + b('⚲', 'Sermons') + b('▤', 'Bible') + b('♪', 'Songs') + b('▣', 'Media') + b('★', 'Saved') + '<div class="rsep"></div><div class="rlab">Listen</div>' + b('◖◗', 'Tape', true) + '<div class="rgrow"></div><div class="rlab">Service</div>' + b('☰', 'Queue') + '</div>'
+  }
+  function app(inner, o) {
+    o = o || {}
+    var w = narrow ? 1040 : 1366, h = narrow ? 700 : 768
+    var hdr = '<div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb srch" style="min-width:' + (narrow ? 40 : 190) + 'px">⌕' + (narrow ? '' : ' Search everything <kbd>⌘K</kbd>') + '</span><span class="grow"></span><span class="hb">○ Screens 3</span><span class="hb pri">Open projection</span></div>'
+    return '<div class="fitbox" data-w="' + w + '" data-h="' + h + '"><div class="app' + (narrow ? ' narrow s1040' : '') + '" style="--w:' + w + 'px;height:' + h + 'px;position:relative">' + hdr + '<div class="body noq" style="min-height:0">' + rail() + '<div class="main" style="min-height:0;display:flex;flex-direction:column"><div class="tph"><small>Tape</small><h2>' + I.head + ' Recordings</h2></div>' + (o.hint ? hintBar() : '') + inner + '</div></div>' + dock(o.tape || null) + '</div></div>'
+  }
+  function place(o) {
+    // o: lib (html), tabs (html), content (html), overlay (html), toast (html)
+    return '<div class="tpw">' + '<div class="tplib">' + o.lib + '</div><div class="tpm">' + (o.tabs || '') + (o.content || '') + (o.overlay || '') + (o.toast || '') + '</div></div>'
+  }
+  function libList(items, sel, extra) { return items.map(function (r, i) { var c = extra && extra[r.id]; return rec(r, { sel: r.id === sel, chip: c, go: 'tab:Follow' }) }).join('') }
+  function emptyNote() { return '<p class="faint" style="margin:6px 2px">No recordings yet.</p>' }
+
+  // =====================================================================================================================
+  // TODAY (for comparison): the current page, as it is in the app
+  // =====================================================================================================================
+  function cardsToday(withFolder) {
+    return '<div class="tpc" style="overflow:auto">' +
+      '<div class="c2"><h4>' + I.head + ' Add a recording</h4><div class="row">' + btn(I.up + ' Add a recording…', { cls: 'pri', go: 'pick' }) + '<span class="faint">or drop the file anywhere on this page</span></div><p>The file picker opens in your Tape audio folder. A file named with its date code (like <b>65-0418M</b>) goes to the right sermon by itself and shows in the list on the left. BORN keeps its own copy and never changes your file.</p></div>' +
+      '<div class="c2"><h4>' + I.folder + ' In your “Tape audio” folder</h4><div class="row"><span class="faint" style="flex:1">' + (withFolder === 'new' ? FOLDER + ' — 2 files here are not added yet.' : FOLDER + ' — everything in that folder is already added.') + '</span>' + btn('Change…') + btn(I.sp + ' Look again', { cls: 'q', go: 'look' }) + '</div></div>' +
+      '<div class="c2"><h4>' + I.globe + ' Don’t have the file? Get audio</h4><div class="row"><span class="fld ph" style="flex:1">Type a title or a date code, e.g. 65-0418M</span></div><p>Downloads this recording from the publisher’s own site (English, usually 30–60 MB) into your “Tape audio” folder, then adds it. One recording, only when you press the button.</p><div class="row">' + btn(I.down + ' Download the tape for 99-0303M', { cls: 'pri', go: 'dl' }) + btn(I.globe + ' Open the publisher’s page', { cls: 'q' }) + '</div></div></div>'
+  }
+  var TODAY = {
+    start: 'Populated: Add tab',
+    scenarios: { 'Empty library': ['t-empty'], 'Add one file': ['t-add', 'pick', 't-done'], 'New file in the folder': ['t-add', 'look', 't-folder'], 'Download': ['t-add', 'dl', 't-dl', 't-done'], 'Errors': ['t-err'] },
+    screens: {
+      't-empty': { n: 'Empty library (today)', p: 'The empty state repeats the whole Add stack under a big “No recordings yet”. “Add a recording” is the card title, the button and (once something exists) a third button in the list. The folder card says “Not chosen yet” although the picker will open in Downloads.', render: function () { return app(place({ lib: emptyNote() + btn('Add a recording…', { cls: 'sm', go: 'pick' }), tabs: '', content: '<div class="tpc"><div class="dz" style="padding:14px"><h4>No recordings yet</h4><p>Add a recorded sermon and BORN will play it and keep the text in step.</p></div>' + cardsToday().replace('Add a recording…', 'Add a recording…') + '</div>' }), { hint: true }) } },
+      't-add': { n: 'Add tab (today)', p: 'Three cards of equal weight: a picker, a folder status and a download. The folder card has two small buttons (Change…, Look again) whose purpose a volunteer has to guess. The welcome note above still says “time it once”.', render: function () { return app(place({ lib: libList(LIB, 'r1') + btn('Add a recording…', { cls: 'sm', go: 'pick' }), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday() }), { hint: true, tape: LIB[0] }) } },
+      'pick': { n: 'The file picker opens', p: 'A system file picker (not drawn). The volunteer chooses “Morning Light.m4a”.', render: function () { return app(place({ lib: libList(LIB, 'r1'), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday(), overlay: sheet('<h4>Choose a recording</h4><p class="faint">Opens in ' + FOLDER + '</p><div class="fl"><div><span class="nm">99-0303M Morning Light.m4a</span><span class="faint">38 MB</span></div><div><span class="nm">99-0404E Evening Hymn Service.m4a</span><span class="faint">29 MB</span></div></div><div class="row">' + btn('Open', { cls: 'pri', go: 't-done' }) + btn('Cancel', { cls: 'q' }) + '</div>') }), { hint: true, tape: LIB[0] }) } },
+      't-done': { n: 'Added', p: 'The new recording is selected in the list. The toast says it plays at once. The volunteer is still on the Add tab and has to go to Follow by hand.', render: function () { var all = LIB.concat([NEW]); return app(place({ lib: libList(all, 'r4', { r4: chip('warn', 'Timing… 8%') }) + btn('Add a recording…', { cls: 'sm' }), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday(), toast: toast('ok', 'Added “Evening Hymn Service” to 99-0404E. It plays now; the text follows once BORN has timed it.') }), { hint: true, tape: LIB[0] }) } },
+      'look': { n: 'Look again', p: 'The folder is only read when the volunteer presses Look again (or when the app starts). Nothing tells them a file has appeared.', render: function () { return app(place({ lib: libList(LIB, 'r1'), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday('new'), toast: toast('', 'Looked again: 2 audio files in the folder, 2 not added yet.') }), { hint: true, tape: LIB[0] }) } },
+      't-folder': { n: 'Files found in the folder', p: 'A list appears at the bottom of the Add tab (below the fold at 768 px): Add / Add all.', render: function () { return app(place({ lib: libList(LIB, 'r1'), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday('new') + '' }), { hint: true, tape: LIB[0] }) } },
+      'dl': { n: 'Download', p: 'Download starts from a card at the bottom of the tab; progress shows inside the card.', render: function () { return app(place({ lib: libList(LIB, 'r1'), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: '<div class="tpc"><div class="c2"><h4>' + I.globe + ' Getting 99-0404E…</h4><div class="prog"><i style="width:46%"></i></div><div class="row"><span class="faint">17 of 38 MB</span>' + btn('Cancel', { cls: 'sm' }) + '</div></div></div>' }), { hint: true, tape: LIB[0] }) } },
+      't-dl': { n: 'Downloading', p: 'See previous.', render: function () { return TODAY.screens['dl'].render() } },
+      't-err': { n: 'Error (today)', p: 'Errors appear as a line inside the card they came from, which may be scrolled out of view.', render: function () { return app(place({ lib: libList(LIB, 'r1'), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], 'Add'), content: cardsToday().replace('One recording, only when you press the button.', 'One recording, only when you press the button.</p><p style="color:var(--ba-danger)">The publisher’s site did not answer. Nothing was added.') }), { hint: true, tape: LIB[0] }) } }
+    }
+  }
+
+  // =====================================================================================================================
+  // OPTION A — One door: no Add tab; Add ▾ on the list; the folder is watched; download is a small dialog
+  // =====================================================================================================================
+  function addBtn(menu) { return '<div class="lh" style="justify-content:flex-start"><span class="row" style="gap:2px;position:relative;flex-wrap:nowrap">' + btn('＋ Add recording…', { cls: 'pri sm', go: 'a-pick', title: 'Choose a file (opens in your Tape audio folder)' }) + btn('▾', { cls: 'pri sm', go: menu ? 'a-menu-close' : 'a-menu', title: 'More ways to add' }) + (menu ? '<div class="menu" role="menu" style="top:32px;left:auto;right:0"><button data-go="a-pick"><span>' + I.up + '</span><span><b>Choose a file…</b><small>Opens in ' + FOLDER + ' · or just drop a file here</small></span></button><button data-go="a-dl"><span>' + I.down + '</span><span><b>Download from the publisher…</b><small>English · one recording, only when you press the button</small></span></button></div>' : '') + '</span></div>' }
+  function aStrip(n) { return '<div class="strip" role="status"><span>' + I.folder + '</span><span style="flex:1"><b>' + n + ' new recordings in your Tape audio folder.</b> <span class="faint">Found by BORN just now — nothing is added until you say.</span></span>' + btn('Add 1 recognised', { cls: 'pri sm', go: 'a-added' }) + btn('See both', { cls: 'sm', go: 'a-folder-list' }) + '</div>' }
+  function aEmpty(drag) { return '<div class="tpc" style="justify-content:center"><div class="dz' + (drag ? ' hot' : '') + '"><div style="font-size:30px">' + I.head + '</div><h4>' + (drag ? 'Drop to add' : 'Add your first recording') + '</h4><p>Drop a recording here, or choose a file. A file named with its date code (like 99-0303M) goes to the right sermon by itself. BORN keeps its own copy and never changes your file.</p><div class="row">' + btn(I.up + ' Choose a file…', { cls: 'pri big', go: 'a-pick' }) + btn(I.down + ' Download from the publisher…', { cls: 'big', go: 'a-dl' }) + '</div><p class="faint">Or put files in <b>' + FOLDER + '</b> and BORN will offer them here. <a href="#" data-go="a-opts">Change folder</a></p></div></div>' }
+  function aTabs(on) { return tabs(['Follow', 'Timing', 'Options'], on) }
+  function aPage(o) {
+    o = o || {}
+    var items = o.items || LIB, sel = o.sel || 'r1'
+    return app(place({ lib: addBtn(o.menu) + (o.strip ? '' : '') + libList(items, sel, o.chips), tabs: o.empty ? '' : aTabs(o.tab || 'Follow'), content: o.content || (o.empty ? aEmpty(o.drag) : (o.tab === 'Options' ? optionsTab(true) : o.tab === 'Timing' ? timingTab(items.filter(function (r) { return r.id === sel })[0]) : follow(items[0], (o.strip ? aStrip(2) : '') + (o.banner || '')))), overlay: o.overlay, toast: o.toast }), { tape: LIB[0] })
+  }
+  function aFollowBanner(pct) { return '<div class="bn"><span>This recording plays now. BORN is timing it in the background (' + pct + '%); the text will follow it when that finishes.</span></div>' }
+  var A = {
+    scenarios: {
+      'Empty library': ['a-empty', 'a-drag', 'a-pick', 'a-added'],
+      'Add one file': ['a-start', 'a-pick', 'a-added', 'a-timed'],
+      'Add several': ['a-start', 'a-pick-many', 'a-several', 'a-place', 'a-added'],
+      'New file in the folder': ['a-start', 'a-newfile', 'a-added', 'a-timed'],
+      'Download': ['a-start', 'a-menu', 'a-dl', 'a-dl-typed', 'a-downloading', 'a-added'],
+      'Errors': ['a-err-dl', 'a-err-type', 'a-err-dup', 'a-err-space', 'a-err-time'],
+      'Success: what next': ['a-added', 'a-timed']
+    },
+    screens: {
+      'a-start': { n: 'Tape place, three recordings', p: 'The Add tab is gone. One button, “Add recording…”, sits at the top of the list — the only place you add from; its main part opens the file picker straight away, its ▾ offers Download. Tabs are Follow, Timing, Options (all about the selected recording or the tape).', render: function () { return aPage() } },
+      'a-empty': { n: 'Empty library', p: 'One calm drop zone with the two ways in: choose a file, or download. The folder is mentioned once, in a sentence. No welcome banner, no cards.', render: function () { return aPage({ empty: true, items: [], sel: '' }) } },
+      'a-drag': { n: 'A file is dragged over', p: 'The whole Tape place accepts a drop (as today); the zone shows it is ready.', render: function () { return aPage({ empty: true, items: [], sel: '', drag: true }) } },
+      'a-menu': { n: 'The ▾ part of the button offers the other way in', p: 'Two verbs, each with its one-line promise. Esc closes it (Esc closes whatever is on top).', render: function () { return aPage({ menu: true }) } },
+      'a-menu-close': { n: 'Menu closed', p: '', render: function () { return aPage() } },
+      'a-pick': { n: 'The file picker opens in your Tape audio folder', p: 'A system picker (drawn simply). Several files can be chosen.', render: function () { return aPage({ overlay: sheet('<h4>Choose recordings</h4><p class="faint">Opens in ' + FOLDER + '</p><div class="fl"><div><span class="nm">99-0303M Morning Light.m4a</span><span class="faint">38 MB</span></div><div><span class="nm">99-0404E Evening Hymn Service.m4a</span><span class="faint">29 MB</span></div></div><div class="row">' + btn('Open', { cls: 'pri', go: 'a-added' }) + btn('Cancel', { cls: 'q', go: 'a-start' }) + '</div>'), items: LIB }) } },
+      'a-pick-many': { n: 'Choose three files at once', p: 'Two have date codes; one (“mystery.mp3”) does not.', render: function () { return aPage({ overlay: sheet('<h4>Choose recordings</h4><div class="fl"><div><span class="nm">✓ 99-0404E Evening Hymn Service.m4a</span></div><div><span class="nm">✓ 99-0505M Sample Sermon Two.m4a</span></div><div><span class="nm">✓ mystery.mp3</span></div></div><div class="row">' + btn('Open (3)', { cls: 'pri', go: 'a-several' }) + btn('Cancel', { cls: 'q', go: 'a-start' }) + '</div>') }) } },
+      'a-added': { n: 'Added — it is selected and plays now', p: 'The new recording appears in the list, is selected, and the Follow tab says what is happening: it plays at once; the text joins when timing finishes. Nothing was asked of the volunteer.', render: function () { var all = LIB.concat([NEW]); return aPage({ items: all, sel: 'r4', chips: { r4: chip('warn', 'Timing… 8%') }, banner: aFollowBanner(8), toast: toast('ok', 'Added “Evening Hymn Service” to 99-0404E · plays now') }) } },
+      'a-timed': { n: 'A minute later: timed', p: 'The chip turns green and a toast says the text now follows. “Show on the screens” is the volunteer’s next move.', render: function () { return aPage({ items: LIB.concat([NEW]), sel: 'r4', toast: toast('ok', 'Timing finished — the text now follows the tape (356 of 363 paragraphs found).') }) } },
+      'a-several': { n: 'Added 3 files in one go', p: 'Two are added and timing in turn (one at a time, in the background). The one BORN could not place is listed once, with its one button.', render: function () { var all = LIB.concat([NEW, { id: 'r5', t: 'Sample Sermon Two', code: '99-0505M', len: '1:05:00' }]); return aPage({ items: all, sel: 'r4', chips: { r4: chip('warn', 'Timing… 31%'), r5: chip('warn', 'Timing soon') }, strip: false, toast: toast('', 'Added 2 recordings. <b>mystery.mp3</b> needs a sermon.' + ' ' + btn('Choose sermon', { cls: 'sm pri', go: 'a-place' })) }) } },
+      'a-place': { n: 'Only a file BORN cannot place asks a question', p: 'Likeliest sermons are one-click buttons; or type a title or date code.', render: function () { return aPage({ items: LIB.concat([NEW]), sel: 'r4', overlay: sheet('<h4>Which sermon is “mystery.mp3”?</h4><div class="fl"><div><span class="nm">99-0505M Sample Sermon Two</span>' + btn('This one', { cls: 'sm pri', go: 'a-added' }) + '</div><div><span class="nm">99-0606E Another Sample</span>' + btn('This one', { cls: 'sm' }) + '</div></div><div class="fld ph">Or type a title or date code</div><div class="row">' + btn('Not now', { cls: 'q', go: 'a-start' }) + '</div>') }) } },
+      'a-newfile': { n: 'A file appears in the Tape audio folder', p: 'BORN notices by itself (no “Look again”). A calm strip appears at the top of the list column’s page; it never adds anything on its own. A file whose name carries a date code is “recognised”.', render: function () { return aPage({ strip: true }) } },
+      'a-folder-list': { n: 'See what was found', p: 'Expands in place: one row per file with its match and an Add button.', render: function () { return aPage({ content: '<div class="tpc"><div class="c2"><h4>' + I.folder + ' New in ' + FOLDER + '</h4><div class="fl"><div><span class="nm">99-0404E Evening Hymn Service.m4a</span><span class="faint">→ 99-0404E</span>' + btn('Add', { cls: 'sm pri', go: 'a-added' }) + '</div><div><span class="nm">mystery.mp3</span><span class="faint">sermon unknown</span>' + btn('Choose sermon…', { cls: 'sm', go: 'a-place' }) + '</div></div><div class="row">' + btn('Add all', { cls: 'sm pri', go: 'a-several' }) + '</div></div></div>' }) } },
+      'a-dl': { n: 'Download from the publisher… (a small dialog)', p: 'Opened from the Add menu — or prefilled when you start from a sermon in the reader. One field, one button.', render: function () { return aPage({ overlay: sheet('<h4>' + I.down + ' Download from the publisher</h4><div class="fld ph">Type a title or a date code, e.g. 99-0404E</div><p class="faint">English, usually 30–60 MB. Goes into ' + FOLDER + ' and is added. One recording, only when you press the button.</p><div class="row">' + btn('Download', { cls: 'pri' }) + btn('Cancel', { cls: 'q', go: 'a-start' }) + '<span style="margin-left:auto">' + btn('Open the publisher’s page', { cls: 'q sm' }) + '</span></div>') }) } },
+      'a-dl-typed': { n: 'Typed: it says which recording it found', p: '“Download” is now specific, and nothing is fetched until it is pressed.', render: function () { return aPage({ overlay: sheet('<h4>' + I.down + ' Download from the publisher</h4><div class="fld">99-0404</div><div class="row">' + chip('ok', I.ok + ' 99-0404E · Evening Hymn Service') + '</div><p class="faint">English, about 29 MB. Goes into ' + FOLDER + ' and is added.</p><div class="row">' + btn(I.down + ' Download 99-0404E', { cls: 'pri', go: 'a-downloading' }) + btn('Cancel', { cls: 'q', go: 'a-start' }) + '</div>') }) } },
+      'a-downloading': { n: 'Downloading: progress and Cancel, and the app stays usable', p: 'The dialog closes into a progress row at the top of the list, so the volunteer can keep working. Cancel is one click.', render: function () { return aPage({ strip: false, content: follow(LIB[0], '<div class="bn"><span>' + I.down + ' Downloading 99-0404E — 17 of 29 MB</span><span class="prog" style="flex:1;min-width:120px"><i style="width:58%"></i></span>' + btn('Cancel', { cls: 'sm' }) + '</div>') }) } },
+      'a-err-dl': { n: 'Error: the publisher’s site did not answer', p: 'Plain words, what happened to their data (nothing), and the next move.', render: function () { return aPage({ overlay: sheet('<h4>Could not download</h4><p>The publisher’s site did not answer. Nothing was added.</p><div class="row">' + btn('Try again', { cls: 'pri' }) + btn('Open the publisher’s page') + btn('Close', { cls: 'q', go: 'a-start' }) + '</div>') }) } },
+      'a-err-type': { n: 'Error: not an audio file', p: 'Named, with the reason, no stack trace.', render: function () { return aPage({ toast: toast('bad', '“notes.docx” is not an audio file BORN can play. Nothing was added.') }) } },
+      'a-err-dup': { n: 'Already added', p: 'Selecting the existing recording is better than an error.', render: function () { return aPage({ toast: toast('', 'That recording is already added — here it is.') }) } },
+      'a-err-space': { n: 'Not enough room', p: 'Says how much it needs and offers the safe alternative (keep the file where it is).', render: function () { return aPage({ overlay: sheet('<h4>Not enough space</h4><p>BORN keeps its own copy of each recording, which needs 38 MB; this computer has 12 MB free.</p><div class="row">' + btn('Use the file where it is', { cls: 'pri' }) + btn('Cancel', { cls: 'q', go: 'a-start' }) + '</div><p class="faint">If that drive is not plugged in during a service, the recording will not play.</p>') }) } },
+      'a-err-time': { n: 'Timing could not finish (for example a non-English tape)', p: 'The tape still plays. The banner says why the text is not following and what to do. Hand timing stays available.', render: function () { return aPage({ banner: '<div class="bn warn"><span>This recording plays, but BORN could not time it automatically (it is not in English).</span>' + btn('Time it by hand…', { cls: 'sm' }) + '</div>' }) } },
+      'a-opts': { n: 'Options: the Tape audio folder lives here', p: 'Change… and Open folder, next to the other tape settings. A setting you touch once, not a card you see every time.', render: function () { return aPage({ tab: 'Options' }) } }
+    }
+  }
+
+  // =====================================================================================================================
+  // OPTION B — Keep the Add tab, but make it one clear page
+  // =====================================================================================================================
+  function bAdd(state) {
+    var found = state === 'found'
+    return '<div class="tpc" style="overflow:auto"><div class="dz" style="padding:18px"><h4>Drop a recording here</h4><p>A file named with its date code goes to the right sermon by itself.</p>' + btn(I.up + ' Choose a file…', { cls: 'pri big', go: 'b-added' }) + '</div>' +
+      (found ? '<div class="c2 mark"><h4>' + I.folder + ' Found in ' + FOLDER + ' <span class="chip warn">2 new</span></h4><div class="fl"><div><span class="nm">99-0404E Evening Hymn Service.m4a</span>' + btn('Add', { cls: 'sm pri', go: 'b-added' }) + '</div><div><span class="nm">mystery.mp3</span>' + btn('Choose sermon…', { cls: 'sm' }) + '</div></div><div class="row">' + btn('Add all', { cls: 'sm' }) + '<span class="faint" style="margin-left:auto">' + FOLDER + ' · <u>Change</u></span></div></div>'
+        : '<p class="faint" style="margin:2px 4px">Nothing new in ' + FOLDER + ' · <u>Change folder</u></p>') +
+      (state === 'dl' ? '<div class="c2"><h4>' + I.globe + ' Download from the publisher</h4><div class="fld">99-0404</div><div class="row">' + chip('ok', I.ok + ' 99-0404E · Evening Hymn Service') + btn(I.down + ' Download 99-0404E', { cls: 'pri', go: 'b-downloading' }) + '</div></div>'
+        : '<div class="c2" style="padding:8px 14px"><div class="row"><span>' + I.globe + ' Don’t have the file?</span><span style="margin-left:auto">' + btn('Download from the publisher ▸', { cls: 'sm', go: 'b-dl' }) + '</span></div></div>') + '</div>'
+  }
+  function bPage(o) { o = o || {}; var items = o.items || LIB; return app(place({ lib: '<div class="lh"><h3>Recordings</h3></div>' + libList(items, o.sel || 'r1', o.chips) + btn('＋ Add a recording', { cls: 'sm', go: 'b-add' }), tabs: tabs(['Follow', 'Timing', 'Options', 'Add' + (o.badge ? ' •' : '')], o.tab || 'Follow'), content: o.content, toast: o.toast }), { tape: LIB[0] }) }
+  var B = {
+    scenarios: { 'Empty library': ['b-empty'], 'Add one file': ['b-add', 'b-added'], 'New file in the folder': ['b-start', 'b-found', 'b-added'], 'Download': ['b-add', 'b-dl', 'b-downloading', 'b-added'], 'Errors': ['b-err'], 'Success: what next': ['b-added'] },
+    screens: {
+      'b-start': { n: 'Tape place (Add tab shows a dot when files are waiting)', p: 'The Add tab stays, but gets a quiet dot when BORN sees new files in the folder.', render: function () { return bPage({ badge: true, content: follow(LIB[0]) }) } },
+      'b-empty': { n: 'Empty library', p: 'The same single Add page, no duplicate headline.', render: function () { return app(place({ lib: '<div class="lh"><h3>Recordings</h3></div>' + emptyNote(), tabs: '', content: bAdd('x') })) } },
+      'b-add': { n: 'The Add tab: one drop zone first', p: 'Primary action first and large. The folder becomes a line (or a list when something is waiting). Download is one collapsed row. The welcome note is gone.', render: function () { return bPage({ tab: 'Add', content: bAdd('x') }) } },
+      'b-found': { n: 'Files found in the folder', p: 'A list of what is waiting, with Add / Add all. No “Look again” button: the page reads the folder when it opens.', render: function () { return bPage({ tab: 'Add', badge: true, content: bAdd('found') }) } },
+      'b-dl': { n: 'Download opened in place', p: 'Expands inside the page.', render: function () { return bPage({ tab: 'Add', content: bAdd('dl') }) } },
+      'b-downloading': { n: 'Downloading', p: 'Progress in the page; leaving the tab does not stop it.', render: function () { return bPage({ tab: 'Add', content: '<div class="tpc"><div class="c2"><h4>' + I.globe + ' Downloading 99-0404E</h4><div class="prog"><i style="width:46%"></i></div><div class="row"><span class="faint">17 of 29 MB</span>' + btn('Cancel', { cls: 'sm' }) + '</div></div></div>' }) } },
+      'b-added': { n: 'Added: lands on Follow', p: 'Selecting the new recording and switching to Follow is automatic (as in the app today after the earlier fix).', render: function () { return bPage({ items: LIB.concat([NEW]), sel: 'r4', chips: { r4: chip('warn', 'Timing… 8%') }, content: follow(LIB[0], aFollowBanner(8)), toast: toast('ok', 'Added “Evening Hymn Service” to 99-0404E · plays now') }) } },
+      'b-err': { n: 'Errors inline, at the top of the page', p: 'A single message area at the top of the Add page (never inside a card that may be scrolled away).', render: function () { return bPage({ tab: 'Add', content: '<div class="tpc"><div class="bn bad"><span>The publisher’s site did not answer. Nothing was added.</span>' + btn('Try again', { cls: 'sm' }) + '</div>' + bAdd('x').replace('<div class="tpc" style="overflow:auto">', '') }) } }
+    }
+  }
+
+  // =====================================================================================================================
+  // OPTION C — Find a tape: one search; every sermon shows what to do with it
+  // =====================================================================================================================
+  function cRow(code, t, status, act) { return '<div class="res"><div><b>' + t + '</b> <span class="faint">' + code + '</span><small>' + status + '</small></div><div>' + act + '</div></div>' }
+  function cPage(o) { o = o || {}; var items = o.items || LIB; return app(place({ lib: '<div class="lh"><h3>On this computer</h3></div>' + libList(items, o.sel || 'r1', o.chips), tabs: tabs(['Find a tape', 'Follow', 'Timing', 'Options'], o.tab || 'Find a tape'), content: o.content, toast: o.toast }), { tape: LIB[0] }) }
+  function cFind(q, rows, extra) { return '<div class="tpc"><div class="row"><span class="fld' + (q ? '' : ' ph') + '" style="flex:1;height:40px;font-size:15px">⌕ ' + (q || 'Find a sermon — type a title or a date code') + '</span></div>' + (extra || '') + (rows ? '<div class="fl">' + rows + '</div>' : '<p class="faint">Recordings on this computer are on the left. Everything else is one search away. You can also drop a file anywhere on this page.</p>' + '<div class="strip"><span>' + I.folder + '</span><span style="flex:1"><b>2 new files in your Tape audio folder.</b></span>' + btn('See them', { cls: 'sm', go: 'c-found' }) + '</div>') + '</div>' }
+  var C = {
+    scenarios: { 'Empty library': ['c-empty'], 'Add one file': ['c-type', 'c-have', 'c-added'], 'New file in the folder': ['c-start', 'c-found', 'c-added'], 'Download': ['c-type', 'c-dl', 'c-downloading', 'c-added'], 'Errors': ['c-err'], 'Success: what next': ['c-added'] },
+    screens: {
+      'c-start': { n: 'Find a tape (the first tab)', p: 'The tab opens on a search. Mid-service, the volunteer types a few letters and presses one button.', render: function () { return cPage({ content: cFind('', '') }) } },
+      'c-empty': { n: 'Empty library', p: 'Same page; the search is the whole story.', render: function () { return app(place({ lib: '<div class="lh"><h3>On this computer</h3></div>' + emptyNote(), tabs: tabs(['Find a tape', 'Options'], 'Find a tape'), content: cFind('', '') })) } },
+      'c-type': { n: 'Typing finds sermons and says what each one needs', p: 'Each row has ONE action chosen for it: Load (already here), Add (in your folder), Download (not here yet).', render: function () { return cPage({ content: cFind('morning', cRow('99-0303M', 'Morning Light', 'On this computer · timed', btn('Load into the player', { cls: 'sm', go: 'c-have' })) + cRow('99-0404E', 'Evening Hymn Service', 'Not on this computer · English recording available', btn(I.down + ' Download', { cls: 'sm pri', go: 'c-dl' })) + cRow('99-0505M', 'Sample Sermon Two', 'In your Tape audio folder', btn('＋ Add', { cls: 'sm pri', go: 'c-added' }))) }) } },
+      'c-have': { n: 'Already here: Load', p: 'Loading never plays (the rule stays).', render: function () { return cPage({ tab: 'Follow', content: follow(LIB[0]), toast: toast('', 'Loaded “Morning Light”. Press Play when you are ready.') }) } },
+      'c-found': { n: 'Folder files appear as rows too', p: 'Files in the folder show with the sermon BORN thinks they are.', render: function () { return cPage({ content: cFind('', cRow('99-0404E', 'Evening Hymn Service', 'In your Tape audio folder · Evening Hymn Service.m4a', btn('＋ Add', { cls: 'sm pri', go: 'c-added' })) + cRow('?', 'mystery.mp3', 'In your Tape audio folder · sermon unknown', btn('Choose sermon…', { cls: 'sm' }))) }) } },
+      'c-dl': { n: 'Download happens in the row', p: 'The row shows progress and Cancel; nothing blocks the page.', render: function () { return cPage({ content: cFind('morning', cRow('99-0404E', 'Evening Hymn Service', 'Downloading — 17 of 29 MB<div class="prog" style="width:220px;margin-top:4px"><i style="width:58%"></i></div>', btn('Cancel', { cls: 'sm' }))) }) } },
+      'c-downloading': { n: 'Downloading', p: 'See previous.', render: function () { return C.screens['c-dl'].render() } },
+      'c-added': { n: 'Added: the row turns into Load', p: 'Lands on Follow with the same “plays now; text follows” banner.', render: function () { return cPage({ items: LIB.concat([NEW]), sel: 'r4', chips: { r4: chip('warn', 'Timing… 8%') }, tab: 'Follow', content: follow(LIB[0], aFollowBanner(8)), toast: toast('ok', 'Added “Evening Hymn Service” · plays now') }) } },
+      'c-err': { n: 'Errors are in the row', p: 'The row says what happened and offers the next move; other rows are untouched.', render: function () { return cPage({ content: cFind('evening', cRow('99-0404E', 'Evening Hymn Service', '<span style="color:var(--ba-danger)">The publisher’s site did not answer. Nothing was added.</span>', btn('Try again', { cls: 'sm pri' }) + btn('Publisher’s page', { cls: 'sm q' }))) }) } }
+    }
+  }
+
+  // =====================================================================================================================
+  // OPTION D — Tidy only: the same tab, two cards, honest wording
+  // =====================================================================================================================
+  function dAdd(found) { return '<div class="tpc" style="overflow:auto"><div class="c2"><h4>' + I.head + ' Add a recording</h4><div class="row">' + btn(I.up + ' Choose a file…', { cls: 'pri', go: 'd-added' }) + '<span class="faint">or drop it anywhere on this page</span></div></div><div class="c2"><h4>' + I.globe + ' Get a recording</h4><div class="row"><span class="fld ph" style="flex:1">Type a title or a date code</span>' + btn(I.down + ' Download', { cls: '', go: 'd-dl' }) + '</div></div><p class="faint" style="margin:2px 4px">' + (found ? '<b style="color:var(--ba-accent-hi)">2 new files in ' + FOLDER + '</b> ' + btn('Add them', { cls: 'sm pri', go: 'd-added' }) : FOLDER + ' · nothing new') + ' · <u>Change folder</u></p></div>' }
+  function dPage(o) { o = o || {}; var items = o.items || LIB; return app(place({ lib: libList(items, o.sel || 'r1', o.chips), tabs: tabs(['Follow', 'Timing', 'Options', 'Add'], o.tab || 'Add'), content: o.content, toast: o.toast }), { tape: LIB[0] }) }
+  var D = {
+    scenarios: { 'Add one file': ['d-add', 'd-added'], 'New file in the folder': ['d-found', 'd-added'], 'Download': ['d-add', 'd-dl', 'd-added'], 'Errors': ['d-err'] },
+    screens: {
+      'd-add': { n: 'Add tab, tidied', p: 'Two cards instead of three. The left-hand duplicate button and the welcome note are removed; “Look again” goes (the folder is read when the page opens); the folder is a line.', render: function () { return dPage({ content: dAdd(false) }) } },
+      'd-found': { n: 'A line says files are waiting', p: 'One line, one button. No list.', render: function () { return dPage({ content: dAdd(true) }) } },
+      'd-dl': { n: 'Download', p: 'Progress shows in the card.', render: function () { return dPage({ content: '<div class="tpc"><div class="c2"><h4>' + I.globe + ' Downloading 99-0404E</h4><div class="prog"><i style="width:46%"></i></div><div class="row"><span class="faint">17 of 29 MB</span>' + btn('Cancel', { cls: 'sm' }) + '</div></div></div>' }) } },
+      'd-added': { n: 'Added', p: 'Selected, on Follow.', render: function () { return dPage({ items: LIB.concat([NEW]), sel: 'r4', chips: { r4: chip('warn', 'Timing… 8%') }, tab: 'Follow', content: follow(LIB[0], aFollowBanner(8)), toast: toast('ok', 'Added “Evening Hymn Service” · plays now') }) } },
+      'd-err': { n: 'Error', p: 'A message line at the top of the tab.', render: function () { return dPage({ content: '<div class="tpc"><div class="bn bad"><span>The publisher’s site did not answer. Nothing was added.</span></div>' + dAdd(false).replace('<div class="tpc" style="overflow:auto">', '') }) } }
+    }
+  }
+  var OPTS = { today: TODAY, a: A, b: B, c: C, d: D }
+
+  // ---- the demo player
+  function demo(root) {
+    var key = root.dataset.opt, O = OPTS[key]
+    var names = Object.keys(O.scenarios)
+    var scen = qs.get('scen') || names[0], idx = +(qs.get('i') || 0)
+    if (qs.get('screen')) { for (var k in O.scenarios) { var j = O.scenarios[k].indexOf(qs.get('screen')); if (j >= 0) { scen = k; idx = j; break } } }
+    function cur() { return O.scenarios[scen][idx] }
+    function go(name) { var s = O.scenarios[scen].indexOf(name); if (s >= 0) idx = s; else { for (var k in O.scenarios) { var j = O.scenarios[k].indexOf(name); if (j >= 0) { scen = k; idx = j; break } } if (O.scenarios[scen].indexOf(name) < 0) { O.scenarios[scen] = O.scenarios[scen].slice(); O.scenarios[scen].push(name); idx = O.scenarios[scen].length - 1 } } draw() }
+    function draw() {
+      var sc = O.screens[cur()]
+      $('.scen', root).innerHTML = names.map(function (n) { return '<button aria-pressed="' + (n === scen) + '" data-scen="' + n + '">' + n + '</button>' }).join('')
+      $('.frame', root).innerHTML = sc.render()
+      $('.narr', root).innerHTML = '<div class="stepn">' + scen + ' · step ' + (idx + 1) + ' of ' + O.scenarios[scen].length + '</div><h3>' + sc.n + '</h3><p>' + sc.p + '</p><div class="row" style="margin-top:10px"><button class="btn sm" data-nav="-1"' + (idx === 0 ? ' disabled' : '') + '>‹ Back</button><button class="btn sm pri" data-nav="1"' + (idx >= O.scenarios[scen].length - 1 ? ' disabled' : '') + '>Next ›</button></div><p class="faint" style="font-size:12px">You can also click the buttons inside the picture.</p>'
+      fit()
+    }
+    root.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-scen],[data-nav],[data-go]'); if (!t) return
+      e.preventDefault()
+      if (t.dataset.scen) { scen = t.dataset.scen; idx = 0; draw() }
+      else if (t.dataset.nav) { idx = Math.max(0, Math.min(O.scenarios[scen].length - 1, idx + +t.dataset.nav)); draw() }
+      else if (t.dataset.go) { var g = t.dataset.go; if (g.indexOf('tab:') === 0) return; if (g) go(g) }
+    })
+    draw()
+  }
+  $$('[data-opt]').forEach(demo)
+  window.addEventListener('load', fit); setTimeout(fit, 0)
+
+  // ---- the review board
+  var board = $('#board')
+  if (board) {
+    var KEY = 'ba-tape-add-decisions-v1', saved = {}
+    try { saved = JSON.parse(store.get(KEY) || '{}') } catch (e) { saved = {} }
+    var cards = $$('[data-pid]', board), save = function () { store.set(KEY, JSON.stringify(saved)) }
+    var summary = function () { var c = { approve: 0, reject: 0, discuss: 0, open: 0 }; cards.forEach(function (card) { var d = saved[card.dataset.pid]; c[d && d.v ? d.v : 'open']++ }); $('#sum-approve').textContent = c.approve; $('#sum-reject').textContent = c.reject; $('#sum-discuss').textContent = c.discuss; $('#sum-open').textContent = c.open }
+    cards.forEach(function (card) {
+      var id = card.dataset.pid, d = saved[id] = saved[id] || { v: '', n: '' }
+      var show = function () { $$('[data-v]', card).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === d.v)) }) }
+      show(); $('textarea', card).value = d.n || ''
+      $$('[data-v]', card).forEach(function (b) { b.addEventListener('click', function () { d.v = d.v === b.dataset.v ? '' : b.dataset.v; show(); save(); summary() }) })
+      $('textarea', card).addEventListener('input', function (e) { d.n = e.target.value; save() })
+    })
+    summary()
+    $('#copy').addEventListener('click', function () {
+      var lines = ['My decisions on the Tape “Add” redesign:']
+      cards.forEach(function (card) { var d = saved[card.dataset.pid] || {}; lines.push(card.dataset.pid + ' ' + card.dataset.title + ' — ' + ({ approve: 'APPROVE', reject: 'REJECT', discuss: 'DISCUSS' }[d.v] || 'NO DECISION') + (d.n ? ' — ' + d.n.replace(/\s+/g, ' ') : '')) })
+      var txt = lines.join('\n'), out = $('#out'); out.value = txt; out.hidden = false; out.select()
+      var done = function () { $('#copied').textContent = 'Copied — paste it back to Claude.' }
+      try { navigator.clipboard.writeText(txt).then(done, function () { $('#copied').textContent = 'Select the text below and copy it.' }) } catch (e) { $('#copied').textContent = 'Select the text below and copy it.' }
+    })
+    $('#reset').addEventListener('click', function () { if (confirm('Clear all decisions on this page?')) { saved = {}; save(); location.reload() } })
+  }
+})()
+</script></body></html>
