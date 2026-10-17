@@ -61,8 +61,20 @@ export default function NowDock({
     sum.state === 'hidden' ? (sum.title ? `Kept: ${sum.title}` : 'The screens are black') :
     sum.state === 'empty' ? 'Screens on · ready' : 'Open projection to start'
 
+  // panels that float above the page (Saved, …) must stop above the dock, whatever height it has when it wraps: publish its real height
+  const dockRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = dockRef.current
+    if (!el) return
+    const publish = (): void => document.documentElement.style.setProperty('--nd-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [])
+
   return (
-    <footer className={`now-dock${hasTape ? ' now-dock--tape' : ''}`} aria-label="Now">
+    <footer ref={dockRef} className={`now-dock${hasTape ? ' now-dock--tape' : ''}`} aria-label="Now">
       <div className="nd-main">
         <div className={`nd-live nd-live--${sum.state}`} role="status" aria-live="polite">
           <span className="nd-dot" aria-hidden="true" />

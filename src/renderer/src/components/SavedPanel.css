@@ -2,7 +2,7 @@
   position: fixed;
   z-index: 50;
   top: 52px;
-  bottom: 30px;
+  bottom: calc(var(--nd-h, 62px) + 8px); /* stops above the Now dock */
   left: 68px;
   width: min(380px, calc(calc(100vw / var(--ui-zoom, 1)) - 80px));
   display: flex;
