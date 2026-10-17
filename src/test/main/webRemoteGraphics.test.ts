@@ -98,7 +98,7 @@ describe('text direction and size on the lower third', () => {
     }
     registerGraphicsDestination('g-rtl', 'lower-third', false)
     const html = (await getPage('/output/graphics/g-rtl')).body
-    expect(html).toMatch(/#text-inner \{ width: 100%; unicode-bidi: plaintext; \}/)
+    expect(html).toMatch(/\#text-inner \{ width: 100%; unicode-bidi: plaintext; overflow-wrap: anywhere; \}/)
     unregisterGraphicsDestination('g-rtl')
   })
   it('the panel is opaque enough to read over white video once OBS blends it in linear light (white text >= 4.5:1 against the blended panel)', async () => {

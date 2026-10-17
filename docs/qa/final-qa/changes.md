@@ -22,3 +22,5 @@
 | F-018 | P2 | Phone remote queue | a YouTube / picture item without a stored thumbnail showed a broken-image icon | the image removes itself when it cannot load | broken image | b0f2534 |
 | F-019 | P2 | Phone remote | "Skip for now" 23 px and "View all" 19 px high | 44 px touch targets | touch | b0f2534 |
 | F-020 | P2 | Remote + Graphics pages (`webRemote.ts`) | a 404 for /favicon.ico on the Graphics page and a console warning for the deprecated iOS web-app meta | an empty icon link and the standard meta | console cleanliness (OBS browser sources log these) | 5baaf8e |
+| F-021 | P2 | Tape language notice (`tapeLanguage.ts`) | the message listed every unmatched paragraph number (a 6-line wall of numbers for a Spanish text) | at most four runs and "and N more"; the full list is still in "Line up the differences" | plain language | 1d169ae |
+| F-022 | P2 | Tape editor / options / player | editor row text truncated with no tooltip; segmented option buttons 26 px, mute/sound-output 30 px, search field 26 px | full text on hover; 32 px floor | truncation, targets | 1d169ae |
