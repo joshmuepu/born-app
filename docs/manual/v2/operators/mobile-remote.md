@@ -27,6 +27,21 @@ walking the room while still controlling the queue.
 and the connection indicator (top of the phone screen) shows connected, not
 "Connecting…".
 
+## The tabs, and the hidden-screen banner
+
+The bar at the bottom of the phone (the left side on a tablet) has six tabs: **Queue**,
+**Sermons**, **Bible**, **Songs**, **Media** and **Tape**.
+
+- **Media** lists the pictures and videos in the library with a thumbnail. **Show** puts one
+  on the screens now (a video waits on its first frame, paused); **+ Queue** adds it to the
+  queue and nothing goes live.
+- **Tape** is the tape card: Play / Pause, ±10 seconds, previous / next paragraph, volume, and
+  the paragraph list to jump to one. When no tape is loaded it says so — load one on the main
+  computer first (Tape place).
+- When the screens are hidden (Esc, or **Hide screen** on the phone) an amber **SCREEN HIDDEN**
+  banner appears at the top. Tap it, or the **Show screen** button, to bring the screens back.
+  The **Hide screen** button is 56 pixels or more high so it is easy to hit.
+
 ## If this computer is on more than one network
 
 Some computers are on two networks at once — for example a network cable **and** the church WiFi. A phone can only reach Born Again through the network it is

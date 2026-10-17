@@ -411,6 +411,8 @@ declare global {
         callback: (data: { songId: number; contributor?: QueueSource }) => void
       ) => () => void
       onWebRemoteProjectSong: (callback: (songId: number, slide: number) => void) => () => void
+      onWebRemoteProjectMedia: (callback: (m: { mediaId: string; name: string; type?: string }) => void) => () => void
+      onWebRemoteQueueMedia: (callback: (m: { mediaId: string; name: string; type?: string }) => void) => () => void
       onWebRemoteNewService: (callback: () => void) => () => void
       onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void
       onWebRemoteOpenService: (callback: (items: unknown[]) => void) => () => void

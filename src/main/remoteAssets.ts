@@ -82,6 +82,19 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
    its A-Z rail) has a real bounded height to flex against. */
 .scroll{flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0}
 .view{display:none}
+.hidden-banner{flex-shrink:0; width:100%; min-height:48px; margin:0; border:0; background:var(--warn); color:var(--warn-ink); font-weight:800; font-size:15px; letter-spacing:0.03em}
+.hidden-banner[hidden]{display:none}
+.media-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:14px 18px 0}
+.media-tile{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column}
+.media-tile .mt-img{aspect-ratio:16/10; background:#000; display:flex; align-items:center; justify-content:center; position:relative}
+.media-tile img{width:100%; height:100%; object-fit:contain; display:block}
+.media-tile .mt-badge{position:absolute; top:6px; left:6px; background:rgba(0,0,0,.7); color:#fff; font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:6px}
+.media-tile .mt-name{padding:8px 10px 0; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.media-tile .mt-actions{display:flex; gap:8px; padding:8px 10px 10px}
+.media-tile .mt-actions button{flex:1; min-height:44px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-weight:700; font-size:14px}
+.media-tile .mt-actions .mt-show{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.tape-view{padding:14px 18px 0; display:flex; flex-direction:column; gap:12px}
+@media (min-width:700px){.media-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .view.active{display:flex; flex-direction:column; flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:24px}
 
 /* Search boxes (and the compact Live Bar riding along with them) must never
@@ -698,6 +711,8 @@ const ICON = {
   chevronUp: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
   chevronDown: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  media: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
+  tape: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 }
 
@@ -714,17 +729,22 @@ export function buildAppBody(): string {
       <button id="next-p" class="btn-next"><span>Next</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
       <button class="blank" id="blank-p">Hide screen</button>
     </div>
+    <button class="hidden-banner" id="hidden-banner-p" hidden>SCREEN HIDDEN — tap to show</button>
     <div class="scroll">
       <div class="view active" data-view="queue" id="view-queue"></div>
       <div class="view" data-view="sermons" id="view-sermons"></div>
       <div class="view" data-view="bible" id="view-bible"></div>
       <div class="view" data-view="songs" id="view-songs"></div>
+      <div class="view" data-view="media" id="view-media"></div>
+      <div class="view" data-view="tape" id="view-tape"></div>
     </div>
     <div class="tabbar">
       <button class="tab active" data-tab="queue">${ICON.queue}Queue</button>
       <button class="tab" data-tab="sermons">${ICON.sermons}Sermons</button>
       <button class="tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="tab" data-tab="songs">${ICON.songs}Songs</button>
+      <button class="tab" data-tab="media">${ICON.media}Media</button>
+      <button class="tab" data-tab="tape" id="tab-tape">${ICON.tape}Tape</button>
     </div>
   </div>
 
@@ -735,11 +755,14 @@ export function buildAppBody(): string {
       <button class="sidebar-tab" data-tab="sermons">${ICON.sermons}Sermons</button>
       <button class="sidebar-tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
+      <button class="sidebar-tab" data-tab="media">${ICON.media}Media</button>
+      <button class="sidebar-tab" data-tab="tape" id="sidetab-tape">${ICON.tape}Tape</button>
       <div class="sidebar-spacer"></div>
       <button class="blank" id="blank-t">Hide screen</button>
       <div class="conn bad" id="conn-t" role="status" aria-live="polite"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="tablet-main">
+      <button class="hidden-banner" id="hidden-banner-t" hidden>SCREEN HIDDEN — tap to show</button>
       <div class="list-pane" id="tabletList"></div>
       <div class="preview-pane" id="tabletPreview"></div>
     </div>
@@ -1045,6 +1068,9 @@ document.addEventListener('DOMContentLoaded', function(){
   initA2HS();
   loadBibleBooks();
   loadSongs();
+  loadMedia();
+  on($('hidden-banner-p'), 'click', toggleBlank);
+  on($('hidden-banner-t'), 'click', toggleBlank);
   renderCurrentTab();
   poll();
   setInterval(poll, 1000);
@@ -1064,6 +1090,8 @@ function renderCurrentTab(){
   else if(state.tab === 'sermons') renderSermonsTab();
   else if(state.tab === 'bible') renderBibleTab();
   else if(state.tab === 'songs') renderSongsTab();
+  else if(state.tab === 'media') renderMediaTab();
+  else if(state.tab === 'tape') renderTapeTab();
 }
 
 /* ── Polling: queue / on-screen / blank state ─────────────────────── */
@@ -1093,6 +1121,7 @@ function poll(){
     ensureTapeList(s.tape);
     setConn(true);
     if(state.tab === 'queue') renderQueueTab();
+    else if(state.tab === 'tape') renderTapeTab();
     updateBlankButtons();
     updateLiveBars();
     refreshOpenDetailSheet();
@@ -1132,6 +1161,7 @@ function updateBlankButtons(){
     b.textContent = state.qs.blanked ? 'Show screen' : 'Hide screen';
     b.classList.toggle('active', !!state.qs.blanked);
   });
+  ['hidden-banner-p','hidden-banner-t'].forEach(function(id){ var b = $(id); if(b) b.hidden = !state.qs.blanked; });
 }
 function updateLiveBars(){
   ['livebar-sermons','livebar-sermonsT','livebar-bible','livebar-bibleT','livebar-songs','livebar-songsT'].forEach(function(id){
@@ -2277,6 +2307,58 @@ function selectBibleHit(i){
   openChapterContext(h.bookNum, h.chapter, [h.verse]);
 }
 
+/* ── Media tab (pictures and videos in the library: Show now, or add to the queue) ── */
+function loadMedia(){
+  getJSON('/api/media/list').then(function(rows){ state.mediaList = rows || []; if(state.tab === 'media') renderMediaTab(); }).catch(function(){});
+}
+function mediaBodyHtml(){
+  var rows = state.mediaList;
+  if(!rows) return '<div class="queue-empty-card">Loading…</div>';
+  if(!rows.length) return '<div class="queue-empty-card">No pictures yet.<br>Add them on the main computer (Media), then they appear here.</div>';
+  var html = '<div class="media-grid">';
+  rows.forEach(function(m, i){
+    html += '<div class="media-tile"><div class="mt-img"><img loading="lazy" alt="' + esc(m.name) + '" src="/media/' + encodeURIComponent(m.id) + '/thumb">' + (m.type === 'video' ? '<span class="mt-badge">Video</span>' : '') + '</div>'
+      + '<div class="mt-name" title="' + esc(m.name) + '">' + esc(m.name) + '</div>'
+      + '<div class="mt-actions"><button class="mt-show" onclick="mediaAct(\\'project\\',' + i + ')">Show</button><button onclick="mediaAct(\\'queue\\',' + i + ')">+ Queue</button></div></div>';
+  });
+  return html + '</div>';
+}
+function renderMediaTab(){
+  var html = '<div class="sticky-head"><div class="livebar-slot" id="livebar-media">' + liveBarHtml() + '</div></div>' + mediaBodyHtml();
+  var phone = $('view-media');
+  if(phone) setHtmlPreservingScroll(phone, html, 'media', null);
+  var list = $('tabletList');
+  if(list && state.tab === 'media'){
+    setHtmlPreservingScroll(list, '<h2>Media</h2>' + transportInlineHtml() + mediaBodyHtml(), 'media', null);
+  }
+  renderTabletPreview();
+}
+function mediaAct(which, i){
+  var m = state.mediaList && state.mediaList[i];
+  if(!m) return;
+  var payload = { mediaId: m.id, name: m.name, mediaType: m.type };
+  if(which === 'queue'){
+    var contributor = getContributor();
+    if(contributor) payload.contributor = contributor;
+  }
+  cmd(which === 'queue' ? 'queue-media' : 'project-media', payload).then(function(){
+    toast(which === 'queue' ? 'Added to queue' : 'Showing…');
+    if(which === 'project') pollUntilOnScreen(function(){});
+  });
+}
+
+/* ── Tape tab (the tape card with its paragraph list; the card is also on the Queue tab while something is playing) ── */
+function renderTapeTab(){
+  var t = state.qs && state.qs.tape;
+  var body = t ? tapeControlsHtml() : '<div class="queue-empty-card">No tape is loaded.<br>On the main computer, open the Tape place and load a recording; it appears here.</div>';
+  var html = '<div class="tape-view">' + body + '</div>';
+  var phone = $('view-tape');
+  if(phone) setHtmlPreservingScroll(phone, html, 'tape', null);
+  var list = $('tabletList');
+  if(list && state.tab === 'tape') setHtmlPreservingScroll(list, '<h2>Tape</h2>' + transportInlineHtml() + html, 'tape', null);
+  renderTabletPreview();
+}
+
 /* ── Songs tab ─────────────────────────────────────────────────────── */
 var songsSearchTimer = null;
 var songsSearchSeq = 0;
@@ -2430,7 +2512,7 @@ function jumpToLetter(btn, letter){
   if(target) target.scrollIntoView({ block: 'start' });
 }
 function afterProjectFromSheet(){
-  toast('Projecting…');
+  toast('Showing…');
   closeSheet();
   state.selected = null;
   // Fetch the just-updated on-screen state before switching to the Queue
@@ -2637,7 +2719,7 @@ function sheetAction(which){
     if(contributor) payload = Object.assign({}, payload, { contributor: contributor });
   }
   cmd(action, payload).then(function(){
-    toast(which === 'queue' ? 'Added to queue' : 'Projecting…');
+    toast(which === 'queue' ? 'Added to queue' : 'Showing…');
     closeSheet();
     if(which === 'project'){
       state.selected = null;

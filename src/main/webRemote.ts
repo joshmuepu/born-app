@@ -120,6 +120,9 @@ type CommandCallback = (cmd: {
   /** Reorder target row id — only set for action 'reorder'. */
   toId?: string
   slide?: number
+  /** 'project-media' / 'queue-media' (the phone's Media tab): the library id, its name and type ('image' | 'video') */
+  mediaId?: string
+  mediaType?: string
   quote?: unknown
   reference?: string
   translation?: string
@@ -153,6 +156,8 @@ export interface WebRemoteSearchHandlers {
   recentSermons: () => Promise<unknown[]>
   onThisDay: () => Promise<unknown[]>
   recentKeys: () => Promise<string[]>
+  /** The pictures and videos in the media library, for the phone's Media tab (names and ids only; the thumbnail is `/media/<id>/thumb`). */
+  media?: () => Promise<unknown[]>
 }
 
 /** One channel's state as the automation API reports it — deliberately just
@@ -1120,6 +1125,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     } catch {
       sendJSON(res, 200, { error: 'Lookup failed.' })
     }
+    return
+  }
+  if (path === '/api/media/list' && req.method === 'GET') {
+    sendJSON(res, 200, searchHandlers?.media ? await searchHandlers.media() : [])
     return
   }
   if (path === '/api/songs/recent' && req.method === 'GET') {

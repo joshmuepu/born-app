@@ -3221,6 +3221,10 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send('webremote:queue-song', { songId: cmd.songId, contributor: cmd.contributor })
       } else if (cmd.action === 'project-song' && cmd.songId !== undefined) {
         mainWindow.webContents.send('webremote:project-song', { songId: cmd.songId, slide: cmd.slide ?? 0 })
+      } else if (cmd.action === 'project-media' && typeof cmd.mediaId === 'string') {
+        mainWindow.webContents.send('webremote:project-media', { mediaId: cmd.mediaId, name: cmd.name ?? '', type: cmd.mediaType })
+      } else if (cmd.action === 'queue-media' && typeof cmd.mediaId === 'string') {
+        mainWindow.webContents.send('webremote:queue-media', { mediaId: cmd.mediaId, name: cmd.name ?? '', type: cmd.mediaType })
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
@@ -3275,6 +3279,15 @@ app.whenReady().then(async () => {
         try {
           const now = new Date()
           return Promise.resolve(getOnThisDay(getDb(), now.getMonth() + 1, now.getDate()))
+        } catch {
+          return Promise.resolve([])
+        }
+      },
+      // the phone's Media tab: names and ids of the library (never paths); the thumbnail is served at /media/<id>/thumb
+      media: () => {
+        try {
+          const rows = getMediaLibrary()?.list({ sort: 'recent', limit: 400 }) ?? []
+          return Promise.resolve(rows.map((r) => ({ id: r.id, name: r.name, type: r.type, animated: r.animated })))
         } catch {
           return Promise.resolve([])
         }

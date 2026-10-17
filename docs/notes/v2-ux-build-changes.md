@@ -32,3 +32,8 @@ Plain language. Updated with every slice of the UX build.
 
 ## The box under the queue (Preview and Live)
 - **Show next** is now the one big purple button. **Hide screen / Show screen** sits beside it. **Back** and **Next** are small arrows under the two pictures with where you are in the queue ("3 of 9"). The keys did not change: → or Space is Next, ← or Shift+Space is Back.
+
+## The phone remote
+- Two new tabs: **Media** (thumbnails; **Show** or **+ Queue**) and **Tape** (the tape controls and the paragraph list). The phone now has the same six places as the main window.
+- A full-width amber **SCREEN HIDDEN — tap to show** banner appears while the screens are hidden; the button says **Show screen** (before: it said Restore and only its colour changed). The button is at least 56 px high.
+- Words match the main window: **Show** (was Project) and **Hide screen / Show screen** (was Blank / Restore).

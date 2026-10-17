@@ -15,10 +15,12 @@ Order: P-02 · P-03 · P-09 · P-10 · P-04 · P-01 · P-11 · P-05 · P-07 · P
 - **P-01 header zones + P-11 appearance menu** — `AppearanceMenu` (⚙: Theme, Contrast, Interface size, Help, Shortcuts), the ON AIR cluster (red outline live, amber while hidden), spacer layout, narrow rules moved to `data-w~='1240'` (label and Remote to icons), no header cut off at 1040/1180/1241/1280/1366 and at 150 %/125 % (checked live).
 - **P-05 Now dock** — `NowDock` (LIVE zone with `liveSummary`, tape zone = `GlobalTapeBar embedded`, status dots + version/app-info), the old status bar footer and the separate tape strip are gone; notice row only for indexer/data messages; responsive (dots with a tape; tape to its own row ≤1180; tape output/Text buttons icon-only ≤1440). New width token 1440. Suite 1,798; regression 10/20/656/43/64/7 all green.
 - **P-07 one primary** — `Show next` is the only filled button in the Preview/Live box; Back / Next arrows + "N of M" in their own row under the pictures (`plp-steps`); the big Back/Next row is gone. Tests added.
+- **P-13 phone remote** — Media tab (`/api/media/list`, thumbnails from `/media/<id>/thumb`, commands `project-media` / `queue-media` → renderer; Show never happens without a tap), Tape tab (the existing tape card + paragraph list), SCREEN HIDDEN banner, phone+tablet. New regression script `scripts/regression/remote-tabs.cjs` (runner name `rtabs`): 22 checks, 0 failed (phone and tablet). Remote JS escaping bug caught by `remoteResume.test.ts`.
 
 ## Decisions
 - P-02: "Clear" keeps its meaning for a second channel's output only; the main live box says Hide screen. Alternative: keep "Clear" on the main box (rejected: it blacks out, it does not clear).
 - P-03: Edit button from the mockup is not built (desktop has no Edit action; it was the phone's). The chip resets to the question when the queue changes rather than re-running the check (a check can reach the network for YouTube items).
+- P-13: the Blank button was already 64 px on the phone (60 px on the tablet), above the proposal's 56 px; no change needed. The Media tab lists the library newest-used first, capped at 400 items, no search yet.
 - P-07: the arrows sit in their own row under the thumbnails, not in the Preview header as in the mockup — the header cell is ~150 px wide and "PREVIEW ‹ 4 queued ›" overflowed into LIVE.
 - P-05: "N in queue" is hidden while a tape is loaded (the rail badge has it); Phone chip not built (no connection feed yet); the mockup's Output chip is the tape's own output button.
 - P-01: no phone-count chip on Remote yet (needs a connection feed from main; backlog). P-11 was folded into P-01 because they share the ⚙ menu.
@@ -27,4 +29,4 @@ Order: P-02 · P-03 · P-09 · P-10 · P-04 · P-01 · P-11 · P-05 · P-07 · P
 - P-02: the retired-word test scans source lines that are not comments; comments and identifiers (`projectSong`, `onProject`) are unchanged.
 
 ## Next
-P-13 phone remote.
+P-08 rows (click selects, Enter shows).

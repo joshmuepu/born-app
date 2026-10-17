@@ -1407,6 +1407,19 @@ export default function App() {
       }),
     [handleAddSong]
   )
+  // the phone's Media tab: Show a picture now, or add it to the queue (never changes what is live by itself)
+  useEffect(
+    () =>
+      window.electronAPI.onWebRemoteProjectMedia((m) => {
+        void doProject(mediaToItem({ id: m.mediaId, name: m.name || 'Picture', type: m.type }), 0, null)
+        void window.electronAPI.mediaMarkUsed(m.mediaId)
+      }),
+    [doProject]
+  )
+  useEffect(
+    () => window.electronAPI.onWebRemoteQueueMedia((m) => handleAddMediaToQueue([{ id: m.mediaId, name: m.name || 'Picture', type: m.type } as { id: string; name: string; animated?: boolean }])),
+    [handleAddMediaToQueue]
+  )
   useEffect(
     () =>
       window.electronAPI.onWebRemoteProjectSong(async (songId, slide) => {

@@ -810,6 +810,16 @@ const api = {
     ipcRenderer.on('webremote:project-song', handler)
     return () => ipcRenderer.removeListener('webremote:project-song', handler)
   },
+  onWebRemoteProjectMedia: (callback: (m: { mediaId: string; name: string; type?: string }) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { mediaId: string; name: string; type?: string }): void => callback(data)
+    ipcRenderer.on('webremote:project-media', handler)
+    return () => ipcRenderer.removeListener('webremote:project-media', handler)
+  },
+  onWebRemoteQueueMedia: (callback: (m: { mediaId: string; name: string; type?: string }) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, data: { mediaId: string; name: string; type?: string }): void => callback(data)
+    ipcRenderer.on('webremote:queue-media', handler)
+    return () => ipcRenderer.removeListener('webremote:queue-media', handler)
+  },
   onWebRemoteNewService: (callback: () => void): (() => void) => {
     const handler = (): void => callback()
     ipcRenderer.on('webremote:new-service', handler)
