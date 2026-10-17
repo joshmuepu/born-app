@@ -48,11 +48,16 @@ export function widthClass(cssWidth: number): WidthClass {
   return cssWidth <= 900 ? 'tight' : cssWidth <= 1100 ? 'narrow' : 'wide'
 }
 
+/** The other breakpoints the interface uses, as tokens for `html[data-w~='1060']`: every one that the scaled width is at or below. */
+export const WIDTH_BREAKPOINTS = [1180, 1060, 820, 720] as const
+export const widthTokens = (cssWidth: number): string => WIDTH_BREAKPOINTS.filter((b) => cssWidth <= b).join(' ')
+
 export function applyUiZoom(factor: number): void {
   const root = document.getElementById('root')
   document.documentElement.style.setProperty('--ui-zoom', String(factor))
   if (root) root.style.zoom = factor === 1 ? '' : String(factor)
   document.documentElement.dataset.cssw = widthClass(window.innerWidth / factor)
+  document.documentElement.dataset.w = widthTokens(window.innerWidth / factor)
 }
 
 export function useUiScale(): {

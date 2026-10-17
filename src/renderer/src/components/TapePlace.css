@@ -60,7 +60,7 @@
 .tp-empty .tpa { width: min(820px, 100%); text-align: left; }
 .tp-empty-ico { width: 64px; height: 64px; border-radius: 16px; background: var(--bg-active); display: grid; place-items: center; color: var(--text-primary); }
 .tp-options .tsp-note, .tp-options .tsp-fixed { max-width: 560px; }
-@media (max-width: 1060px) { .tp-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .tp-lib { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); } .tp-rec { min-width: 220px; } }
+html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } html[data-w~='1060'] .tp-lib { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); } html[data-w~='1060'] .tp-rec { min-width: 220px; }
 @media (prefers-reduced-motion: reduce) { .tfl { scroll-behavior: auto; } }
 
 .tp-hint { display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); }

@@ -199,7 +199,7 @@ export default function App() {
   const openTapePlace = useCallback((t: Omit<TapePlaceTarget, 'nonce'> = {}) => { setTapeTarget({ ...t, nonce: Date.now() }); setTopTab('tape') }, [])
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
-  const { choice: uiScale, setChoice: setUiScale } = useUiScale()
+  const { choice: uiScale, setChoice: setUiScale, factor: uiFactor } = useUiScale()
   // Queue panel: open during a service (anything queued or projecting),
   // collapsed otherwise — until the operator chooses, which is remembered.
   const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
@@ -228,7 +228,7 @@ export default function App() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor(winWidth * 0.5)))
+  const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor((winWidth / uiFactor) * 0.5)))
   const queueW = Math.min(Math.max(queueWidth, QUEUE_MIN), queueMax)
   const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen
   const toggleQueue = useCallback(() => {

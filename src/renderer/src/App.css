@@ -502,11 +502,9 @@ body {
   line-height: 17px;
   text-align: center;
 }
-@media (max-width: 820px) {
-  .app-rail { width: 56px; }
-  .rail-btn span { display: none; }
-  .rail-btn { min-height: 44px; }
-}
+html[data-w~='820'] .app-rail { width: 56px; }
+html[data-w~='820'] .rail-btn span { display: none; }
+html[data-w~='820'] .rail-btn { min-height: 44px; }
 
 .panel-view {
   flex: 1;
@@ -2673,9 +2671,7 @@ html[data-cssw='tight'] .header-actions { flex: 1 1 auto; flex-wrap: wrap; row-g
 .status-chip.is-live .status-chip-dot { background: var(--live); }
 .status-chip.is-blank { color: var(--warn); font-weight: 600; }
 .status-chip.is-blank .status-chip-dot { background: var(--warn); }
-@media (max-width: 900px) {
-  .status-live .status-chip:nth-child(n+3) { display: none; }
-}
+html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none; }
 
 /* ── Control boundaries ───────────────────────────────────────────────────
    WCAG 1.4.11: the edge of an input, select or button that is identified by

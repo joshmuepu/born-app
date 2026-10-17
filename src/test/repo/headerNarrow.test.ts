@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { widthClass } from '../../renderer/src/uiScale'
+import { widthClass, widthTokens } from '../../renderer/src/uiScale'
 
 const css = readFileSync(join(__dirname, '../../renderer/src/App.css'), 'utf8')
 
@@ -23,5 +23,15 @@ describe('the header on a small laptop, live (1040 px) and at a large interface 
     expect(widthClass(1040 / 1.5)).toBe('tight') // a 1040 px window at 150 %
     expect(widthClass(1366 / 1.75)).toBe('tight')
     expect(widthClass(1366 / 1.25)).toBe('narrow')
+  })
+  it('every other breakpoint is keyed the same way (no @media width rules left, which ignore the interface scale)', () => {
+    expect(widthTokens(1366)).toBe('')
+    expect(widthTokens(1150)).toBe('1180')
+    expect(widthTokens(1040)).toBe('1180 1060')
+    expect(widthTokens(1040 / 1.5)).toBe('1180 1060 820 720')
+    for (const f of ['App.css', 'components/GlobalTapeBar.css', 'components/TapePlace.css', 'components/TapeAttach.css']) {
+      const t = readFileSync(join(__dirname, '../../renderer/src', f), 'utf8')
+      expect(t, f).not.toMatch(/@media \((max|min)-width/)
+    }
   })
 })

@@ -32,4 +32,4 @@
 .tape-banner svg { color: var(--warn); flex: none; }
 .tape-banner > span:first-of-type { flex: 1; min-width: 220px; }
 .tape-foot { display: flex; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--border); margin-top: 10px; }
-@media (max-width: 720px) { .tape-cards { grid-template-columns: 1fr; } .tape-checks { grid-template-columns: 1fr; } }
+html[data-w~='720'] .tape-cards { grid-template-columns: 1fr; } html[data-w~='720'] .tape-checks { grid-template-columns: 1fr; }
