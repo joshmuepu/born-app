@@ -985,13 +985,19 @@ function sendText(res: ServerResponse, status: number, contentType: string, body
   res.end(body)
 }
 
-function readBody(req: IncomingMessage): Promise<string> {
+/** A command is a few hundred bytes. Anything over the cap is refused (null) instead of being read into memory: the remote is on the church network. */
+const MAX_BODY_BYTES = 256 * 1024
+function readBody(req: IncomingMessage): Promise<string | null> {
   return new Promise((resolve) => {
     let body = ''
+    let size = 0
+    let over = false
     req.on('data', (chunk) => {
+      size += chunk.length
+      if (size > MAX_BODY_BYTES) { over = true; return }
       body += chunk
     })
-    req.on('end', () => resolve(body))
+    req.on('end', () => resolve(over ? null : body))
   })
 }
 
@@ -1263,6 +1269,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (path === '/command' && req.method === 'POST') {
     const body = await readBody(req)
+    if (body === null) {
+      sendJSON(res, 413, { error: 'That request is too large.' })
+      return
+    }
     try {
       commandCallback?.(JSON.parse(body))
     } catch {

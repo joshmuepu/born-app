@@ -1,4 +1,4 @@
-import { get as httpGet, type IncomingMessage } from 'http'
+import { get as httpGet, request as httpRequest, type IncomingMessage } from 'http'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
 const {
@@ -221,5 +221,18 @@ describe('keeping the live feed alive', () => {
     unregisterGraphicsDestination('g-gone')
     expect((await getPage('/output/graphics/g-gone')).status).toBe(404)
     expect((await getPage('/output/graphics/g-gone/events')).status).toBe(404)
+  })
+})
+
+describe('the command endpoint', () => {
+  const post = (body: string): Promise<number> =>
+    new Promise((resolve, reject) => {
+      const r = httpRequest({ host: '127.0.0.1', port: PORT, path: '/command', method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode ?? 0)) })
+      r.on('error', reject)
+      r.end(body)
+    })
+  it('answers a normal command with 204 and refuses an oversized body with 413 instead of reading it into memory', async () => {
+    expect(await post(JSON.stringify({ type: 'noop' }))).toBe(204)
+    expect(await post('x'.repeat(600 * 1024))).toBe(413)
   })
 })
