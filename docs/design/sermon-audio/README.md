@@ -9,6 +9,7 @@
 | [02-product-design.md](02-product-design.md) | operator experience, projection modes, languages, sync editor, safety, phone, data, API |
 | [03-visual-design.md](03-visual-design.md) | colours (tokens), projector palettes, type, motion, contrast audit plan |
 | [04-build-plan.md](04-build-plan.md) | slices S1–S9 with tests, by-hand checks, risks |
+| [05-placement-review.md](05-placement-review.md) · [06-placement-proposal.md](06-placement-proposal.md) | **Placement round (awaiting owner choice):** where the tape should live; today's problems, four options (mockups 12–21), a recommendation (A) and a migration plan |
 | [../../notes/sermon-audio-needs-counsel.md](../../notes/sermon-audio-needs-counsel.md) | rights and terms questions; what is safe before counsel |
 | [../../notes/sermon-audio-v1.md](../../notes/sermon-audio-v1.md) | what v1 would need (not planned) |
 
