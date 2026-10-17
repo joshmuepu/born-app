@@ -2346,7 +2346,9 @@ button.display-row:hover {
 .status-popover {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
+  right: 0; /* the trigger is at the right end of the Now dock: a popover that opens to the right ran off the window */
+  left: auto;
+  max-width: calc(calc(100vw / var(--ui-zoom, 1)) - 24px);
   min-width: 240px;
   background: var(--bg-panel);
   border: 1px solid var(--border);

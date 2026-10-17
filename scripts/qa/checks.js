@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   /* Injected into a page by sweep.cjs. Returns an array of findings: { check, sev, sel, text, detail }. P0 = breaks use, P1 = confusing/blocks/accessibility, P2 = polish. */
   const F = []
   const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && parseFloat(s.opacity) > 0.01 }
@@ -14,7 +14,9 @@
   const de = document.documentElement
   if (de.scrollWidth > innerWidth + 1) F.push({ check: 'page-h-scroll', sev: 'P1', sel: 'html', text: '', detail: `scrollWidth ${de.scrollWidth} > ${innerWidth}` })
   // 2. elements that run past the viewport and are not clipped by a scroller
+  const vr0 = (e) => { const r = e.getBoundingClientRect(); let l = r.left, rr = r.right; let n = e.parentElement; while (n && n !== document.body) { const st = getComputedStyle(n); if (/(auto|scroll|hidden|clip)/.test(st.overflowX)) { const p = n.getBoundingClientRect(); l = Math.max(l, p.left); rr = Math.min(rr, p.right) } n = n.parentElement } return rr - l }
   for (const e of all) {
+    if (vr0(e) <= 2) continue
     const r = e.getBoundingClientRect()
     if ((r.right > innerWidth + 2 || r.left < -2) && r.width < innerWidth * 1.2 && !clipsAncestor(e) && getComputedStyle(e).position !== 'fixed') add('outside-viewport', 'P1', e, `left ${Math.round(r.left)} right ${Math.round(r.right)} of ${innerWidth}`)
   }
@@ -26,16 +28,18 @@
     if (ov > 2 && e.clientWidth > 0) {
       if (s.textOverflow === 'ellipsis' && s.overflowX !== 'visible') { if (!e.title && !e.getAttribute('aria-label') && !e.closest('[title]')) add('truncated-no-tooltip', 'P2', e, `hidden ${ov}px`) }
       else if (s.overflowX === 'hidden' || s.overflowX === 'clip') add('text-clipped', 'P1', e, `hidden ${ov}px, no ellipsis`)
-      else if (s.overflowX === 'visible' && e.getBoundingClientRect().right > (e.parentElement ? e.parentElement.getBoundingClientRect().right + 2 : 1e9) && s.whiteSpace !== 'normal') add('text-spills-out', 'P1', e, `by ${ov}px`)
+      else if (s.overflowX === 'visible' && vr0(e) > 2 && e.getBoundingClientRect().right > (e.parentElement ? e.parentElement.getBoundingClientRect().right + 2 : 1e9) && s.whiteSpace !== 'normal') add('text-spills-out', 'P1', e, `by ${ov}px`)
     }
     const ovy = e.scrollHeight - e.clientHeight
     if (ovy > 3 && /(hidden|clip)/.test(s.overflowY) && s.textOverflow !== 'ellipsis' && !/-webkit-box/.test(s.display)) add('text-clipped-v', 'P1', e, `hidden ${ovy}px`)
   }
+  // the part of an element that can really be seen: cut by every scrolling / clipping ancestor
+  const vrect = (e) => { const r = e.getBoundingClientRect(); let l = r.left, t = r.top, rr = r.right, b = r.bottom; let n = e.parentElement; while (n && n !== document.body) { const st = getComputedStyle(n); if (/(auto|scroll|hidden|clip)/.test(st.overflowX + st.overflowY)) { const p = n.getBoundingClientRect(); l = Math.max(l, p.left); t = Math.max(t, p.top); rr = Math.min(rr, p.right); b = Math.min(b, p.bottom) } n = n.parentElement } return { left: l, top: t, right: rr, bottom: b } }
   // 4. overlapping interactive elements (not nested)
   const inter = all.filter((e) => e.matches('button,a[href],input,select,textarea,[role=button],[role=tab],[role=switch],[role=menuitem]')).slice(0, 400)
   for (let i = 0; i < inter.length; i++) for (let j = i + 1; j < inter.length; j++) {
     const a = inter[i], b = inter[j]; if (a.contains(b) || b.contains(a)) continue
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect()
+    const ra = vrect(a), rb = vrect(b)
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
     const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
     if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
@@ -43,7 +47,8 @@
   // 5. targets
   for (const e of inter) {
     const r = e.getBoundingClientRect(); if (e.disabled) continue
-    if (e.matches('a') && e.closest('p,li') && getComputedStyle(e).display === 'inline') continue
+    if (e.matches('a') && e.closest('p,li,td,th') && getComputedStyle(e).display !== 'block') continue
+    if (e.matches('input[type=checkbox],input[type=radio]') && e.closest('label')) { const lr = e.closest('label').getBoundingClientRect(); if (lr.height >= 24 && lr.width >= 24) continue }
     if (r.width < 24 || r.height < 24) add('target-small', 'P1', e, `${Math.round(r.width)}x${Math.round(r.height)} (<24)`)
     else if (r.height < 32 && !e.matches('input[type=checkbox],input[type=radio],input[type=range]')) add('target-below-32', 'P2', e, `${Math.round(r.width)}x${Math.round(r.height)}`)
   }
@@ -55,10 +60,10 @@
   for (const e of document.querySelectorAll('[role=dialog],[role=alertdialog]')) if (vis(e) && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')) add('dialog-no-name', 'P1', e)
   if (!document.querySelector('main,[role=main]')) F.push({ check: 'no-main-landmark', sev: 'P2', sel: 'document', text: '', detail: '' })
   // 7. focus indicators (sample)
-  const foc = inter.filter((e) => !e.disabled && e.tabIndex >= 0).slice(0, 70)
+  const foc = inter.filter((e) => !e.disabled && e.tabIndex >= 0).slice(0, 40)
   const sig = (e) => { const s = getComputedStyle(e); return [s.outlineStyle, s.outlineWidth, s.outlineColor, s.boxShadow, s.borderColor, s.backgroundColor].join('|') }
   const prev = document.activeElement
-  for (const e of foc) { const before = sig(e); e.focus({ preventScroll: true }); const ring = e.matches(':focus-visible') || true; const after = sig(e); if (before === after) add('no-focus-indicator', 'P1', e) }
+  for (const e of foc) { if (document.activeElement === e) e.blur(); await new Promise((r) => setTimeout(r, 20)); const w = e.parentElement; const wb = w ? sig(w) : ''; const before = sig(e); e.focus({ preventScroll: true }); await new Promise((r) => setTimeout(r, 40)); const after = sig(e); const wa = w ? sig(w) : ''; if (before === after && wb === wa) add('no-focus-indicator', 'P1', e) }
   if (prev && prev.focus) prev.focus({ preventScroll: true }); else if (document.activeElement) document.activeElement.blur()
   // 8. contrast (computed colours composited down the ancestors; skips background-images)
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 } }
