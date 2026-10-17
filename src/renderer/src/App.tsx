@@ -17,6 +17,7 @@ import NowDock from './components/NowDock'
 import { templateById } from '../../shared/serviceTemplates'
 import AppearanceMenu from './components/AppearanceMenu'
 import { setClickShows, useClickShows } from './rowGesture'
+import { looksNewProfile, shouldAutoRun, type AppView } from './runView'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
@@ -240,6 +241,22 @@ export default function App() {
   }, [])
   const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor((winWidth / uiFactor) * 0.5)))
   const queueW = Math.min(Math.max(queueWidth, QUEUE_MIN), queueMax)
+  // P-06: Prepare (find things, build the queue) or Run (the queue and the live controls, big). "Switch to Run when the screens open" is on for a profile that is new today.
+  const [view, setView] = useState<AppView>('prepare')
+  const [autoRun, setAutoRunState] = useState<boolean>(() => {
+    try { const v = localStorage.getItem('born.autoRun'); if (v === '1' || v === '0') return v === '1'; const fresh = looksNewProfile(); localStorage.setItem('born.autoRun', fresh ? '1' : '0'); return fresh } catch { return false }
+  })
+  const setAutoRun = useCallback((on: boolean) => { setAutoRunState(on); try { localStorage.setItem('born.autoRun', on ? '1' : '0') } catch { /* a convenience */ } }, [])
+  // any move to another section (the rail, ⌘K, a link) leaves Run for Prepare, where the section is
+  useEffect(() => { setView('prepare') }, [topTab])
+  // the screens opening can switch to Run (a service is about to start)
+  const wasProjecting = useRef(false)
+  useEffect(() => {
+    const justOpened = projectionOpen && !wasProjecting.current
+    wasProjecting.current = projectionOpen
+    if (shouldAutoRun({ autoRun, view, projectionJustOpened: justOpened, queueLength: serviceQueue.length })) setView('run')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectionOpen])
   // a profile that has never built a queue opens it, so the first-run checklist (P-12) is where you look
   useEffect(() => { if (serviceQueue.length > 0 && setupState === 'show') setSetup('done') }, [serviceQueue.length, setupState, setSetup])
   const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen || setupState === 'show'
@@ -1559,6 +1576,7 @@ export default function App() {
           keywords: 'zoom bigger smaller larger text display scale size',
           run: () => setUiScale(c)
         })),
+      { id: 'view-run', label: view === 'run' ? 'Back to Prepare (find things, build the queue)' : 'Run view — the queue and the live controls, large', keywords: 'run prepare service live big queue layout view', hint: 'Ctrl+Shift+R', run: () => setView((v) => (v === 'run' ? 'prepare' : 'run')) },
       { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
       { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
     ]
@@ -1589,6 +1607,7 @@ export default function App() {
     }
     return cmds
   }, [
+    view,
     tapeLoaded,
     openTapePlace,
     queueOpen,
@@ -1629,6 +1648,8 @@ export default function App() {
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
+      // ⌘/Ctrl+Shift+R: Run view (the queue and the live controls, large) ⇄ Prepare
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r' && !overlayIsOpen()) { e.preventDefault(); setView((v) => (v === 'run' ? 'prepare' : 'run')); return }
       // F6 / Shift+F6: move between the header, the sections, the content, the queue and the status bar (never while a dialog has the keys)
       if (e.key === 'F6' && !overlayIsOpen()) { e.preventDefault(); cycleRegion(e.shiftKey ? -1 : 1); return }
 
@@ -2316,6 +2337,8 @@ export default function App() {
             onUiScale={setUiScale}
             clickShows={clickShows}
             onClickShows={setClickShows}
+            autoRun={autoRun}
+            onAutoRun={setAutoRun}
             onShowSetup={() => { setSetup('show'); if (serviceQueue.length > 0) pushToast({ message: 'The Set up Sunday checklist shows on an empty queue (File → New service).', timeoutMs: 6000 }) }}
             onHelp={() => setShowHelp(true)}
             onShortcuts={() => setShowShortcuts(true)}
@@ -2423,7 +2446,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="app-main">
+      <div className={`app-main${view === 'run' ? ' is-run' : ''}`}>
         <div className="search-panel">
           <nav className="app-rail" aria-label="Sections">
             <div className="rail-group" role="group" aria-label="Find">
@@ -2437,8 +2460,8 @@ export default function App() {
                 <button
                   key={id}
                   className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
-                  onClick={() => setTopTab(id)}
-                  aria-current={topTab === id ? 'page' : undefined}
+                  onClick={() => { setTopTab(id); setView('prepare') }}
+                  aria-current={topTab === id && view === 'prepare' ? 'page' : undefined}
                 >
                   <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
                   <span>{label}</span>
@@ -2642,6 +2665,9 @@ export default function App() {
             onMediaSettings={handleMediaSettings}
             onPreflight={() => setPreflightOpen(true)}
             readiness={readiness}
+            view={view}
+            onToggleView={() => setView((v) => (v === 'run' ? 'prepare' : 'run'))}
+            onFind={() => setPaletteOpen(true)}
             setup={setupState === 'show' && serviceQueue.length === 0 ? { projectionOpen, screensChosen: projectionOpen, onScreens: () => window.dispatchEvent(new CustomEvent('born:open-screens')), onTemplate: (id) => void applyTemplate(id), onGo: (s) => setTopTab(s), onDismiss: () => setSetup('hidden') } : null}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
@@ -2738,6 +2764,7 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Tape: back / forward 10 seconds</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd>/<kbd>]</kbd></dt><dd>Tape: previous / next paragraph</dd></div>
               <div><dt><kbd>Esc</kbd> · <kbd>Shift</kbd>+<kbd>Esc</kbd> with a tape</dt><dd>Esc hides the screens and the tape keeps playing; Shift+Esc hides them and pauses the tape</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></dt><dd>Run view (the queue and the live controls, large) / back to Prepare</dd></div>
               <div><dt><kbd>F6</kbd> / <kbd>Shift</kbd>+<kbd>F6</kbd></dt><dd>Move between the header, the sections, the content, the queue and the status bar</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>

@@ -126,4 +126,29 @@ describe('ServiceQueue grouping', () => {
     rerender(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onPreflight={onPreflight} readiness={{ fail: 3, warn: 2 }} />)
     expect(screen.getByRole('button', { name: /3 to fix/ })).toBeTruthy()
   })
+
+  it('has a Run view switch: "Run view" in Prepare, "‹ Prepare" in Run, and Find something else… only in Run (P-06)', async () => {
+    const onToggleView = vi.fn(), onFind = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} view="prepare" onToggleView={onToggleView} onFind={onFind} />)
+    await user.click(screen.getByRole('button', { name: 'Run view' }))
+    expect(onToggleView).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Run view' }).getAttribute('aria-pressed')).toBe('false')
+    rerender(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} view="run" onToggleView={onToggleView} onFind={onFind} />)
+    expect(screen.getByRole('button', { name: /Prepare/ }).getAttribute('aria-pressed')).toBe('true')
+    await user.click(screen.getByRole('button', { name: /Find something else/ }))
+    expect(onFind).toHaveBeenCalledOnce()
+  })
+
+  it('↑ and ↓ move between queue rows (so the Run view can be driven from the keyboard)', async () => {
+    const user = userEvent.setup()
+    render(<ServiceQueue {...baseProps} queue={[songItem('a', 'One'), songItem('b', 'Two'), songItem('c', 'Three')]} />)
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('.queue-row'))
+    rows[0].focus()
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(rows[1])
+    await user.keyboard('{ArrowDown}{ArrowUp}')
+    expect(document.activeElement).toBe(rows[1])
+  })
 })
+

@@ -17,6 +17,8 @@ export default function AppearanceMenu({
   onUiScale,
   clickShows,
   onClickShows,
+  autoRun,
+  onAutoRun,
   onShowSetup,
   onHelp,
   onShortcuts
@@ -32,6 +34,9 @@ export default function AppearanceMenu({
   onClickShows: (on: boolean) => void
   /** bring back the first-run "Set up Sunday" checklist */
   onShowSetup: () => void
+  /** P-06: switch to Run view when the screens open (and there is a queue) */
+  autoRun: boolean
+  onAutoRun: (on: boolean) => void
   onHelp: () => void
   onShortcuts: () => void
 }): JSX.Element {
@@ -96,6 +101,10 @@ export default function AppearanceMenu({
           <label className="am-check">
             <input type="checkbox" checked={clickShows} onChange={(e) => onClickShows(e.target.checked)} />
             <span>A single click shows it<small>Off: a click selects; Enter or a double-click shows. The Show button always shows.</small></span>
+          </label>
+          <label className="am-check">
+            <input type="checkbox" checked={autoRun} onChange={(e) => onAutoRun(e.target.checked)} />
+            <span>Switch to Run view when the screens open<small>Run view is the queue and the live controls, large. Ctrl/⌘+Shift+R switches by hand.</small></span>
           </label>
           <div className="am-h am-h--help">Help</div>
           <button type="button" className="am-item" onClick={act(onHelp)}>Open the manual <kbd>F1</kbd></button>

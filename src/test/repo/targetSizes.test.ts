@@ -15,8 +15,8 @@ describe('target sizes (P-09)', () => {
     expect(css).toMatch(/:root \.app \.btn-icon \{ min-width: var\(--target-min\); min-height: var\(--target-min\);/)
   })
   it('the live-critical controls (Show, Hide screen, Open/Close projection, Play) are the larger tier', () => {
-    expect(css).toMatch(/\.plp-take, \.plp-clear, \.gtb-play\) \{ min-height: var\(--target-live\); \}/)
-    expect(css).toMatch(/\.app-header > \.header-actions > \.btn-danger/)
+    expect(css).toMatch(/:is\(\.plp-take, \.plp-clear, \.gtb-play\) \{ min-height: var\(--target-live\); \}/)
+    expect(css).toMatch(/\.app-header > \.header-actions > :is\(\.btn-secondary, \.btn-primary, \.btn-danger\)/)
   })
   it('touch screens get the largest tier', () => {
     expect(css).toMatch(/@media \(pointer: coarse\) \{\s*:root \.app :is\([^)]*\) \{ min-height: var\(--target-touch\); \}/)

@@ -42,6 +42,11 @@
           "file": "operators/preview-live.md"
         },
         {
+          "id": "run-view",
+          "title": "Run view: the service, large",
+          "file": "operators/run-view.md"
+        },
+        {
           "id": "blank-clear",
           "title": "Hiding, clearing, and messages",
           "file": "operators/blank-clear.md"

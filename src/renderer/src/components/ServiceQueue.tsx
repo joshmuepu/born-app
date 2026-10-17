@@ -64,6 +64,10 @@ interface Props {
   readiness?: { fail: number; warn: number } | null
   /** The first-run checklist shown on the start screen (null = not now). */
   setup?: import('./StartScreen').SetupSunday | null
+  /** Prepare or Run (P-06) and the switch between them, and "Find something else…" (opens the search palette) */
+  view?: 'prepare' | 'run'
+  onToggleView?: () => void
+  onFind?: () => void
   recents: RecentService[]
   onOpenRecent: (path: string) => void
   /** Set when Open/Import couldn't read or parse a file — a damaged or
@@ -176,6 +180,9 @@ export default function ServiceQueue({
   onPreflight,
   readiness,
   setup,
+  view = 'prepare',
+  onToggleView,
+  onFind,
   background
 }: Props) {
   const actions = useAppActions()
@@ -517,6 +524,17 @@ export default function ServiceQueue({
               ...(onOpenPack ? [{ id: 'open-pack', label: 'Open a service pack…', onSelect: onOpenPack }] : [])
             ]}
           />
+          {onToggleView && (
+            <button
+              type="button"
+              className={`btn-secondary btn-sm run-toggle${view === 'run' ? ' is-on' : ''}`}
+              onClick={onToggleView}
+              aria-pressed={view === 'run'}
+              title={view === 'run' ? 'Back to Prepare: find things and build the queue (Ctrl/⌘+Shift+R)' : 'Run view: the queue and the live controls, large (Ctrl/⌘+Shift+R)'}
+            >
+              {view === 'run' ? '‹ Prepare' : 'Run view'}
+            </button>
+          )}
           {onPreflight && <ReadinessChip queueLength={queue.length} readiness={readiness ?? null} onCheck={onPreflight} />}
         </div>
       </div>
@@ -544,6 +562,16 @@ export default function ServiceQueue({
       ) : (
         <div
           className="queue-list"
+          onKeyDown={(e) => {
+            // ↑ / ↓ move between rows (Alt+↑/↓ reorders the focused row and is handled on the row itself)
+            if (e.altKey || e.ctrlKey || e.metaKey || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return
+            const t = e.target as HTMLElement
+            if (!t.classList?.contains('queue-row')) return
+            const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('.queue-row'))
+            const i = rows.indexOf(t)
+            const next = rows[i + (e.key === 'ArrowDown' ? 1 : -1)]
+            if (next) { e.preventDefault(); e.stopPropagation(); next.focus() }
+          }}
           onDragOver={(e) => {
             if (dragIndex === null && !isQueueDrag(e.dataTransfer)) return
             e.preventDefault()
@@ -632,6 +660,11 @@ export default function ServiceQueue({
                 </button>
               ))}
             </div>
+          )}
+          {view === 'run' && onFind && (
+            <button type="button" className="btn-secondary run-find" onClick={onFind}>
+              Find something else… <kbd>{/Mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
+            </button>
           )}
           {nextItem && !status && (
             <div className="queue-upnext-hint">

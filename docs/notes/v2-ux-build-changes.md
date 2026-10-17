@@ -45,3 +45,8 @@ Plain language. Updated with every slice of the UX build.
 ## The first time (new profiles only)
 - A brand-new install opens with the queue panel showing a **Set up Sunday** checklist: choose your screens, add tonight's items, check that it is ready. It has three **plans** that line up the usual public-domain readings in one step (with an Undo): **Sunday morning** (Psalm 100, the Lord's Prayer, the benediction), **Midweek**, **Funeral or memorial** (Psalm 23, John 14, 1 Thessalonians 4, Revelation 21). You add the songs and the sermon.
 - It disappears when the queue first has something in it, or with **Hide this checklist**. Existing installs with a queue never see it. **⚙ → Show the Set up Sunday checklist** brings it back.
+
+## Run view (new)
+- **Run view** puts the queue (big rows) and the live controls (big **Show next**, **Hide screen**, **‹ N queued ›**, the Preview and Live pictures) on one screen, with the browse panels out of the way. Switch with the **Run view** button above the queue or **Ctrl/⌘+Shift+R**; the rail or ⌘K takes you back to Prepare. Nothing on the screens changes when you switch.
+- On a brand-new install it switches by itself when the screens open and the queue has items; existing installs keep things as they were (**⚙ → Switch to Run view when the screens open** turns it on).
+- New shortcuts: **Ctrl/⌘+Shift+R** (Run/Prepare), **F6** (regions, earlier slice), **↑ ↓** between queue rows.

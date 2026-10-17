@@ -479,3 +479,44 @@
   outline-offset: -8px;
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
+
+/* ── Run view (P-06) ────────────────────────────────────────────────────────
+   The browse columns step aside; the queue becomes a big list on the left and the live controls a big column on the right. All sizes follow the scaled
+   width (html[data-w]) rather than @media, so they work at any interface scale. */
+.queue-file-actions .run-toggle.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.run-find { align-self: stretch; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: var(--target-live, 40px); }
+.run-find kbd { font-family: var(--font-mono); font-size: var(--text-2xs); padding: 2px 6px; border-radius: var(--r-sm); background: var(--bg-hover); color: var(--text-secondary); }
+.app-main:not(.is-run) .run-find { display: none; }
+
+.app-main.is-run .search-main { display: none; }
+.app-main.is-run .search-panel { flex: 0 0 auto; }
+.app-main.is-run .queue-panel { width: auto; flex: 1; min-width: 0; opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
+.app-main.is-run .queue-panel > :not(.panel-resizer) { min-width: 0; }
+.app-main.is-run .queue-panel > .panel-resizer { display: none; }
+.app-main.is-run .service-queue {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: 'head head' 'list live';
+  height: 100%;
+}
+.app-main.is-run .queue-header { grid-area: head; }
+.app-main.is-run .queue-open-error { grid-area: head; }
+.app-main.is-run .queue-list, .app-main.is-run .queue-empty-drop { grid-area: list; min-height: 0; overflow-y: auto; }
+.app-main.is-run .queue-live-bar { grid-area: live; border-top: 0; border-left: 1px solid var(--border); overflow-y: auto; min-height: 0; padding: 14px 16px; gap: 12px; }
+/* large rows */
+.app-main.is-run .queue-row { padding: 12px 14px; }
+.app-main.is-run .queue-item-title { font-size: var(--text-md); }
+/* large live controls */
+.app-main.is-run .queue-live-bar .plp-take { min-height: 56px; font-size: var(--text-lg); }
+.app-main.is-run .queue-live-bar .plp-clear { min-height: 56px; }
+.app-main.is-run .queue-live-bar .plp-step { min-width: 44px; min-height: 44px; }
+.app-main.is-run .queue-live-bar .plp { display: flex; flex-direction: column; gap: 10px; }
+/* the buttons come first, so Show next is always on screen whatever the window height; the pictures follow */
+.app-main.is-run .queue-live-bar .plp-actions { order: -2; }
+.app-main.is-run .queue-live-bar .plp-steps { order: -1; }
+.app-main.is-run .queue-live-bar .plp-arrow { display: none; }
+.app-main.is-run .queue-live-bar .plp-pair { grid-template-columns: 1fr 1fr; gap: 12px; }
+.app-main.is-run .queue-live-bar .run-find { order: 5; margin-top: 6px; }
+html[data-w~='820'] .app-main.is-run .service-queue { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 0.8fr) minmax(0, 1.2fr); grid-template-areas: 'head' 'list' 'live'; }
+html[data-w~='820'] .app-main.is-run .queue-live-bar { border-left: 0; border-top: 1px solid var(--border); }
