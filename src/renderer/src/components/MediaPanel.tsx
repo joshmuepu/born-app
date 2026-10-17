@@ -501,7 +501,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddYouTube, onAddS
           <h3>No pictures yet</h3>
           <p>Drop pictures or videos here, paste a picture, or press <b>Add pictures</b>. BORN keeps its own copy, so a missing USB stick never breaks a service.</p>
           <div className="media-empty-actions">
-            <button className="btn-primary" onClick={() => void pick(false)}><Upload size={15} /> Add pictures</button>
+            <button className="btn-secondary" onClick={() => void pick(false)}><Upload size={15} /> Add pictures</button>
             <button className="btn-quiet" onClick={() => void pick(true)}><FolderOpen size={15} /> Add a folder</button>
           </div>
         </>

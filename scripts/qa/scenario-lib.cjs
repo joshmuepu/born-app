@@ -14,6 +14,7 @@ exports.recorder = (name) => {
     note: (m) => { R.notes.push(m); console.log('  •', m) },
     async capture(page, id, note, opts = {}) {
       const texts = await page.ev(TEXTS); texts.forEach((t) => R.texts.add(t))
+      try { await page.key('Tab'); await page.key('Tab', { shift: true }) } catch { /* keyboard modality for :focus-visible */ }
       let f = []; try { f = await page.ev(checks) } catch (e) { f = [{ check: 'harness-error', sev: 'P2', sel: id, text: String(e).slice(0, 100), detail: '' }] }
       for (const x of f) R.findings.push({ ...x, state: name + ':' + id, note })
       for (const l of page.takeLogs()) R.findings.push({ check: 'console', sev: /exception|error/.test(l.kind) ? 'P1' : 'P2', sel: l.kind, text: l.text, detail: '', state: name + ':' + id, note })

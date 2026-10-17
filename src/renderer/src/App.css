@@ -1826,8 +1826,8 @@ button.display-row:hover {
   flex-shrink: 0;
 }
 .display-row-btn {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2241,8 +2241,8 @@ button.display-row:hover {
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2809,3 +2809,8 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 /* Target floor (docs/design/born-again-ui-direction.md): every control the operator can press is at least --target-min tall. These were 22–31 px. */
 .plp-channel, .tp-lang select, .tape-toggle, .tape-screen-row .tse-seg button, .tape-screen-lead select, .help-sidebar button, .filter-mode-btn, .filter-input,
 .bible-scope-option, .bible-scope-book, .remote-automation-head, .status-update-link { min-height: var(--target-min, 32px); }
+
+/* Target floor, second batch (sweep 1 + scenarios): rows and controls that were 15–31 px */
+.display-row-select, .screens-manager-sidebar button, .media-tag-input, #media-usebg-target, #media-folder-select, .media-bg-controls select, .songs-import-popover button, .toast-close,
+.browse-back, .media-link-toggle, .am-check { min-height: var(--target-min, 32px); }
+.media-link-toggle, .am-check { display: inline-flex; align-items: center; gap: 8px; }

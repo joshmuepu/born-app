@@ -44,6 +44,8 @@
     const ra = vrect(a), rb = vrect(b)
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
     const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
+    const innerBtn = (x, y) => getComputedStyle(x).position === 'absolute' && x.parentElement && x.parentElement.contains(y) // a clear (×) button drawn inside its own field
+    if (innerBtn(a, b) || innerBtn(b, a)) continue
     if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV)) && !(floats(a) !== floats(b))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
   }
   // 5. targets

@@ -14,3 +14,4 @@
 | F-010 | P2 | Tape Options folder line | the long line was cut off (368 px hidden) with no way to read it | wraps | truncated text | ffdbfe3 |
 | F-011 | P2 | Tape place buttons | "＋ Add recording…" (+▾) and "Load it into the player" were primary next to "Show on the screens", Show next and Open projection (5–6 primaries in one view) | Add and Load are secondary | one primary action per view | ffdbfe3 |
 | F-012 | P1 | Rail (`App.css`) | on the active section's button the selection bar replaced the keyboard focus ring: tabbing onto it showed nothing | the ring is added to the bar | keyboard users can see where they are | 7ce840a |
+| F-013 | P2 | Keyboard shortcuts dialog (`App.css`) | 25 rows in a 400 px dialog; descriptions right-aligned in a narrow column, some wrapping onto 6 lines | wider dialog, keys column + left-aligned description column with row dividers | readability | 88d0607 |
