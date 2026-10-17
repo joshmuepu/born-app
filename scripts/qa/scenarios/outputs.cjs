@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Scenario: the output surfaces — projector, stage monitor, Graphics page (all three profiles) — fed slides of every kind, long/RTL/CJK/emoji text, blank, alert, and the phone remote at three sizes.
  *   node scripts/qa/scenarios/outputs.cjs <profileDir> [port]      (writes qa-out/census-runtime-scenarios-outputs.json; findings come from checks.js on each output page) */
-const { launch, sleep } = require('../lib.cjs'); const { recorder } = require('../scenario-lib.cjs')
+const { launch, sleep } = require('../lib.cjs'); const { recorder } = require('../scenario-lib.cjs'); const { launchChrome } = require('../chrome.cjs')
 const [profile = '/tmp/qa-pop-out', port = '9990'] = process.argv.slice(2)
 const rec = recorder('outputs')
 const LONG = 'And I am so happy to be here this morning to talk about the wonderful grace of God that was extended to us all, and how we may stand together with one heart and one mind in the presence of the Lord, singing and praising and waiting upon Him for the great things He has promised to those who love Him and keep His commandments, even until the end. '.repeat(2)
@@ -45,10 +45,11 @@ const SLIDES = [
     await main.ev('window.electronAPI.setBlankScreen(false)')
     // Graphics page, every profile
     const outs = await main.ev('window.electronAPI.listOutputs()'); rec.note('outputs: ' + JSON.stringify(outs).slice(0, 300))
-    const g = (outs || []).find((o) => o.kind === 'graphics')
-    if (g && g.url) {
+    const g = (outs || []).find((o) => o.localUrl)
+    const chrome = await launchChrome(9897)
+    if (g && g.localUrl) {
       for (const prof of ['', '?profile=lower-third', '?profile=fullscreen']) {
-        const G = await app.openUrl(g.url + prof); await G.viewport(1920, 1080); await sleep(1500)
+        const G = await chrome.open(g.localUrl + prof); await G.viewport(1920, 1080); await sleep(1500)
         await main.ev(`window.electronAPI.showSlide(${JSON.stringify(SLIDES[2])})`); await sleep(1200)
         await rec.capture(G, 'graphics' + (prof || '-auto') .replace(/\W+/g, '-'), 'graphics page ' + (prof || 'auto') + ' with a Bible slide')
         await main.ev(`window.electronAPI.showSlide(${JSON.stringify(SLIDES[1])})`); await sleep(1200)
@@ -60,7 +61,7 @@ const SLIDES = [
     const info = await main.ev('window.electronAPI.getWebRemoteURL()'); rec.note('remote url: ' + JSON.stringify(info).slice(0, 200))
     const url = (info && (info.url || info.ipUrl || info.hostnameUrl)) || `http://127.0.0.1:${4450 + (+port % 40)}/`
     for (const [w, h, name] of [[360, 640, 'phone-small'], [390, 844, 'phone'], [820, 1180, 'tablet']]) {
-      const R = await app.openUrl(url.replace(/^http:\/\/[^/]+/, `http://127.0.0.1:${4450 + (+port % 40)}`))
+      const R = await chrome.open(url.replace(/^http:\/\/[^/]+/, `http://127.0.0.1:${4450 + (+port % 40)}`))
       await R.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: true }); await R.send('Page.reload'); await sleep(2500)
       await rec.capture(R, `remote-${name}-home`, `phone remote ${w}x${h}: first screen`)
       const tabs = await R.ev(`[...document.querySelectorAll('button,[role=tab],a.tab,nav a')].filter(e=>e.getBoundingClientRect().width>0).map(e=>(e.getAttribute('aria-label')||e.innerText||'').trim().slice(0,30)).filter(Boolean)`)
@@ -68,7 +69,7 @@ const SLIDES = [
       for (const t of [...new Set(tabs)].slice(0, 14)) { if (/project|show|clear|blank|hide|remove|delete|new service|import|save/i.test(t)) continue; k++; await R.click(t.split(' ').slice(0, 4).join(' ')); await sleep(700); await rec.capture(R, `remote-${name}-${k}`, `phone remote ${w}x${h}: after "${t}"`) }
       R.close()
     }
-    P && P.close(); S && S.close()
+    P && P.close(); S && S.close(); chrome.kill()
   } catch (e) { rec.note('SCENARIO ERROR ' + String(e).slice(0, 300)) }
   rec.save(); main.close(); await app.kill()
   console.log('outputs scenario done')

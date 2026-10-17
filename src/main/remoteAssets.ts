@@ -213,7 +213,7 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 
 .qstrip-row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 8px}
 .qstrip-row .section-label{padding:0}
-.qstrip-row .viewall{display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0}
+.qstrip-row .viewall{min-height:44px; display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0}
 .qstrip{display:flex; gap:8px; overflow-x:auto; padding:0 18px 4px; -webkit-overflow-scrolling:touch}
 .qstrip-card{flex:0 0 134px; padding:11px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border); text-align:left}
 .qstrip-card[data-kind="song"]{border-left-color:var(--amber)}
@@ -514,7 +514,7 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 .a2hs-num{flex-shrink:0; width:26px; height:26px; border-radius:8px; background:rgba(139,111,209,0.15); display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:12px; font-weight:800}
 .a2hs-step-text{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text)}
 .a2hs .btn-primary,.role-banner-card .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
-.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
+.a2hs .btn-skip,.role-banner-card .btn-skip{min-height:44px; display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
 /* Deliberately NOT a full-screen modal like .a2hs-overlay (inset:0 + a
  * backdrop that captures every click) — this used to hide the entire app
  * behind it on a device's very first connection until the person noticed
@@ -1468,7 +1468,7 @@ function queueRowHtml(q, i, editable, richPreview){
     + '<div class="qtitle">' + esc(it.title) + '</div>'
     + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
     + (richPreview && it.slides && it.slides[0] && !it.slides[0].media ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
-  if(it.slides && it.slides[0] && it.slides[0].media){ body = '<img class="qthumb" alt="" src="/media/' + it.slides[0].media.mediaId + '/thumb">' + body; }
+  if(it.slides && it.slides[0] && it.slides[0].media){ body = '<img class="qthumb" alt="" src="/media/' + it.slides[0].media.mediaId + '/thumb" onerror="this.remove()">' + body; }
   if(editable){
     return '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
       + '<div class="qitem-body">' + body + '</div>'
@@ -1651,7 +1651,7 @@ function queueDetailInnerHtml(i){
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
-    html += (sl.media ? '<img class="qthumb qthumb--slide" alt="" src="/media/' + sl.media.mediaId + '/thumb">' : '') + '<div class="slide-text">' + esc(sl.text) + '</div></button>';
+    html += (sl.media ? '<img class="qthumb qthumb--slide" alt="" src="/media/' + sl.media.mediaId + '/thumb" onerror="this.remove()">' : '') + '<div class="slide-text">' + esc(sl.text) + '</div></button>';
   }
   html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
   return html;
@@ -2763,6 +2763,9 @@ function initA2HS(){
   }
 }
 function showA2HS(isIOS){
+  // one question at a time: the "Who's this?" prompt comes first, this sheet only after it has been answered or skipped
+  var ro = $('roleOverlay');
+  if(ro && ro.classList.contains('active')){ setTimeout(function(){ showA2HS(isIOS); }, 1500); return; }
   var steps = $('a2hsSteps');
   var primary = $('a2hsPrimary');
   if(isIOS){
