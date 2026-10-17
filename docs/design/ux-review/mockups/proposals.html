@@ -1,0 +1,448 @@
+<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>All proposals — before and after</title>
+<style>/* Born Again — design tokens (Phase 1 proposal).
+   Namespaced --ba-* so it can sit beside the current App.css variables while
+   the prototype is evaluated; Phase 2 migrates the app onto it and retires
+   the old names. Dark is the default (dim booth). */
+
+
+:root,
+:root[data-theme='dark'] {
+  /* surfaces: 5 steps, each ~+4% lightness; depth comes from step + hairline, not shadow alone */
+  --ba-bg-0: #08080a; /* app canvas / behind everything */
+  --ba-bg-1: #0f0f12; /* panes */
+  --ba-bg-2: #16161a; /* raised: cards, columns */
+  --ba-bg-3: #1e1e23; /* hover */
+  --ba-bg-4: #27272d; /* pressed / selected */
+  --ba-line: #26262c; /* hairline */
+  --ba-line-strong: #3a3a42;
+
+  --ba-text-1: #f4f2ee; /* 17.6:1 on bg-0 */
+  --ba-text-2: #b2afaa; /* 9.4:1  */
+  --ba-text-3: #8a8782; /* 5.4:1 — the floor for any readable text */
+
+  /* v1 identity, kept: Plum is the one action colour */
+  --ba-accent: #9a80e6;
+  --ba-accent-hi: #ad97f0;
+  --ba-accent-lo: #6f56bd;
+  --ba-on-accent: #120d1e;
+  --ba-accent-wash: rgba(154, 128, 230, 0.14);
+  --ba-focus: #c1affa;
+
+  /* v1 content identity, kept: Stone / Sage / Amber (+ Ice for Screens) */
+  --ba-sermons: #cfc8ba;
+  --ba-bible: #7ab487;
+  --ba-songs: #d49a4c;
+  --ba-screens: #5db4ea;
+
+  --ba-live: #ff4d4f; /* ON AIR. Red is reserved for live + destructive. */
+  --ba-live-wash: rgba(255, 77, 79, 0.14);
+  --ba-ok: #4cc17f;
+  --ba-warn: #f0983e;
+  --ba-danger: #ff5b61;
+
+  --ba-scrim: rgba(4, 4, 6, 0.64);
+  --ba-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ba-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(0, 0, 0, 0.56), 0 0 0 1px var(--ba-line-strong);
+}
+
+:root[data-theme='light'] {
+  --ba-bg-0: #f4f1ea;
+  --ba-bg-1: #fbfaf7;
+  --ba-bg-2: #ffffff;
+  --ba-bg-3: #f0ece3;
+  --ba-bg-4: #e6e0d3;
+  --ba-line: #e3ddcf;
+  --ba-line-strong: #cfc7b5;
+  --ba-text-1: #1a1814;
+  --ba-text-2: #55503f;
+  --ba-text-3: #6d6755;
+  --ba-accent: #5b3fb0;
+  --ba-accent-hi: #4a3294;
+  --ba-accent-lo: #7a60c8;
+  --ba-on-accent: #ffffff;
+  --ba-accent-wash: rgba(91, 63, 176, 0.1);
+  --ba-focus: #5b3fb0;
+  --ba-sermons: #7d745a;
+  --ba-bible: #38703f;
+  --ba-songs: #86581a;
+  --ba-screens: #1a6aa0;
+  --ba-live: #d3202a;
+  --ba-live-wash: rgba(211, 32, 42, 0.1);
+  --ba-ok: #1b7544;
+  --ba-warn: #9a520c;
+  --ba-danger: #c22530;
+  --ba-scrim: rgba(20, 16, 8, 0.4);
+  --ba-shadow-1: 0 1px 2px rgba(20, 16, 8, 0.08);
+  --ba-shadow-2: 0 8px 24px rgba(20, 16, 8, 0.1), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(20, 16, 8, 0.18), 0 0 0 1px var(--ba-line-strong);
+}
+
+/* High contrast: pure black/white, 2px lines, no translucency. WCAG AAA text. */
+:root[data-theme='contrast'] {
+  --ba-bg-0: #000;
+  --ba-bg-1: #000;
+  --ba-bg-2: #0a0a0a;
+  --ba-bg-3: #1a1a1a;
+  --ba-bg-4: #2e2e2e;
+  --ba-line: #8c8c8c;
+  --ba-line-strong: #ffffff;
+  --ba-text-1: #ffffff;
+  --ba-text-2: #ffffff;
+  --ba-text-3: #d6d6d6;
+  --ba-accent: #c9b6ff;
+  --ba-accent-hi: #ffffff;
+  --ba-accent-lo: #c9b6ff;
+  --ba-on-accent: #000;
+  --ba-accent-wash: rgba(201, 182, 255, 0.28);
+  --ba-focus: #ffe14d;
+  --ba-live: #ff6b6b;
+  --ba-live-wash: rgba(255, 107, 107, 0.3);
+  --ba-sermons: #ffffff;
+  --ba-bible: #8dff9f;
+  --ba-songs: #ffcf70;
+  --ba-screens: #8fd3ff;
+  --ba-shadow-2: 0 0 0 2px var(--ba-line-strong);
+  --ba-shadow-3: 0 0 0 2px var(--ba-line-strong);
+}
+
+:root {
+  /* type: Inter (kept) + JetBrains Mono for codes. Scale ratio ~1.125, UI is
+     dense by design; reading text (sermon paragraphs) has its own tier. */
+  --ba-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ba-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --ba-fs-xs: 0.72rem;
+  --ba-fs-sm: 0.8rem;
+  --ba-fs-md: 0.9rem;
+  --ba-fs-lg: 1.02rem;
+  --ba-fs-xl: 1.25rem;
+  --ba-fs-2xl: 1.6rem;
+  --ba-fs-read: 1.18rem; /* sermon / lyric reading pane */
+  --ba-lh-tight: 1.25;
+  --ba-lh-read: 1.6;
+  --ba-tracking-caps: 0.09em;
+
+  /* spacing: 4px base */
+  --ba-1: 4px; --ba-2: 8px; --ba-3: 12px; --ba-4: 16px; --ba-5: 24px; --ba-6: 32px; --ba-7: 48px;
+
+  /* radius: slightly rounder than v1 for a softer, premium feel */
+  --ba-r-sm: 6px; --ba-r-md: 10px; --ba-r-lg: 14px; --ba-r-pill: 999px;
+
+  /* density: comfortable (default) / compact via [data-density] */
+  --ba-row-h: 44px;
+  --ba-hit: 40px; /* min interactive target; 48px under [data-touch] */
+
+  /* motion — purposeful, interruptible (CSS transitions, never keyframe locks) */
+  --ba-dur-1: 90ms;  /* hover, press */
+  --ba-dur-2: 180ms; /* small state change */
+  --ba-dur-3: 280ms; /* column slide / panel */
+  --ba-ease: cubic-bezier(0.2, 0.7, 0.2, 1);       /* decelerate-in: default */
+  --ba-ease-inout: cubic-bezier(0.65, 0, 0.35, 1); /* panel slide */
+
+  /* z layers */
+  --ba-z-base: 0;
+  --ba-z-pane: 10;
+  --ba-z-sticky: 20;
+  --ba-z-popover: 40;
+  --ba-z-modal: 60;
+  --ba-z-toast: 80;
+  --ba-z-palette: 90;
+}
+:root[data-density='compact'] { --ba-row-h: 34px; --ba-hit: 32px; }
+:root[data-touch='true'] { --ba-hit: 48px; --ba-row-h: 52px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ba-dur-1: 0ms; --ba-dur-2: 0ms; --ba-dur-3: 0ms; }
+}
+
+/* Born Again UX review mockups — shared styles. Tokens are the --ba-* set from docs/design/tokens.css (copied in by build.py). Placeholder content only. */
+*{box-sizing:border-box}
+html{color-scheme:dark}
+html[data-theme='light']{color-scheme:light}
+body{margin:0;background:var(--ba-bg-0);color:var(--ba-text-1);font:14px/1.45 var(--ba-font)}
+a{color:var(--ba-accent-hi)}
+button{font:inherit;color:inherit;cursor:pointer}
+.sr{position:absolute;left:-9999px}
+
+/* page chrome (not part of the app being mocked) */
+.page{max-width:1240px;margin:0 auto;padding:28px 24px 70px}
+.page h1{font-size:28px;margin:0 0 6px}
+.page h2{font-size:21px;margin:34px 0 6px}
+.page p.lead{color:var(--ba-text-2);max-width:900px;margin:4px 0 14px}
+.topnav{position:sticky;top:0;z-index:50;display:flex;gap:14px;align-items:center;padding:10px 24px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line);flex-wrap:wrap}
+.topnav a{color:var(--ba-text-2);text-decoration:none;font-size:13.5px}.topnav a:hover,.topnav a.on{color:var(--ba-text-1)}
+.topnav .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);overflow:hidden}
+.seg button{background:var(--ba-bg-2);border:0;padding:6px 12px;font-size:13px;color:var(--ba-text-2)}
+.seg button+button{border-left:1px solid var(--ba-line-strong)}
+.seg button[aria-pressed='true']{background:var(--ba-accent);color:var(--ba-on-accent);font-weight:600}
+.seg.approve button[aria-pressed='true'][data-v='approve']{background:var(--ba-ok);color:#06140d}
+.seg.approve button[aria-pressed='true'][data-v='reject']{background:var(--ba-danger);color:#1a0507}
+.seg.approve button[aria-pressed='true'][data-v='discuss']{background:var(--ba-warn);color:#1a0d02}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--ba-line-strong);color:var(--ba-text-2);margin-right:5px}
+.pill.s{color:var(--ba-ok);border-color:var(--ba-ok)}.pill.m{color:var(--ba-warn);border-color:var(--ba-warn)}.pill.l{color:var(--ba-danger);border-color:var(--ba-danger)}
+.pill.hi{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.card{background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-lg);padding:16px 18px;margin:16px 0}
+.card h3{margin:0 0 4px;font-size:17px}
+.card .meta{margin:6px 0 10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.stage{background:var(--ba-bg-1);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);padding:10px;overflow:auto}
+.stage .lab{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);margin:0 0 6px}
+textarea.note{width:100%;min-height:54px;background:var(--ba-bg-1);color:var(--ba-text-1);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-sm);padding:8px;font:inherit}
+.summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);margin:14px 0;position:sticky;top:48px;z-index:40}
+.big{background:var(--ba-accent);color:var(--ba-on-accent);border:0;border-radius:var(--ba-r-md);padding:8px 16px;font-weight:700}
+.tgl{display:inline-flex;gap:0}
+
+/* ---- the mocked app ---- */
+.app{--w:1366px;width:var(--w);height:768px;display:grid;grid-template-rows:52px 1fr auto;background:var(--ba-bg-0);border:1px solid var(--ba-line-strong);border-radius:8px;overflow:hidden;font-size:13px;position:relative}
+.app.s1040{--w:1040px;height:640px}.app.s1920{--w:1920px;height:1080px}
+.scale{transform-origin:top left}
+.hdr{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line)}
+.logo{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;margin-right:6px}.logo i{color:var(--ba-accent);font-style:normal}.logo span{font-weight:300;color:var(--ba-accent)}
+.hb{height:32px;padding:0 12px;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);color:var(--ba-text-1);font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.hb.q{background:transparent;border-color:transparent;color:var(--ba-text-2)}
+.hb.ic{width:32px;padding:0;justify-content:center}
+.hb.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.hb.live{background:var(--ba-live);color:#fff;border-color:var(--ba-live);font-weight:700}
+.hb.srch{min-width:190px;justify-content:space-between;color:var(--ba-text-2)}
+.hb kbd,.k{font:11px var(--ba-mono);background:var(--ba-bg-3);border:1px solid var(--ba-line);border-radius:4px;padding:1px 5px;color:var(--ba-text-2)}
+.grow{flex:1}
+.cluster{display:inline-flex;gap:6px;align-items:center;padding:3px 6px;border:1px solid var(--ba-line-strong);border-radius:12px;background:var(--ba-bg-0)}
+.cluster.onair{border-color:var(--ba-live);box-shadow:0 0 0 1px var(--ba-live-wash)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ba-text-3);display:inline-block}.dot.live{background:var(--ba-live)}.dot.ok{background:var(--ba-ok)}.dot.warn{background:var(--ba-warn)}
+
+.body{display:grid;grid-template-columns:68px minmax(0,1fr) 340px;min-height:0}
+.body.noq{grid-template-columns:68px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;gap:4px;padding:8px 6px;background:var(--ba-bg-1);border-right:1px solid var(--ba-line);overflow:hidden}
+.rb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-size:11px;font-weight:600;position:relative}
+.rb svg,.rb .g{font-size:17px;line-height:1}
+.rb.on{background:var(--ba-bg-3);color:var(--ba-text-1);border-color:var(--ba-line-strong)}
+.rb.on.c-bible{border-color:var(--ba-bible);color:var(--ba-bible)}.rb.on.c-songs{border-color:var(--ba-songs);color:var(--ba-songs)}.rb.on.c-media{border-color:#4fb8a8;color:#4fb8a8}.rb.on.c-queue{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+.rb.on.neutral{border-color:var(--ba-accent);color:var(--ba-accent-hi);background:var(--ba-accent-wash)}
+.rb .bdg{position:absolute;top:2px;right:6px;font-size:10px;background:var(--ba-accent);color:var(--ba-on-accent);border-radius:9px;padding:0 5px}
+.rsep{height:1px;background:var(--ba-line);margin:4px 8px}.rgrow{flex:1}
+.rlab{font-size:9.5px;letter-spacing:.09em;color:var(--ba-text-3);text-align:center;margin:4px 0 0;text-transform:uppercase}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--ba-bg-0)}
+.tabs{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--ba-line);align-items:center}
+.tab{height:28px;padding:0 12px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-weight:600}
+.tab.on{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.cont{flex:1;min-height:0;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.drill{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;flex:1;min-height:0}
+.drill .col{border-right:1px solid var(--ba-line);padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start}
+.chbtn{height:34px;border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);border-radius:var(--ba-r-sm);font-weight:700;color:var(--ba-text-1)}
+.read{padding:10px 16px;overflow:hidden}
+.verse{display:grid;grid-template-columns:26px 1fr auto auto;gap:10px;align-items:start;padding:8px 8px;border-radius:var(--ba-r-md);border:1px solid transparent;font-size:17px;line-height:1.45}
+.verse .n{color:var(--ba-text-3);font-size:13px;padding-top:4px}
+.verse.sel{background:var(--ba-bg-2);border-color:var(--ba-accent)}
+.verse .a{display:flex;gap:6px;align-items:center;font-size:12.5px}
+.sm{height:26px;padding:0 10px;border-radius:var(--ba-r-sm);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);color:var(--ba-text-1);font-size:12.5px;display:inline-flex;align-items:center}
+.sm.q{border-color:transparent;background:none;color:var(--ba-text-2)}
+.sm.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.sm.hot{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+
+.queue{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--ba-line);background:var(--ba-bg-1)}
+.qh{padding:10px 14px 4px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700}
+.qtools{display:flex;flex-wrap:wrap;gap:2px 10px;padding:2px 14px 8px;color:var(--ba-text-2)}
+.qtools span{padding:3px 0;font-size:13px}.qtools .dis{color:var(--ba-text-3)}
+.qlist{flex:1;min-height:0;overflow:hidden;padding:4px 10px;display:flex;flex-direction:column;gap:5px}
+.qrow{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:7px 9px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md)}
+.qrow b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qrow small{color:var(--ba-text-2);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow.up{border-color:var(--ba-accent)}.qrow.live{border-color:var(--ba-live);background:var(--ba-live-wash)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.06em;border-radius:5px;border:1px solid var(--ba-line-strong);padding:1px 6px;color:var(--ba-text-2)}.tag.live{color:var(--ba-live);border-color:var(--ba-live)}.tag.up{color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.pl{padding:10px 14px;border-top:1px solid var(--ba-line);display:grid;gap:8px}
+.pv{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:center}
+.scr{aspect-ratio:16/9;background:#000;border-radius:8px;border:2px dashed var(--ba-line-strong);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#cfcfcf;text-align:center;padding:4px}
+.scr.live{border:2px solid var(--ba-live)}
+.scr.empty{color:var(--ba-text-3)}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700;display:flex;gap:6px;align-items:center}
+.big2{height:38px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--ba-text-1)}
+.big2.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent)}
+.big2.dim{color:var(--ba-text-3)}
+.row2{display:grid;gap:6px}.row2.c2{grid-template-columns:1fr 1fr}.row2.c3{grid-template-columns:2fr 1fr}
+
+.status{display:flex;gap:16px;align-items:center;padding:5px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);font:12px var(--ba-mono);color:var(--ba-text-2)}
+.status .r{margin-left:auto;display:flex;gap:16px}.status .live{color:var(--ba-live);font-weight:700}
+.tbar{display:flex;gap:10px;align-items:center;padding:7px 14px;background:var(--ba-bg-2);border-top:1px solid var(--ba-line);min-height:52px}
+.tbar .ti{min-width:150px}.tbar .ti small{display:block;color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.tbar .seek{flex:1;height:6px;background:var(--ba-bg-4);border-radius:3px;position:relative;min-width:60px}.tbar .seek i{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ba-accent);border-radius:3px}
+.cb{height:34px;min-width:34px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);display:inline-flex;align-items:center;justify-content:center;padding:0 8px}
+.cb.play{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);width:42px;border-radius:50%}
+.dock{display:grid;grid-template-columns:minmax(240px,1.1fr) minmax(0,2fr) auto;gap:14px;align-items:center;padding:7px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);min-height:56px}
+.dock .live-z{display:flex;gap:10px;align-items:center;padding:4px 10px;border:1px solid var(--ba-live);border-radius:var(--ba-r-md);background:var(--ba-live-wash);min-height:42px}
+.dock .live-z.off{border-color:var(--ba-line-strong);background:var(--ba-bg-2)}
+.dock .live-z b{display:block;font-size:13px}.dock .live-z small{color:var(--ba-text-2);font-size:11.5px}
+.dock .tape-z{display:flex;gap:8px;align-items:center}
+.dock .chips{display:flex;gap:8px;font-size:12px;color:var(--ba-text-2);align-items:center}
+.pop{position:absolute;z-index:20;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-lg);box-shadow:var(--ba-shadow-3);padding:10px;min-width:230px}
+.pop h4{margin:0 0 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}
+.pop .it{display:flex;justify-content:space-between;padding:6px 6px;border-radius:6px;color:var(--ba-text-1)}.pop .it:hover{background:var(--ba-bg-3)}
+.glos{width:100%;border-collapse:collapse;font-size:13.5px}.glos th,.glos td{border-bottom:1px solid var(--ba-line);padding:7px 8px;text-align:left;vertical-align:top}.glos th{color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.ba-toggle{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+[data-view='before'] .after,[data-view='after'] .before{display:none}
+.callout{border-left:3px solid var(--ba-accent);padding:6px 12px;color:var(--ba-text-2);margin:8px 0;background:var(--ba-bg-1)}
+.fix{outline:2px dashed var(--ba-warn);outline-offset:2px}
+.mini{display:inline-block;vertical-align:top}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+.tag,.sm,.k,.pill,.hb{white-space:nowrap}
+.qh .sm{text-transform:none;letter-spacing:0;font-weight:600}
+.lbl{white-space:nowrap}
+.qrow>div{min-width:0}
+.fitbox{width:100%;max-width:100%;overflow:hidden}
+.fitbox>.scale{width:max-content}
+.cmp>div{min-width:0}
+.cluster b{white-space:nowrap}
+.dock .live-z>div{min-width:0}.dock .live-z small{white-space:nowrap}
+</style></head><body><div class="topnav"><b>Born Again · UX review</b><a href="index.html" class="">Review board</a><a href="proposals.html" class="on">All proposals, before / after</a><a href="shell.html" class="">Proposed app shell</a><a href="live-compare.html" class="">Busy live view: current vs proposed</a><span class="sp"></span><span class="seg" role="group" aria-label="Theme"><button data-theme-btn="dark" aria-pressed="true">Dark</button><button data-theme-btn="light" aria-pressed="false">Light</button><button data-theme-btn="contrast" aria-pressed="false">High contrast</button></span></div><div class="page"><h1>All proposals — before and after</h1><p class="lead">Each block has a Before / After switch. Everything is pretend data (public-domain Bible text, hymn titles, a sample message). Nothing here is built. Decide on the <a href="index.html">Review board</a>.</p><section id="P-01" class="card" data-ba data-view="after"><h3>P-01 · A header with zones: the &quot;on air&quot; cluster, and a menu for the rest</h3><div class="meta"><span class="pill m">Effort M</span><span class="pill">Risk low</span><span class="pill hi">Impact high</span></div><p class="lead">13 header controls in one row become three groups: find (search, history), ON AIR (Screens, Hide screen, Message, Open/Close projection) and a ⚙ menu (appearance, Help, Shortcuts, Remote).</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="fitbox" data-w="1120" data-h="60"><div class="scale"><div class="app" style="height:60px;display:block;width:1120px"><div style="height:52px"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch">⌕ Search everything <kbd>⌘K</kbd></span><span class="hb ic q">☀</span><span class="hb ic q">◐</span><span class="hb q">Help</span><span class="hb q">Shortcuts</span><span class="grow"></span><span class="hb">◉ Hide screen</span><span class="hb">Message</span><span class="hb"><span class="dot ok"></span> Screens <kbd>3</kbd> ▾</span><span class="hb">▯ Remote</span><span class="hb live">Close projection</span></div></div></div></div></div><p class="k">Today at 1040 px with the screens live: 13 controls (this shows the intended, un-squeezed layout).</p></div><div class="after"><div class="fitbox" data-w="1120" data-h="60"><div class="scale"><div class="app" style="height:60px;display:block;width:1120px;overflow:visible"><div style="height:52px"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch" style="min-width:200px">⌕ Search everything <kbd>⌘K</kbd></span><span class="grow"></span><span class="cluster onair"><span class="dot live"></span><b style="font-size:11px;letter-spacing:.08em;color:var(--ba-live)">ON AIR</b><span class="hb" style="height:28px"><span class="dot ok"></span> Screens ▾</span><span class="hb" style="height:28px">◉ Hide screen</span><span class="hb" style="height:28px">Message</span><span class="hb live" style="height:28px">Close projection</span></span><span class="hb">▯ Remote</span><span class="hb ic" data-cog>⚙</span></div></div></div></div></div><div class="fitbox" data-w="1120" data-h="330"><div class="scale"><div class="app" style="height:330px;display:block;width:1120px;overflow:visible"><div style="height:52px"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch" style="min-width:200px">⌕ Search everything <kbd>⌘K</kbd></span><span class="grow"></span><span class="cluster onair"><span class="dot live"></span><b style="font-size:11px;letter-spacing:.08em;color:var(--ba-live)">ON AIR</b><span class="hb" style="height:28px"><span class="dot ok"></span> Screens ▾</span><span class="hb" style="height:28px">◉ Hide screen</span><span class="hb" style="height:28px">Message</span><span class="hb live" style="height:28px">Close projection</span></span><span class="hb">▯ Remote</span><span class="hb ic" data-cog>⚙</span><div class="pop" style="right:14px;top:50px;width:280px"><h4>Appearance</h4><div class="it">Theme <span class="seg"><button aria-pressed="true">Dark</button><button aria-pressed="false">Light</button></span></div><div class="it">Contrast <span class="seg"><button aria-pressed="true">Normal</button><button aria-pressed="false">High</button></span></div><div class="it">Interface size <span class="k">Auto ▾</span></div><h4 style="margin-top:8px">Help</h4><div class="it">Manual <span class="k">F1</span></div><div class="it">Keyboard shortcuts <span class="k">?</span></div></div></div></div></div></div></div><p class="k">Proposed: search · ON AIR cluster · Remote · ⚙ menu (second row shows the menu open).</p></div></div>
+<p><b>Problem.</b> The header holds 13 controls of four different kinds in one flat row: navigation, search, appearance (theme, contrast), help, and the live controls. Help, Shortcuts, theme and contrast are used once a month; Hide screen, Message and Close projection are used every service, yet look the same. With the screens live at 1040 px the row did not fit (the search button was squeezed to 22 px and the logo overlapped; fixed as a bug, but the cause is the number of controls). At a 150 % interface scale the row needed a second line.</p><p><b>Change.</b> Left: logo, history, search. Right: one bordered ON AIR cluster (a red outline while the screens are live) with Screens ▾, Hide screen, Message and Open/Close projection. Far right: Remote (shows a phone count when connected) and a ⚙ menu that holds Appearance (theme, high contrast, interface size), Help and Keyboard shortcuts. Seven controls instead of thirteen, and the live ones are grouped where the eye lands first.</p><p><b>Benefit.</b> Faster to find the screens controls; no wrapping at 1040 px even with the screens live; fewer wrong clicks on a rarely used control; room to add things later without another overflow.</p></section><section id="P-02" class="card" data-ba data-view="after"><h3>P-02 · One vocabulary for sending something to the screens</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact high</span></div><p class="lead">&quot;Project&quot;, &quot;Take&quot;, &quot;Put on the screen&quot;, &quot;Show&quot;, &quot;Hide screen&quot;, &quot;Blank&quot; and &quot;Clear&quot; are used for overlapping things. Pick one word per job and use it on every surface.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><table class="glos"><tr><th>Where</th><th>What it calls "send to the screens"</th></tr><tr><td>Verse / paragraph button</td><td>Project</td></tr><tr><td>Live box</td><td>Take next</td></tr><tr><td>Hint under the Bible</td><td>“Tap a verse to put it on screen”</td></tr><tr><td>Tape place</td><td>Put on the screens</td></tr><tr><td>Header</td><td>Hide screen / Show screen · Close projection</td></tr><tr><td>Live box</td><td>Clear (the text) · Back / Next (the queue)</td></tr><tr><td>Phone</td><td>Blank · Prev / Next</td></tr><tr><td>Keys</td><td>Esc = hide screen · B · Space = next</td></tr></table></div><div class="after"><table class="glos"><tr><th>Word</th><th>Means</th><th>Used on</th></tr><tr><td><b>Show</b></td><td>send this to the screens now</td><td>rows, live box, Tape, phone</td></tr><tr><td><b>Next / Back</b></td><td>step through the queue</td><td>live box, phone, keys</td></tr><tr><td><b>Hide screen / Show screen</b></td><td>the blackout (Esc)</td><td>header, dock, phone</td></tr><tr><td><b>Clear</b></td><td>remove the text, keep the screens on</td><td>live box</td></tr><tr><td><b>Projection</b></td><td>the window: Open / Close</td><td>header, menus</td></tr><tr><td colspan="3" class="k">“Project” and “Take” are retired from the UI; the command palette still finds “Show” when you type “project”.</td></tr></table></div></div>
+<p><b>Problem.</b> The same action is called Project (verse buttons, search results), Take next (live box), &quot;Put verse 1 on the screen&quot; (accessible name), &quot;Tap a verse to put it on screen&quot; (hint), Show (Tape: &quot;Put on the screens&quot;), and the phone says Next/Blank. Hiding is Hide screen / Show screen / Blank / Clear / &quot;Screen hidden&quot; / Esc, depending on where you are. A volunteer who has used the app twice cannot tell whether &quot;Clear&quot; removes the queue item or the live text.</p><p><b>Change.</b> A short glossary used everywhere (operator app, phone, Help, manual, tooltips): SHOW = send to the screens now; NEXT / BACK = step through the queue; HIDE SCREEN / SHOW SCREEN = the blackout (Esc); CLEAR = remove the text but keep the screens on; PROJECTION = the window (Open / Close). &quot;Project&quot; and &quot;Take&quot; disappear from the UI.</p><p><b>Benefit.</b> One word to learn per job; the manual and the phone match the app; fewer mistakes about what a button does.</p></section><section id="P-03" class="card" data-ba data-view="after"><h3>P-03 · Service queue: one File menu, one readiness chip, room for more rows</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact high</span></div><p class="lead">Seven text buttons in two rows (New, Open, Import, Save, Save + pictures, Open pack, Check) collapse into File ▾ plus an &quot;Is tonight ready?&quot; status chip.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:340px;height:auto;display:block"><div class="queue" style="border:0"><div class="qh">Service queue</div><div class="qtools"><span>New</span><span>Open</span><span>Import</span><span>Save</span><span class="dis">Save + pictures</span><span>Open pack</span><span>Check</span></div><div class="qlist" style="height:150px"><div class="qrow up"><span>▤</span><div><b>Psalm 23:1 · KJV</b><small>The LORD is my shepherd; I shall not want.</small></div><span class="tag up">UP NEXT</span></div><div class="qrow "><span>♪</span><div><b>Amazing Grace</b><small>Verse 1 — Amazing grace, how sweet the sound</small></div></div><div class="qrow "><span>◖◗</span><div><b>A Sample Message</b><small>Tape · paragraph 12</small></div></div></div></div></div><p class="k">Two rows of text buttons (~70 px): 6 rows visible at 1366×768, 2 at 1040×640.</p></div><div class="after"><div class="app" style="width:340px;height:auto;display:block"><div class="queue" style="border:0"><div class="qh" style="display:flex;align-items:center;gap:8px">Service queue<span class="grow"></span><span class="sm">File ▾</span><span class="sm">Edit</span><span class="sm" style="border-color:var(--ba-warn);color:var(--ba-warn)">⚠ 2 to fix</span></div><div class="qlist" style="height:184px"><div class="qrow up"><span>▤</span><div><b>Psalm 23:1 · KJV</b><small>The LORD is my shepherd; I shall not want.</small></div><span class="tag up">UP NEXT</span></div><div class="qrow "><span>♪</span><div><b>Amazing Grace</b><small>Verse 1 — Amazing grace, how sweet the sound</small></div></div><div class="qrow "><span>◖◗</span><div><b>A Sample Message</b><small>Tape · paragraph 12</small></div></div><div class="qrow "><span>▣</span><div><b>Welcome slide</b><small>Picture · Welcome.jpg</small></div></div></div></div></div><p class="k">One row (~34 px) with a readiness chip: +2 queue rows. File ▾ lists New, Open…, Import…, Save, Save + pictures, Open pack….</p></div></div>
+<p><b>Problem.</b> The queue toolbar takes two rows (about 70 px) before the first queue row; at 1366×768 the list shows six rows and at 1040×640 only two. &quot;Open&quot; exists four times (rail, toolbar, empty-state button, palette). The phone remote already uses a compact File ▾ / Save / Edit group, so the two surfaces disagree. The readiness check (&quot;Check&quot;) is the thing a volunteer needs before service, but it is the quietest word in the row.</p><p><b>Change.</b> Toolbar: File ▾ (New, Open…, Import…, Save, Save + pictures, Open pack…), Edit, and a status chip: ✓ Ready / ⚠ 2 to fix (opens &quot;Is tonight ready?&quot;). The empty state keeps one &quot;Open a saved service…&quot; button. The rail Open button goes (see P-04).</p><p><b>Benefit.</b> About 36 px more list height (two more queue rows); the readiness state is visible without opening anything; phone and desktop share the same File pattern.</p></section><section id="P-04" class="card" data-ba data-view="after"><h3>P-04 · Left rail: Find / Tape / Service groups and one selection colour</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact med</span></div><p class="lead">Eight rail buttons in one list, each section highlighted in its own colour (green, orange, teal, white, plum). Group them and use one meaning for colour.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:90px;height:420px;display:block"><div class="rail" style="height:420px"><span class="rb"><span class="g">🎙</span>Sermons</span><span class="rb on c-bible"><span class="g">▤</span>Bible</span><span class="rb"><span class="g">♪</span>Songs</span><span class="rb"><span class="g">▣</span>Media</span><span class="rb"><span class="g">◖◗</span>Tape</span><span class="rgrow"></span><span class="rb"><span class="g">☆</span>Saved</span><span class="rb"><span class="g">▱</span>Open</span><span class="rb "><span class="g">☰</span>Queue<span class="bdg">9</span></span></div></div><p class="k">Bible green, Songs orange, Media teal, Queue plum, Tape white.</p></div><div class="after"><div class="app" style="width:90px;height:420px;display:block"><div class="rail" style="height:420px"><div class="rlab">Find</div><button class="rb"><span class="g">🎙</span>Sermons</button><button class="rb on neutral"><span class="g">▤</span>Bible</button><button class="rb"><span class="g">♪</span>Songs</button><button class="rb"><span class="g">▣</span>Media</button><span class="rsep"></span><div class="rlab">Listen</div><button class="rb"><span class="g">◖◗</span>Tape</button><span class="rgrow"></span><span class="rsep"></span><div class="rlab">Service</div><button class="rb"><span class="g">☰</span>Queue<span class="bdg">9</span></button></div></div><p class="k">Three groups, one selection colour; Saved/Open move into File ▾ (P-03).</p></div></div>
+<p><b>Problem.</b> Selected Bible is green, Songs orange, Media teal, Tape white, Queue plum, Saved and Open plain. Colour is supposed to carry meaning (red = live only, plum = the action colour, blue = screens), so five accent colours that mean nothing but &quot;this section&quot; dilute it. Saved and Open are service-file actions, not places to browse, but sit among the places. On a short window the last buttons fell off the bottom (fixed as a bug: the rail now scrolls).</p><p><b>Change.</b> Three labelled groups: FIND (Sermons, Bible, Songs, Media), LISTEN (Tape), SERVICE (Queue with its count, Saved, Open moves into File ▾ per P-03). Selected state is one plum wash for all; the section keeps its own colour only inside its own panel (a small stripe), where it helps recognition.</p><p><b>Benefit.</b> The rail reads at a glance; colour regains its meaning; fewer controls to scan.</p></section><section id="P-05" class="card" data-ba data-view="after"><h3>P-05 · A &quot;Now&quot; dock: what is on air, the tape, and the connections in one bottom strip</h3><div class="meta"><span class="pill m">Effort M</span><span class="pill">Risk med</span><span class="pill hi">Impact high</span></div><p class="lead">The status bar (On air · 3 displays · 12 in queue) and the tape bar are two stacked strips; the question &quot;what is on screen right now?&quot; is answered by a small word. Merge them into one 56 px dock.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="fitbox" data-w="1040" data-h="100"><div class="scale"><div class="app" style="width:1040px;height:auto;display:block;overflow:hidden"><div class="tbar"><div class="ti"><small>Tape</small><b>A Sample Message · ¶12</b></div><span class="cb">⏮</span><span class="cb">↺10</span><span class="cb play">❚❚</span><span class="cb">10↻</span><span class="cb">⏭</span><span class="k">0:42</span><div class="seek"><i></i></div><span class="k">−1:21</span><span class="pill" style="margin:0;color:var(--ba-ok);border-color:var(--ba-ok)">In sync</span><span class="cb">🔈</span><span class="hb">System default</span><span class="hb">Text: not on the screens</span></div><div class="status"><span>Born Again v2.0.0-dev.1</span><span class="r"><span class="live">● On air</span><span>3 displays</span><span>9 in queue</span></span></div></div></div></div><p class="k">Two strips: tape bar 57 px + status bar ~30 px. “On air” is a small word at the right.</p></div><div class="after"><div class="fitbox" data-w="1040" data-h="76"><div class="scale"><div class="app" style="width:1040px;height:auto;display:block;overflow:hidden"><div class="dock"><div class="live-z"><span class="dot live"></span><div><b>Psalm 23:1 · KJV</b><small>On screen 0:42</small></div><span class="grow"></span><span class="sm">Hide screen</span></div><div class="tape-z"><span class="cb">↺10</span><span class="cb play" >❚❚</span><span class="cb">10↻</span><div style="min-width:130px"><b style="font-size:12.5px">A Sample Message · ¶12</b></div><span class="k" data-clock>0:42</span><div class="tbar" style="padding:0;border:0;min-height:0;background:none;flex:1"><div class="seek"><i data-seekfill></i></div></div><span class="cb">🔈</span></div><div class="chips"><span><span class="dot ok"></span> Screens</span><span><span class="dot ok"></span> Stage</span><span><span class="dot ok"></span> Phone 1</span><span><span class="dot ok"></span> Output</span></div></div></div></div></div><p class="k">One 56 px dock: LIVE (what, since when, Hide screen) · tape · connections.</p></div></div>
+<p><b>Problem.</b> &quot;What is live right now&quot; must be obvious in under a second. Today it is a red &quot;On air&quot; word in a 12 px status bar plus a small LIVE box in the queue pane that disappears when the queue pane is hidden; the tape bar (57 px) sits above the status bar (~30 px), so two strips cost ~87 px of a 640 px window. Connections (screens, stage, phone, OBS) are only visible by opening Screens ▾ or Remote.</p><p><b>Change.</b> One dock: left zone LIVE (red outline, type icon, title, &quot;on screen 0:42&quot;, Hide screen when live; grey &quot;Nothing on screen&quot; when not); middle zone the tape (play, ±10 s, paragraph, seek, volume; hidden with no tape); right zone small status dots for Screens, Stage, Phone, Output with a click-through to a status popover (see backlog: status centre).</p><p><b>Benefit.</b> &quot;What is live&quot; is answered in one glance in every section, with the queue pane open or shut; about 30 px back; one place for problems.</p></section><section id="P-06" class="card" data-ba data-view="after"><h3>P-06 · A Run view for services: queue and live first, finding tucked away</h3><div class="meta"><span class="pill l">Effort L</span><span class="pill">Risk med</span><span class="pill hi">Impact high</span></div><p class="lead">When the screens are on and the queue has items, offer a layout that puts the queue, the live and preview boxes and Next/Back at the centre; finding things opens as a slide-over.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><p class="lead">Today the same moment is the Prepare layout (see “Busy live view”).</p></div><div class="after"><div class="fitbox" data-w="1366" data-h="768"><div class="scale"><div class="app"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch" style="min-width:200px">⌕ Search everything <kbd>⌘K</kbd></span><span class="grow"></span><span class="cluster onair"><span class="dot live"></span><b style="font-size:11px;letter-spacing:.08em;color:var(--ba-live)">ON AIR</b><span class="hb" style="height:28px"><span class="dot ok"></span> Screens ▾</span><span class="hb" style="height:28px">◉ Hide screen</span><span class="hb" style="height:28px">Message</span><span class="hb live" style="height:28px">Close projection</span></span><span class="hb">▯ Remote</span><span class="hb ic" data-cog>⚙</span></div><div class="body noq" style="grid-template-columns:68px 1.1fr 1fr"><div class="rail"><div class="rlab">Find</div><button class="rb"><span class="g">🎙</span>Sermons</button><button class="rb"><span class="g">▤</span>Bible</button><button class="rb"><span class="g">♪</span>Songs</button><button class="rb"><span class="g">▣</span>Media</button><span class="rsep"></span><div class="rlab">Listen</div><button class="rb"><span class="g">◖◗</span>Tape</button><span class="rgrow"></span><span class="rsep"></span><div class="rlab">Service</div><button class="rb on neutral"><span class="g">☰</span>Queue<span class="bdg">9</span></button></div><div class="main" style="padding:12px 14px;gap:8px"><div class="lbl">Service queue · 3 of 9</div><div class="qlist" style="padding:0"><div class="qrow live"><span>▤</span><div><b>Psalm 23:1 · KJV</b><small>The LORD is my shepherd; I shall not want.</small></div><span class="tag live">LIVE</span></div><div class="qrow up"><span>♪</span><div><b>Amazing Grace</b><small>Verse 1 — Amazing grace, how sweet the sound</small></div><span class="tag up">UP NEXT</span></div><div class="qrow "><span>◖◗</span><div><b>A Sample Message</b><small>Tape · paragraph 12</small></div></div><div class="qrow "><span>▣</span><div><b>Welcome slide</b><small>Picture · Welcome.jpg</small></div></div><div class="qrow "><span>▤</span><div><b>Psalm 23:4 · KJV</b><small>Yea, though I walk through the valley…</small></div></div><div class="qrow "><span>♪</span><div><b>How Great Thou Art</b><small>Verse 1 — O Lord my God, when I in awesome wonder</small></div></div><div class="qrow "><span>▣</span><div><b>Offering</b><small>Picture · Offering.jpg</small></div></div><div class="qrow "><span>▤</span><div><b>Psalm 100:1 · KJV</b><small>Make a joyful noise unto the LORD…</small></div></div><div class="qrow "><span>❝</span><div><b>Benediction</b><small>Quote · placeholder</small></div></div></div></div><div class="queue" style="padding:12px 14px;gap:10px"><div class="lbl">Preview · next</div><div class="scr" style="font-size:14px;aspect-ratio:auto;height:118px">“Amazing grace, how sweet the sound…”</div><div class="lbl"><span class="dot live"></span> Live</div><div class="scr live" style="font-size:14px;aspect-ratio:auto;height:118px">“The LORD is my shepherd; I shall not want.”</div><div class="big2 pri" style="height:56px;font-size:17px">Show next ▸ <span class="k" style="margin-left:8px">Space</span></div><div class="row2 c3"><div class="big2" style="height:46px">‹ Back</div><div class="big2" style="height:46px">Hide screen</div></div><div class="sm" style="align-self:flex-start">⌕ Find something else… <span class="k" style="margin-left:6px">⌘K</span></div></div></div><div class="dock"><div class="live-z"><span class="dot live"></span><div><b>Psalm 23:1 · KJV</b><small>On screen 0:42</small></div><span class="grow"></span><span class="sm">Hide screen</span></div><div class="tape-z"><span class="cb">↺10</span><span class="cb play" >❚❚</span><span class="cb">10↻</span><div style="min-width:130px"><b style="font-size:12.5px">A Sample Message · ¶12</b></div><span class="k" data-clock>0:42</span><div class="tbar" style="padding:0;border:0;min-height:0;background:none;flex:1"><div class="seek"><i data-seekfill></i></div></div><span class="cb">🔈</span></div><div class="chips"><span><span class="dot ok"></span> Screens</span><span><span class="dot ok"></span> Stage</span><span><span class="dot ok"></span> Phone 1</span><span><span class="dot ok"></span> Output</span></div></div></div></div></div></div></div>
+<p><b>Problem.</b> During a service the volunteer mostly steps through a prepared queue, but the layout is the preparation layout: browse columns and a reading pane take two thirds of the window while the queue (the thing in use) has a third, and the Preview/Live pair is at the bottom right at 100 px wide. At 1040×640 the work area is 501 px; at 150 % it is smaller still. The Take/Next/Back buttons are the most important controls and are 36 px high.</p><p><b>Change.</b> A &quot;Run&quot; toggle (also automatic when the projection opens, with a one-line &quot;Back to Prepare&quot;) that shows: left, the queue as large rows (current and next highlighted); right, big Preview and Live (about 360 px wide) with Show next, Back, Next, Hide screen as large targets; ⌘K / &quot;Find&quot; opens Sermons, Bible, Songs, Media as a slide-over for a last-minute change. Prepare view stays exactly as today.</p><p><b>Benefit.</b> A volunteer at 9:55 sees only what a service needs; the critical buttons become large; a last-minute change is still two keystrokes (⌘K then the verse).</p></section><section id="P-07" class="card" data-ba data-view="after"><h3>P-07 · One primary button in the live box (Show next), steps become small arrows</h3><div class="meta"><span class="pill m">Effort M</span><span class="pill">Risk med</span><span class="pill hi">Impact high</span></div><p class="lead">&quot;Take next&quot; and &quot;Next ›&quot; are two big purple buttons that do different things. Keep one primary: Show next.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:340px;height:auto;display:block;overflow:hidden"><div class="queue" style="border:0"><div class="pl"><div class="pv"><div><div class="lbl">Preview</div><div class="scr">“Yea, though I walk through the valley…”</div></div><span style="color:var(--ba-text-3)">›</span><div><div class="lbl"><span class="dot live"></span> Live</div><div class="scr live">“The LORD is my shepherd; I shall not want.”</div></div></div>
+<div class="row2 c3"><div class="big2 pri">Take next</div><div class="big2"><span style="opacity:.7">⌀</span>&nbsp;Clear</div></div><div class="row2 c2"><div class="big2 dim">‹ Back</div><div class="big2 pri">Next ›</div></div></div></div></div><p class="k">Two purple primaries + Back + Clear: four big buttons.</p></div><div class="after"><div class="app" style="width:340px;height:auto;display:block;overflow:hidden"><div class="queue" style="border:0"><div class="pl"><div class="pv"><div><div class="lbl">Preview <span class="k" style="margin-left:auto">‹ 2 of 9 ›</span></div><div class="scr">“Yea, though I walk through the valley…”</div></div><span style="color:var(--ba-text-3)">›</span><div><div class="lbl"><span class="dot live"></span> Live</div><div class="scr live">“The LORD is my shepherd…”</div></div></div><div class="row2 c3"><div class="big2 pri">Show next ▸</div><div class="big2">Hide screen</div></div></div></div></div><p class="k">One primary; steps are the small arrows; Hide screen on the live side. Same keys.</p></div></div>
+<p><b>Problem.</b> The live box has two same-weight purple buttons: Take next (send the previewed item live) and Next › (step the queue forward) plus Back ‹ and Clear. In the manual they are explained at length. Under stress the likelihood of pressing the wrong one is real: Next moves on without the volunteer noticing what is previewed.</p><p><b>Change.</b> Show next ▸ is the only large primary (Space, as today). Back/Next become compact arrows beside the title of the Preview box (&quot;‹ 3 of 12 ›&quot;). Clear and Hide screen sit on the Live box. Colour: plum = action, red = live only.</p><p><b>Benefit.</b> One obvious action; accidental step-forward is less likely; the live box is shorter (about 40 px).</p></section><section id="P-08" class="card" data-ba data-view="after"><h3>P-08 · Rows: one click selects, one key shows; actions appear on hover or focus</h3><div class="meta"><span class="pill m">Effort M</span><span class="pill">Risk med</span><span class="pill hi">Impact med</span></div><p class="lead">Every Bible verse and sermon paragraph carries &quot;+ Queue&quot; and &quot;Project&quot; buttons and also says &quot;Tap a verse to put it on screen&quot;. Choose one gesture.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:620px;height:auto;display:block;padding:8px"><div class="verse sel"><span class="n">1</span><span>The LORD is my shepherd; I shall not want.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div><div class="verse"><span class="n">2</span><span>He maketh me to lie down in green pastures: he leadeth me beside the still waters.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div><div class="verse"><span class="n">3</span><span>He restoreth my soul: he leadeth me in the paths of righteousness for his name&#x27;s sake.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div></div><p class="k">Three ways to send, two buttons on every row.</p></div><div class="after"><div class="app" style="width:620px;height:auto;display:block;padding:8px"><div class="verse sel" style="grid-template-columns:26px 1fr auto"><span class="n">1</span><span>The LORD is my shepherd; I shall not want.</span><span class="a"><span class="sm q">Queue</span><span class="sm hot">Show ⏎</span></span></div><div class="verse" style="grid-template-columns:26px 1fr auto"><span class="n">2</span><span>He maketh me to lie down in green pastures: he leadeth me beside the still waters.</span><span class="a"></span></div><div class="verse" style="grid-template-columns:26px 1fr auto"><span class="n">3</span><span>He restoreth my soul: he leadeth me in the paths of righteousness for his name&#x27;s sake.</span><span class="a"></span></div></div><p class="k">Click selects, Enter shows, actions appear on the selected / hovered row.</p></div></div>
+<p><b>Problem.</b> Each row has three ways to send it (click the row, Project, Enter) and a fourth to queue (+ Queue, Q). The result: a dense column of repeated buttons (24 verse rows × 2 buttons), large body text that shows only two verses at 1366×768, and uncertainty about whether a click shows or selects.</p><p><b>Change.</b> Click selects (and previews); Enter or double-click shows; hover/focus reveals two small buttons (Queue, Show) so the row reads as text. Same pattern for Bible, Sermons, Songs and Media. The hint line says it once.</p><p><b>Benefit.</b> Cleaner reading surface; the same gesture everywhere; fewer accidental sends (the single click no longer puts text live).</p></section><section id="P-09" class="card" data-ba data-view="after"><h3>P-09 · Bigger targets where it matters (Fitts) and a minimum size everywhere</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact med</span></div><p class="lead">The measured controls under 24 px (Help, Shortcuts, subtabs, &quot;Add pictures&quot;, filters) become at least 32 px; Show, Hide screen, Play and Panic at least 40 px.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:520px;height:auto;display:block;padding:10px"><p class="k">Measured today at 1366×768:</p><span class="hb" style="height:22px">Help / Open projection 22px</span> <span class="hb" style="height:28px">Help / Open projection 28px</span> </div></div><div class="after"><div class="app" style="width:520px;height:auto;display:block;padding:10px"><p class="k">Proposed minimums:</p><span class="hb" style="height:32px">Normal / Show-Hide-Play 32px</span> <span class="hb" style="height:40px">Normal / Show-Hide-Play 40px</span> </div></div></div>
+<p><b>Problem.</b> A DOM probe at 1366×768 found, per section, 10–15 visible controls under 24 px high and 19–28 under 32 px (of 32–46 visible): btn-sm, subtabs, Help, filters. Open/Close projection and Hide screen, the controls that matter most under pressure, are only 28 px high. The phone remote already meets 44 px.</p><p><b>Change.</b> A target-size token (min 32 desktop, 40 for live-critical, 44 on touch) applied to btn-sm, subtabs and links; Show, Hide screen, Play get the larger tier. No visual redesign; padding only.</p><p><b>Benefit.</b> Fewer mis-clicks on a trackpad in a dark booth; easier on touch laptops.</p></section><section id="P-10" class="card" data-ba data-view="after"><h3>P-10 · Skip links, landmarks and a content-first tab order</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact med</span></div><p class="lead">Reaching the first control of a section takes 26 Tab presses; there is no skip link and no heading level 1.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:620px;height:auto;display:block;padding:12px"><p>Tab order today (Sermons): Filters ← footer · logo · Back · Forward · Search · theme · contrast · Help · Shortcuts · Hide screen · Message · Screens · Remote · Close projection · <b>Sermons · Bible · Songs · Media · Tape · Saved · Open · Queue</b> · Search · Date · Series · Location · Recently Played · <b>the search box</b> (stop 27).</p></div></div><div class="after"><div class="app" style="width:620px;height:auto;display:block;padding:12px"><p><span class="hb pri" style="height:28px">Skip to content</span> <span class="hb" style="height:28px">Skip to the queue</span> <span class="hb" style="height:28px">Skip to the live controls</span><br><br>First Tab stop: Skip to content (visible on focus). <span class="k">F6</span> cycles Header → Rail → Content → Queue → Dock. One h1 per section.</p></div></div></div>
+<p><b>Problem.</b> Keyboard-only walkthrough: Tab starts in the header (13 stops) and the rail (8 stops) and the section tabs (5) before the content. There is no &quot;skip to content&quot;, no h1, the queue pane is not a landmark, and Tab does not reach the queue pane from the content without crossing everything again.</p><p><b>Change.</b> Skip links (&quot;Skip to content&quot;, &quot;Skip to the queue&quot;, &quot;Skip to the live controls&quot;) visible on focus; one h1 per section; the queue pane as a complementary landmark; F6 cycles the main regions (header, rail, content, queue, dock).</p><p><b>Benefit.</b> Keyboard operators and screen-reader users reach their target in 1–2 keystrokes; the same F6 helps sighted keyboard users.</p></section><section id="P-11" class="card" data-ba data-view="after"><h3>P-11 · Appearance and interface size in one place</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact low</span></div><p class="lead">Theme and high contrast are header buttons, the interface size is only in the command palette, and language/fonts are elsewhere. Put them in the ⚙ menu (P-01).</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:520px;height:auto;display:block;padding:10px"><span class="hb ic q">☀</span> <span class="hb ic q">◐</span> <span class="k">two unlabeled icon buttons; interface size is only in the command palette (“Interface size: 125%”).</span></div></div><div class="after"><div class="app" style="width:520px;height:230px;display:block;position:relative"><div class="pop" style="left:20px;top:10px;width:280px"><h4>Appearance</h4><div class="it">Theme <span class="seg"><button aria-pressed="true">Dark</button><button aria-pressed="false">Light</button></span></div><div class="it">Contrast <span class="seg"><button aria-pressed="true">Normal</button><button aria-pressed="false">High</button></span></div><div class="it">Interface size <span class="k">Auto ▾</span></div><h4 style="margin-top:8px">Help</h4><div class="it">Manual <span class="k">F1</span></div><div class="it">Keyboard shortcuts <span class="k">?</span></div></div></div></div></div>
+<p><b>Problem.</b> The interface size (100–175 %) is the one setting that decides whether the app is usable on a small or very large screen and it is found only through the palette (&quot;Interface size…&quot;). Theme and contrast are two separate icon buttons whose icons are not self-explanatory (a sun and a half-filled circle).</p><p><b>Change.</b> ⚙ Appearance: Theme (Dark / Light), Contrast (Normal / High), Interface size (Auto / 100 / 125 / 150 / 175 %) with a live preview line. The two icon buttons leave the header.</p><p><b>Benefit.</b> Discoverable; one decision at a time.</p></section><section id="P-12" class="card" data-ba data-view="after"><h3>P-12 · First run: a short &quot;Set up Sunday&quot; checklist and quick-start templates</h3><div class="meta"><span class="pill m">Effort M</span><span class="pill">Risk low</span><span class="pill hi">Impact med</span></div><p class="lead">A new profile opens straight into an empty Sermons search; nothing tells a first-time volunteer what to do first.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:340px;height:200px;display:block"><div class="queue" style="border:0;height:100%;align-items:center;justify-content:center;text-align:center;padding:16px"><b>New service</b><p class="k">Add quotes, Bible passages and songs from the left — they line up here in order, ready to project.</p><span class="sm">Open a saved service…</span></div></div></div><div class="after"><div class="app" style="width:340px;height:auto;display:block"><div class="queue" style="border:0;padding:14px;gap:8px"><b>Set up Sunday</b><div class="qrow"><span>1</span><div><b>Choose your screens</b><small>Screens ▾ · test pattern</small></div><span class="tag">Do it</span></div><div class="qrow"><span>2</span><div><b>Add tonight’s items</b><small>or start from a template</small></div><span class="tag">Do it</span></div><div class="qrow"><span>3</span><div><b>Is tonight ready?</b><small>one check before service</small></div><span class="tag">Do it</span></div><div class="row2 c2"><span class="sm">Sunday morning</span><span class="sm">Midweek</span></div></div></div></div></div>
+<p><b>Problem.</b> On a fresh profile the app shows &quot;Type a word or phrase above to search sermon quotes&quot; and an empty queue. There is no first-run guidance beyond Help. The volunteer who has used the app twice has no path from &quot;open&quot; to &quot;ready&quot;.</p><p><b>Change.</b> An empty-queue card with a four-step checklist (Choose screens → Open projection test pattern → Add tonight&#x27;s items → Check &quot;Is tonight ready?&quot;) and three templates (Sunday morning: song, scripture, sermon, song; Midweek; Funeral). Each step opens the real control; the card disappears once the queue has items and can be re-opened from Help.</p><p><b>Benefit.</b> The first service is guided; fewer questions to the owner; templates save ~10 clicks per week.</p></section><section id="P-13" class="card" data-ba data-view="after"><h3>P-13 · Phone remote: Media and Tape tabs, a clear blank state, and bigger Blank</h3><div class="meta"><span class="pill s">Effort S</span><span class="pill">Risk low</span><span class="pill hi">Impact med</span></div><p class="lead">The remote has Queue, Sermons, Bible, Songs but no Media or Tape tab; when the screen is hidden the only sign is the colour of the Blank button.</p>
+<div class="ba-toggle"><span class="seg"><button data-set="before" aria-pressed="false">Before (today)</button><button data-set="after" aria-pressed="true">After (proposed)</button></span></div>
+<div class="stage"><div class="before"><div class="app" style="width:300px;height:560px;display:flex;flex-direction:column;border-radius:22px"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="grow"></span><span class="k"><span class="dot ok"></span> Connected</span></div><div style="padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div class="big2" style="height:56px">‹ Prev</div><div class="big2 pri" style="height:56px">Next ›</div><div class="big2" style="height:44px;color:var(--ba-warn);border-color:var(--ba-warn)">Blank</div></div><div style="padding:0 10px"><div class="lbl"><span class="dot live"></span> On screen</div><div class="scr live" style="aspect-ratio:auto;height:96px;margin:4px 0 8px">“The LORD is my shepherd; I shall not want.”</div><div class="lbl">Next</div><div class="scr" style="aspect-ratio:auto;height:70px;margin-top:4px">“He maketh me to lie down…”</div></div><div class="grow"></div><div class="rail" style="flex-direction:row;border:0;border-top:1px solid var(--ba-line);justify-content:space-around"><span class="rb" style="padding:6px 4px"><span class="g">☰</span>Queue</span><span class="rb" style="padding:6px 4px"><span class="g">🎙</span>Sermons</span><span class="rb" style="padding:6px 4px"><span class="g">▤</span>Bible</span><span class="rb" style="padding:6px 4px"><span class="g">♪</span>Songs</span></div></div></div><div class="after"><div class="app" style="width:300px;height:560px;display:flex;flex-direction:column;border-radius:22px"><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="grow"></span><span class="k"><span class="dot ok"></span> Connected</span></div><div style="background:var(--ba-warn);color:#1a0d02;font-weight:700;padding:10px;text-align:center">SCREEN HIDDEN — tap to show</div><div style="padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div class="big2" style="height:56px">‹ Prev</div><div class="big2 pri" style="height:56px">Next ›</div><div class="big2" style="height:56px;color:var(--ba-warn);border-color:var(--ba-warn)">Show</div></div><div style="padding:0 10px"><div class="lbl"><span class="dot live"></span> On screen</div><div class="scr live" style="aspect-ratio:auto;height:96px;margin:4px 0 8px">“The LORD is my shepherd; I shall not want.”</div><div class="lbl">Next</div><div class="scr" style="aspect-ratio:auto;height:70px;margin-top:4px">“He maketh me to lie down…”</div></div><div class="grow"></div><div class="rail" style="flex-direction:row;border:0;border-top:1px solid var(--ba-line);justify-content:space-around"><span class="rb" style="padding:6px 2px"><span class="g">☰</span>Queue</span><span class="rb" style="padding:6px 2px"><span class="g">🎙</span>Sermons</span><span class="rb" style="padding:6px 2px"><span class="g">▤</span>Bible</span><span class="rb" style="padding:6px 2px"><span class="g">♪</span>Songs</span><span class="rb" style="padding:6px 2px"><span class="g">▣</span>Media</span><span class="rb" style="padding:6px 2px"><span class="g">◖◗</span>Tape</span></div></div></div></div>
+<p><b>Problem.</b> The remote&#x27;s bottom navigation (phone) and side rail (tablet) list Queue, Sermons, Bible and Songs (Media and Tape have no tab of their own); the Blank button is amber in both states (blanked or not); there is no &quot;Hidden&quot; banner. The tape card appears only when a tape is loaded.</p><p><b>Change.</b> Add Media (pictures and the Send-to-screen shortcut) and Tape tabs (the tape card plus the follow list); a full-width &quot;SCREEN HIDDEN — Show&quot; banner when blanked; Blank grows to 56 px.</p><p><b>Benefit.</b> The person holding the phone can do everything a walking operator needs; state is obvious without reading colours.</p></section></div><script>/* Born Again UX review mockups — behaviour: theme, before/after, fit-to-width, shell sections, review board. No network, no storage beyond localStorage (wrapped). */
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s) }
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)) }
+  var store = { get: function (k) { try { return localStorage.getItem(k) } catch (e) { return null } }, set: function (k, v) { try { localStorage.setItem(k, v) } catch (e) {} } }
+
+  // ---- theme: dark / light / contrast (shared across the mockup pages)
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t)
+    store.set('ba-mock-theme', t)
+    $$('[data-theme-btn]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)) })
+  }
+  var t0 = store.get('ba-mock-theme') || 'dark'
+  setTheme(t0)
+  $$('[data-theme-btn]').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.themeBtn) }) })
+
+  // ---- fit a fixed-size mock to its container
+  function fit() {
+    $$('.fitbox').forEach(function (box) {
+      var w = +box.dataset.w, h = +box.dataset.h, inner = box.firstElementChild
+      var avail = box.parentElement.clientWidth - 2
+      var s = Math.min(1, avail / w)
+      inner.style.transform = 'scale(' + s + ')'
+      box.style.width = Math.round(w * s) + 'px'
+      box.style.height = Math.round(h * s) + 'px'
+    })
+  }
+  window.addEventListener('resize', fit)
+  window.addEventListener('load', fit)
+  setTimeout(fit, 0)
+
+  // ---- before / after toggles
+  $$('[data-ba]').forEach(function (root) {
+    var set = function (v) { root.setAttribute('data-view', v); $$('[data-set]', root).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === v)) }); setTimeout(fit, 0) }
+    $$('[data-set]', root).forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.set) }) })
+    set(root.getAttribute('data-view') || 'after')
+  })
+
+  // ---- the proposed shell: sections, run view, width
+  var shell = $('#shell')
+  if (shell) {
+    var secs = { sermons: 'Search sermons', bible: 'John 3', songs: 'Songs', media: 'Pictures and video', tape: 'Tape', queue: 'Queue' }
+    var pick = function (s) {
+      $$('[data-sec]', shell).forEach(function (p) { p.hidden = p.dataset.sec !== s })
+      $$('[data-go]', shell).forEach(function (b) { b.classList.toggle('on', b.dataset.go === s) })
+      var run = s === 'run'
+      shell.querySelector('.body').classList.toggle('noq', s === 'run' || s === 'queue')
+    }
+    $$('[data-go]', shell).forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.go) }) })
+    pick('bible')
+    var live = false
+    var setLive = function (v) {
+      live = v
+      $$('[data-live-on]', shell).forEach(function (e) { e.hidden = !live })
+      $$('[data-live-off]', shell).forEach(function (e) { e.hidden = live })
+      shell.classList.toggle('is-live', live)
+    }
+    $$('[data-toggle-live]').forEach(function (b) { b.addEventListener('click', function () { setLive(!live) }) })
+    setLive(true)
+    var menu = $('#cog-menu', shell)
+    $$('[data-cog]', shell).forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden }) })
+    document.addEventListener('click', function () { if (menu) menu.hidden = true })
+    $$('[data-size]').forEach(function (b) { b.addEventListener('click', function () {
+      var a = $('.app', shell); a.className = 'app ' + b.dataset.size
+      var w = b.dataset.size === 's1040' ? 1040 : b.dataset.size === 's1920' ? 1920 : 1366, h = b.dataset.size === 's1040' ? 640 : b.dataset.size === 's1920' ? 1080 : 768
+      var box = a.parentElement; box.dataset.w = w; box.dataset.h = h
+      $$('[data-size]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)) }); fit()
+    }) })
+    // pretend tape
+    var pos = 42, playing = false
+    var tick = function () { if (playing) pos = (pos + 1) % 120; $$('[data-clock]', shell).forEach(function (e) { e.textContent = Math.floor(pos / 60) + ':' + ('0' + (pos % 60)).slice(-2) }); $$('[data-seekfill]', shell).forEach(function (e) { e.style.width = (pos / 1.2) + '%' }) }
+    setInterval(tick, 1000)
+    $$('[data-play]', shell).forEach(function (b) { b.addEventListener('click', function () { playing = !playing; $$('[data-play]', shell).forEach(function (x) { x.textContent = playing ? '❚❚' : '▶' }) }) })
+  }
+
+  // ---- the review board
+  var board = $('#board')
+  if (board) {
+    var KEY = 'ba-ux-review-decisions-v1'
+    var saved = {}
+    try { saved = JSON.parse(store.get(KEY) || '{}') } catch (e) { saved = {} }
+    var cards = $$('[data-pid]', board)
+    var save = function () { store.set(KEY, JSON.stringify(saved)) }
+    var summary = function () {
+      var c = { approve: 0, reject: 0, discuss: 0, open: 0 }
+      cards.forEach(function (card) { var d = saved[card.dataset.pid]; c[d && d.v ? d.v : 'open']++ })
+      $('#sum-approve').textContent = c.approve; $('#sum-reject').textContent = c.reject; $('#sum-discuss').textContent = c.discuss; $('#sum-open').textContent = c.open
+    }
+    cards.forEach(function (card) {
+      var id = card.dataset.pid
+      var d = saved[id] = saved[id] || { v: '', n: '' }
+      var show = function () { $$('[data-v]', card).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === d.v)) }) }
+      show(); $('textarea', card).value = d.n || ''
+      $$('[data-v]', card).forEach(function (b) { b.addEventListener('click', function () { d.v = d.v === b.dataset.v ? '' : b.dataset.v; show(); save(); summary() }) })
+      $('textarea', card).addEventListener('input', function (e) { d.n = e.target.value; save() })
+    })
+    summary()
+    $('#copy').addEventListener('click', function () {
+      var lines = ['My decisions on the Born Again UX review proposals:']
+      cards.forEach(function (card) {
+        var d = saved[card.dataset.pid] || {}
+        lines.push(card.dataset.pid + ' ' + card.dataset.title + ' — ' + ({ approve: 'APPROVE', reject: 'REJECT', discuss: 'DISCUSS' }[d.v] || 'NO DECISION') + (d.n ? ' — ' + d.n.replace(/\s+/g, ' ') : ''))
+      })
+      var txt = lines.join('\n')
+      var out = $('#out'); out.value = txt; out.hidden = false; out.select()
+      var done = function () { $('#copied').textContent = 'Copied — paste it back to Claude.' }
+      try { navigator.clipboard.writeText(txt).then(done, function () { $('#copied').textContent = 'Select the text below and copy it.' }) } catch (e) { $('#copied').textContent = 'Select the text below and copy it.' }
+    })
+    $('#reset').addEventListener('click', function () { if (confirm('Clear all decisions on this page?')) { saved = {}; save(); location.reload() } })
+  }
+})()
+</script></body></html>

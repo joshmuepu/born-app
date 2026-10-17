@@ -1,0 +1,413 @@
+<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Busy live view — current vs proposed</title>
+<style>/* Born Again — design tokens (Phase 1 proposal).
+   Namespaced --ba-* so it can sit beside the current App.css variables while
+   the prototype is evaluated; Phase 2 migrates the app onto it and retires
+   the old names. Dark is the default (dim booth). */
+
+
+:root,
+:root[data-theme='dark'] {
+  /* surfaces: 5 steps, each ~+4% lightness; depth comes from step + hairline, not shadow alone */
+  --ba-bg-0: #08080a; /* app canvas / behind everything */
+  --ba-bg-1: #0f0f12; /* panes */
+  --ba-bg-2: #16161a; /* raised: cards, columns */
+  --ba-bg-3: #1e1e23; /* hover */
+  --ba-bg-4: #27272d; /* pressed / selected */
+  --ba-line: #26262c; /* hairline */
+  --ba-line-strong: #3a3a42;
+
+  --ba-text-1: #f4f2ee; /* 17.6:1 on bg-0 */
+  --ba-text-2: #b2afaa; /* 9.4:1  */
+  --ba-text-3: #8a8782; /* 5.4:1 — the floor for any readable text */
+
+  /* v1 identity, kept: Plum is the one action colour */
+  --ba-accent: #9a80e6;
+  --ba-accent-hi: #ad97f0;
+  --ba-accent-lo: #6f56bd;
+  --ba-on-accent: #120d1e;
+  --ba-accent-wash: rgba(154, 128, 230, 0.14);
+  --ba-focus: #c1affa;
+
+  /* v1 content identity, kept: Stone / Sage / Amber (+ Ice for Screens) */
+  --ba-sermons: #cfc8ba;
+  --ba-bible: #7ab487;
+  --ba-songs: #d49a4c;
+  --ba-screens: #5db4ea;
+
+  --ba-live: #ff4d4f; /* ON AIR. Red is reserved for live + destructive. */
+  --ba-live-wash: rgba(255, 77, 79, 0.14);
+  --ba-ok: #4cc17f;
+  --ba-warn: #f0983e;
+  --ba-danger: #ff5b61;
+
+  --ba-scrim: rgba(4, 4, 6, 0.64);
+  --ba-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ba-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(0, 0, 0, 0.56), 0 0 0 1px var(--ba-line-strong);
+}
+
+:root[data-theme='light'] {
+  --ba-bg-0: #f4f1ea;
+  --ba-bg-1: #fbfaf7;
+  --ba-bg-2: #ffffff;
+  --ba-bg-3: #f0ece3;
+  --ba-bg-4: #e6e0d3;
+  --ba-line: #e3ddcf;
+  --ba-line-strong: #cfc7b5;
+  --ba-text-1: #1a1814;
+  --ba-text-2: #55503f;
+  --ba-text-3: #6d6755;
+  --ba-accent: #5b3fb0;
+  --ba-accent-hi: #4a3294;
+  --ba-accent-lo: #7a60c8;
+  --ba-on-accent: #ffffff;
+  --ba-accent-wash: rgba(91, 63, 176, 0.1);
+  --ba-focus: #5b3fb0;
+  --ba-sermons: #7d745a;
+  --ba-bible: #38703f;
+  --ba-songs: #86581a;
+  --ba-screens: #1a6aa0;
+  --ba-live: #d3202a;
+  --ba-live-wash: rgba(211, 32, 42, 0.1);
+  --ba-ok: #1b7544;
+  --ba-warn: #9a520c;
+  --ba-danger: #c22530;
+  --ba-scrim: rgba(20, 16, 8, 0.4);
+  --ba-shadow-1: 0 1px 2px rgba(20, 16, 8, 0.08);
+  --ba-shadow-2: 0 8px 24px rgba(20, 16, 8, 0.1), 0 0 0 1px var(--ba-line);
+  --ba-shadow-3: 0 24px 64px rgba(20, 16, 8, 0.18), 0 0 0 1px var(--ba-line-strong);
+}
+
+/* High contrast: pure black/white, 2px lines, no translucency. WCAG AAA text. */
+:root[data-theme='contrast'] {
+  --ba-bg-0: #000;
+  --ba-bg-1: #000;
+  --ba-bg-2: #0a0a0a;
+  --ba-bg-3: #1a1a1a;
+  --ba-bg-4: #2e2e2e;
+  --ba-line: #8c8c8c;
+  --ba-line-strong: #ffffff;
+  --ba-text-1: #ffffff;
+  --ba-text-2: #ffffff;
+  --ba-text-3: #d6d6d6;
+  --ba-accent: #c9b6ff;
+  --ba-accent-hi: #ffffff;
+  --ba-accent-lo: #c9b6ff;
+  --ba-on-accent: #000;
+  --ba-accent-wash: rgba(201, 182, 255, 0.28);
+  --ba-focus: #ffe14d;
+  --ba-live: #ff6b6b;
+  --ba-live-wash: rgba(255, 107, 107, 0.3);
+  --ba-sermons: #ffffff;
+  --ba-bible: #8dff9f;
+  --ba-songs: #ffcf70;
+  --ba-screens: #8fd3ff;
+  --ba-shadow-2: 0 0 0 2px var(--ba-line-strong);
+  --ba-shadow-3: 0 0 0 2px var(--ba-line-strong);
+}
+
+:root {
+  /* type: Inter (kept) + JetBrains Mono for codes. Scale ratio ~1.125, UI is
+     dense by design; reading text (sermon paragraphs) has its own tier. */
+  --ba-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ba-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --ba-fs-xs: 0.72rem;
+  --ba-fs-sm: 0.8rem;
+  --ba-fs-md: 0.9rem;
+  --ba-fs-lg: 1.02rem;
+  --ba-fs-xl: 1.25rem;
+  --ba-fs-2xl: 1.6rem;
+  --ba-fs-read: 1.18rem; /* sermon / lyric reading pane */
+  --ba-lh-tight: 1.25;
+  --ba-lh-read: 1.6;
+  --ba-tracking-caps: 0.09em;
+
+  /* spacing: 4px base */
+  --ba-1: 4px; --ba-2: 8px; --ba-3: 12px; --ba-4: 16px; --ba-5: 24px; --ba-6: 32px; --ba-7: 48px;
+
+  /* radius: slightly rounder than v1 for a softer, premium feel */
+  --ba-r-sm: 6px; --ba-r-md: 10px; --ba-r-lg: 14px; --ba-r-pill: 999px;
+
+  /* density: comfortable (default) / compact via [data-density] */
+  --ba-row-h: 44px;
+  --ba-hit: 40px; /* min interactive target; 48px under [data-touch] */
+
+  /* motion — purposeful, interruptible (CSS transitions, never keyframe locks) */
+  --ba-dur-1: 90ms;  /* hover, press */
+  --ba-dur-2: 180ms; /* small state change */
+  --ba-dur-3: 280ms; /* column slide / panel */
+  --ba-ease: cubic-bezier(0.2, 0.7, 0.2, 1);       /* decelerate-in: default */
+  --ba-ease-inout: cubic-bezier(0.65, 0, 0.35, 1); /* panel slide */
+
+  /* z layers */
+  --ba-z-base: 0;
+  --ba-z-pane: 10;
+  --ba-z-sticky: 20;
+  --ba-z-popover: 40;
+  --ba-z-modal: 60;
+  --ba-z-toast: 80;
+  --ba-z-palette: 90;
+}
+:root[data-density='compact'] { --ba-row-h: 34px; --ba-hit: 32px; }
+:root[data-touch='true'] { --ba-hit: 48px; --ba-row-h: 52px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ba-dur-1: 0ms; --ba-dur-2: 0ms; --ba-dur-3: 0ms; }
+}
+
+/* Born Again UX review mockups — shared styles. Tokens are the --ba-* set from docs/design/tokens.css (copied in by build.py). Placeholder content only. */
+*{box-sizing:border-box}
+html{color-scheme:dark}
+html[data-theme='light']{color-scheme:light}
+body{margin:0;background:var(--ba-bg-0);color:var(--ba-text-1);font:14px/1.45 var(--ba-font)}
+a{color:var(--ba-accent-hi)}
+button{font:inherit;color:inherit;cursor:pointer}
+.sr{position:absolute;left:-9999px}
+
+/* page chrome (not part of the app being mocked) */
+.page{max-width:1240px;margin:0 auto;padding:28px 24px 70px}
+.page h1{font-size:28px;margin:0 0 6px}
+.page h2{font-size:21px;margin:34px 0 6px}
+.page p.lead{color:var(--ba-text-2);max-width:900px;margin:4px 0 14px}
+.topnav{position:sticky;top:0;z-index:50;display:flex;gap:14px;align-items:center;padding:10px 24px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line);flex-wrap:wrap}
+.topnav a{color:var(--ba-text-2);text-decoration:none;font-size:13.5px}.topnav a:hover,.topnav a.on{color:var(--ba-text-1)}
+.topnav .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);overflow:hidden}
+.seg button{background:var(--ba-bg-2);border:0;padding:6px 12px;font-size:13px;color:var(--ba-text-2)}
+.seg button+button{border-left:1px solid var(--ba-line-strong)}
+.seg button[aria-pressed='true']{background:var(--ba-accent);color:var(--ba-on-accent);font-weight:600}
+.seg.approve button[aria-pressed='true'][data-v='approve']{background:var(--ba-ok);color:#06140d}
+.seg.approve button[aria-pressed='true'][data-v='reject']{background:var(--ba-danger);color:#1a0507}
+.seg.approve button[aria-pressed='true'][data-v='discuss']{background:var(--ba-warn);color:#1a0d02}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--ba-line-strong);color:var(--ba-text-2);margin-right:5px}
+.pill.s{color:var(--ba-ok);border-color:var(--ba-ok)}.pill.m{color:var(--ba-warn);border-color:var(--ba-warn)}.pill.l{color:var(--ba-danger);border-color:var(--ba-danger)}
+.pill.hi{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.card{background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-lg);padding:16px 18px;margin:16px 0}
+.card h3{margin:0 0 4px;font-size:17px}
+.card .meta{margin:6px 0 10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.stage{background:var(--ba-bg-1);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);padding:10px;overflow:auto}
+.stage .lab{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);margin:0 0 6px}
+textarea.note{width:100%;min-height:54px;background:var(--ba-bg-1);color:var(--ba-text-1);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-sm);padding:8px;font:inherit}
+.summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md);margin:14px 0;position:sticky;top:48px;z-index:40}
+.big{background:var(--ba-accent);color:var(--ba-on-accent);border:0;border-radius:var(--ba-r-md);padding:8px 16px;font-weight:700}
+.tgl{display:inline-flex;gap:0}
+
+/* ---- the mocked app ---- */
+.app{--w:1366px;width:var(--w);height:768px;display:grid;grid-template-rows:52px 1fr auto;background:var(--ba-bg-0);border:1px solid var(--ba-line-strong);border-radius:8px;overflow:hidden;font-size:13px;position:relative}
+.app.s1040{--w:1040px;height:640px}.app.s1920{--w:1920px;height:1080px}
+.scale{transform-origin:top left}
+.hdr{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--ba-bg-1);border-bottom:1px solid var(--ba-line)}
+.logo{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;margin-right:6px}.logo i{color:var(--ba-accent);font-style:normal}.logo span{font-weight:300;color:var(--ba-accent)}
+.hb{height:32px;padding:0 12px;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-md);color:var(--ba-text-1);font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.hb.q{background:transparent;border-color:transparent;color:var(--ba-text-2)}
+.hb.ic{width:32px;padding:0;justify-content:center}
+.hb.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.hb.live{background:var(--ba-live);color:#fff;border-color:var(--ba-live);font-weight:700}
+.hb.srch{min-width:190px;justify-content:space-between;color:var(--ba-text-2)}
+.hb kbd,.k{font:11px var(--ba-mono);background:var(--ba-bg-3);border:1px solid var(--ba-line);border-radius:4px;padding:1px 5px;color:var(--ba-text-2)}
+.grow{flex:1}
+.cluster{display:inline-flex;gap:6px;align-items:center;padding:3px 6px;border:1px solid var(--ba-line-strong);border-radius:12px;background:var(--ba-bg-0)}
+.cluster.onair{border-color:var(--ba-live);box-shadow:0 0 0 1px var(--ba-live-wash)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ba-text-3);display:inline-block}.dot.live{background:var(--ba-live)}.dot.ok{background:var(--ba-ok)}.dot.warn{background:var(--ba-warn)}
+
+.body{display:grid;grid-template-columns:68px minmax(0,1fr) 340px;min-height:0}
+.body.noq{grid-template-columns:68px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;gap:4px;padding:8px 6px;background:var(--ba-bg-1);border-right:1px solid var(--ba-line);overflow:hidden}
+.rb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-size:11px;font-weight:600;position:relative}
+.rb svg,.rb .g{font-size:17px;line-height:1}
+.rb.on{background:var(--ba-bg-3);color:var(--ba-text-1);border-color:var(--ba-line-strong)}
+.rb.on.c-bible{border-color:var(--ba-bible);color:var(--ba-bible)}.rb.on.c-songs{border-color:var(--ba-songs);color:var(--ba-songs)}.rb.on.c-media{border-color:#4fb8a8;color:#4fb8a8}.rb.on.c-queue{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+.rb.on.neutral{border-color:var(--ba-accent);color:var(--ba-accent-hi);background:var(--ba-accent-wash)}
+.rb .bdg{position:absolute;top:2px;right:6px;font-size:10px;background:var(--ba-accent);color:var(--ba-on-accent);border-radius:9px;padding:0 5px}
+.rsep{height:1px;background:var(--ba-line);margin:4px 8px}.rgrow{flex:1}
+.rlab{font-size:9.5px;letter-spacing:.09em;color:var(--ba-text-3);text-align:center;margin:4px 0 0;text-transform:uppercase}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--ba-bg-0)}
+.tabs{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--ba-line);align-items:center}
+.tab{height:28px;padding:0 12px;border-radius:var(--ba-r-md);border:1px solid transparent;background:none;color:var(--ba-text-2);font-weight:600}
+.tab.on{background:var(--ba-accent-wash);color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.cont{flex:1;min-height:0;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.drill{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;flex:1;min-height:0}
+.drill .col{border-right:1px solid var(--ba-line);padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start}
+.chbtn{height:34px;border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);border-radius:var(--ba-r-sm);font-weight:700;color:var(--ba-text-1)}
+.read{padding:10px 16px;overflow:hidden}
+.verse{display:grid;grid-template-columns:26px 1fr auto auto;gap:10px;align-items:start;padding:8px 8px;border-radius:var(--ba-r-md);border:1px solid transparent;font-size:17px;line-height:1.45}
+.verse .n{color:var(--ba-text-3);font-size:13px;padding-top:4px}
+.verse.sel{background:var(--ba-bg-2);border-color:var(--ba-accent)}
+.verse .a{display:flex;gap:6px;align-items:center;font-size:12.5px}
+.sm{height:26px;padding:0 10px;border-radius:var(--ba-r-sm);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);color:var(--ba-text-1);font-size:12.5px;display:inline-flex;align-items:center}
+.sm.q{border-color:transparent;background:none;color:var(--ba-text-2)}
+.sm.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);font-weight:700}
+.sm.hot{border-color:var(--ba-accent);color:var(--ba-accent-hi)}
+
+.queue{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--ba-line);background:var(--ba-bg-1)}
+.qh{padding:10px 14px 4px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700}
+.qtools{display:flex;flex-wrap:wrap;gap:2px 10px;padding:2px 14px 8px;color:var(--ba-text-2)}
+.qtools span{padding:3px 0;font-size:13px}.qtools .dis{color:var(--ba-text-3)}
+.qlist{flex:1;min-height:0;overflow:hidden;padding:4px 10px;display:flex;flex-direction:column;gap:5px}
+.qrow{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:7px 9px;background:var(--ba-bg-2);border:1px solid var(--ba-line);border-radius:var(--ba-r-md)}
+.qrow b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qrow small{color:var(--ba-text-2);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow.up{border-color:var(--ba-accent)}.qrow.live{border-color:var(--ba-live);background:var(--ba-live-wash)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.06em;border-radius:5px;border:1px solid var(--ba-line-strong);padding:1px 6px;color:var(--ba-text-2)}.tag.live{color:var(--ba-live);border-color:var(--ba-live)}.tag.up{color:var(--ba-accent-hi);border-color:var(--ba-accent)}
+.pl{padding:10px 14px;border-top:1px solid var(--ba-line);display:grid;gap:8px}
+.pv{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:center}
+.scr{aspect-ratio:16/9;background:#000;border-radius:8px;border:2px dashed var(--ba-line-strong);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#cfcfcf;text-align:center;padding:4px}
+.scr.live{border:2px solid var(--ba-live)}
+.scr.empty{color:var(--ba-text-3)}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);font-weight:700;display:flex;gap:6px;align-items:center}
+.big2{height:38px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--ba-text-1)}
+.big2.pri{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent)}
+.big2.dim{color:var(--ba-text-3)}
+.row2{display:grid;gap:6px}.row2.c2{grid-template-columns:1fr 1fr}.row2.c3{grid-template-columns:2fr 1fr}
+
+.status{display:flex;gap:16px;align-items:center;padding:5px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);font:12px var(--ba-mono);color:var(--ba-text-2)}
+.status .r{margin-left:auto;display:flex;gap:16px}.status .live{color:var(--ba-live);font-weight:700}
+.tbar{display:flex;gap:10px;align-items:center;padding:7px 14px;background:var(--ba-bg-2);border-top:1px solid var(--ba-line);min-height:52px}
+.tbar .ti{min-width:150px}.tbar .ti small{display:block;color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.tbar .seek{flex:1;height:6px;background:var(--ba-bg-4);border-radius:3px;position:relative;min-width:60px}.tbar .seek i{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ba-accent);border-radius:3px}
+.cb{height:34px;min-width:34px;border-radius:var(--ba-r-md);border:1px solid var(--ba-line-strong);background:var(--ba-bg-2);display:inline-flex;align-items:center;justify-content:center;padding:0 8px}
+.cb.play{background:var(--ba-accent);color:var(--ba-on-accent);border-color:var(--ba-accent);width:42px;border-radius:50%}
+.dock{display:grid;grid-template-columns:minmax(240px,1.1fr) minmax(0,2fr) auto;gap:14px;align-items:center;padding:7px 14px;background:var(--ba-bg-1);border-top:1px solid var(--ba-line);min-height:56px}
+.dock .live-z{display:flex;gap:10px;align-items:center;padding:4px 10px;border:1px solid var(--ba-live);border-radius:var(--ba-r-md);background:var(--ba-live-wash);min-height:42px}
+.dock .live-z.off{border-color:var(--ba-line-strong);background:var(--ba-bg-2)}
+.dock .live-z b{display:block;font-size:13px}.dock .live-z small{color:var(--ba-text-2);font-size:11.5px}
+.dock .tape-z{display:flex;gap:8px;align-items:center}
+.dock .chips{display:flex;gap:8px;font-size:12px;color:var(--ba-text-2);align-items:center}
+.pop{position:absolute;z-index:20;background:var(--ba-bg-2);border:1px solid var(--ba-line-strong);border-radius:var(--ba-r-lg);box-shadow:var(--ba-shadow-3);padding:10px;min-width:230px}
+.pop h4{margin:0 0 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3)}
+.pop .it{display:flex;justify-content:space-between;padding:6px 6px;border-radius:6px;color:var(--ba-text-1)}.pop .it:hover{background:var(--ba-bg-3)}
+.glos{width:100%;border-collapse:collapse;font-size:13.5px}.glos th,.glos td{border-bottom:1px solid var(--ba-line);padding:7px 8px;text-align:left;vertical-align:top}.glos th{color:var(--ba-text-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.ba-toggle{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+[data-view='before'] .after,[data-view='after'] .before{display:none}
+.callout{border-left:3px solid var(--ba-accent);padding:6px 12px;color:var(--ba-text-2);margin:8px 0;background:var(--ba-bg-1)}
+.fix{outline:2px dashed var(--ba-warn);outline-offset:2px}
+.mini{display:inline-block;vertical-align:top}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+.tag,.sm,.k,.pill,.hb{white-space:nowrap}
+.qh .sm{text-transform:none;letter-spacing:0;font-weight:600}
+.lbl{white-space:nowrap}
+.qrow>div{min-width:0}
+.fitbox{width:100%;max-width:100%;overflow:hidden}
+.fitbox>.scale{width:max-content}
+.cmp>div{min-width:0}
+.cluster b{white-space:nowrap}
+.dock .live-z>div{min-width:0}.dock .live-z small{white-space:nowrap}
+</style></head><body><div class="topnav"><b>Born Again · UX review</b><a href="index.html" class="">Review board</a><a href="proposals.html" class="">All proposals, before / after</a><a href="shell.html" class="">Proposed app shell</a><a href="live-compare.html" class="on">Busy live view: current vs proposed</a><span class="sp"></span><span class="seg" role="group" aria-label="Theme"><button data-theme-btn="dark" aria-pressed="true">Dark</button><button data-theme-btn="light" aria-pressed="false">Light</button><button data-theme-btn="contrast" aria-pressed="false">High contrast</button></span></div><div class="page"><h1>The busiest view: running a service</h1><p class="lead">Bible open, 9 items queued, screens live, tape playing, at 1366×768. Left to right: <b>today</b> and <b>proposed</b> (P-01, 03, 04, 05, 07, 08). Use the switch for a full-size look.</p>
+<div data-ba data-view="side"><div class="ba-toggle"><span class="seg"><button data-set="side" aria-pressed="true">Side by side</button><button data-set="before" aria-pressed="false">Today (full size)</button><button data-set="after" aria-pressed="false">Proposed (full size)</button></span></div>
+<style>[data-view='side'] .cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}[data-view='before'] .cmp .pa,[data-view='after'] .cmp .pb{display:none}[data-view='before'] .cmp,[data-view='after'] .cmp{display:block}.cmp .lab{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ba-text-3);margin:6px 0}</style>
+<div class="cmp"><div class="pb"><div class="lab">Today</div><div class="fitbox" data-w="1366" data-h="768"><div class="scale"><div class="app "><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch">⌕ Search everything <kbd>⌘K</kbd></span><span class="hb ic q">☀</span><span class="hb ic q">◐</span><span class="hb q">Help</span><span class="hb q">Shortcuts</span><span class="grow"></span><span class="hb">◉ Hide screen</span><span class="hb">Message</span><span class="hb"><span class="dot ok"></span> Screens <kbd>3</kbd> ▾</span><span class="hb">▯ Remote</span><span class="hb live">Close projection</span></div><div class="body"><div class="rail"><span class="rb"><span class="g">🎙</span>Sermons</span><span class="rb on c-bible"><span class="g">▤</span>Bible</span><span class="rb"><span class="g">♪</span>Songs</span><span class="rb"><span class="g">▣</span>Media</span><span class="rb"><span class="g">◖◗</span>Tape</span><span class="rgrow"></span><span class="rb"><span class="g">☆</span>Saved</span><span class="rb"><span class="g">▱</span>Open</span><span class="rb "><span class="g">☰</span>Queue<span class="bdg">9</span></span></div><div class="main"><div class="tabs"><span class="tab on">Search</span><span class="tab">Browse</span><span class="grow"></span><span class="k">Tap a verse to put it on screen</span></div><div class="drill"><div class="col"><span class="chbtn" style="display:flex;align-items:center;justify-content:center">1</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">2</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">3</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">4</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">5</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">6</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">7</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">8</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">9</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">10</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">11</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">12</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">13</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">14</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">15</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">16</span></div><div class="read"><div class="lbl" style="margin-bottom:6px">Psalm 23 · KJV</div><div class="verse sel"><span class="n">1</span><span>The LORD is my shepherd; I shall not want.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div><div class="verse"><span class="n">2</span><span>He maketh me to lie down in green pastures: he leadeth me beside the still waters.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div><div class="verse"><span class="n">3</span><span>He restoreth my soul: he leadeth me in the paths of righteousness for his name&#x27;s sake.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div><div class="verse"><span class="n">4</span><span>Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me.</span><span class="a"><span class="sm q">+ Queue</span></span><span class="a"><span class="sm">Project</span></span></div></div></div></div><div class="queue"><div class="qh">Service queue</div><div class="qtools"><span>New</span><span>Open</span><span>Import</span><span>Save</span><span class="dis">Save + pictures</span><span>Open pack</span><span>Check</span></div><div class="qlist"><div class="qrow up"><span>▤</span><div><b>Psalm 23:1 · KJV</b><small>The LORD is my shepherd; I shall not want.</small></div><span class="tag up">UP NEXT</span></div><div class="qrow "><span>♪</span><div><b>Amazing Grace</b><small>Verse 1 — Amazing grace, how sweet the sound</small></div></div><div class="qrow "><span>◖◗</span><div><b>A Sample Message</b><small>Tape · paragraph 12</small></div></div><div class="qrow "><span>▣</span><div><b>Welcome slide</b><small>Picture · Welcome.jpg</small></div></div><div class="qrow "><span>▤</span><div><b>Psalm 23:4 · KJV</b><small>Yea, though I walk through the valley…</small></div></div><div class="qrow "><span>♪</span><div><b>How Great Thou Art</b><small>Verse 1 — O Lord my God, when I in awesome wonder</small></div></div></div><div class="pl"><div class="pv"><div><div class="lbl">Preview</div><div class="scr">“Yea, though I walk through the valley…”</div></div><span style="color:var(--ba-text-3)">›</span><div><div class="lbl"><span class="dot live"></span> Live</div><div class="scr live">“The LORD is my shepherd; I shall not want.”</div></div></div>
+<div class="row2 c3"><div class="big2 pri">Take next</div><div class="big2"><span style="opacity:.7">⌀</span>&nbsp;Clear</div></div><div class="row2 c2"><div class="big2 dim">‹ Back</div><div class="big2 pri">Next ›</div></div></div></div></div><div><div class="tbar"><div class="ti"><small>Tape</small><b>A Sample Message · ¶12</b></div><span class="cb">⏮</span><span class="cb">↺10</span><span class="cb play">❚❚</span><span class="cb">10↻</span><span class="cb">⏭</span><span class="k">0:42</span><div class="seek"><i></i></div><span class="k">−1:21</span><span class="pill" style="margin:0;color:var(--ba-ok);border-color:var(--ba-ok)">In sync</span><span class="cb">🔈</span><span class="hb">System default</span><span class="hb">Text: not on the screens</span></div><div class="status"><span>Born Again v2.0.0-dev.1</span><span class="r"><span class="live">● On air</span><span>3 displays</span><span>9 in queue</span></span></div></div></div></div></div></div><div class="pa"><div class="lab">Proposed</div><div class="fitbox" data-w="1366" data-h="768"><div class="scale"><div class="app "><div class="hdr"><span class="logo"><i>◆</i>Born <span>Again</span></span><span class="hb ic q">‹</span><span class="hb ic q">›</span><span class="hb srch" style="min-width:200px">⌕ Search everything <kbd>⌘K</kbd></span><span class="grow"></span><span class="cluster onair"><span class="dot live"></span><b style="font-size:11px;letter-spacing:.08em;color:var(--ba-live)">ON AIR</b><span class="hb" style="height:28px"><span class="dot ok"></span> Screens ▾</span><span class="hb" style="height:28px">◉ Hide screen</span><span class="hb" style="height:28px">Message</span><span class="hb live" style="height:28px">Close projection</span></span><span class="hb">▯ Remote</span><span class="hb ic" data-cog>⚙</span></div><div class="body"><div class="rail"><div class="rlab">Find</div><button class="rb"><span class="g">🎙</span>Sermons</button><button class="rb on neutral"><span class="g">▤</span>Bible</button><button class="rb"><span class="g">♪</span>Songs</button><button class="rb"><span class="g">▣</span>Media</button><span class="rsep"></span><div class="rlab">Listen</div><button class="rb"><span class="g">◖◗</span>Tape</button><span class="rgrow"></span><span class="rsep"></span><div class="rlab">Service</div><button class="rb"><span class="g">☰</span>Queue<span class="bdg">9</span></button></div><div class="main"><div class="tabs"><span class="tab on">Search</span><span class="tab">Browse</span><span class="grow"></span><span class="k">Click selects · Enter shows · Q queues</span></div><div class="drill"><div class="col"><span class="chbtn" style="display:flex;align-items:center;justify-content:center">1</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">2</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">3</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">4</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">5</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">6</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">7</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">8</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">9</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">10</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">11</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">12</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">13</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">14</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">15</span><span class="chbtn" style="display:flex;align-items:center;justify-content:center">16</span></div><div class="read"><div class="lbl" style="margin-bottom:6px">Psalm 23 · KJV</div><div class="verse sel" style="grid-template-columns:26px 1fr auto"><span class="n">1</span><span>The LORD is my shepherd; I shall not want.</span><span class="a"><span class="sm q">Queue</span><span class="sm hot">Show ⏎</span></span></div><div class="verse" style="grid-template-columns:26px 1fr auto"><span class="n">2</span><span>He maketh me to lie down in green pastures: he leadeth me beside the still waters.</span><span class="a"></span></div><div class="verse" style="grid-template-columns:26px 1fr auto"><span class="n">3</span><span>He restoreth my soul: he leadeth me in the paths of righteousness for his name&#x27;s sake.</span><span class="a"></span></div><div class="verse" style="grid-template-columns:26px 1fr auto"><span class="n">4</span><span>Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me.</span><span class="a"></span></div></div></div></div><div class="queue"><div class="qh" style="display:flex;align-items:center;gap:8px">Service queue<span class="grow"></span><span class="sm">File ▾</span><span class="sm">Edit</span><span class="sm hot" style="border-color:var(--ba-ok);color:var(--ba-ok)">✓ Ready</span></div><div class="qlist"><div class="qrow up"><span>▤</span><div><b>Psalm 23:1 · KJV</b><small>The LORD is my shepherd; I shall not want.</small></div><span class="tag up">UP NEXT</span></div><div class="qrow "><span>♪</span><div><b>Amazing Grace</b><small>Verse 1 — Amazing grace, how sweet the sound</small></div></div><div class="qrow "><span>◖◗</span><div><b>A Sample Message</b><small>Tape · paragraph 12</small></div></div><div class="qrow "><span>▣</span><div><b>Welcome slide</b><small>Picture · Welcome.jpg</small></div></div><div class="qrow "><span>▤</span><div><b>Psalm 23:4 · KJV</b><small>Yea, though I walk through the valley…</small></div></div><div class="qrow "><span>♪</span><div><b>How Great Thou Art</b><small>Verse 1 — O Lord my God, when I in awesome wonder</small></div></div><div class="qrow "><span>▣</span><div><b>Offering</b><small>Picture · Offering.jpg</small></div></div><div class="qrow "><span>▤</span><div><b>Psalm 100:1 · KJV</b><small>Make a joyful noise unto the LORD…</small></div></div></div><div class="pl"><div class="pv"><div><div class="lbl">Preview <span class="k" style="margin-left:auto">‹ 2 of 9 ›</span></div><div class="scr">“Yea, though I walk through the valley…”</div></div><span style="color:var(--ba-text-3)">›</span><div><div class="lbl"><span class="dot live"></span> Live</div><div class="scr live">“The LORD is my shepherd; I shall not want.”</div></div></div><div class="row2 c3"><div class="big2 pri">Show next ▸</div><div class="big2">Hide screen</div></div></div></div></div><div class="dock"><div class="live-z"><span class="dot live"></span><div><b>Psalm 23:1 · KJV</b><small>On screen 0:42</small></div><span class="grow"></span><span class="sm">Hide screen</span></div><div class="tape-z"><span class="cb">↺10</span><span class="cb play" data-play>❚❚</span><span class="cb">10↻</span><div style="min-width:130px"><b style="font-size:12.5px">A Sample Message · ¶12</b></div><span class="k" data-clock>0:42</span><div class="tbar" style="padding:0;border:0;min-height:0;background:none;flex:1"><div class="seek"><i data-seekfill></i></div></div><span class="cb">🔈</span></div><div class="chips"><span><span class="dot ok"></span> Screens</span><span><span class="dot ok"></span> Stage</span><span><span class="dot ok"></span> Phone 1</span><span><span class="dot ok"></span> Output</span></div></div></div></div></div></div></div></div>
+<div class="callout"><b>What to compare.</b> Header: 13 controls vs 7 + a ⚙ menu. Rail: five accent colours vs one. Queue: 6 rows and two toolbar rows vs 8 rows and one. Live box: two purple primaries vs one. Bottom: two strips (87 px) vs one dock (56 px) that says what is on air. Verse rows: two buttons each vs actions on the selected row.</div></div><script>/* Born Again UX review mockups — behaviour: theme, before/after, fit-to-width, shell sections, review board. No network, no storage beyond localStorage (wrapped). */
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s) }
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)) }
+  var store = { get: function (k) { try { return localStorage.getItem(k) } catch (e) { return null } }, set: function (k, v) { try { localStorage.setItem(k, v) } catch (e) {} } }
+
+  // ---- theme: dark / light / contrast (shared across the mockup pages)
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t)
+    store.set('ba-mock-theme', t)
+    $$('[data-theme-btn]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)) })
+  }
+  var t0 = store.get('ba-mock-theme') || 'dark'
+  setTheme(t0)
+  $$('[data-theme-btn]').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.themeBtn) }) })
+
+  // ---- fit a fixed-size mock to its container
+  function fit() {
+    $$('.fitbox').forEach(function (box) {
+      var w = +box.dataset.w, h = +box.dataset.h, inner = box.firstElementChild
+      var avail = box.parentElement.clientWidth - 2
+      var s = Math.min(1, avail / w)
+      inner.style.transform = 'scale(' + s + ')'
+      box.style.width = Math.round(w * s) + 'px'
+      box.style.height = Math.round(h * s) + 'px'
+    })
+  }
+  window.addEventListener('resize', fit)
+  window.addEventListener('load', fit)
+  setTimeout(fit, 0)
+
+  // ---- before / after toggles
+  $$('[data-ba]').forEach(function (root) {
+    var set = function (v) { root.setAttribute('data-view', v); $$('[data-set]', root).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === v)) }); setTimeout(fit, 0) }
+    $$('[data-set]', root).forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.set) }) })
+    set(root.getAttribute('data-view') || 'after')
+  })
+
+  // ---- the proposed shell: sections, run view, width
+  var shell = $('#shell')
+  if (shell) {
+    var secs = { sermons: 'Search sermons', bible: 'John 3', songs: 'Songs', media: 'Pictures and video', tape: 'Tape', queue: 'Queue' }
+    var pick = function (s) {
+      $$('[data-sec]', shell).forEach(function (p) { p.hidden = p.dataset.sec !== s })
+      $$('[data-go]', shell).forEach(function (b) { b.classList.toggle('on', b.dataset.go === s) })
+      var run = s === 'run'
+      shell.querySelector('.body').classList.toggle('noq', s === 'run' || s === 'queue')
+    }
+    $$('[data-go]', shell).forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.go) }) })
+    pick('bible')
+    var live = false
+    var setLive = function (v) {
+      live = v
+      $$('[data-live-on]', shell).forEach(function (e) { e.hidden = !live })
+      $$('[data-live-off]', shell).forEach(function (e) { e.hidden = live })
+      shell.classList.toggle('is-live', live)
+    }
+    $$('[data-toggle-live]').forEach(function (b) { b.addEventListener('click', function () { setLive(!live) }) })
+    setLive(true)
+    var menu = $('#cog-menu', shell)
+    $$('[data-cog]', shell).forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden }) })
+    document.addEventListener('click', function () { if (menu) menu.hidden = true })
+    $$('[data-size]').forEach(function (b) { b.addEventListener('click', function () {
+      var a = $('.app', shell); a.className = 'app ' + b.dataset.size
+      var w = b.dataset.size === 's1040' ? 1040 : b.dataset.size === 's1920' ? 1920 : 1366, h = b.dataset.size === 's1040' ? 640 : b.dataset.size === 's1920' ? 1080 : 768
+      var box = a.parentElement; box.dataset.w = w; box.dataset.h = h
+      $$('[data-size]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)) }); fit()
+    }) })
+    // pretend tape
+    var pos = 42, playing = false
+    var tick = function () { if (playing) pos = (pos + 1) % 120; $$('[data-clock]', shell).forEach(function (e) { e.textContent = Math.floor(pos / 60) + ':' + ('0' + (pos % 60)).slice(-2) }); $$('[data-seekfill]', shell).forEach(function (e) { e.style.width = (pos / 1.2) + '%' }) }
+    setInterval(tick, 1000)
+    $$('[data-play]', shell).forEach(function (b) { b.addEventListener('click', function () { playing = !playing; $$('[data-play]', shell).forEach(function (x) { x.textContent = playing ? '❚❚' : '▶' }) }) })
+  }
+
+  // ---- the review board
+  var board = $('#board')
+  if (board) {
+    var KEY = 'ba-ux-review-decisions-v1'
+    var saved = {}
+    try { saved = JSON.parse(store.get(KEY) || '{}') } catch (e) { saved = {} }
+    var cards = $$('[data-pid]', board)
+    var save = function () { store.set(KEY, JSON.stringify(saved)) }
+    var summary = function () {
+      var c = { approve: 0, reject: 0, discuss: 0, open: 0 }
+      cards.forEach(function (card) { var d = saved[card.dataset.pid]; c[d && d.v ? d.v : 'open']++ })
+      $('#sum-approve').textContent = c.approve; $('#sum-reject').textContent = c.reject; $('#sum-discuss').textContent = c.discuss; $('#sum-open').textContent = c.open
+    }
+    cards.forEach(function (card) {
+      var id = card.dataset.pid
+      var d = saved[id] = saved[id] || { v: '', n: '' }
+      var show = function () { $$('[data-v]', card).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === d.v)) }) }
+      show(); $('textarea', card).value = d.n || ''
+      $$('[data-v]', card).forEach(function (b) { b.addEventListener('click', function () { d.v = d.v === b.dataset.v ? '' : b.dataset.v; show(); save(); summary() }) })
+      $('textarea', card).addEventListener('input', function (e) { d.n = e.target.value; save() })
+    })
+    summary()
+    $('#copy').addEventListener('click', function () {
+      var lines = ['My decisions on the Born Again UX review proposals:']
+      cards.forEach(function (card) {
+        var d = saved[card.dataset.pid] || {}
+        lines.push(card.dataset.pid + ' ' + card.dataset.title + ' — ' + ({ approve: 'APPROVE', reject: 'REJECT', discuss: 'DISCUSS' }[d.v] || 'NO DECISION') + (d.n ? ' — ' + d.n.replace(/\s+/g, ' ') : ''))
+      })
+      var txt = lines.join('\n')
+      var out = $('#out'); out.value = txt; out.hidden = false; out.select()
+      var done = function () { $('#copied').textContent = 'Copied — paste it back to Claude.' }
+      try { navigator.clipboard.writeText(txt).then(done, function () { $('#copied').textContent = 'Select the text below and copy it.' }) } catch (e) { $('#copied').textContent = 'Select the text below and copy it.' }
+    })
+    $('#reset').addEventListener('click', function () { if (confirm('Clear all decisions on this page?')) { saved = {}; save(); location.reload() } })
+  }
+})()
+</script></body></html>
