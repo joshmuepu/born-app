@@ -127,7 +127,7 @@ export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (
       </div>
       {hint.show && !warn && (
         <div className="gtb-hint" role="note">
-          <span><b>The tape player.</b> It stays here in every section, so you can pause the tape while you run songs or verses. Click the title to open the Tape place. Play and pause from anywhere with <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>.</span>
+          <span><b>The tape player.</b> It stays here in every section, so you can pause the tape while you run songs or verses. Click the title to open the Tape place. Play and pause from anywhere with <span className="gtb-keys"><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></span>.</span>
           <button className="btn-quiet btn-sm" onClick={hint.dismiss}>Got it</button>
         </div>
       )}
