@@ -317,7 +317,7 @@ Effort **L** · Risk **med** · Impact **high**
 
 **In one line.** When the screens are on and the queue has items, offer a layout that puts the queue, the live and preview boxes and Next/Back at the centre; finding things opens as a slide-over.
 
-**Problem and evidence.** During a service the volunteer mostly steps through a prepared queue, but the layout is the preparation layout: browse columns and a reading pane take two thirds of the window while the queue (the thing in use) has a third, and the Preview/Live pair is at the bottom right at 100 px wide. At 1040×640 the work area is 501 px; at 150 % it is smaller still. The Take/Next/Back buttons are the most important controls and are 36 px high.
+**Problem and evidence.** During a service the volunteer mostly steps through a prepared queue, but the layout is the preparation layout: browse columns and a reading pane take two thirds of the window while the queue (the thing in use) has a third, and the Preview/Live pair is at the bottom right at 100 px wide. At 1040×640 the work area is 501 px; at 150 % it is smaller still. The Take/Next/Back buttons are the most important controls and are about 34 px high.
 
 **The change.** A "Run" toggle (also automatic when the projection opens, with a one-line "Back to Prepare") that shows: left, the queue as large rows (current and next highlighted); right, big Preview and Live (about 360 px wide) with Show next, Back, Next, Hide screen as large targets; ⌘K / "Find" opens Sermons, Bible, Songs, Media as a slide-over for a last-minute change. Prepare view stays exactly as today.
 

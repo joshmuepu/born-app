@@ -29,7 +29,7 @@ Controls visible per section: Sermons 42 · Bible 133 (verses × 2 buttons each)
 |---|---|---|---|---|
 | Show something | row buttons "Project", live "Take next", Enter, double-click, palette, phone Next | 6 | Space / → | every minute |
 | Hide screen / Show screen | header, live box "Clear"/"Show", Esc, B, phone Blank | 5 | Esc, B | several per service |
-| Open saved service | rail Open, queue toolbar Open, empty-state button, palette, File | 5 | ⌘O | once |
+| Open saved service | rail Open, queue toolbar Open, empty-state button, palette | 4 | ⌘O | once |
 | Save service | queue toolbar, palette | 2 | ⌘S | once |
 | Is tonight ready? | queue toolbar "Check", palette | 2 | — | once per service |
 | Open/Close projection | header, palette, Screens menu | 3 | ⌘/Ctrl+Shift+W | start/end |
@@ -50,7 +50,7 @@ Controls visible per section: Sermons 42 · Bible 133 (verses × 2 buttons each)
 | B-04 | P1 | **Keyboard shortcuts dialog 1021 px tall in a 640 px window**, top −191, bottom 831, no scrolling: title and the last rows unreachable. | Dialog geometry at 3 sizes |
 | B-05 | P1 | **Rail falls off the bottom** (Saved, Open, Queue unreachable) on a short window or a large interface scale (rail 404 px in a 345 px column at 150 % on 1040×640); `overflow: visible`. | Rail probe |
 | B-06 | P1 | **The queue pane's maximum width ignored the interface scale**, so at 150 % it took half of the screen pixels, not half of the scaled page. | Layout at 1040/150 % |
-| B-07 | P2 | **Three dialogs (Message, Keyboard shortcuts, channel operator) had no `role="dialog"`, `aria-modal` or name**: screen readers did not announce them as dialogs. | DOM probe (11 of 14 dialogs were named) |
+| B-07 | P2 | **Three dialogs (Message, Keyboard shortcuts, channel operator) had no `role="dialog"`, `aria-modal` or name**: screen readers did not announce them as dialogs. | DOM probe (the other dialogs were already named) |
 | B-08 | P2 | **Raw browser text in an operator error**: a failed `play()` showed "NotSupportedError: Failed to load because no supported source was found" in the tape bar and "This video stopped: …" bar. | `audio.ts`, `ProjectionVideo.tsx` |
 | B-09 | P2 | **A malformed tape command was read as "go to 0:00"** (`Number(undefined) \|\| 0`): the merge-check's seek (sent with the wrong field name) started the tape at the beginning instead of being refused. Seeking itself works in every state (see 02). | Code + 12-state live matrix + phone |
 | B-10 | P2 | **Regression scripts were stale or needed manual setup** (Remote wording and address check; Graphics script needed a Graphics page; no runner). | `scripts/regression/` |
@@ -60,10 +60,10 @@ Controls visible per section: Sermons 42 · Bible 133 (verses × 2 buttons each)
 |---|---|---|---|
 | D-01 | P1 | 13 header controls in one row mix navigation, search, appearance, help and the live controls | P-01 |
 | D-02 | P1 | The same job has six names (Project, Take, Put on the screen, Show, Blank, Clear…) | P-02 |
-| D-03 | P1 | The queue toolbar is two rows (~70 px); queue list shows 6 rows at 1366×768, 2 at 1040×640; "Open" exists 5 times | P-03 |
+| D-03 | P1 | The queue toolbar is two rows (~70 px); queue list shows 6 rows at 1366×768, 2 at 1040×640; "Open" exists 4 times | P-03 |
 | D-04 | P2 | Rail: five accent colours for "which section" dilute colour meaning; Saved/Open are file actions among places | P-04 |
 | D-05 | P1 | "What is on air?" is a small word; two bottom strips cost ~87 px | P-05 |
-| D-06 | P1 | The preparation layout is used during the service; Take/Next/Back are 36 px | P-06 |
+| D-06 | P1 | The preparation layout is used during the service; Take next is about 34 px high | P-06 |
 | D-07 | P1 | Two purple primaries with different jobs (Take next, Next ›) | P-07 |
 | D-08 | P2 | Two buttons on every verse/paragraph row, plus "tap to put on screen" | P-08 |
 | D-09 | P2 | 10–15 visible controls under 24 px per section; Open projection / Hide screen only 28 px | P-09 |
