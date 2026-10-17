@@ -20,7 +20,7 @@ describe('Get audio downloads the tape (not just a page)', () => {
     const user = userEvent.setup()
     render(<TapeDownload sermon={null} onDone={vi.fn()} />)
     expect((screen.getByRole('button', { name: /Download/ }) as HTMLButtonElement).disabled).toBe(true)
-    await user.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
+    await user.click(screen.getByRole('button', { name: /Open the download page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalledOnce()
   })
   it('downloads on the click, shows progress with a Cancel, then says it was added and tells the page', async () => {
@@ -41,7 +41,7 @@ describe('Get audio downloads the tape (not just a page)', () => {
     expect(onDone).toHaveBeenCalledOnce()
   })
   it('says what went wrong in plain words and does not claim success', async () => {
-    api.tapeDownload.mockResolvedValue({ ok: false, message: 'BORN could not reach the publisher’s site. Check the internet connection.' })
+    api.tapeDownload.mockResolvedValue({ ok: false, message: 'BORN could not reach the download site. Check the internet connection.' })
     const onDone = vi.fn()
     const user = userEvent.setup()
     render(<TapeDownload sermon={sermon} onDone={onDone} />)

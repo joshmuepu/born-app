@@ -3,7 +3,7 @@
 Some services play a **recorded sermon** — a message from the tape — while the congregation follows the text. Born Again plays the recording **and** keeps the text in step with it:
 the paragraph being spoken is highlighted on your screen, on the congregation screen, on the stage monitor and on a Graphics (OBS) output.
 
-Everything stays on this computer. Born Again does not stream recordings. To get one, press **＋ Add recording… ▾ → Download…** (or **Download…** on the empty Tape place) (English, from the publisher's own site, one recording, only when you press it; it is saved in your **Tape audio** folder and added), or bring your own audio file. **Open the publisher's page** opens the publisher's site in your browser instead (other languages, or to choose the file yourself).
+Everything stays on this computer. Born Again does not stream recordings. To get one, press **＋ Add recording… ▾ → Download…** (or **Download…** on the empty Tape place) (English, from the internet, one recording, only when you press it; it is saved in your **Tape audio** folder and added), or bring your own audio file. **Open the download page** opens the download page in your browser instead (other languages, or to choose the file yourself).
 
 ## Where things are
 

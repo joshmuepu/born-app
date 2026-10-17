@@ -140,7 +140,7 @@ export default function TapeAttach({
           </div>
           <div className="tape-card tape-card--soon" aria-disabled="true">
             <h4><Zap width={15} height={15} aria-hidden="true" /> Stream it <span className="tape-tag tape-tag--quiet">Not available yet</span></h4>
-            <p>Streaming needs the internet all service long and the publisher’s permission. It is listed for a later version.</p>
+            <p>Streaming needs the internet all service long and permission. It is listed for a later version.</p>
           </div>
 
           {busy && <div className="preflight-summary preflight-summary--busy" role="status">{busy}</div>}

@@ -230,7 +230,7 @@ describe('Download…', () => {
     const dlg = await screen.findByRole('dialog', { name: 'Download' })
     expect(within(dlg).getByLabelText('Find the sermon to download')).toBeTruthy()
     expect(api.tapeDownload).not.toHaveBeenCalled()
-    fireEvent.click(within(dlg).getByRole('button', { name: /Open the publisher’s page/ }))
+    fireEvent.click(within(dlg).getByRole('button', { name: /Open the download page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()
   })
   it('is prefilled with the sermon when asked from a sermon, and Esc closes it', async () => {

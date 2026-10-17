@@ -4,7 +4,7 @@ Reviewed in the running app (dev build of `v2-ux-build`, throw-away profiles: on
 
 ## What is there today
 - Left rail → **Tape** → header, a **welcome note** (with "Got it"), a **list of recordings** (title, date code, length, format, status chip) with an **Add a recording…** button under it, and four tabs: **Follow · Timing · Options · Add**.
-- **Add** = three equal cards: (1) *Add a recording* (picker button, "drop anywhere", a paragraph); (2) *In your "Tape audio" folder* (path, **Change…**, **Look again**, a status line); (3) *Don't have the file? Get audio* (a text field, a match chip, a paragraph, **Download the tape for …**, **Open the publisher's page**, an ownership line).
+- **Add** = three equal cards: (1) *Add a recording* (picker button, "drop anywhere", a paragraph); (2) *In your "Tape audio" folder* (path, **Change…**, **Look again**, a status line); (3) *Don't have the file? Get audio* (a text field, a match chip, a paragraph, **Download the tape for …**, **Open the download page**, an ownership line).
 - With no recordings the same three cards are repeated under "No recordings yet".
 
 ## Findings

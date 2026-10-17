@@ -19,13 +19,13 @@ describe('getting a tape from the publisher (on the operator’s click)', () => 
   it('saves it under the date code so BORN matches it to the sermon by itself', () => {
     expect(downloadFileName('65-0418m')).toBe('65-0418M.m4a')
   })
-  it('says what went wrong in plain words and always offers the publisher’s page', () => {
+  it('says what went wrong in plain words and always offers the download page', () => {
     for (const k of ['offline', 'no-page', 'no-audio', 'http', 'short', 'disk', 'cancelled', 'unknown'] as const) {
       const t = downloadProblem(k, 503)
       expect(t.length).toBeGreaterThan(15)
       expect(t).not.toMatch(/fetch|undefined|TypeError|ECONN|ENOTFOUND/)
     }
     expect(downloadProblem('http', 503)).toContain('503')
-    expect(downloadProblem('offline')).toContain('publisher’s page')
+    expect(downloadProblem('offline')).toContain('download page')
   })
 })

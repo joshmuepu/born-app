@@ -12,7 +12,7 @@ export const mb = (n: number): string => (n >= 1073741824 ? `${(n / 1073741824).
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    ref.current?.focus()
+    if (!ref.current?.contains(document.activeElement)) ref.current?.focus() // not when a field inside already took focus (autoFocus runs first)
     const h = (e: KeyboardEvent): void => { if (e.key === 'Escape' && !e.shiftKey) { e.stopPropagation(); onClose() } }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
@@ -120,8 +120,8 @@ export function PendingSheet({ pending, sermons, preferredSermonId, onResolve, o
 function useSermonSearch(sermons: SermonRef[], q: string): SermonRef[] {
   return useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (s.length < 2) return []
-    return sermons.filter((x) => x.title.toLowerCase().includes(s) || x.dateCode.toLowerCase().includes(s.replace(/\s+/g, ''))).slice(0, 6)
+    if (s.length < 1) return []
+    return sermons.filter((x) => x.title.toLowerCase().includes(s) || x.dateCode.toLowerCase().includes(s.replace(/\s+/g, ''))).slice(0, 8)
   }, [q, sermons])
 }
 
@@ -149,10 +149,12 @@ export function DownloadDialog({ sermons, preferredSermonId, onClose, onDone }: 
   return (
     <Sheet title="Download" onClose={onClose}>
       <div className="tpa-pick">
-        <input className="tp-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a title or a date code, e.g. 65-0418M" aria-label="Find the sermon to download" />
+        <input className="tp-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { e.preventDefault(); setChosen(matches[0]); setQ('') } }} placeholder="Type a title or a date code, e.g. 65-0418M" aria-label="Find the sermon to download" />
         {chosen && <span className="tp-chip tp-chip--ok">{chosen.dateCode} · {chosen.title}</span>}
       </div>
       {matches.length > 0 && <ul className="tpa-list" aria-label="Matching sermons">{matches.map((s) => <li key={s.id}><button onClick={() => { setChosen(s); setQ('') }}><b>{s.dateCode}</b> {s.title}</button></li>)}</ul>}
+      {q.trim() && matches.length === 0 && <p className="tp-faint" role="status">No sermon matches “{q.trim()}”. Try part of the title, or the date code like 65-0418M.</p>}
+      {!q.trim() && !chosen && <p className="tp-faint">Start typing — matching sermons appear here. Press Enter to choose the first one.</p>}
       <TapeDownload sermon={chosen} onDone={onDone} />
       <div className="tp-sheet-actions"><button className="btn-quiet" onClick={onClose}>Close</button></div>
     </Sheet>

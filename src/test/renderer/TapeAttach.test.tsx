@@ -33,7 +33,7 @@ describe('Add the tape for this sermon', () => {
   it('says the recording is used from this computer, is kept as a copy, and can be downloaded from the publisher on a click', () => {
     open()
     expect(screen.getByText(/never changes the original/i)).toBeTruthy()
-    expect(screen.getByText(/Downloads this recording from the publisher’s own site/)).toBeTruthy()
+    expect(screen.getByText(/Downloads this recording from the internet/)).toBeTruthy()
     expect(screen.getByText('Recommended')).toBeTruthy()
     expect(screen.getByText('Not available yet')).toBeTruthy()
   })
@@ -43,7 +43,7 @@ describe('Add the tape for this sermon', () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: /Download 65-0418M/ }))
     await waitFor(() => expect(dl).toHaveBeenCalled())
-    fireEvent.click(screen.getByRole('button', { name: /Open the publisher’s page/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Open the download page/ }))
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()
   })
   it('lists the folder files that match this sermon, and "Use this" adds it to THIS sermon', async () => {

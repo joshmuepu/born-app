@@ -24,13 +24,13 @@ export const downloadFileName = (dateCode: string): string => `${String(dateCode
 /** Plain words for a download that did not work. */
 export function downloadProblem(kind: 'offline' | 'no-page' | 'no-audio' | 'http' | 'short' | 'disk' | 'cancelled' | 'unknown', detail?: number): string {
   switch (kind) {
-    case 'offline': return 'BORN could not reach the publisher’s site. Check the internet connection and try again, or use “Open the publisher’s page”.'
-    case 'no-page': return 'This sermon has no download page with the publisher under that date code. Use “Open the publisher’s page” to look for it.'
-    case 'no-audio': return 'The publisher’s page for this sermon has no audio file to download. Use “Open the publisher’s page”.'
-    case 'http': return `The publisher’s site refused the download (error ${detail ?? '?'}). Try again later, or use “Open the publisher’s page”.`
+    case 'offline': return 'BORN could not reach the download site. Check the internet connection and try again, or use “Open the download page”.'
+    case 'no-page': return 'This sermon has no download page under that date code. Use “Open the download page” to look for it.'
+    case 'no-audio': return 'The download page for this sermon has no audio file to download. Use “Open the download page”.'
+    case 'http': return `The download site refused the download (error ${detail ?? '?'}). Try again later, or use “Open the download page”.`
     case 'short': return 'The download stopped before the whole recording arrived. It was thrown away; try again.'
     case 'disk': return 'BORN could not save the recording (the disk may be full, or the folder is not writable).'
     case 'cancelled': return 'The download was cancelled.'
-    default: return 'The download did not work. Use “Open the publisher’s page” and choose the file yourself.'
+    default: return 'The download did not work. Use “Open the download page” and choose the file yourself.'
   }
 }
