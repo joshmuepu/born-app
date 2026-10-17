@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SyncMap, TapeRecording } from '../../shared/tape'
 import { screenItemsOf } from '../../shared/tapeParagraphs'
+import { quoteToItem } from '../../shared/queueItem'
+import type { Quote } from '../../shared/queueItem'
 import { clampLead, tapeScreenView, type TapePalette, type TapeScreenItem, type TapeScreenMode, type TapeScreenSpec } from '../../shared/tapeScreen'
 import type { LiveChannel, SlidePayload } from './types'
 import { useTape } from './useTape'
@@ -21,6 +23,8 @@ export function useTapeScreen(o: {
   textLanguage?: string
   /** supply the screen items directly (the reader already has them); otherwise they are fetched */
   items?: TapeScreenItem[]
+  /** the sermon's rows, when the caller already has them (used to tell "Recently played" which paragraph went up) */
+  rows?: Quote[]
   position?: number
   onTaken?: (item: TapeScreenItem | null) => void
 }) {
@@ -30,7 +34,7 @@ export function useTapeScreen(o: {
   const [lead, setLead] = useState(4)
   const [palette, setPalette] = useState<TapePalette>('dark')
   const [live, setLive] = useState<TapeScreenSpec | null>(null)
-  const [fetched, setFetched] = useState<{ key: string; items: TapeScreenItem[] } | null>(null)
+  const [fetched, setFetched] = useState<{ key: string; items: TapeScreenItem[]; rows: Quote[] } | null>(null)
 
   useEffect(() => {
     void window.electronAPI.tapeSettingsGet?.()?.then((s) => { setLead(clampLead(s.leadSec)); setMode(s.view === 'single' ? 'one' : 'highlight') })
@@ -51,7 +55,7 @@ export function useTapeScreen(o: {
   useEffect(() => {
     if (o.items || sermonId === null) return
     let alive = true
-    void window.electronAPI.getSermonParagraphs?.(sermonId, textLanguage)?.then((rows) => { if (alive) setFetched({ key, items: screenItemsOf(rows) }) })
+    void window.electronAPI.getSermonParagraphs?.(sermonId, textLanguage)?.then((rows) => { if (alive) setFetched({ key, items: screenItemsOf(rows), rows }) })
     return () => { alive = false }
   }, [key, sermonId, textLanguage, o.items])
   const items = useMemo(() => o.items ?? (fetched && fetched.key === key ? fetched.items : []), [o.items, fetched, key])
@@ -71,7 +75,15 @@ export function useTapeScreen(o: {
     window.electronAPI.updateStage(payload, null)
     return v.index !== null ? items[v.index] : null
   }
-  const take = (): void => { const s = spec(); if (!s) return; const item = send(s); onTaken?.(item) }
+  const take = (): void => {
+    const s = spec()
+    if (!s) return
+    const item = send(s)
+    // "Recently played" learns which paragraph went up
+    const rows = o.rows ?? (fetched && fetched.key === key ? fetched.rows : [])
+    if (item) for (const q of rows) { const hit = quoteToItem(q).slides.some((sl) => (sl.marker ?? q.paragraphRef) === item.marker); if (hit) { window.electronAPI.noteSermonUsed?.(q as never); break } }
+    onTaken?.(item)
+  }
   const changed = !!live && (live.mode !== mode || (mode === 'one' && live.leadSec !== lead) || (live.palette ?? 'dark') !== palette)
   const apply = (): void => { if (live) { const s = spec({ pinned: live.pinned }); if (s) send(s) } }
   const follows = live ? live.pinned === null : true

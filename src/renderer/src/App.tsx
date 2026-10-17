@@ -2435,6 +2435,7 @@ export default function App() {
                   query={followSermon.query}
                   matchType={followSermon.matchType}
                   onBack={() => setFollowSermon(null)}
+                  onOpenTape={(t) => openTapePlace(t)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
                 />

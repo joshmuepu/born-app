@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
-import TapeAttach from './TapeAttach'
-import TapeSettingsPanel from './TapeSettingsPanel'
-import TapeLanguageNotice from './TapeLanguageNotice'
-import TapeScreenControls, { useScreenItems } from './TapeScreenControls'
-import TapeSyncEditor from './TapeSyncEditor'
 import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
 import { baseNumber, flatIndexFor } from '../../../shared/tapeParagraphs'
 import { useTapeFollow } from '../useTapeFollow'
+import { onTape } from '../tapeBus'
 import type { Quote } from '../types'
 import { refsOverlap } from '../../../shared/paragraphRef'
 import { quoteToItem } from '../../../shared/queueItem'
@@ -42,6 +38,8 @@ interface Props {
    *  (Main's own usage, unchanged). A channel following another language
    *  passes its own here instead. */
   language?: string
+  /** Open the Tape place (the recording's follow view, or the Add tab for a sermon that has no recording yet). */
+  onOpenTape?: (t: { sermonId: number; tab?: 'follow' | 'add' | 'timing' }) => void
 }
 
 /** One card per *paragraph*, not per source row — a row can legitimately
@@ -76,25 +74,20 @@ export default function SermonFollowView({
   onBack,
   onProject,
   onAddToQueue,
-  language: languageProp = 'en'
+  language = 'en',
+  onOpenTape
 }: Props) {
   const actions = useAppActions()
   const ctx = useContextMenu()
-  // The text language can be chosen here (separately from the recording's language); a channel that follows another language sets it from outside.
-  const [language, setLanguage] = useState(languageProp)
-  useEffect(() => setLanguage(languageProp), [languageProp])
-  const [languages, setLanguages] = useState<Record<string, string>>({})
-  useEffect(() => { void window.electronAPI.getLanguages?.()?.then((l) => setLanguages(l ?? {})).catch(() => {}) }, [])
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
-  const [tapeOpen, setTapeOpen] = useState(false)
-  const [tapeOptions, setTapeOptions] = useState(false)
-  const [syncing, setSyncing] = useState<{ rec: TapeRecording & { status: TapeFileStatus } } | null>(null)
   const [recs, setRecs] = useState<Array<TapeRecording & { status: TapeFileStatus }>>([])
   const [mapVersion, setMapVersion] = useState(0)
   const [jump, setJump] = useState<{ n: number; id: number } | null>(null)
   const loadRecs = useCallback(() => { void window.electronAPI.tapeRecordings?.(sermonId)?.then(setRecs).catch(() => {}) }, [sermonId])
   useEffect(() => { loadRecs() }, [loadRecs])
+  // recordings and timing change in the Tape place: refresh what this reader shows
+  useEffect(() => onTape((e) => { if (e === 'map-changed') setMapVersion((v) => v + 1); loadRecs() }), [loadRecs])
   // What to keep in view: the projected paragraph if we're live, else the
   // paragraph the operator opened the sermon on.
   const focusRef = liveRef ?? anchorRef
@@ -111,7 +104,6 @@ export default function SermonFollowView({
   }, [paras])
 
   // ── the tape (docs/design/sermon-audio): the highlight is the TAPE's, the scroll is the user's ──
-  const screenItemList = useScreenItems(flatSlides, baseNumber)
   const tapeRec = recs[0] && recs[0].status === 'ok' ? recs[0] : null
   const textNumbers = useMemo(() => [...new Set(flatSlides.map((f) => baseNumber(f.marker)).filter((n): n is number => n !== null))], [flatSlides])
   const tf = useTapeFollow(tapeRec, language, mapVersion, textNumbers)
@@ -162,19 +154,11 @@ export default function SermonFollowView({
       className={`follow-view${tapeActive ? ' follow-view--tape' : ''}`}
       tabIndex={-1}
       onKeyDown={(e) => {
-        // tape keys (only while a tape is attached and the focus is not in a field or on a control that uses the key itself)
-        if (!tapeRec) return
+        // the reader is a reader: the only tape key here is F (follow / free-browse). Play, skip and volume are the bar's, with global shortcuts.
+        if (!tapeActive) return
         const t = e.target as HTMLElement
-        if (t.closest('input, select, textarea, [role=slider]')) return
-        const onButton = !!t.closest('button, [role=button]')
-        if (e.metaKey || e.ctrlKey || e.altKey) return
-        if (e.key === ' ' && !onButton) { e.preventDefault(); if (tf.mine) tf.command({ type: 'toggle' }); else void tf.load(tapeRec.id, { play: true }) }
-        else if (e.key === 'ArrowLeft' && !onButton) { e.preventDefault(); tf.mine ? tf.command({ type: 'skip', by: e.shiftKey ? -30 : -10 }) : undefined }
-        else if (e.key === 'ArrowRight' && !onButton) { e.preventDefault(); tf.mine ? tf.command({ type: 'skip', by: e.shiftKey ? 30 : 10 }) : undefined }
-        else if (e.key === '[') { e.preventDefault(); tf.prevParagraph() }
-        else if (e.key === ']') { e.preventDefault(); tf.nextParagraph() }
-        else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); tf.setFollow(!tf.follow) }
-        else if (e.key === 'm' || e.key === 'M') { e.preventDefault(); if (tf.wire) tf.command({ type: 'muted', value: !tf.wire.muted }) }
+        if (t.closest('input, select, textarea, [role=slider]') || e.metaKey || e.ctrlKey || e.altKey) return
+        if (e.key === 'f' || e.key === 'F') { e.preventDefault(); tf.setFollow(!tf.follow) }
       }}
     >
       <div className="follow-head">
@@ -183,19 +167,22 @@ export default function SermonFollowView({
         </button>
         <span className="follow-title">{title}</span>
         <span className="follow-meta">{dateCode}</span>
-        <button
-          className={`btn-quiet btn-sm tape-chip${recs.length ? ' tape-chip--on' : ''}`}
-          onClick={() => setTapeOpen(true)}
-          title={recs.length ? 'The tape for this sermon' : 'Add a recording of this sermon so the text can follow it'}
-        >
-          <Headphones width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
-          {recs.length
-            ? `Tape · ${formatTapeTime(recs[0].file.durationSec)}${recs[0].status !== 'ok' ? ' · file missing' : recs[0].synced ? ' · timed' : ' · no timing yet'}`
-            : 'Add tape…'}
-        </button>
-        {recs.length > 0 && recs[0].status === 'ok' && (
-          <button className="btn-quiet btn-sm tape-chip" onClick={() => setSyncing({ rec: recs[0] })} title="Tap along to time every paragraph, or correct the timing">
-            {recs[0].synced ? 'Edit timing' : 'Tap to sync'}
+        {!onOpenTape ? null : tapeActive ? (
+          <>
+            <button className="btn-quiet btn-sm tape-chip tape-chip--on" onClick={() => onOpenTape?.({ sermonId, tab: 'follow' })} title="Following the tape — open the Tape place">
+              <Headphones width={13} height={13} strokeWidth={2.2} aria-hidden="true" /> Following the tape · ¶{tf.here!.n}
+            </button>
+            {!tf.follow && <button className="btn-secondary btn-sm" onClick={() => tf.setFollow(true)}>Back to the tape</button>}
+            {jump && <span className="tape-jump" role="status">Jumped to ¶{jump.n} <button className="btn-quiet btn-sm" onClick={() => { tf.undoJump(); setJump(null) }}>Undo</button></span>}
+          </>
+        ) : recs.length > 0 ? (
+          <button className="btn-quiet btn-sm tape-chip tape-chip--on" onClick={() => onOpenTape?.({ sermonId, tab: recs[0].status === 'ok' && recs[0].synced ? 'follow' : recs[0].status === 'ok' ? 'timing' : 'follow' })} title="The recording for this sermon — open it in the Tape place">
+            <Headphones width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
+            {`Tape · ${formatTapeTime(recs[0].file.durationSec)}${recs[0].status !== 'ok' ? ' · file missing' : recs[0].synced ? ' · timed' : ' · no timing yet'}`}
+          </button>
+        ) : (
+          <button className="btn-quiet btn-sm tape-chip" onClick={() => onOpenTape?.({ sermonId, tab: 'add' })} title="Add a recording of this sermon so the text can follow it">
+            <Headphones width={13} height={13} strokeWidth={2.2} aria-hidden="true" /> Add a recording
           </button>
         )}
         {query && (
@@ -259,26 +246,32 @@ export default function SermonFollowView({
                     openSermon: false
                   })
                 )}
-                title={tapeActive ? 'Move the tape to this paragraph — or drag it into the queue' : 'Put this paragraph on the screen — or drag it into the queue'}
+                title="Put this paragraph on the screen — or drag it into the queue"
                 onClick={(e) => {
-                  // with a timed tape loaded, a click moves the TAPE here (Project on the card still puts just this paragraph on the screen)
-                  const n = baseNumber(fs.marker)
-                  if (tapeActive && n !== null && jumpToPara(n)) { tf.setFollow(true); e.currentTarget.blur(); return }
+                  // the card only ever puts the paragraph on the screen (as it always did); moving the TAPE is the paragraph NUMBER's job
                   onProject(fs.quote, fs.slideIndex)
                   e.currentTarget.blur()
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    const n = baseNumber(fs.marker)
-                    if (tapeActive && n !== null && jumpToPara(n)) { tf.setFollow(true); e.currentTarget.blur(); return }
                     onProject(fs.quote, fs.slideIndex)
                     e.currentTarget.blur()
                   }
                 }}
               >
                 <div className="follow-para-head">
-                  <span className="follow-para-ref">¶{fs.marker}</span>
+                  {tapeActive && baseNumber(fs.marker) !== null ? (
+                    <button
+                      className="follow-para-ref follow-para-ref--jump"
+                      onClick={(e) => { e.stopPropagation(); const n = baseNumber(fs.marker); if (n !== null && jumpToPara(n)) tf.setFollow(true); e.currentTarget.blur() }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      aria-label={`Move the tape to paragraph ${baseNumber(fs.marker)}`}
+                      title="Move the tape to this paragraph"
+                    >¶{fs.marker}</button>
+                  ) : (
+                    <span className="follow-para-ref">¶{fs.marker}</span>
+                  )}
                   {live && <span className="on-screen-tag">On screen</span>}
                 </div>
                 <p className="follow-para-text">{highlight(fs.text, query, matchType)}</p>
@@ -302,32 +295,6 @@ export default function SermonFollowView({
         />
       )}
       {ctx.element}
-      {tapeRec && (
-        <div className="tape-follow-row">
-          <button className={`tape-toggle${tf.follow ? ' on' : ''}`} role="switch" aria-checked={tf.follow} onClick={() => tf.setFollow(!tf.follow)} title="The reader scrolls to keep the paragraph being spoken in view (F)">
-            <i aria-hidden="true" /> Reader follows the tape
-          </button>
-          {Object.keys(languages).length > 1 && (
-            <label className="tape-lang" title="The language of the text on screen. The recording keeps its own language.">
-              Text <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Text language">
-                {Object.entries(languages).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-              </select>
-              <span className="tape-faint"> · Tape {tapeRec.language.toUpperCase()}</span>
-            </label>
-          )}
-          <button className="btn-quiet btn-sm" onClick={() => setTapeOptions(true)} aria-haspopup="dialog">Tape options…</button>
-          {tapeActive && !tf.follow && <button className="btn-secondary btn-sm" onClick={() => tf.setFollow(true)}>Back to the tape</button>}
-          {!tf.map && <span className="tape-faint">No timing yet — the text can’t follow this recording. Use “Tap to sync”.</span>}
-          {jump && (
-            <span className="tape-jump" role="status">Jumped to ¶{jump.n} <button className="btn-quiet btn-sm" onClick={() => { tf.undoJump(); setJump(null) }}>Undo</button></span>
-          )}
-        </div>
-      )}
-      {tapeRec && tf.agreement && tf.foreign && <TapeLanguageNotice agreement={tf.agreement} decision={tf.decision} overrides={tf.overrides} textLabel={languages[language] ?? language.toUpperCase()} onChoose={tf.choose} onSaveOverrides={tf.saveOverrides} />}
-      {tapeRec && <TapeScreenControls recording={tapeRec} sermonId={sermonId} title={title} items={screenItemList} map={tf.map} position={tf.mine ? tf.pos : 0} onTaken={(it) => { const f = it ? flatSlides.find((x) => x.marker === it.marker) : null; if (f) window.electronAPI.noteSermonUsed?.(f.quote) }} />}
-      {tapeOptions && <TapeSettingsPanel onClose={() => setTapeOptions(false)} />}
-      {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} onSync={(id) => { const r = recs.find((x) => x.id === id) ?? recs[0]; if (r) { setTapeOpen(false); setSyncing({ rec: r }) } }} />}
-      {syncing && <TapeSyncEditor recording={syncing.rec} sermonId={sermonId} sermonTitle={title} dateCode={dateCode} language={language} onClose={() => { setSyncing(null); loadRecs(); setMapVersion((v) => v + 1) }} onSaved={() => { loadRecs(); setMapVersion((v) => v + 1) }} />}
     </div>
   )
 }

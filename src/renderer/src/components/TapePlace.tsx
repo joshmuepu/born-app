@@ -160,7 +160,7 @@ function FollowTab({ entry, pushToast }: { entry: Entry; pushToast: Toast }): JS
           </select>
           <span className="tp-faint"> · Tape {entry.language.toUpperCase()}</span>
         </label>
-        <TapeScreenControls recording={entry} sermonId={entry.sermonId} title={entry.sermonTitle} items={items} map={tf.map} textLanguage={lang} position={tf.mine ? tf.pos : 0} />
+        <TapeScreenControls recording={entry} sermonId={entry.sermonId} title={entry.sermonTitle} items={items} rows={rows as never} map={tf.map} textLanguage={lang} position={tf.mine ? tf.pos : 0} />
       </div>
       {tf.agreement && tf.foreign && <TapeLanguageNotice agreement={tf.agreement} decision={tf.decision} overrides={tf.overrides} textLabel={languages[lang] ?? lang.toUpperCase()} onChoose={tf.choose} onSaveOverrides={tf.saveOverrides} />}
       <div className="tp-follow-bar">

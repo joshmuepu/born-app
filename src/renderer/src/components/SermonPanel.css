@@ -523,3 +523,8 @@
 
 .tape-lang { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: var(--text-sm); }
 .tape-lang select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 2px 6px; }
+
+/* the paragraph NUMBER is the only thing in a card that moves the tape */
+.follow-para-ref--jump { border: 0; background: none; padding: 2px 6px; margin: -2px -6px; border-radius: var(--r-sm); cursor: pointer; font: inherit; color: inherit; }
+.follow-para-ref--jump:hover { background: var(--bg-hover); }
+.follow-para-ref--jump:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
-import SermonFollowView from '../../renderer/src/components/SermonFollowView'
+import TapePlace from '../../renderer/src/components/TapePlace'
 import type { Quote } from '../../renderer/src/types'
 import type { TapeWire } from '../../shared/tapePlayback'
 import type { SyncMap } from '../../shared/tape'
@@ -29,6 +29,7 @@ beforeEach(() => {
   api = {
     getSermonParagraphs: vi.fn(async (_id: number, lang: string) => (lang === 'es' ? ES : EN)),
     getLanguages: vi.fn(async () => ({ en: 'English', es: 'Spanish' })),
+    tapeLibrary: vi.fn(async () => [{ ...rec, sermonTitle: 'Sample', dateCode: '00-0000', timed: 6 }]),
     tapeRecordings: vi.fn(async () => [rec]),
     tapeMapGet: vi.fn(async (_id: string, lang: string | null) => (lang === null ? MAP : null)),
     tapeOverridesGet: vi.fn(async () => overrides),
@@ -49,8 +50,8 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 async function open() {
-  const r = render(<SermonFollowView sermonId={7} anchorRef="1" liveRef={null} onBack={vi.fn()} onProject={vi.fn()} onAddToQueue={vi.fn()} />)
-  await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
+  const r = render(<TapePlace visible target={null} pushToast={vi.fn()} />)
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /Move the tape to paragraph/ }).length).toBeGreaterThan(3))
   await act(async () => { push(wire()) })
   await act(async () => {})
   return r
@@ -61,14 +62,15 @@ const chooseSpanish = async (): Promise<void> => {
   await act(async () => {})
   await act(async () => { push(wire()) })
 }
-const card = (marker: string): HTMLElement => screen.getByText(`¶${marker}`).closest('.follow-para') as HTMLElement
+const row2 = (n: number): HTMLElement => screen.getByRole('button', { name: `Move the tape to paragraph ${n}` }).closest('.tfl-row') as HTMLElement
+const isCur = (n: number): boolean => /is-cur/.test(row2(n).className)
 
 describe('text language and tape language are separate', () => {
   it('the same English tape highlights the Spanish text by paragraph number, and the tape is still shown as English', async () => {
     await open()
     expect(screen.getByText(/Tape EN/)).toBeTruthy()
     await chooseSpanish()
-    expect(card('2').className).toMatch(/follow-para--tape(?!-)/)
+    expect(isCur(2)).toBe(true)
     expect(screen.getByText(/Bravo uno\./)).toBeTruthy()
     expect(screen.getByText(/Tape EN/)).toBeTruthy()
   })
@@ -91,10 +93,10 @@ describe('when the numbering differs', () => {
     await open()
     await chooseSpanish()
     fireEvent.click(await screen.findByRole('button', { name: /Don’t follow this text/ }))
-    await waitFor(() => expect(card('2').className).not.toMatch(/follow-para--tape/))
+    await waitFor(() => expect(isCur(2)).toBe(false))
     expect(screen.getByText('Not following this text.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Follow anyway' }))
-    await waitFor(() => expect(card('2').className).toMatch(/follow-para--tape(?!-)/))
+    await waitFor(() => expect(isCur(2)).toBe(true))
   })
   it('the choice is remembered for that recording and language', async () => {
     await open()
@@ -108,7 +110,7 @@ describe('when the numbering differs', () => {
     await open()
     await chooseSpanish()
     expect(await screen.findByText('Not following this text.')).toBeTruthy()
-    expect(card('2').className).not.toMatch(/follow-para--tape/)
+    expect(isCur(2)).toBe(false)
   })
   it('lining up a difference saves an override and the numbers then agree', async () => {
     await open()
@@ -123,7 +125,7 @@ describe('when the numbering differs', () => {
     await screen.findByText(/the numbers now line up \(1 adjusted\)/)
     // and the tape at 205 s (the recording's ¶6) now highlights the text's ¶5
     await act(async () => { push(wire({ position: 205 })) })
-    expect(card('5').className).toMatch(/follow-para--tape(?!-)/)
+    expect(isCur(5)).toBe(true)
   })
   it('an adjustment can be removed again', async () => {
     overrides = [{ textN: 5, mapN: 6 }]
@@ -141,6 +143,6 @@ describe('a map made for the text language is used as it is', () => {
     await open()
     await chooseSpanish()
     expect(screen.queryByRole('group', { name: 'Paragraph numbers differ' })).toBeNull()
-    expect(card('2').className).toMatch(/follow-para--tape(?!-)/)
+    expect(isCur(2)).toBe(true)
   })
 })

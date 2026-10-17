@@ -38,8 +38,9 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 const onProject = vi.fn()
+const onOpenTape = vi.fn()
 async function open(pos = 35, status: TapeWire['status'] = 'paused') {
-  const r = render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} />)
+  const r = render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
   await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
   await act(async () => { push(wire({ position: pos, status })) })
   await waitFor(() => expect(api.tapeMapGet).toHaveBeenCalled())
@@ -72,30 +73,31 @@ describe('the reader follows the tape', () => {
   })
   it('nothing is highlighted before the tape is loaded or when there is no timing', async () => {
     api.tapeMapGet.mockResolvedValue(null)
-    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} />)
+    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
     await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
     await act(async () => { push(wire()) })
     expect(document.querySelector('.follow-para--tape')).toBeNull()
-    expect(await screen.findByText(/No timing yet/)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Tape · 0:16:40/ })).toBeTruthy() // the chip says so; the Tape place is where timing is fixed
   })
 })
 
 describe('follow or browse freely — the user\'s place is never lost', () => {
   it('a hand on the wheel turns follow off and offers "Back to the tape"; the highlight stays the TAPE\'s', async () => {
     await open(35)
-    expect(screen.getByRole('switch', { name: /Reader follows the tape/ }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'Back to the tape' })).toBeNull()
     fireEvent.wheel(document.querySelector('.follow-list')!)
-    expect(screen.getByRole('switch', { name: /Reader follows/ }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: 'Back to the tape' })).toBeTruthy()
     await act(async () => { push(wire({ position: 85 })) })
     expect(card('4').className).toMatch(/follow-para--tape(?!-)/) // still follows in the highlight
     fireEvent.click(screen.getByRole('button', { name: 'Back to the tape' }))
-    expect(screen.getByRole('switch', { name: /Reader follows/ }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'Back to the tape' })).toBeNull()
   })
   it('F toggles follow from the keyboard', async () => {
     await open(35)
     fireEvent.keyDown(document.querySelector('.follow-view')!, { key: 'f' })
-    expect(screen.getByRole('switch', { name: /Reader follows/ }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Back to the tape' })).toBeTruthy()
+    fireEvent.keyDown(document.querySelector('.follow-view')!, { key: 'f' })
+    expect(screen.queryByRole('button', { name: 'Back to the tape' })).toBeNull()
   })
   it('while follow is off the reader does not scroll by itself', async () => {
     const spy = vi.fn()
@@ -108,10 +110,10 @@ describe('follow or browse freely — the user\'s place is never lost', () => {
   })
 })
 
-describe('click a paragraph to move the tape', () => {
-  it('seeks the tape to that paragraph\'s start (not the screen), and says so with an Undo', async () => {
+describe('only the paragraph NUMBER moves the tape', () => {
+  it('clicking the number seeks the tape to that paragraph\'s start (not the screen), and says so with an Undo', async () => {
     await open(35)
-    fireEvent.click(card('4'))
+    fireEvent.click(screen.getByRole('button', { name: 'Move the tape to paragraph 4' }))
     expect(api.tapeCommand).toHaveBeenCalledWith({ type: 'seek', to: 80 })
     expect(onProject).not.toHaveBeenCalled()
     expect(screen.getByText(/Jumped to ¶4/)).toBeTruthy()
@@ -119,50 +121,62 @@ describe('click a paragraph to move the tape', () => {
     expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 35 })
     expect(screen.queryByText(/Jumped to/)).toBeNull()
   })
-  it('a paragraph with no time (or a header) still projects the old way', async () => {
-    api.tapeMapGet.mockResolvedValue({ ...MAP, marks: MAP.marks.filter((m) => m.n !== 4) })
+  it('clicking the CARD never moves the tape: it only puts the paragraph on the screen, exactly as it did before there was a tape', async () => {
     await open(35)
-    onProject.mockClear()
     fireEvent.click(card('4'))
     expect(onProject).toHaveBeenCalled()
-    expect(api.tapeCommand).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'seek', to: 80 }))
+    expect(api.tapeCommand).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'seek' }))
+    expect(screen.queryByText(/Jumped to/)).toBeNull()
   })
-  it('without a loaded tape for this recording a click just projects', async () => {
-    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} />)
+  it('a number with no time on the tape does nothing (no seek, no Undo)', async () => {
+    api.tapeMapGet.mockResolvedValue({ ...MAP, marks: MAP.marks.filter((m) => m.n !== 4) })
+    await open(35)
+    fireEvent.click(screen.getByRole('button', { name: 'Move the tape to paragraph 4' }))
+    expect(api.tapeCommand).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'seek', to: 80 }))
+    expect(screen.queryByText(/Jumped to/)).toBeNull()
+  })
+  it('without the tape loaded the numbers are plain labels, and a click on the card just projects', async () => {
+    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
     await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
+    expect(screen.queryByRole('button', { name: /Move the tape to paragraph/ })).toBeNull()
     onProject.mockClear()
     fireEvent.click(card('4'))
     expect(onProject).toHaveBeenCalled()
   })
 })
 
-describe('keys and buttons for paragraphs', () => {
-  it('"]" goes to the next paragraph start and "[" back to this paragraph\'s start (>3 s in) or the one before', async () => {
+describe('the chip: "Following the tape"', () => {
+  it('shows the paragraph being spoken and opens the Tape place for this sermon when clicked', async () => {
     await open(35)
-    fireEvent.keyDown(document.querySelector('.follow-view')!, { key: ']' })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 50 })
-    fireEvent.keyDown(document.querySelector('.follow-view')!, { key: '[' })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 30 }) // 5 s into ¶2 → its start
-    await act(async () => { push(wire({ position: 31 })) })
-    fireEvent.keyDown(document.querySelector('.follow-view')!, { key: '[' })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 10 }) // 1 s in → the one before
+    const chip = screen.getByRole('button', { name: /Following the tape · ¶2/ })
+    fireEvent.click(chip)
+    expect(onOpenTape).toHaveBeenCalledWith({ sermonId: 7, tab: 'follow' })
   })
-  it('Space plays/pauses (loading the tape first if it is not loaded), arrows skip 10 s (Shift 30 s)', async () => {
+  it('a sermon whose recording is not in the player shows its plain state, and clicking opens it in the Tape place', async () => {
+    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
+    const chip = await screen.findByRole('button', { name: /Tape · 0:16:40 · timed/ })
+    fireEvent.click(chip)
+    expect(onOpenTape).toHaveBeenCalledWith({ sermonId: 7, tab: 'follow' })
+  })
+  it('a sermon with no recording offers "Add a recording", which opens the Tape place on its Add tab', async () => {
+    api.tapeRecordings.mockResolvedValue([])
+    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a recording' }))
+    expect(onOpenTape).toHaveBeenCalledWith({ sermonId: 7, tab: 'add' })
+  })
+  it('without a way to open the Tape place (another channel\'s browser) no tape chip is shown at all', async () => {
+    render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} />)
+    await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
+    await act(async () => {})
+    expect(screen.queryByRole('button', { name: /Tape ·|Add a recording|Following the tape/ })).toBeNull()
+  })
+})
+
+describe('the reader has no play keys (they are global, so they work from every section)', () => {
+  it('Space, arrows and brackets do nothing to the tape from inside the reader', async () => {
     await open(35, 'playing')
     const v = document.querySelector('.follow-view')!
-    fireEvent.keyDown(v, { key: ' ' })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'toggle' })
-    fireEvent.keyDown(v, { key: 'ArrowRight' })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'skip', by: 10 })
-    fireEvent.keyDown(v, { key: 'ArrowLeft', shiftKey: true })
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'skip', by: -30 })
-  })
-  it('the reader is a reader: it has no player — no Play, no seek bar, no skip buttons (those live in the bottom bar)', async () => {
-    await open(35)
-    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
-    expect(screen.queryByRole('slider', { name: 'Position in the tape' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Next paragraph' })).toBeNull()
-    expect(document.querySelectorAll('.tape-tick')).toHaveLength(0)
+    for (const key of [' ', 'ArrowRight', 'ArrowLeft', '[', ']', 'm']) fireEvent.keyDown(v, { key })
+    expect(api.tapeCommand).not.toHaveBeenCalled()
   })
 })

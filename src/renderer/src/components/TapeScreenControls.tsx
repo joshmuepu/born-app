@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { MonitorPlay, MonitorOff, AlertTriangle } from 'lucide-react'
 import { missingScripts } from '../tapeFonts'
 import type { SyncMap, TapeRecording } from '../../../shared/tape'
+import type { Quote } from '../../../shared/queueItem'
 import type { TapePalette, TapeScreenItem, TapeScreenMode } from '../../../shared/tapeScreen'
 import { useTapeScreen } from '../useTapeScreen'
 import './TapeScreenControls.css'
@@ -13,11 +14,12 @@ const MODE_LABEL: Record<Mode, string> = { highlight: 'Highlight', one: 'One at 
  * Put the sermon on the congregation screen as a TAPE screen (the paragraph being spoken follows the tape), choose how it looks, and decide whether the
  * screens follow the tape. Nothing here starts sound or moves the tape. Taking is an explicit button — nothing changes what is live by itself.
  */
-export default function TapeScreenControls({ recording, sermonId, title, items, map, position, onTaken, textLanguage }: {
+export default function TapeScreenControls({ recording, sermonId, title, items, rows, map, position, onTaken, textLanguage }: {
   recording: TapeRecording
   sermonId: number
   title: string
   items?: TapeScreenItem[]
+  rows?: Quote[]
   map: SyncMap | null
   /** the tape's position right now (to say what is on the screen when it is taken) */
   position?: number
@@ -25,7 +27,7 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
   onTaken?: (item: TapeScreenItem | null) => void
   textLanguage?: string
 }): JSX.Element | null {
-  const t = useTapeScreen({ recording, sermonId, title, map, items, position, onTaken, textLanguage })
+  const t = useTapeScreen({ recording, sermonId, title, map, items, rows, position, onTaken, textLanguage })
   // a script this computer has no font for would show boxes on the screens: say so before Take, never after
   const noFont = useMemo(() => missingScripts(t.items.map((i) => i.text).join(' ').slice(0, 4000)), [t.items])
   if (!map) return null
