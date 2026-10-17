@@ -77,6 +77,16 @@
           "file": "operators/media-youtube.md"
         },
         {
+          "id": "tape-service",
+          "title": "Running a tape service",
+          "file": "operators/tape-service.md"
+        },
+        {
+          "id": "tape-service-demo",
+          "title": "Tape service: a 10-step demo",
+          "file": "operators/tape-service-demo.md"
+        },
+        {
           "id": "media-ready",
           "title": "Is tonight ready? Sharing with pictures",
           "file": "operators/media-ready-and-sharing.md"

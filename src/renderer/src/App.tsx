@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
+import GlobalTapeBar from './components/GlobalTapeBar'
+import { getTapeActions, matchTapeShortcut, tapeKeysIgnored, useTapeLoaded } from './tapeActions'
+import TapePlace, { type TapePlaceTarget } from './components/TapePlace'
+import TapeRailButton from './components/TapeRailButton'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
@@ -65,7 +69,7 @@ const QUEUE_MIN = 280
 const QUEUE_MAX = 560
 const QUEUE_DEFAULT = 360
 
-type TopTab = 'sermons' | 'bible' | 'songs' | 'media'
+type TopTab = 'sermons' | 'bible' | 'songs' | 'media' | 'tape'
 type SermonsSubTab = 'search' | 'browse'
 
 interface Projected {
@@ -189,6 +193,9 @@ export default function App() {
   const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
+  // where the Tape place should land when it is opened from somewhere else (the bar, a sermon's chip)
+  const [tapeTarget, setTapeTarget] = useState<TapePlaceTarget | null>(null)
+  const openTapePlace = useCallback((t: Omit<TapePlaceTarget, 'nonce'> = {}) => { setTapeTarget({ ...t, nonce: Date.now() }); setTopTab('tape') }, [])
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
   const { choice: uiScale, setChoice: setUiScale } = useUiScale()
@@ -1014,6 +1021,15 @@ export default function App() {
   }, [doProject, pushToast])
   const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
   useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
+  // plain-words messages from the main process (the tape paused a video, an alert was kept off the YouTube player, …)
+  // A phone moved the tape to another paragraph (it asked first): say so on the computer, with an Undo that puts the tape back where it was.
+  useEffect(() => window.electronAPI.onTapePhoneJumped?.((j) => pushToast({
+    message: `A phone moved the tape to ¶${j.toParagraph}${j.fromParagraph !== null ? ` (it was at ¶${j.fromParagraph})` : ''}`,
+    actionLabel: 'Undo',
+    timeoutMs: 15000,
+    onAction: () => { void window.electronAPI.tapeCommand({ type: 'seek', to: j.fromSec }) }
+  })), [pushToast])
+  useEffect(() => window.electronAPI.onOperatorNotice?.((message) => pushToast({ message, timeoutMs: 9000 })), [pushToast])
   useEffect(() => {
     const load = (): void => {
       void window.electronAPI.mediaBackgroundsGet().then((b) => setMainBackground(b.congregationMain)).catch(() => setMainBackground(null))
@@ -1449,6 +1465,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [undoLatest])
 
+  const tapeLoaded = useTapeLoaded()
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const cmds: PaletteCommand[] = [
       { id: 'go-sermons', label: 'Go to Sermons', keywords: 'quotes messages', run: () => setTopTab('sermons') },
@@ -1493,6 +1510,22 @@ export default function App() {
       { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
       { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
     ]
+    // the tape: always able to open its place or add a recording; the transport commands exist while a tape is loaded
+    cmds.push(
+      { id: 'go-tape', label: 'Go to the Tape place', keywords: 'tape recording audio sermon recordings library follow', run: () => { setTapeTarget(null); setTopTab('tape') } },
+      { id: 'tape-add', label: 'Tape: add a recording…', keywords: 'tape audio recording import file folder', run: () => openTapePlace({ tab: 'add' }) }
+    )
+    if (tapeLoaded) {
+      const t = (): ReturnType<typeof getTapeActions> => getTapeActions()
+      cmds.push(
+        { id: 'tape-toggle', label: 'Tape: play or pause', keywords: 'tape audio recording sermon play pause', hint: 'Ctrl+Shift+P', run: () => t()?.toggle() },
+        { id: 'tape-back', label: 'Tape: back 10 seconds', keywords: 'tape rewind', hint: 'Ctrl+Shift+←', run: () => t()?.back() },
+        { id: 'tape-fwd', label: 'Tape: forward 10 seconds', keywords: 'tape skip', hint: 'Ctrl+Shift+→', run: () => t()?.forward() },
+        { id: 'tape-prev', label: 'Tape: previous paragraph', keywords: 'tape paragraph back', hint: 'Ctrl+Shift+[', run: () => t()?.prevParagraph() },
+        { id: 'tape-next', label: 'Tape: next paragraph', keywords: 'tape paragraph skip', hint: 'Ctrl+Shift+]', run: () => t()?.nextParagraph() },
+        { id: 'tape-screens', label: 'Tape: put its text on the screens (or take it off)', keywords: 'tape screens projector follow text', run: () => t()?.screens() }
+      )
+    }
     if (projectionOpen) {
       cmds.push({
         id: 'blank',
@@ -1504,6 +1537,8 @@ export default function App() {
     }
     return cmds
   }, [
+    tapeLoaded,
+    openTapePlace,
     queueOpen,
     toggleQueue,
     theme,
@@ -1531,6 +1566,12 @@ export default function App() {
 
     const onKey = (e: KeyboardEvent): void => {
       if (showAlertDialog || paletteOpen) return
+      // tape keys (⌘/Ctrl+Shift+P, …): from any section, never while typing or in the sync editor
+      const tk = matchTapeShortcut(e)
+      if (tk && !tapeKeysIgnored(e.target)) {
+        const t = getTapeActions()
+        if (t) { e.preventDefault(); ({ toggle: t.toggle, back: t.back, forward: t.forward, prev: t.prevParagraph, next: t.nextParagraph })[tk](); return }
+      }
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
@@ -1539,7 +1580,10 @@ export default function App() {
       // including while a search box has focus, so it works under live pressure.
       if (e.key === 'Escape' && projectionOpen) {
         e.preventDefault()
-        handleToggleBlank()
+        // Shift+Esc blanks (never un-blanks) and pauses the tape; plain Esc toggles and leaves the tape playing unless Tape options say otherwise
+        const wasBlanked = isScreenBlankedRef.current
+        if (e.shiftKey) { if (!wasBlanked) handleToggleBlank() } else handleToggleBlank()
+        window.electronAPI.tapeEsc?.(e.shiftKey, e.shiftKey ? true : !wasBlanked)
         return
       }
 
@@ -2349,6 +2393,7 @@ export default function App() {
                 <span>{label}</span>
               </button>
             ))}
+            <TapeRailButton active={topTab === 'tape'} onClick={() => { setTapeTarget(null); setTopTab('tape') }} />
             <span className="rail-spacer" />
             <button
               className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
@@ -2416,6 +2461,7 @@ export default function App() {
                   query={followSermon.query}
                   matchType={followSermon.matchType}
                   onBack={() => setFollowSermon(null)}
+                  onOpenTape={(t) => openTapePlace(t)}
                   onProject={handleProjectQuote}
                   onAddToQueue={handleAddQuote}
                 />
@@ -2471,6 +2517,10 @@ export default function App() {
               onProjectSong={handleProjectSong}
               onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
             />
+          </div>
+
+          <div className="panel-view" hidden={topTab !== 'tape'}>
+            <TapePlace visible={topTab === 'tape'} target={tapeTarget} pushToast={pushToast} />
           </div>
 
           <div className="panel-view" hidden={topTab !== 'media'}>
@@ -2631,6 +2681,10 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></dt><dd>Show the church logo (set in Media)</dd></div>
               <div><dt><kbd>Q</kbd> / <kbd>F</kbd> in Media</dt><dd>Add the picture to the queue / favorite it</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></dt><dd>Tape: play / pause (from any section; not while typing or in the timing editor)</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Tape: back / forward 10 seconds</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd>/<kbd>]</kbd></dt><dd>Tape: previous / next paragraph</dd></div>
+              <div><dt><kbd>Esc</kbd> · <kbd>Shift</kbd>+<kbd>Esc</kbd> with a tape</dt><dd>Esc hides the screens and the tape keeps playing; Shift+Esc hides them and pauses the tape</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
               <div><dt><kbd>\</kbd></dt><dd>Slide the browse columns away / back</dd></div>
@@ -2768,6 +2822,8 @@ export default function App() {
       />
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
+
+      <GlobalTapeBar onOpenTape={(sermonId) => openTapePlace({ sermonId })} pushToast={pushToast} />
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

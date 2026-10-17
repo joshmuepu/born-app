@@ -20,6 +20,11 @@ import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHt
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
+import { lowerThirdNow, tapeGraphicsKey, withoutTapeBody } from '../shared/tapeScreen'
+import { numberedParagraphs } from '../shared/tapeParagraphs'
+import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, type PhoneTapeDeps } from './tapePhone'
+import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
+import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, hub as tapeHub } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -62,6 +67,7 @@ import {
   graphicsClientCount,
   pushGraphicsPlayback as webPushGraphicsPlayback,
   setPlaybackProvider,
+  setTapeProviders,
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
@@ -133,7 +139,7 @@ import {
   getLocalLocationTree,
   getOnThisDay
 } from './browseLocal'
-import { getSettings, updateSettings, type AppSettings } from './settings'
+import { getSettings, updateSettings, TAPE_DEFAULTS, type AppSettings } from './settings'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -210,6 +216,8 @@ const isDev = process.env.NODE_ENV === 'development'
 
 /** One slide on the projector: quote text, a Bible verse, or a song section. */
 export interface SlidePayload {
+  /** A tape screen: the sermon's paragraphs and timing, drawn by the screen from the tape's own position (see shared/tapeScreen.ts). `text` is the paragraph at the moment of Take, for anything that cannot draw it. */
+  tape?: import('../shared/tapeScreen').TapeScreenSpec
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: SlideMedia
@@ -335,12 +343,13 @@ function describeObservabilityDestination(
  *  channel, what's live and whether each place it's routed to is actually
  *  reaching someone — built directly on channelRoutingSnapshot() so this
  *  stays a read, never a second source of truth for the registry itself. */
+const publicSlide = (s: SlidePayload | null): SlidePayload | null => withoutTapeBody(s)
 export function observabilitySnapshot(): ObservabilityChannel[] {
   const display = displayInfoPayload()
   return channelRoutingSnapshot().map(({ channel, destinations: routed }) => ({
     id: channel.id,
     label: channel.label,
-    current: channel.current,
+    current: publicSlide(channel.current),
     blanked: channel.blanked,
     destinations: routed.map((d) => describeObservabilityDestination(d.id, d.ready, display))
   }))
@@ -466,7 +475,9 @@ function getSettingsSafe(): AppSettings {
       automationToken: null,
       mediaBackgrounds: { destinations: {}, channels: {} },
       remoteLastPhoneNetwork: null,
-      youtubeRecents: []
+      youtubeRecents: [],
+      tapeFolder: null,
+      tape: { ...TAPE_DEFAULTS }
     }
   }
 }
@@ -738,8 +749,12 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
     if (input.type !== 'keyDown') return
     const mod = input.meta || input.control
     if (input.key === 'Escape') {
+      // Shift+Esc: blank the screens AND pause the tape. Plain Esc toggles the blackout and leaves the tape playing (unless Tape options say otherwise).
       event.preventDefault()
-      setChannelBlank('main', !channels.get('main')!.blanked)
+      const wasBlanked = channels.get('main')!.blanked
+      const blanking = input.shift ? true : !wasBlanked
+      if (input.shift ? !wasBlanked : true) setChannelBlank('main', blanking)
+      if (escPausesTape(getSettingsSafe().tape.escRule, input.shift, blanking)) tapeHub.pauseFor('panic')
     } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
       event.preventDefault()
       // Close whichever output window this fired from — this used to always
@@ -1168,15 +1183,32 @@ function withBackground(destinationId: string, channelId: ChannelId, slide: Slid
   return b ? { ...slide, background: b } : slide
 }
 
+/** Where the tape is now, if it is this recording (else the start). */
+function tapePositionFor(recordingId: string): number {
+  const w = tapeHub.get()
+  return w && w.recordingId === recordingId ? tapeWirePosition(w, 0) : 0
+}
+/** The page each channel's Graphics outputs last got for a tape screen — a new page is pushed only when it changes. */
+const tapeGraphicsPage = new Map<string, string>()
+function tickTapeGraphics(): void {
+  for (const [id, c] of channels) {
+    const t = c.current?.tape
+    if (!t || c.blanked) { tapeGraphicsPage.delete(id); continue }
+    const key = tapeGraphicsKey(t, tapePositionFor(t.recordingId))
+    if (tapeGraphicsPage.get(id) !== key) { tapeGraphicsPage.set(id, key); pushGraphicsForChannel(id) }
+  }
+}
 function toGraphicsSlide(
   slide: SlidePayload | null,
   bg?: SlideBackground | null
 ): { text: string; label?: string; marker?: string; reference?: string; kind?: SlidePayload['kind']; media?: SlidePayload['media']; background?: SlidePayload['background'] } | null {
   if (!slide) return null
+  // A tape screen on a Graphics output (OBS, a browser) is drawn as paced lower-third pages: the page is worked out here, from the tape's own clock
+  const tapeNow = slide.tape ? lowerThirdNow(slide.tape, tapePositionFor(slide.tape.recordingId)) : null
   return {
-    text: slide.text,
+    text: tapeNow ? tapeNow.text : slide.text,
     label: slide.label,
-    marker: slide.marker,
+    marker: tapeNow ? tapeNow.marker : slide.marker,
     reference: slide.reference,
     kind: slide.kind,
     ...(slide.media ? { media: slide.media } : {}),
@@ -1380,6 +1412,8 @@ function channelOfDestination(destId: string): ChannelId | null {
 }
 const playbackHub = new PlaybackHub({
   now: () => Date.now(),
+  // one sound at a time: a video or YouTube item starting to play pauses the tape
+  onPlay: () => tapeHub.pauseFor('video'),
   emit: (msg: PlaybackWire) => {
     if (channelOfDestination('congregation') === msg.channelId) sendToProjection('media:playback', msg)
     if (channelOfDestination('stage') === msg.channelId) sendToStage('media:playback', msg)
@@ -1403,6 +1437,7 @@ function pushGraphicsPlayback(channelId: ChannelId, msg: PlaybackWire | null): v
 /** Keep the playback record in step with what a channel shows: a video is taken paused; anything else ends it. */
 function syncPlaybackToSlide(channelId: ChannelId, slide: SlidePayload | null): void {
   // A YouTube video is taken paused too (the congregation window cues it); its length is learned from the player.
+  if (slide && slide.kind === 'media' && (slide.media?.type === 'youtube' || slide.media?.type === 'video')) tapeHub.pauseFor('video')
   if (slide && slide.kind === 'media' && slide.media?.type === 'youtube' && isYouTubeMediaId(slide.media.mediaId)) {
     playbackHub.take(channelId, slide.media.mediaId, { duration: null, loop: false })
     return
@@ -1460,7 +1495,7 @@ function automationState(): AutomationChannelState[] {
   return [...channels.values()].map((c) => ({
     id: c.id,
     label: c.label,
-    current: c.current,
+    current: publicSlide(c.current),
     blanked: c.blanked
   }))
 }
@@ -1542,6 +1577,11 @@ ipcMain.handle('projection:close', () => {
 
 ipcMain.on('projection:show-slide', (_event, slide: SlidePayload) => {
   showChannelSlide(destinations.get('congregation')?.config.channelId ?? 'main', slide)
+})
+
+/** The control window's Esc / Shift+Esc: it already toggled the blackout itself; this applies the tape's part of the rule (one rule, shared with the output windows). */
+ipcMain.on('tape:esc', (_e, shift: boolean, blanking: boolean) => {
+  if (escPausesTape(getSettingsSafe().tape.escRule, !!shift, !!blanking)) tapeHub.pauseFor('panic')
 })
 
 ipcMain.on('projection:clear', () => {
@@ -3043,6 +3083,18 @@ app.whenReady().then(async () => {
   setMediaResolver(resolveMediaForHttp)
   registerMediaIpc(() => mainWindow)
   registerYouTubeIpc()
+  registerTapeIpc(() => mainWindow)
+  setInterval(tickTapeGraphics, 300).unref()
+  setTapeFanout({
+    state: (w) => {
+      sendToMain('tape:state', w)
+      sendToProjection('tape:state', w)
+      sendToStage('tape:state', w)
+    },
+    notice: (m) => sendToMain('operator:notice', m),
+    videoPlaying: () => playbackHub.isAnyPlaying(),
+    pauseVideo: () => playbackHub.pauseAll()
+  })
   registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
   createMainWindow()
 
@@ -3082,8 +3134,44 @@ app.whenReady().then(async () => {
     const w = playbackHub.get('main')
     return w ? { mediaId: w.mediaId, status: w.status, position: w.position, duration: w.duration, hasPlayedOnce: w.hasPlayedOnce, stalled: w.stalled, error: w.error } : null
   })
+  // The phone's and automation tools' view of the tape, under the rules in tapePhone.ts (no first play, no seek-to-time, bounded volume, confirmed jumps).
+  const tapePhoneDeps: PhoneTapeDeps = {
+    hub: tapeHub,
+    map: (recordingId) => {
+      const m = getTapeDb()?.getMap(recordingId, null)
+      return m ? { marks: m.marks, regions: m.regions, updatedAt: m.updatedAt } : null
+    },
+    onJump: (j) => sendToMain('tape:phone-jumped', j)
+  }
+  let phoneListCache: { key: string; value: unknown } | null = null
+  setTapeProviders(
+    () => tapeSummary(tapePhoneDeps),
+    () => {
+      const w = tapeHub.get()
+      if (!w) return null
+      const m = tapePhoneDeps.map(w.recordingId)
+      if (!m) return { recordingId: w.recordingId, items: [] }
+      const key = `${w.recordingId}|${m.updatedAt}`
+      if (phoneListCache?.key === key) return phoneListCache.value
+      // the first words of each numbered paragraph, from the bundled English text (the phone is a remote, not a reader)
+      const rows = getDb()
+        .prepare<[number], { id: number; paragraph_ref: string; text: string; date_code: string; title: string }>(
+          'SELECT p.id, p.paragraph_ref, p.text, s.date_code, s.title FROM paragraphs p JOIN sermons s ON s.id = p.sermon_id WHERE p.sermon_id = ? ORDER BY p.paragraph_index, p.id'
+        )
+        .all(w.sermonId)
+      const quotes = rows.map((r, i) => ({ text: r.text, sermonTitle: r.title, dateCode: r.date_code, sermonId: w.sermonId, paragraphIndex: i, paragraphRef: stableParagraphRef(r.paragraph_ref, r.id), language: 'en' }))
+      const texts = new Map(numberedParagraphs(quotes).map((p) => [p.n, p.text]))
+      const value = { recordingId: w.recordingId, items: phoneParagraphList(m.marks, texts) }
+      phoneListCache = { key, value }
+      return value
+    }
+  )
   startWebRemote(
     (cmd) => {
+      if (isPhoneTapeAction(cmd.action)) {
+        phoneTapeCommand(tapePhoneDeps, cmd as { action: string; n?: number; confirm?: boolean })
+        return
+      }
       // The phone's video controls: Play/Pause of the LIVE video only (no seek, no volume, no first play with sound).
       if (cmd.action === 'media-play' || cmd.action === 'media-pause') {
         playbackHub.phone('main', cmd.action)
@@ -3198,7 +3286,12 @@ app.whenReady().then(async () => {
       clear: (channelId) => clearChannel(channelId),
       blank: (channelId) => setChannelBlank(channelId, true),
       show: (channelId) => setChannelBlank(channelId, false),
-      getState: automationState
+      getState: automationState,
+      getTape: () => tapeSummary(tapePhoneDeps),
+      tapeCommand: (action) => {
+        const map: Record<string, string> = { play: 'tape-play', pause: 'tape-pause', back: 'tape-back', forward: 'tape-fwd', 'next-paragraph': 'tape-next', 'prev-paragraph': 'tape-prev' }
+        return phoneTapeCommand(tapePhoneDeps, { action: map[action] ?? '' })
+      }
     },
     () => {
       startMdns(REMOTE_PORT, usableNetworkAddresses())
@@ -3241,6 +3334,8 @@ app.on('window-all-closed', () => {
   closeDb()
   closeLibraryDb()
   closeMediaLibrary()
+  tapeHub.unload()
+  closeTape()
   if (process.platform !== 'darwin') {
     app.quit()
   }

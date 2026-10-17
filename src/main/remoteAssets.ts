@@ -233,6 +233,25 @@ mark.hl{background:rgba(154,128,230,0.38); color:inherit; border-radius:3px; pad
 .media-ctl .mc-time{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
 .media-ctl .mc-note{flex-basis:100%; font-size:12.5px; color:var(--text2)}
 .media-ctl .mc-warn{color:var(--warn)}
+.tape-ctl{display:flex; flex-direction:column; gap:10px; margin:10px 0; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface)}
+.tape-ctl .tp-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.tape-ctl .tp-title{font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--text3)}
+.tape-ctl .tp-pill{font-size:12px; font-weight:700; padding:2px 10px; border-radius:12px; border:1px solid var(--warn); color:var(--warn)}
+.tape-ctl .tp-pill.tp-ok{border-color:var(--ok); color:var(--ok)}
+.tape-ctl .mc-time{margin-left:auto; font-variant-numeric:tabular-nums; font-weight:700}
+.tape-ctl .tp-row{display:flex; gap:8px}
+.tape-ctl .tp-row button{flex:1; min-height:48px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:15px; font-weight:700}
+.tape-ctl .tp-row button.tp-main{border-color:var(--accent); background:var(--accent); color:var(--accent-ink); font-size:18px}
+.tape-ctl .tp-row button[disabled]{opacity:.45}
+.tape-ctl .tp-vol{align-items:center; color:var(--text2); font-size:14px}
+.tape-ctl .tp-vol span{flex:2; text-align:center}
+.tape-ctl .mc-note{font-size:12.5px; color:var(--text2)}
+.tape-ctl .mc-warn{color:var(--warn)}
+.tape-ctl .tp-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+.tape-ctl .tp-list button{width:100%; text-align:left; display:flex; gap:8px; min-height:44px; align-items:center; padding:6px 10px; border-radius:10px; border:1px solid transparent; background:none; color:var(--text2); font-size:13.5px}
+.tape-ctl .tp-list button b{color:var(--text); flex:none}
+.tape-ctl .tp-list button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tape-ctl .tp-list .tp-cur button{border-color:var(--accent); background:var(--surface2); color:var(--text)}
 .now-pic{display:block; max-width:100%; max-height:46vh; margin:0 auto 10px; object-fit:contain; background:#000; border-radius:8px}
 .qpreview{font-size:12.5px; color:var(--text2); margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .empty{text-align:center; color:var(--text2); padding:40px 24px; font-size:14px; line-height:1.5}
@@ -1071,6 +1090,7 @@ function poll(){
     state.nowJustChanged = (lastNowSig !== undefined && sig !== lastNowSig);
     lastNowSig = sig;
     state.qs = s;
+    ensureTapeList(s.tape);
     setConn(true);
     if(state.tab === 'queue') renderQueueTab();
     updateBlankButtons();
@@ -1261,10 +1281,68 @@ function mediaControlsHtml(){
     : p.stalled ? '<div class="mc-note mc-warn">The picture has stopped moving.</div>' : '';
   return '<div class="media-ctl">' + btn + '<span class="mc-time">' + mmss(p.position) + (left != null ? ' &nbsp;−' + mmss(left) : '') + '</span>' + note + '</div>';
 }
+// The TAPE (a recorded sermon playing on the main computer). Same rules as the video: Play stays off until the operator has started it once;
+// there is no seek bar and no dragging — only ±10 s, previous / next paragraph, and a paragraph list whose jumps ask first; the volume
+// moves a little around the operator's level (the computer enforces that, this only offers the buttons).
+function tapeJump(n){
+  var t = state.qs && state.qs.tape;
+  if(!t) return;
+  var from = t.paragraph != null ? 'The tape is at \\u00b6' + t.paragraph + '. ' : '';
+  if(window.confirm(from + 'Jump to \\u00b6' + n + '?')) cmd('tape-jump', { n: n, confirm: true });
+}
+function tapeControlsHtml(){
+  var t = state.qs && state.qs.tape;
+  if(!t) return '';
+  var playing = t.status === 'playing';
+  var timed = !!t.hasTiming;
+  var left = t.duration ? Math.max(0, Math.ceil(t.duration - t.position - 0.001)) : null;
+  var main;
+  if(t.status === 'error') main = '<button class="tp-main" disabled>Cannot play</button>';
+  else if(playing) main = '<button class="tp-main" onclick="cmd(\\'tape-pause\\')">Pause</button>';
+  else if(t.canPlay) main = '<button class="tp-main" onclick="cmd(\\'tape-play\\')">' + (t.status === 'ended' ? 'Play again' : 'Play') + '</button>';
+  else main = '<button class="tp-main" disabled>Play</button>';
+  var pill = !timed ? 'No timing for this tape' : t.sync === 'in-gap' ? 'No text here' : t.sync === 'differs' ? 'The tape differs here' : 'In sync';
+  var note = t.status === 'error' ? '<div class="mc-note mc-warn">' + esc(t.note || 'The tape stopped. Ask the operator.') + '</div>'
+    : t.stalled ? '<div class="mc-note mc-warn">The sound has stopped moving.</div>'
+    : (!t.canPlay && !playing) ? '<div class="mc-note">Start it on the main computer first. From here you can pause and resume it.</div>' : '';
+  var html = '<div class="tape-ctl" role="group" aria-label="Tape">'
+    + '<div class="tp-top"><span class="tp-title">TAPE</span><span class="tp-pill' + (timed && t.sync === 'in-sync' ? ' tp-ok' : '') + '">' + pill + '</span>'
+    + '<span class="mc-time">' + mmss(t.position) + (left != null ? ' &nbsp;−' + mmss(left) : '') + '</span></div>'
+    + '<div class="tp-row">' + main + '</div>'
+    + '<div class="tp-row">'
+    + '<button aria-label="Previous paragraph"' + (timed ? ' onclick="cmd(\\'tape-prev\\')"' : ' disabled') + '>¶ ‹</button>'
+    + '<button aria-label="Back 10 seconds" onclick="cmd(\\'tape-back\\')">−10 s</button>'
+    + '<button aria-label="Forward 10 seconds" onclick="cmd(\\'tape-fwd\\')">+10 s</button>'
+    + '<button aria-label="Next paragraph"' + (timed ? ' onclick="cmd(\\'tape-next\\')"' : ' disabled') + '>› ¶</button>'
+    + '</div>'
+    + '<div class="tp-row tp-vol"><button aria-label="Quieter" onclick="cmd(\\'tape-vol-down\\')">−</button><span aria-live="polite">Volume ' + Math.round((t.volume || 0) * 100) + '%</span><button aria-label="Louder" onclick="cmd(\\'tape-vol-up\\')">+</button></div>'
+    + note;
+  var list = state.tapeList && state.tapeList.recordingId === t.recordingId ? state.tapeList.items : null;
+  if(list && list.length && timed){
+    var at = 0;
+    for(var i = 0; i < list.length; i++){ if(list[i].n === t.paragraph) { at = i; break; } }
+    var from = Math.max(0, at - 2), to = Math.min(list.length, from + 12);
+    html += '<ol class="tp-list" aria-label="Paragraphs">';
+    for(var j = from; j < to; j++){
+      var it = list[j], cur = it.n === t.paragraph;
+      html += '<li' + (cur ? ' class="tp-cur" aria-current="true"' : '') + '><button onclick="tapeJump(' + it.n + ')"><b>¶' + it.n + '</b> <span>' + esc(it.snippet) + '</span></button></li>';
+    }
+    html += '</ol>';
+  }
+  return html + '</div>';
+}
+// The paragraph list is fetched when the tape or its timing changes, not on every poll.
+function ensureTapeList(tp){
+  if(!tp || !tp.hasTiming){ state.tapeList = null; state.tapeListKey = null; return; }
+  var key = tp.recordingId + '|' + tp.timingVersion;
+  if(state.tapeListKey === key) return;
+  state.tapeListKey = key;
+  getJSON('/api/v1/tape/paragraphs').then(function(l){ state.tapeList = l; }).catch(function(){ state.tapeListKey = null; });
+}
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
   if(!on){
-    return '<div class="queue-empty-card">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>';
+    return '<div class="queue-empty-card">Nothing on screen yet.<br>Project something from Sermons, Bible or Songs.</div>' + tapeControlsHtml();
   }
   var blanked = !!state.qs.blanked;
   var refClass = kindClass(on.kind);
@@ -1285,6 +1363,7 @@ function nowNextPerfHtml(){
     + '<div class="now-text">' + esc(on.text) + '</div>'
     + '</div></div>';
   html += mediaControlsHtml();
+  html += tapeControlsHtml();
   html += '<div class="next-card">'
     + '<div class="next-label-lg">NEXT' + (on.nextText ? ' — NOT ON SCREEN YET' : '') + '</div>'
     + '<div class="next-text-lg">' + (on.nextText ? esc(on.nextText) : 'End of this item — pick the next one below') + '</div>'
@@ -1293,7 +1372,7 @@ function nowNextPerfHtml(){
 }
 function nowNextBigHtml(){
   var on = state.qs.onScreen;
-  if(!on) return '<div class="preview-empty">Nothing on screen yet.</div>';
+  if(!on) return '<div class="preview-empty">Nothing on screen yet.</div>' + tapeControlsHtml();
   var blanked = !!state.qs.blanked;
   var orphaned = state.qs.activeIndex == null;
   var nextLine = on.nextText ? esc(on.nextText) : 'End of this item — pick the next one from the queue';
@@ -1301,7 +1380,7 @@ function nowNextBigHtml(){
   if(orphaned) flags += '<span class="now-flag now-flag--warn">Not in your queue</span>';
   else if(on.readingAhead) flags += '<span class="now-flag">Reading ahead</span>';
   return (flags ? '<div class="preview-now-flags">' + flags + '</div>' : '')
-    + '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>' + mediaControlsHtml()
+    + '<div class="preview-now' + (blanked ? ' now-card--blanked' : '') + (state.nowJustChanged ? ' flash' : '') + '"><div class="now-text">' + esc(on.text) + '</div></div>' + mediaControlsHtml() + tapeControlsHtml()
     + '<div class="preview-next-box">' + ICON_CHEVRON_RIGHT
     + '<div><div class="next-label" style="margin-bottom:4px">NEXT</div><div class="next-text">' + nextLine + '</div></div></div>';
 }

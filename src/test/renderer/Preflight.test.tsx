@@ -63,4 +63,43 @@ describe('Preflight: is tonight ready?', () => {
     render(<Preflight open queue={migrateQueue([song])} onClose={() => {}} onRemoveItem={() => {}} />)
     await waitFor(() => expect(screen.getByText(/Only 0.5 GB of disk space/)).toBeTruthy())
   })
+
+  describe('the tape for a sermon in the queue', () => {
+    const quoteItem = { kind: 'quote', id: 'q1', quote: { text: 'x', sermonTitle: 'A Sermon', dateCode: '00-0000', sermonId: 5, paragraphIndex: 0, paragraphRef: '1' }, slides: [{ text: 'x' }] }
+    const withTape = (checks: Array<{ id: string; level: 'ok' | 'warn' | 'fail'; title: string; detail?: string }>, devices: Array<{ id: string; label: string }> = [], outputId = '') => {
+      mockApi([])
+      Object.assign((window as unknown as { electronAPI: Record<string, unknown> }).electronAPI, {
+        tapeRecordings: vi.fn(async () => [{ id: 'r_1', sermonId: 5 }]),
+        tapePreflight: vi.fn(async () => ({ recordingId: 'r_1', status: 'ok', checks })),
+        tapeDevices: vi.fn(async () => devices),
+        tapeSettingsGet: vi.fn(async () => ({ outputDeviceId: outputId, outputDeviceLabel: 'Sanctuary speakers' }))
+      })
+    }
+    it('a ready tape is one passing row', async () => {
+      withTape([{ id: 'file', level: 'ok', title: 'The recording is there' }])
+      render(<Preflight open queue={migrateQueue([quoteItem])} onClose={() => {}} onRemoveItem={() => {}} />)
+      await waitFor(() => expect(screen.getByText(/Tape for “A Sermon”/)).toBeTruthy())
+      expect(screen.getByRole('status').textContent).toMatch(/Ready/)
+    })
+    it('a missing file or no timing is named, and counted as a problem', async () => {
+      withTape([{ id: 'file', level: 'fail', title: 'the recording file cannot be found', detail: 'Find it again.' }, { id: 'sync', level: 'warn', title: 'it has no timing yet' }])
+      render(<Preflight open queue={migrateQueue([quoteItem])} onClose={() => {}} onRemoveItem={() => {}} />)
+      await waitFor(() => expect(screen.getByText(/the recording file cannot be found/)).toBeTruthy())
+      expect(screen.getByText(/it has no timing yet/)).toBeTruthy()
+      expect(screen.getByRole('status').textContent).toMatch(/1 problem to fix/)
+    })
+    it('asks the main process whether the chosen sound output is plugged in', async () => {
+      withTape([{ id: 'file', level: 'ok', title: 'ok' }], [{ id: 'other', label: 'Headphones' }], 'spk')
+      render(<Preflight open queue={migrateQueue([quoteItem])} onClose={() => {}} onRemoveItem={() => {}} />)
+      await waitFor(() => expect(screen.getByText(/Tape for/)).toBeTruthy())
+      const api = (window as unknown as { electronAPI: { tapePreflight: ReturnType<typeof vi.fn> } }).electronAPI
+      expect(api.tapePreflight).toHaveBeenCalledWith('r_1', { outputDevice: { present: false, label: 'Sanctuary speakers' } })
+    })
+    it('a queue with no sermon, or an app without the tape API, shows no tape rows and still works', async () => {
+      mockApi([])
+      render(<Preflight open queue={migrateQueue([song])} onClose={() => {}} onRemoveItem={() => {}} />)
+      await waitFor(() => expect(screen.getByRole('status')).toBeTruthy())
+      expect(screen.queryByText(/Tape for/)).toBeNull()
+    })
+  })
 })

@@ -169,3 +169,7 @@ live captions engine, social-wall, MIDI. Revisit after Phase 3 with real church 
 | 14 | YouTube videos? | **Owner: yes, if possible** — embedded player only; Phase 2a after 1b; see [06](06-youtube.md). |
 | 15 | "Link in place" size threshold | **Recommend 2 GB**, always offered below it too. *Open.* |
 | 16 | YouTube alerts: re-layout (A) or stage-only (B)? | **A for emergencies, B for routine**; needs counsel. *Open.* |
+
+## Sermon audio — "tape service" (proposed, separate track; changes no commitment above)
+Audio-only items stay out of the media phases above. A **sermon tape that the text follows** is designed separately in [`docs/design/sermon-audio/`](../sermon-audio/README.md) (investigation, product and visual design, clickable mockups, a slice plan S1–S9). It reuses the media library, preflight and playback-record patterns; nothing in it is built, and it is not scheduled until the owner decides.
+

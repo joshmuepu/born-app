@@ -127,9 +127,23 @@ function VirtualListInner<T>(
 
   useEffect(() => {
     if (focusIndex == null || focusIndex < 0 || focusIndex >= items.length) return
-    const smooth = smoothFocus && jumpedOnce.current
+    let smooth = smoothFocus && jumpedOnce.current
     if (windowed) {
+      // A smooth scroll restarts on every retry the virtualizer makes while it measures rows, so over a long distance it gives up part-way.
+      // Only glide when the target is near what is on screen; a far jump is instant (it is a jump, not a drift).
+      const r = virtualizer.range
+      if (smooth && (!r || focusIndex < r.startIndex - 12 || focusIndex > r.endIndex + 12)) smooth = false
       virtualizer.scrollToIndex(focusIndex, { align: 'center', behavior: smooth ? 'smooth' : 'auto' })
+      if (!smooth) {
+        // Row heights are estimates until measured, so a far jump can land short: re-aim while the target row is still not on screen.
+        const target = focusIndex
+        const timers = [60, 200, 500, 1000, 2000].map((ms) => window.setTimeout(() => {
+          const r = virtualizer.range
+          if (!r || target < r.startIndex || target > r.endIndex) virtualizer.scrollToIndex(target, { align: 'center', behavior: 'auto' })
+        }, ms))
+        jumpedOnce.current = true
+        return () => timers.forEach((t) => window.clearTimeout(t))
+      }
     } else {
       scrollPlainTo(scrollerRef.current, focusIndex, 'center', smooth)
     }

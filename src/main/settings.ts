@@ -10,6 +10,9 @@ import { log } from './logger'
 import type { NamedDisplay } from './displays'
 import type { ChannelDefinition, DestinationRoutingEntry } from '../shared/channels'
 
+import { TAPE_DEFAULTS, type TapeSettings } from '../shared/tape'
+export { TAPE_DEFAULTS, type TapeSettings }
+
 export interface AppSettings {
   /** Operator-given names for physical displays ("Sanctuary Projector"),
    *  matched back by model/resolution/internal-flag rather than Electron's
@@ -76,7 +79,12 @@ export interface AppSettings {
   remoteLastPhoneNetwork: { name: string; address: string } | null
   /** YouTube links the operator has used (id + names only — never video, never a thumbnail). Newest first, at most 30. */
   youtubeRecents: Array<{ videoId: string; title: string; label?: string; at: number }>
+  /** The folder the operator keeps tape audio in (scanned on request, never changed). */
+  tapeFolder: string | null
+  /** Tape service options (docs/design/sermon-audio/02-product-design.md §1). Every one applies to the next tape, never to what is on screen. */
+  tape: TapeSettings
 }
+
 
 const DEFAULTS: AppSettings = {
   namedDisplays: [],
@@ -99,7 +107,9 @@ const DEFAULTS: AppSettings = {
   automationToken: null,
   mediaBackgrounds: { destinations: {}, channels: {} },
   remoteLastPhoneNetwork: null,
-  youtubeRecents: []
+  youtubeRecents: [],
+  tapeFolder: null,
+  tape: { ...TAPE_DEFAULTS }
 }
 
 let cache: AppSettings | null = null
@@ -116,7 +126,7 @@ export function getSettings(): AppSettings {
     // an untouched value to the new, honest 100% (4.5).
     const needsFontSizeRealign = raw.fontSize === 3
     if (needsFontSizeRealign) raw.fontSize = 4.5
-    cache = { ...DEFAULTS, ...raw }
+    cache = { ...DEFAULTS, ...raw, tape: { ...TAPE_DEFAULTS, ...(raw.tape ?? {}) } }
     // Without this, the correction above only ever lived in memory — every
     // future launch kept re-deriving it from an unchanged 3.0 on disk, and
     // anything that reads settings.json directly (support, a future

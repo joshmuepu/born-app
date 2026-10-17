@@ -106,3 +106,16 @@ you're driving more than one channel).
   `<id>` must match `m_` + 12 hex characters; anything else is `404`.
 
 Nothing here can change what is live, and there is no way to add or delete pictures over the API.
+
+## Tape (added, nothing existing changed)
+
+When a recorded sermon is loaded on the main computer:
+
+- `GET /api/v1/automation/tape` — `{ recordingId, sermonId, status, position, duration, speed, volume, canPlay, stalled, error, note, hasTiming, timingVersion, paragraph, nextParagraph, nextInSec, sync }`,
+  or `null` when no tape is loaded. `status` is `loading`, `playing`, `paused`, `ended` or `error`; `sync` is `in-sync`, `no-timing`, `in-gap` or `differs`; `canPlay` is true once the operator has started the tape once on the computer.
+- `POST /api/v1/automation/tape/play | pause | back | forward | next-paragraph | prev-paragraph` — `back`/`forward` are 10 seconds. `200` `{ "ok": true }`; a refusal is `409` with `{ ok:false, reason, message }`
+  (`not-started` — **Play is refused until the operator has started that tape once on the computer**, `nothing-loaded`, `no-timing`).
+- The WebSocket's `"v":1` message gains a `tape` field (the same object, or `null`); `state` is unchanged. `GET /state` on the phone-remote port also gains `tape`.
+
+There is **no route to seek to a time, jump to a paragraph, change the volume or speed, load a recording, or edit the timing**. These routes follow the same token rule as the others.
+A tape screen on the congregation output appears in `current` as an ordinary text slide with a small `tape: { recordingId, mode, … }` marker (the paragraphs themselves are not sent).

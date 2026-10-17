@@ -97,3 +97,19 @@ Mac results and numbers: `docs/qa/v2-obs-live-report.md`. Manual: *Using BORN wi
 - [ ] YouTube item: stream shows the name only (or nothing on the lower third); if window capture is wanted, add *Window Capture* of BORN's output and check it.
 - [ ] 10 minutes of a private/unlisted livestream with the overlay: no stale verse, no frozen overlay; watch OBS *Stats* for dropped frames.
 - [ ] Hardware acceleration off (OBS Advanced): the overlay still draws.
+
+## Tape service (v2-sermon-audio) — by hand on the church PC
+Mac results and numbers: `docs/qa/v2-sermon-audio-progress.md`. Manual: *Running a tape service*. Nothing here has been run on Windows yet.
+- [ ] Add a recording (an M4A, an MP3 and a FLAC if you have them): each is accepted; a half-copied file and a 600 MB WAV are refused with a plain message. A VBR MP3 warns.
+- [ ] **Sound output**: choose the room's speakers in the bar; play 10 s. Then **unplug that output** while playing: the tape pauses and says why; plug it back, choose it again, press Play. Note what Windows does with a USB / HDMI / Bluetooth output.
+- [ ] **Sleep and wake** the PC while a tape is paused and while it is playing: it comes back paused at the same place (never playing by itself).
+- [ ] **Tap to sync** a real recording on this PC (note how long a 2-hour message takes), then the same **Suggest timing** if whisper.cpp is installed: note the minutes it takes and how many paragraphs need fixing. (Mac: 71 s with GPU; 6–30 min expected on a modest PC.)
+- [ ] Take the sermon to the screens in **Highlight** and **One at a time**; stand at the back of the hall: is the highlighted paragraph and the number easy to read? Try **High contrast**.
+- [ ] Press **Esc**: the screens blank and the tape keeps playing. **Shift+Esc**: blanks and pauses.
+- [ ] Take a **video** while a tape plays: the tape pauses and the bar says so. The reverse: start the tape while a video plays — the video pauses.
+- [ ] **Stage monitor**: time, time left, NOW/NEXT, the status word. **Alerts** still show over the tape.
+- [ ] **OBS**: a Graphics output shows the tape as lower-third pages and turns the page at the speaker's pace; Esc clears it; after restarting BORN the overlay returns. The tape's *sound* reaches the stream through Application Audio Capture of BORN (check the meter).
+- [ ] **Phone remote** (real phones, both iPhone and Android if you have them): the Tape card appears; Play is greyed until you have started the tape on the PC; ±10 s, next/previous paragraph, volume (stays within a little of your level), tapping a paragraph asks first and an Undo appears on the PC; no seek bar.
+- [ ] **Is tonight ready?** with a sermon that has a recording in the queue: passes; rename the recording file and check again: it names the problem.
+- [ ] A **2-hour** recording played for 30 minutes at normal speed: highlight stays on the right paragraph; Task Manager shows memory steady.
+- [ ] Packaged app only: the first launch after install finds the "Tape audio" folder you choose and the recording imports without a console window.

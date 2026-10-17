@@ -10,3 +10,9 @@ Runs against the **packaged** app (not the dev server), using a throw-away profi
 4. PDF: `node scripts/packaged-check/pdf-drop.cjs <file.pdf>` (drops the PDF on the Media panel).
 
 The BORN_TEST_* hooks are ignored by a packaged app, so these scripts use only real UI and the public window API.
+
+## Tape service
+`PKG_AUDIO=<short audio file> PKG_SERMON=<a sermon id> PKG_PROFILE=/tmp/pkg-profile node scripts/packaged-check/tape.cjs` — with the packaged app running as above. It imports the file, checks the
+`born-tape://` byte-range protocol, preflight, that the sound engine plays (volume 0 — nothing is heard) and seeks and pauses, saves and reads back a timing map, the loudness picture, and removes the recording again.
+Last run (macOS arm64, 2.0.0-dev.1 build): 17/17 passed.
+

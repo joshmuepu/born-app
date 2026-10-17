@@ -60,3 +60,9 @@ API](advanced/automation-api.md).
 Displays can be given a persistent name (so "the projector" always means the
 same physical screen even after a reboot), and — new — that name can be **cleared**
 again if it's no longer needed. See [Connecting & naming displays](setup/displays.md).
+
+## Recorded sermons that the text follows (tape service)
+
+Add a recording to a sermon and Born Again plays it **and** highlights the paragraph being spoken — on your screen, the congregation screen, the stage monitor, an OBS Graphics output and the phone remote.
+You time a recording once (or let speech recognition that *you* install propose the times, and review them). Everything stays on this computer. See *Running a tape service*.
+

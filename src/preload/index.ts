@@ -88,6 +88,8 @@ export type SlideSource =
   | { kind: 'quote'; sermonId: number; paragraphRef: string }
 
 export interface SlidePayload {
+  /** A tape screen: the sermon's paragraphs and timing, drawn by the screen from the tape's own position (see shared/tapeScreen.ts). `text` is the paragraph at the moment of Take, for anything that cannot draw it. */
+  tape?: import('../shared/tapeScreen').TapeScreenSpec
   kind: 'quote' | 'bible' | 'song' | 'media'
   /** Picture slides only. */
   media?: SlideMedia
@@ -442,6 +444,64 @@ const api = {
     ipcRenderer.on('media:playback-stop', h)
     return () => ipcRenderer.removeListener('media:playback-stop', h)
   },
+  // Tape service (sermon audio + follow-along) — docs/design/sermon-audio
+  tapeInfo: (): Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }> => ipcRenderer.invoke('tape:info'),
+  tapeRecordings: (sermonId: number): Promise<unknown[]> => ipcRenderer.invoke('tape:recordings', sermonId),
+  tapeLibrary: (): Promise<unknown[]> => ipcRenderer.invoke('tape:library'),
+  tapeSermonList: (): Promise<Array<{ id: number; dateCode: string; title: string }>> => ipcRenderer.invoke('tape:sermon-list'),
+  tapeSermonsWithTapes: (): Promise<number[]> => ipcRenderer.invoke('tape:sermons-with-tapes'),
+  tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<unknown[]> => ipcRenderer.invoke('tape:import-paths', paths, opts),
+  tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<{ canceled: boolean; results: unknown[] }> => ipcRenderer.invoke('tape:pick-and-import', opts),
+  tapeRemove: (recordingId: string): Promise<boolean> => ipcRenderer.invoke('tape:remove', recordingId),
+  tapeMatchName: (fileName: string): Promise<unknown> => ipcRenderer.invoke('tape:match-name', fileName),
+  tapePickFolder: (): Promise<string | null> => ipcRenderer.invoke('tape:pick-folder'),
+  tapeClearFolder: (): Promise<boolean> => ipcRenderer.invoke('tape:clear-folder'),
+  tapeScanFolder: (): Promise<unknown[]> => ipcRenderer.invoke('tape:scan-folder'),
+  tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>): Promise<unknown[]> => ipcRenderer.invoke('tape:import-confirmed', items),
+  tapePreflight: (recordingId: string, extra?: unknown): Promise<unknown> => ipcRenderer.invoke('tape:preflight', recordingId, extra),
+  tapeMapGet: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-get', recordingId, textLanguage),
+  tapeMapLanguages: (recordingId: string): Promise<Array<string | null>> => ipcRenderer.invoke('tape:map-languages', recordingId),
+  tapeMapSave: (recordingId: string, textLanguage: string | null, source: string, marks: unknown, regions: unknown): Promise<unknown> => ipcRenderer.invoke('tape:map-save', recordingId, textLanguage, source, marks, regions),
+  tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg'): Promise<string | null> => ipcRenderer.invoke('tape:pick-tool', which),
+  tapeEsc: (shift: boolean, blanking: boolean): void => ipcRenderer.send('tape:esc', shift, blanking),
+  tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>): Promise<unknown> => ipcRenderer.invoke('tape:align-run', recordingId, paragraphs),
+  tapeAlignCancel: (): Promise<boolean> => ipcRenderer.invoke('tape:align-cancel'),
+  onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void): (() => void) => {
+    const h = (_e: unknown, p: { phase: 'prepare' | 'listen' | 'match'; pct: number }): void => cb(p)
+    ipcRenderer.on('tape:align-progress', h)
+    return () => ipcRenderer.removeListener('tape:align-progress', h)
+  },
+  tapeOverridesGet: (recordingId: string, textLanguage: string): Promise<Array<{ textN: number; mapN: number }>> => ipcRenderer.invoke('tape:overrides-get', recordingId, textLanguage),
+  tapeOverridesSet: (recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>): Promise<Array<{ textN: number; mapN: number }>> => ipcRenderer.invoke('tape:overrides-set', recordingId, textLanguage, rows),
+  tapeMapDelete: (recordingId: string, textLanguage: string | null): Promise<boolean> => ipcRenderer.invoke('tape:map-delete', recordingId, textLanguage),
+  tapeMapExport: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-export', recordingId, textLanguage),
+  tapeMapImport: (recordingId: string): Promise<unknown> => ipcRenderer.invoke('tape:map-import', recordingId),
+  tapeActivity: (recordingId: string, bins: number): Promise<{ values: number[]; durationSec: number } | null> => ipcRenderer.invoke('tape:activity', recordingId, bins),
+  tapeOpenAudioPage: (): Promise<boolean> => ipcRenderer.invoke('tape:open-audio-page'),
+  tapePathsForFiles: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)).filter(Boolean),
+  // the Tape audio engine's own channel (the hidden audio window) and the operator's tape controls
+  onTapeEngine: (cb: (m: unknown) => void): (() => void) => {
+    const h = (_e: unknown, m: unknown): void => cb(m)
+    ipcRenderer.on('tape:engine', h)
+    return () => ipcRenderer.removeListener('tape:engine', h)
+  },
+  tapeEngineReport: (r: unknown): void => ipcRenderer.send('tape:engine-report', r),
+  tapeEngineDevices: (list: unknown): void => ipcRenderer.send('tape:engine-devices', list),
+  tapeEngineDeviceLost: (): void => ipcRenderer.send('tape:engine-device-lost'),
+  tapeEngineReady: (): void => ipcRenderer.send('tape:engine-ready'),
+  tapeLoad: (recordingId: string, opts?: { play?: boolean; position?: number }): Promise<unknown> => ipcRenderer.invoke('tape:load', recordingId, opts),
+  tapeCommand: (action: unknown): Promise<unknown> => ipcRenderer.invoke('tape:command', action),
+  tapeGet: (): Promise<unknown> => ipcRenderer.invoke('tape:get'),
+  tapeUnload: (): Promise<boolean> => ipcRenderer.invoke('tape:unload'),
+  tapeDevices: (): Promise<Array<{ id: string; label: string }>> => ipcRenderer.invoke('tape:devices'),
+  tapeSetDevice: (id: string, label: string): Promise<boolean> => ipcRenderer.invoke('tape:set-device', id, label),
+  tapeSettingsGet: (): Promise<unknown> => ipcRenderer.invoke('tape:settings-get'),
+  tapeSettingsSet: (patch: unknown): Promise<unknown> => ipcRenderer.invoke('tape:settings-set', patch),
+  onTapeState: (cb: (w: unknown) => void): (() => void) => {
+    const h = (_e: unknown, w: unknown): void => cb(w)
+    ipcRenderer.on('tape:state', h)
+    return () => ipcRenderer.removeListener('tape:state', h)
+  },
   youtubeHostUrl: (videoId: string, start?: number): Promise<string | null> => ipcRenderer.invoke('youtube:host-url', videoId, start),
   youtubeLookup: (videoId: string): Promise<{ title: string; author: string } | null> => ipcRenderer.invoke('youtube:lookup', videoId),
   youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>): Promise<unknown[]> => ipcRenderer.invoke('youtube:preflight', items),
@@ -453,6 +513,11 @@ const api = {
     const h = (_e: unknown, m: string): void => cb(m)
     ipcRenderer.on('operator:notice', h)
     return () => ipcRenderer.removeListener('operator:notice', h)
+  },
+  onTapePhoneJumped: (cb: (j: { fromSec: number; fromParagraph: number | null; toParagraph: number }) => void): (() => void) => {
+    const h = (_e: unknown, j: { fromSec: number; fromParagraph: number | null; toParagraph: number }): void => cb(j)
+    ipcRenderer.on('tape:phone-jumped', h)
+    return () => ipcRenderer.removeListener('tape:phone-jumped', h)
   },
   packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
   packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),

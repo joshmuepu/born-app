@@ -177,6 +177,53 @@ declare global {
       mediaPlaybackReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null }) => void
       onMediaPlayback: (cb: (m: import('../../shared/videoPlayback').PlaybackWire) => void) => () => void
       onMediaPlaybackStop: (cb: (channelId: string) => void) => () => void
+      tapeInfo: () => Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }>
+      tapeRecordings: (sermonId: number) => Promise<Array<import('../../shared/tape').TapeRecording & { status: import('../../shared/tape').TapeFileStatus }>>
+      tapeLibrary: () => Promise<Array<import('../../shared/tape').TapeRecording & { status: import('../../shared/tape').TapeFileStatus; sermonTitle: string; dateCode: string; timed: number }>>
+      tapeSermonList: () => Promise<Array<{ id: number; dateCode: string; title: string }>>
+      tapeSermonsWithTapes: () => Promise<number[]>
+      tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<import('../../shared/tape').TapeImportResult[]>
+      tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<{ canceled: boolean; results: import('../../shared/tape').TapeImportResult[] }>
+      tapeRemove: (recordingId: string) => Promise<boolean>
+      tapeMatchName: (fileName: string) => Promise<import('../../shared/tapeMatch').TapeMatch & { parsedCode: string | null }>
+      tapePickFolder: () => Promise<string | null>
+      tapeClearFolder: () => Promise<boolean>
+      tapeScanFolder: () => Promise<import('../../shared/tape').TapeFolderHit[]>
+      tapeImportConfirmed: (items: Array<{ path: string; sermonId: number }>) => Promise<import('../../shared/tape').TapeImportResult[]>
+      tapePreflight: (recordingId: string, extra?: { browserDurationSec?: number | null; paragraphNumbers?: number[]; outputDevice?: { present: boolean; label?: string } | null }) => Promise<import('../../shared/tape').TapePreflight | null>
+      tapeMapGet: (recordingId: string, textLanguage: string | null) => Promise<import('../../shared/tape').SyncMap | null>
+      tapeMapLanguages: (recordingId: string) => Promise<Array<string | null>>
+      tapeMapSave: (recordingId: string, textLanguage: string | null, source: import('../../shared/tape').SyncSource, marks: import('../../shared/tape').SyncMark[], regions: import('../../shared/tape').SyncRegion[]) => Promise<{ ok: true; map: import('../../shared/tape').SyncMap; issues: import('../../shared/tapeSync').MapIssue[] } | { ok: false; issues: import('../../shared/tapeSync').MapIssue[] }>
+      tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg') => Promise<string | null>
+      tapeEsc: (shift: boolean, blanking: boolean) => void
+      tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>) => Promise<
+        | { ok: true; result: import('../../shared/tapeAlign').AlignResult; seconds: number; heardWords: number; refined: { moved: number; maxMoveSec: number; medianMoveSec: number } | null }
+        | { ok: false; message: string; canceled?: boolean }
+      >
+      tapeAlignCancel: () => Promise<boolean>
+      onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void) => () => void
+      tapeOverridesGet: (recordingId: string, textLanguage: string) => Promise<Array<{ textN: number; mapN: number }>>
+      tapeOverridesSet: (recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>) => Promise<Array<{ textN: number; mapN: number }>>
+      tapeMapDelete: (recordingId: string, textLanguage: string | null) => Promise<boolean>
+      tapeMapExport: (recordingId: string, textLanguage: string | null) => Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }>
+      tapeMapImport: (recordingId: string) => Promise<{ ok: true; marks: import('../../shared/tape').SyncMark[]; regions: import('../../shared/tape').SyncRegion[]; textLanguage: string | null; warnings: string[] } | { ok: false; canceled?: boolean; message: string }>
+      tapeActivity: (recordingId: string, bins: number) => Promise<{ values: number[]; durationSec: number } | null>
+      tapeOpenAudioPage: () => Promise<boolean>
+      tapePathsForFiles: (files: File[]) => string[]
+      onTapeEngine: (cb: (m: any) => void) => () => void
+      tapeEngineReport: (r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null; errorKind?: 'file' | 'decode' | 'device' | null; ready?: boolean }) => void
+      tapeEngineDevices: (list: Array<{ id: string; label: string }>) => void
+      tapeEngineDeviceLost: () => void
+      tapeEngineReady: () => void
+      tapeLoad: (recordingId: string, opts?: { play?: boolean; position?: number }) => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeCommand: (action: import('../../shared/tapePlayback').TapeAction) => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeGet: () => Promise<import('../../shared/tapePlayback').TapeWire | null>
+      tapeUnload: () => Promise<boolean>
+      tapeDevices: () => Promise<Array<{ id: string; label: string }>>
+      tapeSetDevice: (id: string, label: string) => Promise<boolean>
+      tapeSettingsGet: () => Promise<import('../../shared/tape').TapeSettings>
+      tapeSettingsSet: (patch: Partial<import('../../shared/tape').TapeSettings>) => Promise<import('../../shared/tape').TapeSettings>
+      onTapeState: (cb: (w: import('../../shared/tapePlayback').TapeWire | null) => void) => () => void
       youtubeHostUrl: (videoId: string, start?: number) => Promise<string | null>
       youtubeLookup: (videoId: string) => Promise<{ title: string; author: string } | null>
       youtubePreflight: (items: Array<{ videoId: string; hasFallback: boolean }>) => Promise<Array<import('../../shared/youtube').YtPreflightVerdict & { videoId: string; duration: number | null }>>
@@ -184,6 +231,7 @@ declare global {
       youtubeRecentsGet: () => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
       youtubeRecentsAdd: (r: { videoId: string; title?: string; label?: string }) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
       youtubeRecentsRemove: (videoId: string) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
+      onTapePhoneJumped: (cb: (j: { fromSec: number; fromParagraph: number | null; toParagraph: number }) => void) => () => void
       onOperatorNotice: (cb: (message: string) => void) => () => void
       packEstimate: (queue: unknown) => Promise<import('../../shared/servicePack').PackEstimate | null>
       packExport: (queue: unknown, title: string) => Promise<import('../../shared/servicePack').PackResult<{ bytes: number; count: number; path: string }> & { canceled?: boolean }>

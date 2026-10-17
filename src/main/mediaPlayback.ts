@@ -11,6 +11,8 @@ export interface PlaybackDeps {
   emit: (msg: PlaybackWire) => void
   /** The video on this channel is gone (cleared or replaced by something else). */
   emitStop: (channelId: string) => void
+  /** a video / YouTube item has just started playing (the tape pauses: one sound at a time) */
+  onPlay?: () => void
 }
 
 /** What the operator's own window and a phone may do. The phone gets less: no seek, no volume, no first play. */
@@ -42,6 +44,7 @@ export class PlaybackHub {
     // the leader's reports are its own business (report()); a command may not forge one
     const next = playbackReduce(s, action, this.deps.now())
     this.put(channelId, next)
+    if (next.status === 'playing' && s.status !== 'playing') this.deps.onPlay?.()
     return next
   }
 
@@ -52,6 +55,7 @@ export class PlaybackHub {
     if (cmd === 'media-play') {
       if (!s.hasPlayedOnce) return { ok: false, reason: 'not-started' }
       this.put(channelId, playbackReduce(s, { type: 'play' }, this.deps.now()))
+      this.deps.onPlay?.()
     } else {
       this.put(channelId, playbackReduce(s, { type: 'pause' }, this.deps.now()))
     }
@@ -83,6 +87,16 @@ export class PlaybackHub {
   /** What was live is gone. */
   stop(channelId: string): void {
     if (this.states.delete(channelId)) this.deps.emitStop(channelId)
+  }
+
+  /** Is any video / YouTube item playing on any channel? (the tape asks before it starts) */
+  isAnyPlaying(): boolean {
+    for (const s of this.states.values()) if (s.status === 'playing') return true
+    return false
+  }
+  /** Pause every playing video / YouTube item (the tape is starting). */
+  pauseAll(): void {
+    for (const [id, s] of [...this.states]) if (s.status === 'playing') this.put(id, playbackReduce(s, { type: 'pause' }, this.deps.now()))
   }
 
   get(channelId: string): PlaybackWire | null {
