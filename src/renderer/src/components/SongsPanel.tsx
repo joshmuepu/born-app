@@ -698,7 +698,7 @@ export default function SongsPanel({
         <div className="songs-songbook-menu" ref={songbookMenuRef}>
           <button
             className="btn-quiet btn-sm songs-import-btn"
-            onClick={() => setSongbookMenuOpen((v) => !v)}
+            onClick={() => { setImportMenuOpen(false); setSongbookMenuOpen((v) => !v) }}
             aria-expanded={songbookMenuOpen}
             title="Which songbook to search/browse/import into"
           >
@@ -784,7 +784,7 @@ export default function SongsPanel({
         <div className="songs-import-menu" ref={importMenuRef}>
           <button
             className="btn-secondary btn-sm songs-import-btn"
-            onClick={() => setImportMenuOpen((v) => !v)}
+            onClick={() => { setSongbookMenuOpen(false); setImportMenuOpen((v) => !v) }}
             aria-expanded={importMenuOpen}
           >
             Import… <ChevronDown width={12} height={12} strokeWidth={2.4} aria-hidden="true" />

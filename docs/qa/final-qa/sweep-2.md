@@ -1,12 +1,12 @@
 # Sweep 2
 
-Distinct findings: **533** (P0 0, P1 97, P2 436)
+Distinct findings: **569** (P0 0, P1 99, P2 470)
 
 | Sev | Check | Count |
 |---|---|---|
 | P1 | broken-image | 2 |
 | P1 | console | 2 |
-| P1 | no-focus-indicator | 23 |
+| P1 | no-focus-indicator | 25 |
 | P1 | overlap | 44 |
 | P1 | target-small | 19 |
 | P1 | text-clipped | 1 |
@@ -17,7 +17,7 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P2 | no-main-landmark | 1 |
 | P2 | target-below-32 | 96 |
 | P2 | truncated-no-tooltip | 309 |
-| P2 | unreachable | 17 |
+| P2 | unreachable | 51 |
 
 ## Findings
 
@@ -27,11 +27,13 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P1 | broken-image | `div.scroll > div.qlist > button.qitem > img.qthumb` |  | http://127.0.0.1:4480/media/yt-jNQXAC9IVRw/thumb |  | 2 |
 | P1 | console | `log.error` | Failed to load resource: the server responded with |  |  | 1 |
 | P1 | console | `log.error` | Failed to load resource: the server responded with |  |  | 6 |
-| P1 | no-focus-indicator | `div.palette-overlay > div.palette > div.palette-input-row > input.palette-input` |  |  | dark,light,dark-hc,light-hc… | 7 |
+| P1 | no-focus-indicator | `div.palette-overlay > div.palette > div.palette-input-row > input.palette-input` |  |  | dark,dark-hc,narrow,scale150… | 27 |
+| P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Bible |  | dark,light,dark-hc,light-hc… | 2 |
+| P1 | no-focus-indicator | `div.tp-follow-head > div.tape-screen-row > div.tse-seg > button` | One at a time |  | light-hc,scale150,4k | 1 |
+| P1 | no-focus-indicator | `div.tp-follow-head > div.tape-screen-row > div.tse-seg > button.is-on` | Highlight |  | full-hd,narrow-scale175 | 1 |
 | P1 | no-focus-indicator | `button.btn-primary` | Time it now |  | light | 1 |
 | P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Sermons |  |  | 38 |
 | P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Queue |  |  | 6 |
-| P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Bible |  |  | 1 |
 | P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Songs |  |  | 1 |
 | P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Media |  |  | 3 |
 | P1 | no-focus-indicator | `div.search-panel > nav.app-rail > div.rail-group > button.rail-btn` | Saved: favorites and recents |  |  | 6 |
@@ -120,7 +122,7 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P1 | text-clipped-v | `div.scroll > div.qlist > button.qitem > div.qpreview` | 4 He said when he was in Fort Wayne, said, “As soo | hidden 280px |  | 2 |
 | P1 | text-clipped-v | `div.scroll > div.qlist > button.qitem > div.qpreview` | 5 And Brother Jack Shuler is a fine man. You heard | hidden 350px |  | 2 |
 | P1 | text-clipped-v | `div.scroll > div.qlist > button.qitem > div.qpreview` | For God so loved the world, that he gave his only  | hidden 18px |  | 2 |
-| P2 | console | `console.warning` | %cElectron Security Warning (Insecure Content-Secu |  |  | 176 |
+| P2 | console | `console.warning` | %cElectron Security Warning (Insecure Content-Secu |  |  | 282 |
 | P2 | console | `log.warning` | <meta name="apple-mobile-web-app-capable" content= |  |  | 3 |
 | P2 | console | `console.warning` | Failed to scroll to index 229 after 10 attempts. |  |  | 1 |
 | P2 | glossary | `div#songsBodyT > div.songlist > button.song-row` | Take Me Back To Calvery | Take Me Back To Calvery |  | 1 |
@@ -128,7 +130,7 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P2 | glossary | `div#songsBodyT > div.songlist > button.song-row` | Take Me In To The Holy Of Holies | Take Me In To The Holy Of Holies |  | 1 |
 | P2 | glossary | `div#songsBodyT > div.songlist > button.song-row` | Take The Name Of Jesus With You | Take The Name Of Jesus With You |  | 1 |
 | P2 | glossary | `div#songsBodyT > div.songlist > button.song-row` | Take Up Your Cross | Take Up Your Cross |  | 1 |
-| P2 | many-primary-buttons | `document` | Done / Search | 2 | dark,light,dark-hc,light-hc… | 25 |
+| P2 | many-primary-buttons | `document` | Done / Search | 2 | dark,light,dark-hc,light-hc… | 31 |
 | P2 | many-primary-buttons | `document` | Add pictures / Add pictures | 2 |  | 2 |
 | P2 | many-primary-buttons | `document` | Search / Show / Show / Show / Show / Show | 13 |  | 1 |
 | P2 | many-primary-buttons | `document` | Show / Show / Show / Show / Show / Show | 21 |  | 3 |
@@ -230,8 +232,8 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P2 | target-below-32 | `div > div.tfl-row > span.tfl-no > button.tfl-jump` | Move the tape to paragraph 43 | 48x32 |  | 1 |
 | P2 | target-below-32 | `div > div.tfl-row > span.tfl-no > button.tfl-jump` | Move the tape to paragraph 44 | 48x32 |  | 1 |
 | P2 | target-below-32 | `div > div.tfl-row > span.tfl-no > button.tfl-jump` | Move the tape to paragraph 45 | 48x32 |  | 1 |
-| P2 | truncated-no-tooltip | `div.media-left > div.media-cats > button.media-cat > span.media-cat-label` | Recently used | hidden 3px | narrow-scale175 | 30 |
-| P2 | truncated-no-tooltip | `div.media-left > div.media-cats > button.media-cat > span.media-cat-label` | Needs attention | hidden 12px | narrow-scale175 | 30 |
+| P2 | truncated-no-tooltip | `div.media-left > div.media-cats > button.media-cat > span.media-cat-label` | Recently used | hidden 3px | narrow-scale175 | 37 |
+| P2 | truncated-no-tooltip | `div.media-left > div.media-cats > button.media-cat > span.media-cat-label` | Needs attention | hidden 12px | narrow-scale175 | 37 |
 | P2 | truncated-no-tooltip | `div#livebar-sermons > button.livebar > div.livebar-body > div.livebar-text` | Sure, a wonderful man. Not long ago I was standing | hidden 968px |  | 2 |
 | P2 | truncated-no-tooltip | `div#tabletPreview > div > span.now-ref` | Do You Now Believe? · 54-0307E · 2b | hidden 142px |  | 2 |
 | P2 | truncated-no-tooltip | `div#livebar-sermonsT > button.livebar > div.livebar-body > div.livebar-text` | Sure, a wonderful man. Not long ago I was standing | hidden 937px |  | 1 |
@@ -541,18 +543,52 @@ Distinct findings: **533** (P0 0, P1 97, P2 436)
 | P2 | truncated-no-tooltip | `div.tse-table > div.tse-rows > div.tse-row > span.tse-text` | Dear God, we do this in the Name of Jesus Christ,  | hidden 56px |  | 1 |
 | P2 | unreachable | `M041` | Bible > Overflow room > Tape: It Is The Rising Of  | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M081` | Songs > Hide browse columns > Browse | narrow | narrow,scale150,narrow-scale175 | 1 |
+| P2 | unreachable | `M209` | Queue > Bible Bible > Media Media > Tape: It Is Th | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M241` | Saved > Recently Played > Tape: It Is The Rising O | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M249` | Saved > Bible Bible > Overflow room > Whole Bible | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M257` | Saved > Songs Songs > Saved: favorites and recents | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M265` | Sermons > Bible Bible > Hide browse columns > Tape | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M273` | Songs > Hide browse columns > Tape | narrow-scale175 | narrow-scale175 | 1 |
+| P2 | unreachable | `M289` | Songs > Bible Bible > Browse > Tape: It Is The Ris | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M305` | Tape > More ways to add > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M313` | Tape > Bible Bible > Saved: favorites and recents  | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M082` | Bible > Songs Songs > Hide browse columns > Tape:  | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M146` | Media > Saved: favorites and recents Saved > Hide  | narrow-scale175 | narrow-scale175 | 1 |
 | P2 | unreachable | `M154` | Media > Videos > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M202` | Queue > Filters > Tape: It Is The Rising Of The Su | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M242` | Saved > Filters > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M250` | Saved > Bible Bible > Overflow room > Recent | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M258` | Sermons > Search > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M266` | Sermons > Bible Bible > Overflow room > Tape | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M274` | Songs > Hide browse columns > Tape: It Is The Risi | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M163` | Media > Bible Bible > Hide browse columns > Tape | narrow | narrow,scale150,narrow-scale175 | 1 |
+| P2 | unreachable | `M187` | Queue > Media Media > Hide browse columns | narrow-scale175 | narrow-scale175 | 1 |
+| P2 | unreachable | `M243` | Saved > Overflow room > Media Media | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M251` | Saved > Bible Bible > Overflow room > Tape: It Is  | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M259` | Sermons > Location > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M068` | Bible > Songs Songs > All songbooks > Tape: It Is  | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M164` | Media > Bible Bible > Hide browse columns > Tape:  | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M228` | Saved > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M244` | Sermons > Recently Played > Tape: It Is The Rising | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M260` | Sermons > Filters > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M268` | Sermons > Songs Songs > Saved: favorites and recen | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M308` | Tape > Timing > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M021` | Media > Hide browse columns | narrow | narrow,scale150,narrow-scale175 | 1 |
 | P2 | unreachable | `M077` | Bible > Songs Songs > Import… > Tape: It Is The Ri | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M197` | Queue > Recently Played > Tape: It Is The Rising O | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M261` | Sermons > Overflow room > Tape: It Is The Rising O | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M293` | Songs > Bible Bible > Hide browse columns > Tape | narrow | narrow,scale150,narrow-scale175 | 1 |
 | P2 | unreachable | `M078` | Songs > Hide browse columns > Saved: favorites and | narrow-scale175 | narrow-scale175 | 1 |
 | P2 | unreachable | `M150` | Media > Recently used > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M214` | Queue > Bible Bible > Saved: favorites and recents | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M238` | Saved > Search > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M270` | Songs > All songbooks > Tape: It Is The Rising Of  | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M310` | Tape > Overflow room > Options | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M079` | Bible > Songs Songs > Hide browse columns > Tape | narrow-scale175 | narrow-scale175 | 1 |
 | P2 | unreachable | `M159` | Media > YouTube > Hide browse columns | narrow-scale175 | narrow-scale175 | 1 |
 | P2 | unreachable | `M167` | Media > Songs Songs > Saved: favorites and recents | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M287` | Songs > Bible Bible > Search > Tape: It Is The Ris | dark | dark,light,dark-hc,light-hc… | 1 |
 | P2 | unreachable | `M080` | Songs > Hide browse columns > Search | narrow | narrow,scale150,narrow-scale175 | 1 |
 | P2 | unreachable | `M152` | Media > Needs attention > Overflow room | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M272` | Songs > Import… > Tape: It Is The Rising Of The Su | dark | dark,light,dark-hc,light-hc… | 1 |
+| P2 | unreachable | `M280` | Songs > Bible Bible > Saved: favorites and recents | dark | dark,light,dark-hc,light-hc… | 1 |
