@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
 import GlobalTapeBar from './components/GlobalTapeBar'
 import { getTapeActions, matchTapeShortcut, tapeKeysIgnored, useTapeLoaded } from './tapeActions'
@@ -2389,65 +2389,66 @@ export default function App() {
       <div className="app-main">
         <div className="search-panel">
           <nav className="app-rail" aria-label="Sections">
-            {([
-              ['sermons', 'Sermons', Mic2],
-              ['bible', 'Bible', BookOpen],
-              ['songs', 'Songs', Music2],
-              ['media', 'Media', ImageIcon]
-            ] as const).map(([id, label, Icon]) => (
+            <div className="rail-group" role="group" aria-label="Find">
+              <div className="rail-group-label" aria-hidden="true">Find</div>
+              {([
+                ['sermons', 'Sermons', Mic2],
+                ['bible', 'Bible', BookOpen],
+                ['songs', 'Songs', Music2],
+                ['media', 'Media', ImageIcon]
+              ] as const).map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
+                  onClick={() => setTopTab(id)}
+                  aria-current={topTab === id ? 'page' : undefined}
+                >
+                  <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
               <button
-                key={id}
-                className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
-                onClick={() => setTopTab(id)}
-                aria-current={topTab === id ? 'page' : undefined}
+                className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
+                onClick={() => setSavedOpen((v) => !v)}
+                aria-pressed={savedOpen}
+                title="Favorites and recents"
               >
-                <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
-                <span>{label}</span>
+                <Star width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+                <span>Saved</span>
               </button>
-            ))}
-            <TapeRailButton active={topTab === 'tape'} onClick={() => { setTapeTarget(null); setTopTab('tape') }} />
+            </div>
+            <div className="rail-group" role="group" aria-label="Listen">
+              <div className="rail-group-label" aria-hidden="true">Listen</div>
+              <TapeRailButton active={topTab === 'tape'} onClick={() => { setTapeTarget(null); setTopTab('tape') }} />
+            </div>
             <span className="rail-spacer" />
-            <button
-              className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
-              onClick={() => setSavedOpen((v) => !v)}
-              aria-pressed={savedOpen}
-              title="Favorites and recents"
-            >
-              <Star width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
-              <span>Saved</span>
-            </button>
-            <button
-              className="rail-btn rail-btn--open"
-              onClick={handleOpenService}
-              title="Open a saved service file"
-            >
-              <FolderOpen width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
-              <span>Open</span>
-            </button>
-            <button
-              className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
-              onClick={toggleQueue}
-              onDragOver={(e) => {
-                if (isQueueDrag(e.dataTransfer)) e.preventDefault()
-              }}
-              onDragEnter={(e) => {
-                // Hovering a dragged item over the Queue button opens the panel
-                // so the exact slot can be chosen.
-                if (isQueueDrag(e.dataTransfer) && !queueOpen) setQueueChoice('open')
-              }}
-              onDrop={(e) => {
-                const payload = readQueueDrag(e.dataTransfer)
-                if (!payload) return
-                e.preventDefault()
-                void handleDropToQueue(payload, queueRef.current.length)
-              }}
-              aria-pressed={queueOpen}
-              title={queueOpen ? 'Hide the service queue' : 'Show the service queue'}
-            >
-              <ListOrdered width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
-              <span>Queue</span>
-              {serviceQueue.length > 0 && <em className="rail-badge">{serviceQueue.length}</em>}
-            </button>
+            <div className="rail-group" role="group" aria-label="Service">
+              <div className="rail-group-label" aria-hidden="true">Service</div>
+              <button
+                className={`rail-btn rail-btn--queue${queueOpen ? ' active' : ''}`}
+                onClick={toggleQueue}
+                onDragOver={(e) => {
+                  if (isQueueDrag(e.dataTransfer)) e.preventDefault()
+                }}
+                onDragEnter={(e) => {
+                  // Hovering a dragged item over the Queue button opens the panel
+                  // so the exact slot can be chosen.
+                  if (isQueueDrag(e.dataTransfer) && !queueOpen) setQueueChoice('open')
+                }}
+                onDrop={(e) => {
+                  const payload = readQueueDrag(e.dataTransfer)
+                  if (!payload) return
+                  e.preventDefault()
+                  void handleDropToQueue(payload, queueRef.current.length)
+                }}
+                aria-pressed={queueOpen}
+                title={queueOpen ? 'Hide the service queue' : 'Show the service queue'}
+              >
+                <ListOrdered width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
+                <span>Queue</span>
+                {serviceQueue.length > 0 && <em className="rail-badge">{serviceQueue.length}</em>}
+              </button>
+            </div>
           </nav>
           <div className="search-main" role="main" id="main-content" tabIndex={-1} aria-label={SECTION_NAMES[topTab] ?? 'Born Again'}>
           <h1 className="sr-only">{SECTION_NAMES[topTab] ?? 'Born Again'} — Born Again</h1>

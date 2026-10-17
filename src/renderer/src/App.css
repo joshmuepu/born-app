@@ -459,6 +459,10 @@ body {
   scrollbar-width: none;
 }
 .app-rail::-webkit-scrollbar { display: none; }
+.rail-group { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--border); }
+.rail-group:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.rail-group-label { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted, var(--text-secondary)); text-align: center; padding: 2px 0 1px; }
+html[data-w~='820'] .rail-group-label { display: none; }
 .rail-spacer { flex: 1; }
 .rail-btn {
   position: relative;
@@ -479,18 +483,17 @@ body {
   transition: background-color var(--tap), color var(--tap);
 }
 .rail-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.rail-btn.active { background: var(--bg-hover); color: var(--text-primary); }
-.rail-btn--sermons.active { color: var(--sermons); box-shadow: inset 2px 0 0 var(--sermons); }
-.rail-btn--bible.active { color: var(--bible); box-shadow: inset 2px 0 0 var(--bible); }
-.rail-btn--songs.active { color: var(--songs); box-shadow: inset 2px 0 0 var(--songs); }
-.rail-btn--media.active { color: var(--media); box-shadow: inset 2px 0 0 var(--media); }
-.rail-btn--tape.active { color: var(--sermons); box-shadow: inset 2px 0 0 var(--sermons); }
+.rail-btn.active {
+  /* one selection colour for every section (P-04): the plum action colour on the raised surface; a section keeps its own colour inside its panel */
+  background: var(--bg-active);
+  color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
 .rail-eq { position: absolute; top: 6px; right: 10px; display: inline-flex; gap: 2px; align-items: flex-end; height: 10px; }
 .rail-eq i { width: 2px; height: 3px; border-radius: 1px; background: var(--ok); animation: rail-eq .8s ease-in-out infinite; }
 .rail-eq i:nth-child(2) { animation-delay: .2s; } .rail-eq i:nth-child(3) { animation-delay: .4s; }
 @keyframes rail-eq { 0%, 100% { height: 3px; } 50% { height: 10px; } }
 @media (prefers-reduced-motion: reduce) { .rail-eq i { animation: none; height: 8px; } }
-.rail-btn--queue.active { color: var(--accent); }
 .rail-badge {
   position: absolute;
   top: 5px;
@@ -2714,7 +2717,6 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 
 .nav-history { display: inline-flex; gap: 2px; }
 .nav-history .btn-icon:disabled { opacity: 0.45; }
-.rail-btn--saved.active { color: var(--accent); }
 
 .queue-panel.is-resizing { transition: none; }
 

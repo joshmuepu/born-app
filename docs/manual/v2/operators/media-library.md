@@ -1,6 +1,6 @@
 # Pictures: the Media library
 
-The **Media** area (the fourth item on the left rail, in teal) holds every picture you might put on the screen:
+The **Media** area (the fourth item in the **Find** group of the left rail) holds every picture you might put on the screen:
 announcement slides, photos, backgrounds, a church logo, pages of a PDF — and short **videos** (see [Videos and moving backgrounds](media-video.md)).
 
 ![The Media library: folders, tags and favorites on the left, pictures in the middle.](../images/media-library.png)
