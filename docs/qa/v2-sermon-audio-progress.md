@@ -12,18 +12,18 @@ Branch `v2-sermon-audio` (from `v2-sermon-audio-design`). **Not merged.** Spec: 
 - The numbered paragraph is derived from `quoteToItem(row).slides[].marker` (the same split the reader and projector use), so a sync map always agrees with what the operator sees.
 - Following: main turns tape position into a normal slide payload (`slide.tape` carries view data) and sends it through `showChannelSlide`, so history, other channels, Graphics and stage keep working.
 
-## Slices
+## Slices (suite: 1,302 before S1 → **1,675 passed, 1 skipped** at the end; typecheck and production build clean)
 | Slice | Status |
 |---|---|
 | S1 attach/import, filename matching, preflight | **done** (tests: +64; real tape: import 53 ms, 2:24:47.89, exact match to sermon 1115, original untouched) |
 | S2 audio engine + player bar | **done** (suite 1366 → 1418) |
 | S3 sync map + tap editor | **done** |
-| S4 follow-along in the reader | **done** (live check on the real tape waits for a real map from the S8 aligner) |
-| S5 projection (a highlight, b one-at-a-time, c lower third/stage/Graphics) | — |
-| S6 languages | — |
-| S7 phone remote + automation API | — |
-| S8 automatic alignment | — |
-| S9 hardening, docs, OBS, packaged check | — |
+| S4 follow-along in the reader | **done** (live on the real tape: 9/9 seek points, 45/45 samples at 2×) |
+| S5 projection (a highlight, b one-at-a-time, c lower third/stage/Graphics) | **done** (tape screen on the slide payload; Graphics uses tape-paced lower-third pages; stage layout) |
+| S6 languages | **done** (side-by-side designed only) |
+| S7 phone remote + automation API | **done** (Chromium + WebKit on the real app) |
+| S8 automatic alignment | **done** (optional whisper.cpp, nothing bundled; proposal only) |
+| S9 hardening, docs, OBS, packaged check | **done on macOS** — Windows and real phones/room are owner checks (`docs/qa/windows-church-pc-checklist.md`) |
 
 ## Log
 
