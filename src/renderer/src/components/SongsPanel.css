@@ -74,6 +74,12 @@
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--text-primary);
+  /* a title pasted from a bulletin can run to a paragraph: three lines, the rest on hover */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .song-row-meta {
   font-size: var(--text-xs);

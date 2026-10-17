@@ -402,7 +402,7 @@ export default function SongsPanel({
         <div className="song-row-body" role="button" tabIndex={0} onClick={() => openSong(s.id)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSong(s.id) } }}
         >
-          <div className="song-row-title">
+          <div className="song-row-title" title={s.title}>
             {searched ? highlight(s.title, query) : s.title}
             {s.source === 'import' && <span className="song-row-badge">Imported</span>}
           </div>
