@@ -4,7 +4,7 @@
  * display override, font size).
  */
 import { app } from 'electron'
-import { readFileSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
 import type { NamedDisplay } from './displays'
@@ -139,8 +139,16 @@ export function getSettings(): AppSettings {
         log.error('settings write failed (fontSize realign)', e)
       }
     }
-  } catch {
+  } catch (e) {
     cache = { ...DEFAULTS }
+    // a missing file is a first run; a file that is there but cannot be read is kept aside (the next save would overwrite it), never silently thrown away
+    try {
+      if (existsSync(settingsPath())) {
+        const kept = join(app.getPath('userData'), `settings.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`)
+        renameSync(settingsPath(), kept)
+        log.warn(`settings.json could not be read (${String(e)}); kept as ${kept}, defaults are in use`)
+      }
+    } catch { /* nothing more can be done */ }
   }
   return cache
 }

@@ -7,7 +7,7 @@ const base = +(process.argv[2] || 9930)
 const rec = recorder('resilience')
 const copy = (n) => { const d = '/tmp/qa-res-' + n; execSync(`rm -rf ${d}; cp -R /tmp/qa-populated ${d}`); return d }
 const open = async (n, port, env = {}) => { const prof = copy(n); const app = await launch({ profile: prof, port, remotePort: 4500 + (port % 40), mdns: 'born-qa-res' + n, settle: 8000, env }); const page = await app.page(); await page.viewport(1366, 768); return { app, page, prof } }
-const reopen = async (prof, port, env = {}) => { const app = await launch({ profile: prof, port, remotePort: 4500 + (port % 40), mdns: 'born-qa-resb', settle: 8000, env }); const page = await app.page(); await page.viewport(1366, 768); return { app, page } }
+const reopen = async (prof, port, env = {}) => { const app = await launch({ profile: prof, port, remotePort: 4500 + (port % 40), mdns: 'born-qa-resb', settle: 8000, env, log: '/tmp/qa-res-' + port + '.log' }); const page = await app.page(); await page.viewport(1366, 768); return { app, page } }
 const queueCount = (p) => p.ev(`document.body.innerText.match(/(\\d+) in queue/)?.[1] ?? 'none'`)
 ;(async () => {
   // R1: killed mid-service
@@ -23,7 +23,7 @@ const queueCount = (p) => p.ev(`document.body.innerText.match(/(\\d+) in queue/)
   // R2: damaged data files
   for (const [name, file, junk] of [['queue', 'queue.json', '{ this is not json'], ['settings', 'settings.json', '\u0000\u0001garbage'], ['library', 'library.db', 'not a database at all'.repeat(100)]]) {
     const prof = copy('bad-' + name); fs.writeFileSync(path.join(prof, file), junk); for (const x of ['library.db-wal', 'library.db-shm']) if (file === 'library.db') try { fs.rmSync(path.join(prof, x)) } catch { /* none */ }
-    try { const r = await reopen(prof, base + 1); rec.note(`R2 damaged ${file}: window up, queue ${await queueCount(r.page)}`); await rec.capture(r.page, 'r2-bad-' + name, `damaged ${file}`); const info = await r.page.ev('window.electronAPI.getDataRecoveryInfo()'); rec.note(`R2 ${file} recovery info: ` + JSON.stringify(info).slice(0, 300)); r.page.close(); await r.app.kill() } catch (e) { rec.note(`R2 damaged ${file}: APP DID NOT START (${String(e).slice(0, 100)})`) }
+    try { const r = await reopen(prof, base + 1); rec.note(`R2 damaged ${file}: window up, queue ${await queueCount(r.page)}, kept files: ${fs.readdirSync(prof).filter((x) => /corrupt/.test(x)).join(', ') || 'none'}, toast: ${await r.page.ev(`(document.querySelector('.toast')||{}).innerText||'none'`)}`); await rec.capture(r.page, 'r2-bad-' + name, `damaged ${file}`); const info = await r.page.ev('window.electronAPI.getDataRecoveryInfo()'); rec.note(`R2 ${file} recovery info: ` + JSON.stringify(info).slice(0, 300)); r.page.close(); await r.app.kill() } catch (e) { rec.note(`R2 damaged ${file}: APP DID NOT START (${String(e).slice(0, 100)})`) }
     execSync('pkill -f "remote-debugging-port=' + (base + 1) + '" || true'); await sleep(1500)
   }
   // R3: a picture file missing; R4: tape file missing
