@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronRight, EyeOff, Eye, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, EyeOff, Eye, X } from 'lucide-react'
 import type {
   ChannelInfo,
   LiveChannel,
@@ -87,6 +87,13 @@ export interface PreviewLivePairProps {
   /** Black the main screen out / bring it back (position is kept). */
   onToggleBlank: () => void
   onClearChannel: (channelId: string) => void
+  /** Main channel: where we are in the queue ("3 of 9") and the small Back / Next arrows beside it. Show next is the one big button; these only step. */
+  position?: string | null
+  canPrev?: boolean
+  canNext?: boolean
+  onPrev?: () => void
+  onNext?: () => void
+  bump?: 'prev' | 'next' | null
 }
 
 function slideTitle(s: SlidePayload | null): string {
@@ -108,7 +115,13 @@ export default function PreviewLivePair({
   onTake,
   onUnstage,
   onToggleBlank,
-  onClearChannel
+  onClearChannel,
+  position = null,
+  canPrev = false,
+  canNext = false,
+  onPrev,
+  onNext,
+  bump = null
 }: PreviewLivePairProps): JSX.Element {
   const live = useLiveState()
   const [channelId, setChannelId] = useState('main')
@@ -211,6 +224,14 @@ export default function PreviewLivePair({
           </div>
         </div>
       </div>
+
+      {isMain && onPrev && onNext && (
+        <span className="plp-steps" role="group" aria-label="Step through the queue">
+          <button type="button" className={`plp-step${bump === 'prev' ? ' is-bump' : ''}`} onClick={onPrev} disabled={!canPrev} aria-label="Back" title="Back — previous slide / verse / paragraph (← or Shift+Space)"><ChevronLeft width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
+          {position && <span className="plp-pos" aria-live="polite">{position}</span>}
+          <button type="button" className={`plp-step${bump === 'next' ? ' is-bump' : ''}`} onClick={onNext} disabled={!canNext} aria-label="Next" title="Next — next slide / verse / paragraph (→ or Space)"><ChevronRight width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
+        </span>
+      )}
 
       {liveSlide?.kind === 'media' && (liveSlide.media?.type === 'video' || liveSlide.media?.type === 'youtube') && !blanked && <VideoBar key={liveSlide.media.mediaId} channelId={id} mediaId={liveSlide.media.mediaId} online={liveSlide.media.type === 'youtube'} />}
 

@@ -29,3 +29,6 @@ Plain language. Updated with every slice of the UX build.
 - The thin status bar and the separate tape bar are now **one strip** at the bottom of every section. On the left, in a box that is outlined **red while the screens are live** (amber while hidden, grey when nothing is on): what is on air, how long it has been up, and **Hide screen / Show screen**. In the middle, the tape (when one is loaded). On the right, small status dots (Screens, Stage) and the version.
 - On a small laptop window the tape takes its own row under the live box. Below ~1440 px the tape's output and "Text on the screens" buttons show only their icons (the words are still read by screen readers, and the tooltip says them).
 - "N in queue" and the version moved: the count is on the Queue button in the rail; the version opens the app-info popover as before.
+
+## The box under the queue (Preview and Live)
+- **Show next** is now the one big purple button. **Hide screen / Show screen** sits beside it. **Back** and **Next** are small arrows under the two pictures with where you are in the queue ("3 of 9"). The keys did not change: → or Space is Next, ← or Shift+Space is Back.

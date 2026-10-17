@@ -593,6 +593,12 @@ export default function ServiceQueue({
             onUnstage={onUnstage}
             onToggleBlank={onToggleBlank}
             onClearChannel={onClearChannel}
+            position={activeIndex !== null && queue.length > 0 ? `${activeIndex + 1} of ${queue.length}` : queue.length > 0 ? `${queue.length} queued` : null}
+            canPrev={canPrev}
+            canNext={canNext}
+            onPrev={handlePrevClick}
+            onNext={handleNextClick}
+            bump={bump}
           />
           {(orphaned || (readingAhead && !status)) && (
             <div className="live-flags">
@@ -624,24 +630,6 @@ export default function ServiceQueue({
               ))}
             </div>
           )}
-          <div className="queue-live-nav">
-            <button
-              className={`btn-nav${bump === 'prev' ? ' is-bump' : ''}`}
-              onClick={handlePrevClick}
-              disabled={!canPrev}
-              title="Back — previous slide / verse / paragraph (← or Shift+Space)"
-            >
-              ‹ Back
-            </button>
-            <button
-              className={`btn-nav btn-nav--next${bump === 'next' ? ' is-bump' : ''}`}
-              onClick={handleNextClick}
-              disabled={!canNext}
-              title="Next — next slide / verse / paragraph (→ or Space)"
-            >
-              Next ›
-            </button>
-          </div>
           {nextItem && !status && (
             <div className="queue-upnext-hint">
               Up next: <strong>{itemTitle(nextItem)}</strong>

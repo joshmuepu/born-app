@@ -77,3 +77,13 @@
 @media (prefers-reduced-motion: reduce) {
   .plp-tag--live.is-on .plp-dot, .plp-frame--live.just-went { animation: none; }
 }
+
+/* Show next is the one big button; Back / Next are small arrows beside the position in the Preview head (P-07) */
+.plp-steps { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 0 2px; }
+.plp-step { display: inline-grid; place-items: center; min-width: var(--target-min, 32px); min-height: var(--target-min, 32px); padding: 0; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--r-md); color: var(--text-primary); cursor: pointer; }
+.plp-step:hover:not(:disabled) { border-color: var(--accent); background: var(--bg-hover); }
+.plp-step:disabled { opacity: 0.35; cursor: not-allowed; }
+.plp-pos { min-width: 3.6em; text-align: center; font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-secondary); white-space: nowrap; }
+@keyframes plp-step-bump { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.plp-step.is-bump { animation: plp-step-bump 0.22s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .plp-step.is-bump { animation: none; } }

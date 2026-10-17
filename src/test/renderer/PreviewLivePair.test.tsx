@@ -156,4 +156,31 @@ describe('PreviewLivePair', () => {
     await user.click(screen.getByRole('button', { name: /Hide screen|Clear/ }))
     expect(onClearChannel).toHaveBeenCalledWith('ch2')
   })
+
+  it('Show next is the one big button; Back and Next are small arrows next to where you are in the queue (P-07)', async () => {
+    const onPrev = vi.fn(), onNext = vi.fn(), onTake = vi.fn()
+    const user = userEvent.setup()
+    render(<PreviewLivePair {...baseProps({ onTake, onPrev, onNext, canPrev: true, canNext: true, position: '2 of 9' })} />)
+    expect(seen('2 of 9')).toBe(true)
+    const steps = screen.getByRole('group', { name: 'Step through the queue' })
+    expect(steps.querySelectorAll('button')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(onPrev).toHaveBeenCalledOnce()
+    expect(onNext).toHaveBeenCalledOnce()
+    // exactly one primary (filled) button in the box, and it is the one that shows something
+    const primaries = document.querySelectorAll('.plp button.btn-primary')
+    expect(primaries).toHaveLength(1)
+    expect(primaries[0].textContent).toMatch(/^Show( next)?$/)
+    await user.click(primaries[0] as HTMLElement)
+    expect(onTake).toHaveBeenCalledOnce()
+  })
+
+  it('the arrows are off at the ends of the queue, and a second channel has none', async () => {
+    const { rerender } = render(<PreviewLivePair {...baseProps({ onPrev: vi.fn(), onNext: vi.fn(), canPrev: false, canNext: false })} />)
+    expect((screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+    rerender(<PreviewLivePair {...baseProps({ channels: [], onPrev: vi.fn(), onNext: vi.fn() })} />)
+  })
 })
+
