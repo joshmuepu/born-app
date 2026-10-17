@@ -602,6 +602,7 @@ function buildHTML(): string {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#08080a"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Born Again"/>
 <link rel="manifest" href="/manifest.json"/>
@@ -905,6 +906,7 @@ function buildGraphicsHTML(id: string): string {
 <head>
 <meta charset="utf-8"/>
 <title>BORN — Graphics</title>
+<link rel="icon" href="data:,"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
