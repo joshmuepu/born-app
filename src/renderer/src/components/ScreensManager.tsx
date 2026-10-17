@@ -11,6 +11,7 @@
  * the same handler prop, just regrouped into sidebar sections instead of one
  * long scroll.
  */
+import { copyText } from '../AppActions'
 import { useEffect, useRef, useState } from 'react'
 import {
   X,
@@ -426,15 +427,13 @@ export default function ScreensManager({
 
   const copyDiagnostics = async (): Promise<void> => {
     const text = await window.electronAPI.getDisplayDiagnostics()
-    navigator.clipboard?.writeText(text)
+    if (!(await copyText(text))) return
     setDiagCopied(true)
     setTimeout(() => setDiagCopied(false), 1500)
   }
 
   const copyOutputUrl = (id: string, url: string): void => {
-    navigator.clipboard?.writeText(url)
-    setUrlCopiedId(id)
-    setTimeout(() => setUrlCopiedId((cur) => (cur === id ? null : cur)), 1500)
+    void copyText(url).then((ok) => { if (!ok) return; setUrlCopiedId(id); setTimeout(() => setUrlCopiedId((cur) => (cur === id ? null : cur)), 1500) })
   }
 
   const displays = displayInfo?.displays ?? []

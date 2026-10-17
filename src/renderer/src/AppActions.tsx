@@ -31,6 +31,19 @@ export async function copyText(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text)
     return true
   } catch {
-    return false
+    // the clipboard API refuses when the window is not focused: the old copy command still works from a hidden field
+    try {
+      const t = document.createElement('textarea')
+      t.value = text
+      t.setAttribute('readonly', '')
+      t.style.cssText = 'position:fixed;top:-100px;opacity:0'
+      document.body.appendChild(t)
+      t.select()
+      const ok = document.execCommand('copy')
+      t.remove()
+      return ok
+    } catch {
+      return false
+    }
   }
 }

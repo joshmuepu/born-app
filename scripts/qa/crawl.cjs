@@ -33,6 +33,7 @@ const SIG = `(() => {
   let h = 0; for (const ch of ctl) h = (h * 31 + ch.charCodeAt(0)) >>> 0
   return JSON.stringify({ heads, tabs, rail, pop, ctl: h })
 })()`
+const DOMHASH = `(() => { const t = document.body.innerText + '|' + document.getElementsByTagName('*').length + '|' + [...document.querySelectorAll('[aria-pressed],[aria-expanded],[aria-selected],[aria-checked]')].map((e) => e.getAttribute('aria-pressed') + e.getAttribute('aria-expanded') + e.getAttribute('aria-selected') + e.getAttribute('aria-checked')).join(''); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h })()`
 const TEXTS = `(() => { const t = new Set(); const add = (s) => { s = (s || '').replace(/\\s+/g, ' ').trim().toLowerCase(); if (s && s.length < 160) t.add(s) }
   document.querySelectorAll('*').forEach((e) => { const r = e.getBoundingClientRect(); if (!r.width || !r.height) return; ['aria-label', 'title', 'placeholder'].forEach((a) => add(e.getAttribute(a))); if (e.children.length === 0) add(e.textContent) })
   return [...t] })()`
@@ -42,6 +43,7 @@ const TEXTS = `(() => { const t = new Set(); const add = (s) => { s = (s || '').
   const page = await app.page()
   await page.viewport(1366, 768)
   const shotDir = path.join(ROOT, 'qa-out', 'crawl-' + name); fs.mkdirSync(shotDir, { recursive: true })
+  const dead = [] // clicks after which nothing on the page changed (candidates for "dead button", reviewed by hand)
   const states = new Map() // sig -> {id, path, texts, depth}
   const allTexts = new Set(); const skipped = new Set(); const errors = []
   const reset = async () => { await page.send('Page.reload'); await sleep(1300) }
@@ -75,16 +77,18 @@ const TEXTS = `(() => { const t = new Set(); const add = (s) => { s = (s || '').
       if (start && start !== 'HOME' && GLOBAL.test(c.label)) continue
       if (start === 'HOME' && depth >= 1 && !c.inDialog) continue // HOME: the global controls and what they open
       if (dirty) { await reset(); if (!(await replay(pth))) break; dirty = false }
+      const before = await page.ev(DOMHASH)
       const ok = await page.click(c.label.split(' ').slice(0, 5).join(' '))
       if (!ok) continue
       await sleep(450); n++
+      if ((await page.ev(DOMHASH)) === before && !/^(Search|Hide browse columns)/.test(c.label)) dead.push([...pth, c].map((x) => x.label).join(' > '))
       const r = await record([...pth, c], depth + 1)
       if ((await page.ev(SIG)) !== parentSig) dirty = true
       for (const l of page.takeLogs()) errors.push({ at: [...pth, c].map((x) => x.label).join(' > '), ...l })
       if (r.isNew && depth + 1 < +maxDepth) queue.push([...pth, c])
     }
   }
-  const out = { profile: name, states: [...states.values()], texts: [...allTexts], skipped: [...skipped].sort(), errors, clicks: n }
+  const out = { profile: name, states: [...states.values()], texts: [...allTexts], skipped: [...skipped].sort(), errors, clicks: n, noEffect: dead }
   fs.writeFileSync(path.join(ROOT, 'qa-out', `census-runtime-${name}.json`), JSON.stringify(out, null, 1))
   console.log(`states ${states.size} · clicks ${n} · texts ${allTexts.size} · skipped labels ${skipped.size} · logged issues ${errors.length}`)
   page.close(); await app.kill()
