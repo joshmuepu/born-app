@@ -42,11 +42,23 @@ export default function TapeAddPanel({
   const [folderMsg, setFolderMsg] = useState<string | null>(null)
 
   useEffect(() => { void Promise.resolve(window.electronAPI.tapeSermonList?.()).then((l) => setSermons(l ?? [])) }, [])
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (): Promise<TapeFolderHit[]> => {
     const info = await window.electronAPI.tapeInfo()
     setFolder(info.folder)
-    setHits(info.folder ? ((await window.electronAPI.tapeScanFolder()) as TapeFolderHit[]) : [])
+    const found = info.folder ? ((await window.electronAPI.tapeScanFolder()) as TapeFolderHit[]) : []
+    setHits(found)
+    return found
   }, [])
+  const [looking, setLooking] = useState(false)
+  /** "Look again": read the folder once more (files you put there since) and SAY what it found — a list that looks the same must not look like nothing happened. */
+  const lookAgain = async (): Promise<void> => {
+    setLooking(true); setFolderMsg(null)
+    const found = await scan()
+    await new Promise((r) => setTimeout(r, 300))
+    const fresh = found.filter((h) => !h.imported).length
+    setFolderMsg(found.length === 0 ? 'Looked again: no audio files in that folder.' : `Looked again: ${found.length} audio file${found.length === 1 ? '' : 's'} in the folder, ${fresh === 0 ? 'all already added' : `${fresh} not added yet`}.`)
+    setLooking(false)
+  }
   useEffect(() => { void scan() }, [scan, message])
 
   const pickFolder = async (): Promise<void> => {
@@ -86,7 +98,7 @@ export default function TapeAddPanel({
         <div className="tpa-actions">
           <span className="tp-faint tpa-folder">{folder ?? 'Not chosen yet — pick the folder where you keep recordings and BORN will find them.'}</span>
           <button className="btn-secondary btn-sm" onClick={() => void pickFolder()}>{folder ? 'Change…' : 'Choose a folder…'}</button>
-          {folder && <button className="btn-quiet btn-sm" onClick={() => void scan()}><RefreshCw width={12} height={12} aria-hidden="true" /> Look again</button>}
+          {folder && <button className="btn-quiet btn-sm" onClick={() => void lookAgain()} disabled={looking} title="Read the Tape audio folder again, for files you have put there since"><RefreshCw width={12} height={12} aria-hidden="true" className={looking ? 'tpa-spin' : undefined} /> {looking ? 'Looking…' : 'Look again'}</button>}
         </div>
         {folderMsg && <p className="tp-faint" role="status">{folderMsg}</p>}
         {folder && ready.length === 0 && <p className="tp-faint">{hits.length ? 'Everything in that folder is already added.' : 'No audio files found in that folder yet.'}</p>}

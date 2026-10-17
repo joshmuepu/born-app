@@ -72,3 +72,6 @@ html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: 
 .tpa-pending-file { display: flex; align-items: center; gap: 8px; }
 .tpa-pending-file .btn-quiet { margin-left: auto; }
 .tpa-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+@keyframes tpa-spin { to { transform: rotate(360deg); } }
+.tpa-spin { animation: tpa-spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .tpa-spin { animation: none; } }

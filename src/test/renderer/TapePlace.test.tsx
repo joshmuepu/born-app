@@ -232,3 +232,14 @@ describe('Add a recording: one click, straight to the right place', () => {
   })
 })
 
+describe('"Look again" in the Tape audio folder says what it found', () => {
+  it('rescans the folder and reports the count, so it never looks like nothing happened', async () => {
+    await open({ tab: 'add', nonce: 1 })
+    await screen.findByText('65-0418M It Is.m4a')
+    api.tapeScanFolder.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: /Look again/ }))
+    await waitFor(() => expect(api.tapeScanFolder).toHaveBeenCalledOnce())
+    expect(await screen.findByText(/Looked again: 2 audio files in the folder, 2 not added yet\./)).toBeTruthy()
+  })
+})
+
