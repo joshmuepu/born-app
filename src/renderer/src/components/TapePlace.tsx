@@ -5,7 +5,7 @@ import { formatTapeTime } from '../../../shared/tape'
 import { flatIndexFor, screenItemsOf } from '../../../shared/tapeParagraphs'
 import { libraryStatus, sortLibrary } from '../../../shared/tapeLibrary'
 import type { Quote } from '../types'
-import { emitTape, onTape } from '../tapeBus'
+import { emitTape, onTape, timingOf, useTimingState } from '../tapeBus'
 import { useTape } from '../useTape'
 import { useTapeHint } from '../tapeHint'
 import { useTapeFollow } from '../useTapeFollow'
@@ -39,6 +39,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
   const [tab, setTab] = useState<TapeTab>('follow')
   const { wire } = useTape(1000)
   const hint = useTapeHint('place')
+  const timing = useTimingState()
   const picked = useRef(false) // the operator chose a recording themself: do not move the selection under their hand
   // adding: the picker opens in the Tape audio folder, a file named with its date code goes to its sermon at once, and the place lands on what was added
   const [adding, setAdding] = useState(false)
@@ -90,8 +91,9 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
         // landed: the text follows it once it is timed; if it is not, Timing is the next step
         const lib = (await window.electronAPI.tapeLibrary?.()) ?? []
         const e = (lib as Entry[]).find((x) => x.id === s.recordingId)
-        setTab(o.pending.length ? 'add' : e && e.timed === 0 ? 'timing' : 'follow')
-        if (!o.pending.length && s.message) pushToast({ message: s.message + (e && e.timed === 0 ? ' It has no timing yet.' : ''), timeoutMs: 6000 })
+        const auto = ((await window.electronAPI.tapeTimingState?.()) as { available?: boolean } | undefined)?.available
+        setTab(o.pending.length ? 'add' : e && e.timed === 0 && !auto ? 'timing' : 'follow')
+        if (!o.pending.length && s.message) pushToast({ message: s.message + (e && e.timed === 0 ? (auto ? ' It plays now; the text follows once BORN has timed it.' : ' It has no timing yet.') : ''), timeoutMs: 7000 })
       }
     } else if (o.pending.length || s.problems.length) setTab('add')
   }, [reload, pushToast])
@@ -139,7 +141,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
         <div className="tp-body">
           <ul className="tp-lib" aria-label="Recordings">
             {entries.map((e) => {
-              const st = libraryStatus(e)
+              const st = libraryStatus(e, timingOf(timing, e.id))
               const Icon = TONE_ICON[st.tone]
               return (
                 <li key={e.id}>
@@ -189,6 +191,8 @@ function FollowTab({ entry, pushToast }: { entry: Entry; pushToast: Toast }): JS
   const items = useMemo(() => screenItemsOf(rows as never), [rows])
   const textNumbers = useMemo(() => [...new Set(items.map((i) => i.n))], [items])
   const tf = useTapeFollow(entry, lang, version, textNumbers)
+  const timingState = useTimingState()
+  const tm = timingOf(timingState, entry.id)
   const active = tf.mine && !!tf.map && !!tf.here && tf.here.n !== null
   const currentIndex = useMemo(() => (active ? flatIndexFor(items.map((i) => i.marker), tf.here!.n, tf.here!.progress) : -1), [active, items, tf.here])
   const jump = (n: number): void => {
@@ -204,7 +208,9 @@ function FollowTab({ entry, pushToast }: { entry: Entry; pushToast: Toast }): JS
           <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.tapeLoad(entry.id)}>Load it into the player</button>
         </div>
       )}
-      {tf.map === null && <div className="tp-banner tp-banner--warn" role="status"><Hand width={14} height={14} aria-hidden="true" /> <span>No timing yet — the text cannot follow this recording. Use the Timing tab.</span></div>}
+      {tf.map === null && (tm
+        ? <div className="tp-banner" role="status"><span>{tm === 'queued' ? 'This recording plays now. BORN will time it next, so the text can follow it.' : `This recording plays now. BORN is timing it in the background (${tm.pct}%); the text will follow it when that finishes.`}</span></div>
+        : <div className="tp-banner tp-banner--warn" role="status"><Hand width={14} height={14} aria-hidden="true" /> <span>No timing yet — the text cannot follow this recording.</span> {timingState.available && entry.language === 'en' ? <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.tapeTimingStart(entry.id)}>Time it now</button> : <span>Use the Timing tab.</span>}</div>)}
       <div className="tp-follow-head">
         <label className="tp-lang" title="The language of the text on screen. The recording keeps its own language.">
           Text <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Text language">
@@ -233,17 +239,23 @@ function TimingTab({ entry, onChanged, onRemoved }: { entry: Entry; onChanged: (
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
   useEffect(() => { let a = true; void Promise.resolve(window.electronAPI.tapeMapGet?.(entry.id, null)).then((m) => { if (a) setMap((m as SyncMap | null) ?? null) }); return () => { a = false } }, [entry.id, entry.timed])
-  const src = map ? ({ tap: 'made by tapping along', auto: 'proposed by speech recognition and checked', imported: 'loaded from a timing file' } as Record<string, string>)[map.source] ?? map.source : null
-  const st = libraryStatus(entry)
+  const src = map ? ({ tap: 'made by tapping along', auto: 'timed automatically by BORN', imported: 'loaded from a timing file' } as Record<string, string>)[map.source] ?? map.source : null
+  const timingState = useTimingState()
+  const tm = timingOf(timingState, entry.id)
+  const st = libraryStatus(entry, tm)
+  const canAuto = timingState.available && entry.language === 'en' && entry.status === 'ok'
+  const retime = async (): Promise<void> => { if (map?.source === 'auto') await window.electronAPI.tapeMapDelete(entry.id, null); emitTape('map-changed'); await window.electronAPI.tapeTimingStart(entry.id) }
   return (
     <div className="tp-pad tp-timing">
       <div className="tp-card">
         <h4>Timing for “{entry.sermonTitle}”</h4>
         <p><span className={`tp-chip tp-chip--${st.tone}`}>{st.label}</span> {st.detail}{src ? ` It was ${src}.` : ''}</p>
         <div className="tpa-actions">
-          <button className="btn-primary btn-sm" onClick={() => setEditing(true)} disabled={entry.status !== 'ok'}>{entry.timed > 0 ? 'Edit timing…' : 'Tap to sync…'}</button>
+          {tm ? <button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.tapeTimingCancel(entry.id)}>Stop timing</button>
+            : canAuto && (entry.timed === 0 || map?.source === 'auto') ? <button className={entry.timed === 0 ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'} onClick={() => void retime()}>{entry.timed === 0 ? 'Time it now' : 'Time it again'}</button> : null}
+          <button className="btn-secondary btn-sm" onClick={() => setEditing(true)} disabled={entry.status !== 'ok'}>{entry.timed > 0 ? 'Edit timing…' : 'Tap to sync by hand…'}</button>
         </div>
-        <p className="tp-faint">In the editor you can tap along as you listen, <b>Suggest timing</b> with speech recognition you installed yourself (it only proposes — you review the least sure paragraphs first), share a times-only timing file, and mark “no text here” stretches.</p>
+        <p className="tp-faint">BORN times every English recording by itself, in the background, as soon as it is added — nothing to set up and no need to wait: the tape plays at once and the text follows when it finishes. Editing by hand is only for fixing something.</p>
         {entry.status !== 'ok' && <p className="tp-faint">The recording file has a problem ({st.label.toLowerCase()}), so it cannot be timed until that is fixed.</p>}
       </div>
       <div className="tp-card">

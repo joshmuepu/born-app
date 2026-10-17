@@ -88,7 +88,7 @@ describe('Add the tape for this sermon', () => {
     const onSync = vi.fn()
     open({ onSync })
     await screen.findByText('The whole file is there (not cut short)')
-    expect(screen.getByText(/Next step: make the text follow the tape/)).toBeTruthy()
+    expect(screen.getByText(/The text will follow the tape/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Tap to sync/ }))
     expect(onSync).toHaveBeenCalledWith('r_1', 'tap')
     fireEvent.click(screen.getByRole('button', { name: /Remove Sample recording from this sermon/ }))

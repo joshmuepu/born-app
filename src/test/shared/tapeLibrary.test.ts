@@ -26,3 +26,14 @@ describe('how the library describes a recording', () => {
     expect(l[0].id).toBe('ready-old') // the input is not changed
   })
 })
+
+describe('while BORN times a recording itself', () => {
+  it('says how far it is, and that it plays now', () => {
+    expect(libraryStatus({ status: 'ok', timed: 0 }, { pct: 12 })).toMatchObject({ tone: 'warn', label: 'Timing… 12%' })
+    expect(libraryStatus({ status: 'ok', timed: 0 }, 'queued').label).toBe('Timing soon')
+  })
+  it('a timed recording stays Timed, and a missing file still comes first', () => {
+    expect(libraryStatus({ status: 'ok', timed: 5 }, { pct: 3 }).label).toBe('Timed')
+    expect(libraryStatus({ status: 'missing', timed: 0 }, { pct: 3 }).label).toBe('File missing')
+  })
+})

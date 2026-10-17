@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { X, Hand, Undo2, Save, Download, Upload, Play, Trash2, SkipForward, Flag, EyeOff, Clock, AlertTriangle, Check, Sparkles, ListChecks, Settings2 } from 'lucide-react'
+import { X, Hand, Undo2, Save, Download, Upload, Play, Trash2, SkipForward, Flag, EyeOff, Clock, AlertTriangle, Check, Sparkles, ListChecks } from 'lucide-react'
 import type { SyncMark, SyncRegion, TapeRecording } from '../../../shared/tape'
 import { formatTapeTime } from '../../../shared/tape'
 import { numberedParagraphs, type NumberedParagraph } from '../../../shared/tapeParagraphs'
@@ -51,7 +51,6 @@ export default function TapeSyncEditor({
   const [drag, setDrag] = useState<{ n: number; t: number } | null>(null)
   const [aligning, setAligning] = useState<{ phase: 'prepare' | 'listen' | 'match'; pct: number } | null>(null)
   const reviewIdx = useRef(0)
-  const [tools, setTools] = useState<{ open: boolean; whisperPath: string; whisperModelPath: string; ffmpegPath: string }>({ open: false, whisperPath: '', whisperModelPath: '', ffmpegPath: '' })
   const rootRef = useRef<HTMLDivElement>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<Map<number, HTMLElement>>(new Map())
@@ -121,17 +120,7 @@ export default function TapeSyncEditor({
     dispatch({ type: 'replace', marks: r.marks, regions: r.regions })
     setMessage({ kind: r.warnings.length ? 'warn' : 'ok', text: `Timing loaded — ${r.marks.length} paragraphs. Check it, then Save.${r.warnings.length ? ' ' + r.warnings.join(' ') : ''}` })
   }
-  /** Ask the optional recogniser for a PROPOSAL. It is loaded into the editor like an import: nothing is saved or used until the operator saves it. */
-  const openTools = async (): Promise<void> => {
-    if (!tools.open) { const t = await window.electronAPI.tapeSettingsGet(); setTools({ open: true, whisperPath: t.whisperPath ?? '', whisperModelPath: t.whisperModelPath ?? '', ffmpegPath: t.ffmpegPath ?? '' }) } else setTools((x) => ({ ...x, open: false }))
-  }
-  const chooseTool = async (which: 'whisper' | 'model' | 'ffmpeg'): Promise<void> => {
-    const p = await window.electronAPI.tapePickTool(which)
-    if (!p) return
-    const key = which === 'whisper' ? 'whisperPath' : which === 'model' ? 'whisperModelPath' : 'ffmpegPath'
-    await window.electronAPI.tapeSettingsSet({ [key]: p })
-    setTools((x) => ({ ...x, [key]: p }))
-  }
+  /** Ask the built-in recogniser for a PROPOSAL. It is loaded into the editor like an import: nothing is saved or used until the operator saves it. */
   const suggest = async (): Promise<void> => {
     if (aligning) { await window.electronAPI.tapeAlignCancel(); return }
     if (st.marks.length > 0 && !window.confirm('This replaces the timing on screen with a suggestion (Undo brings it back). Continue?')) return
@@ -290,19 +279,9 @@ export default function TapeSyncEditor({
           <button className={`btn-secondary btn-sm${regionStart?.kind === 'differs' ? ' is-on' : ''}`} onClick={() => toggleRegion('differs')}><Flag width={13} height={13} aria-hidden="true" /> {regionStart?.kind === 'differs' ? `End “differs” (from ${formatTapeTime(regionStart.t)})` : 'Tape differs here'}</button>
           <button className="btn-secondary btn-sm" onClick={() => void suggest()} aria-busy={!!aligning}><Sparkles width={13} height={13} aria-hidden="true" /> {aligning ? `Stop (${aligning.phase === 'listen' ? aligning.pct + '%' : aligning.phase === 'prepare' ? 'preparing' : 'matching'})` : 'Suggest timing'}</button>
           <button className="btn-secondary btn-sm" onClick={reviewNext} disabled={!st.marks.some((m) => m.confidence !== null && m.confidence !== undefined)}><ListChecks width={13} height={13} aria-hidden="true" /> Next least sure</button>
-          <button className="btn-icon btn-sm" onClick={() => void openTools()} aria-label="Automatic timing tools" aria-expanded={tools.open} title="Where the optional speech recogniser is"><Settings2 width={13} height={13} aria-hidden="true" /></button>
           <label className="tse-react" title="People press a little after the word is spoken. This much is taken off each tap.">Reaction <input type="number" min={0} max={2} step={0.05} value={reaction} onChange={(e) => setReaction(Math.max(0, Math.min(2, Number(e.target.value) || 0)))} aria-label="Reaction time in seconds" /> s</label>
           <span className="tse-faint"><kbd>P</kbd> play/pause · <kbd>⌘Z</kbd> undo</span>
         </div>
-
-        {tools.open && (
-          <div className="tse-tools" role="group" aria-label="Automatic timing tools">
-            <p className="tse-faint">Optional. BORN does not include a speech recogniser: point it at your own copy of whisper.cpp. Nothing is sent anywhere — it runs on this computer.</p>
-            {([['whisper', 'whisper-cli program', tools.whisperPath], ['model', 'Model file (.bin)', tools.whisperModelPath], ['ffmpeg', 'ffmpeg (only for non-WAV audio)', tools.ffmpegPath]] as const).map(([k, label, val]) => (
-              <div className="tse-tool-row" key={k}><span>{label}</span><code title={val}>{val || 'not chosen'}</code><button className="btn-secondary btn-sm" onClick={() => void chooseTool(k)}>Choose…</button></div>
-            ))}
-          </div>
-        )}
 
         {message && <div className={`tse-msg tse-msg--${message.kind}`} role="status">{message.kind === 'ok' ? <Check width={14} height={14} aria-hidden="true" /> : <AlertTriangle width={14} height={14} aria-hidden="true" />} {message.text}</div>}
         {issues.length > 0 && <ul className="tse-issues">{issues.map((i, k) => <li key={k} className={`tse-issue tse-issue--${i.level}`}>{i.message}</li>)}</ul>}

@@ -53,3 +53,6 @@ Nothing queued: all 13 proposals are built. Merge decision is the owner's (this 
 
 ### Differences from the mockups
 Recorded under Decisions above (arrows beside Show next not in the Preview header; Find is the palette not a slide-over; Run view's pictures side by side with the buttons first; plans are readings, not placeholder items; no phone-count chip; Saved kept in the rail; File menu without Edit; the ON AIR label and Remote shrink to icons below 1240 scaled px; the tape takes its own row below 1180; the Run shortcut is Ctrl/⌘+Shift+U).
+
+## Bundled automatic timing (2026-10-17)
+- Built-in whisper.cpp + English model, background queue, tape plays at once. Real 2½-hour tape: 82 s dev / 81 s packaged (macOS arm64), 356 of 363 paragraphs; startup scan of an untimed recording verified (78 s); typecheck clean; `npm test` 137 files / 1853 tests pass. Not run this slice: the Playwright regression scripts (Playwright is not installed on this machine) - only tape UI changed; Intel Mac and Windows recogniser programs not built yet (CI step added, untested).

@@ -243,3 +243,34 @@ describe('"Look again" in the Tape audio folder says what it found', () => {
   })
 })
 
+describe('automatic timing', () => {
+  const state = (o: Record<string, unknown> = {}) => ({ active: null, queued: [], available: true, ...o })
+  it('the list says Timing… with how far, and the Follow tab says the tape plays now', async () => {
+    library = [E_NEEDS]
+    api.tapeMapGet.mockImplementation(async () => null)
+    api.tapeTimingState = vi.fn(async () => state({ active: { id: 'r_2', phase: 'listen', pct: 50 } }))
+    window.electronAPI.tapeTimingState = api.tapeTimingState as never
+    await open({ recordingId: 'r_2', tab: 'follow', nonce: 1 }, wire({ recordingId: 'r_2' }))
+    expect(within(screen.getByRole('list', { name: 'Recordings' })).getByText(/Timing… 57%/)).toBeTruthy()
+    expect(await screen.findByText(/plays now. BORN is timing it in the background \(57%\)/)).toBeTruthy()
+  })
+  it('offers Time it now when nothing is running, and starts it', async () => {
+    library = [E_NEEDS]
+    api.tapeMapGet.mockImplementation(async () => null)
+    api.tapeTimingState = vi.fn(async () => state())
+    api.tapeTimingStart = vi.fn(async () => true)
+    Object.assign(window.electronAPI, { tapeTimingState: api.tapeTimingState, tapeTimingStart: api.tapeTimingStart })
+    await open({ recordingId: 'r_2', tab: 'follow', nonce: 1 }, wire({ recordingId: 'r_2' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Time it now' }))
+    expect(api.tapeTimingStart).toHaveBeenCalledWith('r_2')
+  })
+  it('the Timing tab no longer asks anyone to tap along first', async () => {
+    library = [E_NEEDS]
+    api.tapeMapGet.mockImplementation(async () => null)
+    api.tapeTimingState = vi.fn(async () => state())
+    Object.assign(window.electronAPI, { tapeTimingState: api.tapeTimingState, tapeTimingStart: vi.fn(async () => true) })
+    await open({ recordingId: 'r_2', tab: 'timing', nonce: 1 }, wire({ recordingId: 'r_2' }))
+    expect(await screen.findByText(/times every English recording by itself/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Tap to sync by hand…' })).toBeTruthy()
+  })
+})

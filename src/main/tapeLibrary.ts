@@ -182,7 +182,7 @@ export class TapeLibrary {
     for (const w of p.warnings.filter((w) => !/cut short/.test(w))) add({ id: 'format', level: 'warn', title: 'About this file’s format', detail: w })
     const map = this.o.db.getMap(recordingId, null)
     const timed = map ? map.marks.filter((m) => m.kind === 'start' && m.t !== null).length : 0
-    if (!map || timed === 0) add({ id: 'sync', level: 'warn', title: 'No paragraph timing yet', detail: 'The text cannot follow this recording until it is timed. Tap along once while you listen, or propose the timing automatically.', fix: 'sync' })
+    if (!map || timed === 0) add({ id: 'sync', level: 'warn', title: 'No paragraph timing yet', detail: 'The tape plays, but the text cannot follow it until it is timed. BORN does that by itself in the background; nothing needs doing.', fix: 'sync' })
     else if (extra.paragraphNumbers && extra.paragraphNumbers.length) {
       const covered = extra.paragraphNumbers.filter((n) => map.marks.some((m) => m.n === n && (m.t !== null || m.kind === 'skip'))).length
       const pct = covered / extra.paragraphNumbers.length

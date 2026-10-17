@@ -224,7 +224,7 @@ export default function TapeAttach({
                     {p && p.checks.some((c) => c.id === 'sync' && c.level !== 'ok') && (
                       <div className="tape-banner">
                         <Wand2 width={16} height={16} aria-hidden="true" />
-                        <span><b>Next step: make the text follow the tape.</b> Tap along once while you listen, or let BORN propose the timing and you check it. You only do this once per recording.</span>
+                        <span><b>The text will follow the tape.</b> BORN times each English recording by itself in the background, so you can play it right away; the text starts following when that finishes.</span>
                         {onSync && (
                           <span className="tape-row">
                             <button className="btn-primary btn-sm" onClick={() => onSync(r.id, 'tap')}><Hand width={13} height={13} aria-hidden="true" /> Tap to sync</button>

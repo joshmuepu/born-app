@@ -64,5 +64,5 @@ again if it's no longer needed. See [Connecting & naming displays](setup/display
 ## Recorded sermons that the text follows (tape service)
 
 Add a recording to a sermon and Born Again plays it **and** highlights the paragraph being spoken — on your screen, the congregation screen, the stage monitor, an OBS Graphics output and the phone remote.
-You time a recording once (or let speech recognition that *you* install propose the times, and review them). Everything stays on this computer. See *Running a tape service*.
+BORN times a recording by itself in the background (built-in speech recognition, English): the tape plays at once and the text follows when the timing finishes. Everything stays on this computer. See *Running a tape service*.
 

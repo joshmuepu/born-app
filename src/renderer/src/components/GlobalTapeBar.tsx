@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, Headphones, Mo
 import { formatTapeTime } from '../../../shared/tape'
 import { tapeStatusNote } from '../../../shared/tapePlayback'
 import { useTapeNow } from '../useTapeNow'
+import { timingOf, useTimingState } from '../tapeBus'
 import { useTapeScreen } from '../useTapeScreen'
 import { setTapeActions } from '../tapeActions'
 import { useTapeHint } from '../tapeHint'
@@ -12,11 +13,12 @@ import './TapeBar.css'
 import './GlobalTapeBar.css'
 
 /** The words and colour for the one status pill. Always words — colour is only a second signal. */
-export function tapeBarState(o: { status: string; stalled: boolean; errorKind: string | null; pausedBy: string | null; hasTiming: boolean; inGap: boolean; inDiffers: boolean }): { label: string; tone: 'ok' | 'warn' | 'bad' } {
+export function tapeBarState(o: { status: string; stalled: boolean; errorKind: string | null; pausedBy: string | null; hasTiming: boolean; inGap: boolean; inDiffers: boolean; timing?: { pct: number } | 'queued' | null }): { label: string; tone: 'ok' | 'warn' | 'bad' } {
   if (o.status === 'error' || o.errorKind === 'device') return { label: o.errorKind === 'device' ? 'Output lost' : 'Problem', tone: 'bad' }
   if (o.stalled) return { label: 'Sound stopped', tone: 'warn' }
   if (o.status === 'paused' && o.pausedBy === 'video') return { label: 'Paused for video', tone: 'warn' }
   if (o.status === 'paused' && o.pausedBy === 'device') return { label: 'Output lost', tone: 'bad' }
+  if (!o.hasTiming && o.timing) return { label: o.timing === 'queued' ? 'Timing soon' : `Timing… ${o.timing.pct}%`, tone: 'warn' }
   if (!o.hasTiming) return { label: 'No timing', tone: 'warn' }
   if (o.inDiffers) return { label: 'Tape differs here', tone: 'warn' }
   if (o.inGap) return { label: 'No text here', tone: 'ok' }
@@ -29,6 +31,7 @@ export function tapeBarState(o: { status: string; stalled: boolean; errorKind: s
  */
 export default function GlobalTapeBar({ onOpenTape, pushToast, embedded = false }: { /** inside the Now dock: no strip of its own */ embedded?: boolean; onOpenTape: (sermonId: number) => void; pushToast?: (t: { message: string; actionLabel?: string; onAction?: () => void; timeoutMs?: number }) => void }): JSX.Element | null {
   const n = useTapeNow()
+  const timingState = useTimingState()
   const { wire, rec } = n
   const screen = useTapeScreen({ recording: rec, sermonId: wire?.sermonId ?? null, title: rec?.file.name ?? '', map: n.map })
   const [devOpen, setDevOpen] = useState(false)
@@ -76,7 +79,7 @@ export default function GlobalTapeBar({ onOpenTape, pushToast, embedded = false 
   const busy = wire.status === 'loading'
   const dur = wire.duration ?? rec.file.durationSec
   const left = Math.max(0, dur - n.pos)
-  const st = tapeBarState({ status: wire.status, stalled: wire.stalled, errorKind: wire.errorKind, pausedBy: wire.pausedBy, hasTiming: n.hasTiming, inGap: !!n.here?.inGap, inDiffers: !!n.here?.inDiffers })
+  const st = tapeBarState({ status: wire.status, stalled: wire.stalled, errorKind: wire.errorKind, pausedBy: wire.pausedBy, hasTiming: n.hasTiming, inGap: !!n.here?.inGap, inDiffers: !!n.here?.inDiffers, timing: timingOf(timingState, wire.recordingId) })
   const note = tapeStatusNote(wire)
   const warn = st.tone !== 'ok' && !!note
   const sub = wire.status === 'loading' ? 'Loading…' : wire.status === 'ended' ? 'Finished' : playing ? `Playing${Math.abs(wire.speed - 1) > 0.001 ? ` · ${wire.speed}×` : ''}` : wire.status === 'error' ? 'Stopped' : 'Paused'

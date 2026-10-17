@@ -54,6 +54,10 @@
         ]
       },
       {
+        "from": "resources/whisper",
+        "to": "whisper"
+      },
+      {
         "from": "docs/manual/v2",
         "to": "manual/v2"
       }

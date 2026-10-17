@@ -204,13 +204,9 @@ describe('the sync editor', () => {
     expect(screen.getByText('0 of 5 paragraphs timed')).toBeTruthy()
   })
 
-  it('the tools panel shows where the optional recogniser is, and choosing a file saves it in the settings', async () => {
-    api.tapeSettingsGet.mockResolvedValue({ speedRange: 'wide', whisperPath: '', whisperModelPath: '', ffmpegPath: '' })
+  it('has no recogniser settings: the speech recogniser comes with BORN', async () => {
     await open()
-    fireEvent.click(screen.getByRole('button', { name: 'Automatic timing tools' }))
-    await screen.findByText(/BORN does not include a speech recogniser/)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Choose…' })[0])
-    await waitFor(() => expect(api.tapeSettingsSet).toHaveBeenCalledWith({ whisperPath: '/opt/whisper/whisper-cli' }))
-    expect(await screen.findByText('/opt/whisper/whisper-cli')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Automatic timing tools' })).toBeNull()
+    expect(screen.queryByText(/whisper-cli program/)).toBeNull()
   })
 })

@@ -142,6 +142,8 @@ describe('the status pill', () => {
   it('is always words, in the order of what matters most', () => {
     expect(tapeBarState(base)).toEqual({ label: 'In sync', tone: 'ok' })
     expect(tapeBarState({ ...base, hasTiming: false })).toEqual({ label: 'No timing', tone: 'warn' })
+    expect(tapeBarState({ ...base, hasTiming: false, timing: { pct: 40 } })).toEqual({ label: 'Timing… 40%', tone: 'warn' })
+    expect(tapeBarState({ ...base, hasTiming: false, timing: 'queued' })).toEqual({ label: 'Timing soon', tone: 'warn' })
     expect(tapeBarState({ ...base, inGap: true })).toEqual({ label: 'No text here', tone: 'ok' })
     expect(tapeBarState({ ...base, inDiffers: true })).toEqual({ label: 'Tape differs here', tone: 'warn' })
     expect(tapeBarState({ ...base, stalled: true })).toEqual({ label: 'Sound stopped', tone: 'warn' })

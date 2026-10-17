@@ -24,7 +24,8 @@ import { lowerThirdNow, tapeGraphicsKey, withoutTapeBody } from '../shared/tapeS
 import { numberedParagraphs } from '../shared/tapeParagraphs'
 import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, type PhoneTapeDeps } from './tapePhone'
 import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
-import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, hub as tapeHub } from './tapeService'
+import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, getTapeLibrary, hub as tapeHub } from './tapeService'
+import { initAutoTiming, enqueueUntimed } from './tapeAuto'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -3084,6 +3085,12 @@ app.whenReady().then(async () => {
   registerMediaIpc(() => mainWindow)
   registerYouTubeIpc()
   registerTapeIpc(() => mainWindow)
+  initAutoTiming({
+    db: getTapeDb,
+    lib: getTapeLibrary,
+    paragraphs: async (sermonId) => numberedParagraphs((await getSermonParagraphsFor(sermonId, 'en')) as Quote[]).map((p) => ({ n: p.n, text: p.text }))
+  })
+  enqueueUntimed()
   setInterval(tickTapeGraphics, 300).unref()
   setTapeFanout({
     state: (w) => {

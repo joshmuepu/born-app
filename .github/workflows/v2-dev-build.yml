@@ -46,6 +46,20 @@ jobs:
           if [ -f resources/bible-cache.db ]; then export BORN_REUSE_BIBLE=1; fi
           npm run build:library
 
+      # The speech recogniser that ships inside the app (whisper.cpp, MIT) and its English model. Static build: one whisper-cli.exe, no extra DLLs.
+      # Not yet run on a real runner - if this step fails, the installer is still built (it just will not time tapes by itself).
+      - name: Build the bundled speech recogniser
+        shell: bash
+        continue-on-error: true
+        run: |
+          git init "$RUNNER_TEMP/whisper.cpp" && cd "$RUNNER_TEMP/whisper.cpp" && git fetch --depth 1 https://github.com/ggml-org/whisper.cpp 0c7be696371069e0baa2515ed7aa08d5a5473aa6 && git checkout FETCH_HEAD && cd -   # the same revision as the Mac build
+          cmake -S "$RUNNER_TEMP/whisper.cpp" -B "$RUNNER_TEMP/whisper-build" -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF
+          cmake --build "$RUNNER_TEMP/whisper-build" --config Release --target whisper-cli -j 4
+          mkdir -p resources/whisper/win32-x64
+          cp "$RUNNER_TEMP/whisper-build/bin/Release/whisper-cli.exe" resources/whisper/win32-x64/
+          curl -L --fail -o resources/whisper/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+          echo "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002  resources/whisper/ggml-base.en.bin" | sha256sum -c -
+
       - name: Build and package (unsigned, not published)
         run: npm run dist:win -- --publish never
 

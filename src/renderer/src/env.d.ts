@@ -201,6 +201,11 @@ declare global {
         | { ok: false; message: string; canceled?: boolean }
       >
       tapeAlignCancel: () => Promise<boolean>
+      tapeTimingState: () => Promise<{ active: { id: string; phase: 'prepare' | 'listen' | 'match'; pct: number } | null; queued: string[]; available: boolean }>
+      tapeTimingStart: (recordingId: string) => Promise<boolean>
+      tapeTimingCancel: (recordingId?: string) => Promise<boolean>
+      onTapeTiming: (cb: (s: { active: { id: string; phase: 'prepare' | 'listen' | 'match'; pct: number } | null; queued: string[]; available: boolean }) => void) => () => void
+      onTapeTimingDone: (cb: (d: { recordingId: string; ok: boolean; located: number; paragraphs: number; message: string }) => void) => () => void
       onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void) => () => void
       tapeOverridesGet: (recordingId: string, textLanguage: string) => Promise<Array<{ textN: number; mapN: number }>>
       tapeOverridesSet: (recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>) => Promise<Array<{ textN: number; mapN: number }>>

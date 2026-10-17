@@ -1094,6 +1094,11 @@ export default function App() {
     timeoutMs: 15000,
     onAction: () => { void window.electronAPI.tapeCommand({ type: 'seek', to: j.fromSec }) }
   })), [pushToast])
+  // BORN times recordings by itself in the background: say when the text can follow one (or why it could not)
+  useEffect(() => window.electronAPI.onTapeTimingDone?.((d) => pushToast({
+    message: d.ok ? `Timing finished — the text now follows the tape (${d.located} of ${d.paragraphs} paragraphs found).` : `The tape could not be timed automatically: ${d.message}`,
+    timeoutMs: d.ok ? 7000 : 12000
+  })), [pushToast])
   useEffect(() => window.electronAPI.onOperatorNotice?.((message) => pushToast({ message, timeoutMs: 9000 })), [pushToast])
   useEffect(() => {
     const load = (): void => {

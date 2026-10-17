@@ -26,6 +26,8 @@ import { streamPageUrl, findAudioUrl, downloadFileName, downloadProblem } from '
 import { mkdirSync, createWriteStream, renameSync, unlinkSync } from 'fs'
 import { cleanSyncMarks, cleanSyncRegions, cleanTextLanguage, cleanTapeSettingsPatch } from '../shared/tapeClean'
 import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
+import { autoTimingState, cancelAutoTiming, enqueueTiming, forgetFailure as failedReset } from './tapeAuto'
+import { bundledTools } from './tapeTools'
 import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
 import type { SyncMark, SyncMap, SyncRegion, SyncSource } from '../shared/tape'
 
@@ -290,7 +292,9 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
   const importPaths = async (paths: string[], opts: { sermonId?: number; language?: string; link?: boolean }): Promise<TapeImportResult[]> => {
     const l = getTapeLibrary()
     if (!l) return paths.map((p) => ({ ok: false as const, path: p, reason: 'unreadable' as const, message: 'The tape library is not available on this computer.' }))
-    return l.importPaths(paths.filter((p) => typeof p === 'string'), { sermonId: opts.sermonId, language: opts.language, link: !!opts.link })
+    const results = await l.importPaths(paths.filter((p) => typeof p === 'string'), { sermonId: opts.sermonId, language: opts.language, link: !!opts.link })
+    for (const r of results) if (r.ok && r.recording) enqueueTiming(r.recording.id) // timed in the background; the tape plays now
+    return results
   }
   ipcMain.handle('tape:import-paths', (_e, paths: string[], opts: { sermonId?: number; language?: string; link?: boolean } = {}) => importPaths(paths ?? [], opts ?? {}))
   ipcMain.handle('tape:pick-and-import', async (_e, opts: { sermonId?: number; language?: string; link?: boolean } = {}) => {
@@ -415,9 +419,12 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     const paras = (Array.isArray(paragraphs) ? paragraphs : []).filter((p) => p && Number.isInteger(p.n) && typeof p.text === 'string').map((p) => ({ n: p.n as number, text: p.text as string }))
     if (!paras.length) return { ok: false, message: 'There is no numbered text to line up.' }
     const t = getSettings().tape
-    return alignRecording(path, paras, { whisper: t.whisperPath ?? '', model: t.whisperModelPath ?? '', ffmpeg: t.ffmpegPath ?? '' }, (p) => { if (!e.sender.isDestroyed()) e.sender.send('tape:align-progress', p) })
+    return alignRecording(path, paras, bundledTools() ?? { whisper: '', model: '' }, (p) => { if (!e.sender.isDestroyed()) e.sender.send('tape:align-progress', p) })
   })
   ipcMain.handle('tape:align-cancel', () => { cancelAlign(); return alignBusy() })
+  ipcMain.handle('tape:timing-state', () => autoTimingState())
+  ipcMain.handle('tape:timing-start', (_e, recordingId: string) => { failedReset(String(recordingId)); return enqueueTiming(String(recordingId)) })
+  ipcMain.handle('tape:timing-cancel', (_e, recordingId?: string) => { cancelAutoTiming(recordingId ? String(recordingId) : undefined); return true })
   ipcMain.handle('tape:overrides-get', (_e, recordingId: string, textLanguage: string) => (lang(textLanguage) ? getTapeDb()?.getOverrides(String(recordingId), String(textLanguage)) ?? [] : []))
   ipcMain.handle('tape:overrides-set', (_e, recordingId: string, textLanguage: string, rows: unknown) => {
     const db = getTapeDb()

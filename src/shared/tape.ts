@@ -133,7 +133,7 @@ export interface TapeSettings {
   escRule: 'keep' | 'pause'
   /** if numbering differs between the tape's map and the text language */
   mismatchPolicy: 'ask' | 'never' | 'matching'
-  /** a whisper.cpp add-on (S8), set by the operator: nothing is bundled */
+  /** legacy overrides from before the recogniser shipped inside the app; empty means use the built-in one */
   whisperPath: string
   whisperModelPath: string
   ffmpegPath: string

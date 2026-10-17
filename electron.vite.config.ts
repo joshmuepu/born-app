@@ -26,7 +26,8 @@ export default defineConfig({
           index: resolve(__dirname, 'src/renderer/index.html'),
           projection: resolve(__dirname, 'src/renderer/projection.html'),
           stage: resolve(__dirname, 'src/renderer/stage.html'),
-          audio: resolve(__dirname, 'src/renderer/audio.html')
+          audio: resolve(__dirname, 'src/renderer/audio.html'),
+          decode: resolve(__dirname, 'src/renderer/decode.html')
         }
       }
     }

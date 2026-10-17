@@ -1,21 +1,22 @@
 /**
- * tapeAligner.ts — runs the OPTIONAL speech recogniser (whisper.cpp) the operator has installed, and turns its words into a proposed sync map.
- * Nothing is bundled: the operator points Settings at their own whisper-cli, model file and (for non-WAV audio) ffmpeg.
+ * tapeAligner.ts — runs the speech recogniser (whisper.cpp) that ships inside the app, and turns its words into a sync map.
+ * M4A/AAC is decoded in-app first (tapeDecode.ts); WAV, MP3, FLAC and OGG go straight to the recogniser. No other program is needed.
  * It runs as a child process (never on the UI thread), reports progress, can be cancelled, and only ever RETURNS a proposal.
  */
 import { spawn, type ChildProcess } from 'child_process'
 import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync } from 'fs'
 import { tmpdir, cpus } from 'os'
+import { setPriority } from 'os'
 import { join, dirname } from 'path'
 import { alignParagraphs, heardFromWhisperJson, refineToSpeech, type AlignParagraph, type AlignResult, type Envelope, type RefineStats } from '../shared/tapeAlign'
 
-export interface AlignTools { whisper: string; model: string; ffmpeg: string }
+export interface AlignTools { whisper: string; model: string }
 export interface AlignProgress { phase: 'prepare' | 'listen' | 'match'; pct: number }
 export type AlignOutcome = { ok: true; result: AlignResult; seconds: number; heardWords: number; refined: RefineStats | null } | { ok: false; message: string; canceled?: boolean }
 
 export function checkTools(t: AlignTools): string | null {
-  if (!t.whisper || !existsSync(t.whisper)) return 'Choose the whisper.cpp program (whisper-cli) in Settings first.'
-  if (!t.model || !existsSync(t.model)) return 'Choose a whisper.cpp model file in Settings first.'
+  if (!t.whisper || !existsSync(t.whisper)) return 'The speech recogniser that comes with BORN is missing from this installation.'
+  if (!t.model || !existsSync(t.model)) return 'The speech recogniser’s model file is missing from this installation.'
   return null
 }
 
@@ -78,10 +79,11 @@ export function cancelAlign(): void {
   for (const p of current.procs) p.kill()
 }
 
-function run(cmd: string, args: string[], job: { procs: ChildProcess[] }, onLine?: (s: string) => void, env?: NodeJS.ProcessEnv): Promise<number> {
+function run(cmd: string, args: string[], job: { procs: ChildProcess[] }, onLine?: (s: string) => void, env?: NodeJS.ProcessEnv, lowPriority = false): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } })
     job.procs.push(p)
+    if (lowPriority && p.pid) try { setPriority(p.pid, 10) } catch { /* the default priority is fine */ }
     const feed = (b: Buffer): void => { if (onLine) for (const l of b.toString('utf8').split(/\r?\n/)) if (l) onLine(l) }
     p.stdout.on('data', feed)
     p.stderr.on('data', feed)
@@ -90,7 +92,7 @@ function run(cmd: string, args: string[], job: { procs: ChildProcess[] }, onLine
   })
 }
 
-export async function alignRecording(audioPath: string, paragraphs: AlignParagraph[], tools: AlignTools, onProgress: (p: AlignProgress) => void): Promise<AlignOutcome> {
+export async function alignRecording(audioPath: string, paragraphs: AlignParagraph[], tools: AlignTools, onProgress: (p: AlignProgress) => void, opts: { lowPriority?: boolean } = {}): Promise<AlignOutcome> {
   const bad = checkTools(tools)
   if (bad) return { ok: false, message: bad }
   if (current) return { ok: false, message: 'An alignment is already running.' }
@@ -101,26 +103,28 @@ export async function alignRecording(audioPath: string, paragraphs: AlignParagra
   try {
     onProgress({ phase: 'prepare', pct: 0 })
     let wav = audioPath
-    if (!/\.wav$/i.test(audioPath)) {
-      if (!tools.ffmpeg || !existsSync(tools.ffmpeg)) return { ok: false, message: 'This audio needs ffmpeg to be read by the recogniser. Choose ffmpeg in Settings, or use a WAV file.' }
+    if (/\.(m4a|mp4|aac)$/i.test(audioPath)) {
       wav = join(dir, 'in.wav')
-      const code = await run(tools.ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-i', audioPath, '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav], job)
+      const { decodeM4aToWav16k } = await import('./tapeDecode') // loaded when needed (it uses the app's windows)
+      const d = await decodeM4aToWav16k(audioPath, wav, (pct) => onProgress({ phase: 'prepare', pct }), () => job.canceled)
       if (job.canceled) return { ok: false, message: 'Canceled.', canceled: true }
-      if (code !== 0) return { ok: false, message: 'ffmpeg could not read the audio.' }
+      if (!d.ok) return { ok: false, message: d.message }
+    } else if (!/\.(wav|mp3|flac|ogg)$/i.test(audioPath)) {
+      return { ok: false, message: 'This kind of audio file cannot be timed automatically (M4A, MP3, WAV, FLAC and OGG can).' }
     }
     const out = join(dir, 'out')
-    const threads = Math.max(1, Math.min(8, cpus().length - 1))
+    const threads = Math.max(1, Math.min(opts.lowPriority ? 4 : 8, cpus().length - 1))
     const code = await run(tools.whisper, ['-m', tools.model, '-f', wav, '-ml', '1', '-sow', '-oj', '-of', out, '-t', String(threads), '-pp'], job, (l) => {
       const m = /progress\s*=\s*(\d+)%/.exec(l)
       if (m) onProgress({ phase: 'listen', pct: Number(m[1]) })
-    }, { DYLD_LIBRARY_PATH: dirname(tools.whisper) })
+    }, { DYLD_LIBRARY_PATH: dirname(tools.whisper), LD_LIBRARY_PATH: dirname(tools.whisper) }, !!opts.lowPriority)
     if (job.canceled) return { ok: false, message: 'Canceled.', canceled: true }
-    if (code !== 0 || !existsSync(out + '.json')) return { ok: false, message: 'The recogniser stopped with an error. Check the program and model in Settings.' }
+    if (code !== 0 || !existsSync(out + '.json')) return { ok: false, message: 'The speech recogniser stopped with an error.' }
     onProgress({ phase: 'match', pct: 100 })
     const heard = heardFromWhisperJson(JSON.parse(readFileSync(out + '.json', 'utf8')))
     const result = alignParagraphs(heard, paragraphs)
     // a paragraph cannot start in silence: where the recogniser put a start in a pause, move it to where the speech begins
-    const env = wavEnvelope(wav)
+    const env = wav === audioPath && !/\.wav$/i.test(audioPath) ? null : wavEnvelope(wav)
     let refined: RefineStats | null = null
     if (env) {
       const r = refineToSpeech(result.marks, env)

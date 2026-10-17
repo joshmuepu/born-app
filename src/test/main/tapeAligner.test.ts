@@ -25,16 +25,16 @@ const paras = [{ n: 1, text: 'The Lord is my shepherd' }, { n: 2, text: 'He make
 
 describe('tape aligner runner', () => {
   it('asks for the tools before doing anything', () => {
-    expect(checkTools({ whisper: '', model: '', ffmpeg: '' })).toMatch(/whisper/)
+    expect(checkTools({ whisper: '', model: '' })).toMatch(/recogniser/)
     const d = mkdtempSync(join(tmpdir(), 'al-'))
-    expect(checkTools({ whisper: fakeWhisper(d), model: '/nope', ffmpeg: '' })).toMatch(/model/)
+    expect(checkTools({ whisper: fakeWhisper(d), model: '/nope' })).toMatch(/model/)
   })
   it('runs the recogniser on a WAV, reports progress, and returns a proposal', async () => {
     const d = mkdtempSync(join(tmpdir(), 'al-'))
     const model = join(d, 'm.bin'); writeFileSync(model, 'x')
     const wav = join(d, 'a.wav'); writeFileSync(wav, 'x')
     const seen: number[] = []
-    const r = await alignRecording(wav, paras, { whisper: fakeWhisper(d), model, ffmpeg: '' }, (p) => { if (p.phase === 'listen') seen.push(p.pct) })
+    const r = await alignRecording(wav, paras, { whisper: fakeWhisper(d), model }, (p) => { if (p.phase === 'listen') seen.push(p.pct) })
     expect(r.ok).toBe(true)
     if (r.ok) {
       expect(r.result.marks.map((m) => m.n)).toEqual([1, 2])
@@ -44,20 +44,20 @@ describe('tape aligner runner', () => {
     expect(seen).toContain(100)
     expect(alignBusy()).toBe(false)
   })
-  it('needs ffmpeg for audio that is not WAV, and says so', async () => {
+  it('says plainly when the audio is a kind it cannot read', async () => {
     const d = mkdtempSync(join(tmpdir(), 'al-'))
     const model = join(d, 'm.bin'); writeFileSync(model, 'x')
-    const m4a = join(d, 'a.m4a'); writeFileSync(m4a, 'x')
-    const r = await alignRecording(m4a, paras, { whisper: fakeWhisper(d), model, ffmpeg: '' }, () => {})
+    const odd = join(d, 'a.aiff'); writeFileSync(odd, 'x')
+    const r = await alignRecording(odd, paras, { whisper: fakeWhisper(d), model }, () => {})
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.message).toMatch(/ffmpeg/)
+    if (!r.ok) expect(r.message).toMatch(/cannot be timed automatically/)
   })
   it('can be canceled while running, and cleans up', async () => {
     const d = mkdtempSync(join(tmpdir(), 'al-'))
     const model = join(d, 'm.bin'); writeFileSync(model, 'x')
     const wav = join(d, 'a.wav'); writeFileSync(wav, 'x')
     const slow = fakeWhisper(d, '#!/bin/bash\nsleep 30\n')
-    const pr = alignRecording(wav, paras, { whisper: slow, model, ffmpeg: '' }, () => {})
+    const pr = alignRecording(wav, paras, { whisper: slow, model }, () => {})
     await new Promise((r) => setTimeout(r, 300))
     expect(alignBusy()).toBe(true)
     cancelAlign()
@@ -70,9 +70,9 @@ describe('tape aligner runner', () => {
     const d = mkdtempSync(join(tmpdir(), 'al-'))
     const model = join(d, 'm.bin'); writeFileSync(model, 'x')
     const wav = join(d, 'a.wav'); writeFileSync(wav, 'x')
-    const r = await alignRecording(wav, paras, { whisper: fakeWhisper(d, '#!/bin/bash\nexit 3\n'), model, ffmpeg: '' }, () => {})
+    const r = await alignRecording(wav, paras, { whisper: fakeWhisper(d, '#!/bin/bash\nexit 3\n'), model }, () => {})
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.message).toMatch(/Settings/)
+    if (!r.ok) expect(r.message).toMatch(/stopped with an error/)
   })
 })
 
@@ -135,7 +135,7 @@ cat > "$OF.json" <<'J'
 J
 `)
     chmodSync(whisper, 0o755)
-    const r = await alignRecording(wav, [{ n: 1, text: 'The Lord is my shepherd' }, { n: 2, text: 'He maketh me to lie down' }], { whisper, model, ffmpeg: '' }, () => {})
+    const r = await alignRecording(wav, [{ n: 1, text: 'The Lord is my shepherd' }, { n: 2, text: 'He maketh me to lie down' }], { whisper, model }, () => {})
     expect(r.ok).toBe(true)
     if (r.ok) {
       const t = (n: number): number => r.result.marks.find((m) => m.n === n)!.t as number

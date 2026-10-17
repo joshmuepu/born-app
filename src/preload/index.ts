@@ -465,6 +465,19 @@ const api = {
   tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg'): Promise<string | null> => ipcRenderer.invoke('tape:pick-tool', which),
   tapeEsc: (shift: boolean, blanking: boolean): void => ipcRenderer.send('tape:esc', shift, blanking),
   tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>): Promise<unknown> => ipcRenderer.invoke('tape:align-run', recordingId, paragraphs),
+  tapeTimingState: (): Promise<unknown> => ipcRenderer.invoke('tape:timing-state'),
+  tapeTimingStart: (recordingId: string): Promise<boolean> => ipcRenderer.invoke('tape:timing-start', recordingId),
+  tapeTimingCancel: (recordingId?: string): Promise<boolean> => ipcRenderer.invoke('tape:timing-cancel', recordingId),
+  onTapeTiming: (cb: (s: unknown) => void): (() => void) => {
+    const h = (_e: unknown, s: unknown): void => cb(s)
+    ipcRenderer.on('tape:timing', h)
+    return () => ipcRenderer.removeListener('tape:timing', h)
+  },
+  onTapeTimingDone: (cb: (d: unknown) => void): (() => void) => {
+    const h = (_e: unknown, d: unknown): void => cb(d)
+    ipcRenderer.on('tape:timing-done', h)
+    return () => ipcRenderer.removeListener('tape:timing-done', h)
+  },
   tapeAlignCancel: (): Promise<boolean> => ipcRenderer.invoke('tape:align-cancel'),
   onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void): (() => void) => {
     const h = (_e: unknown, p: { phase: 'prepare' | 'listen' | 'match'; pct: number }): void => cb(p)
@@ -498,6 +511,14 @@ const api = {
   tapeEngineDevices: (list: unknown): void => ipcRenderer.send('tape:engine-devices', list),
   tapeEngineDeviceLost: (): void => ipcRenderer.send('tape:engine-device-lost'),
   tapeEngineReady: (): void => ipcRenderer.send('tape:engine-ready'),
+  // the hidden decoder window (automatic timing): frames in, 16 kHz sound out
+  onTapeDecode: (cb: (m: unknown) => void): (() => void) => {
+    const h = (_e: IpcRendererEvent, m: unknown): void => cb(m)
+    ipcRenderer.on('tape:decode', h)
+    return () => ipcRenderer.removeListener('tape:decode', h)
+  },
+  tapeDecodeReady: (): void => ipcRenderer.send('tape:decode-ready'),
+  tapeDecodeOut: (m: unknown): void => ipcRenderer.send('tape:decode-out', m),
   tapeLoad: (recordingId: string, opts?: { play?: boolean; position?: number }): Promise<unknown> => ipcRenderer.invoke('tape:load', recordingId, opts),
   tapeCommand: (action: unknown): Promise<unknown> => ipcRenderer.invoke('tape:command', action),
   tapeGet: (): Promise<unknown> => ipcRenderer.invoke('tape:get'),
