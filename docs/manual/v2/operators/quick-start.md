@@ -52,10 +52,17 @@ projecting one at a time, see the next step.)
 
 ## 5. Build a running order (optional)
 
+**The first time you open Born Again** the queue panel is already open on the right with a
+**Set up Sunday** checklist: choose your screens, add tonight's items (or start from a plan —
+**Sunday morning**, **Midweek** or **Funeral or memorial** — which lines up the usual readings
+in one step, with an **Undo**), and check that it is ready. It goes away by itself once your
+queue has something in it. **Hide this checklist** hides it sooner; the **⚙** menu →
+**Show the Set up Sunday checklist** brings it back on an empty queue.
+
 Instead of projecting one thing at a time, click **Add to Queue** (sermon quotes)
 or **+ Queue** (Bible verses, songs) on anything you find, and it lines up in the
 queue panel on the right, in
-order. The panel opens by itself once something is queued or projecting; the
+order. The panel opens by itself once something is queued or projecting (and on a brand-new profile, for the checklist); the
 **Queue** button (under **Service**) on the left rail shows or hides it. Drag to reorder. Click any queued item's **Show** button (it reads
 **Restart here** once it's live) to jump straight to it.
 

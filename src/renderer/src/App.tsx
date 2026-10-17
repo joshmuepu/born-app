@@ -14,6 +14,7 @@ import { escBlanksScreens, overlayIsOpen, trackEscOverlay } from './escRule'
 import { SECTION_NAMES, cycleRegion } from './regions'
 import SkipLinks from './components/SkipLinks'
 import NowDock from './components/NowDock'
+import { templateById } from '../../shared/serviceTemplates'
 import AppearanceMenu from './components/AppearanceMenu'
 import { setClickShows, useClickShows } from './rowGesture'
 import { useUiScale, type UiScaleChoice } from './uiScale'
@@ -207,6 +208,10 @@ export default function App() {
   const { choice: uiScale, setChoice: setUiScale, factor: uiFactor } = useUiScale()
   // Queue panel: open during a service (anything queued or projecting),
   // collapsed otherwise — until the operator chooses, which is remembered.
+  // P-12: the "Set up Sunday" checklist is shown on the start screen of a profile that has never built a queue, until the queue first has something in it
+  // (or it is hidden); the ⚙ menu brings it back.
+  const [setupState, setSetupState] = useState<'show' | 'done' | 'hidden'>(() => { try { const v = localStorage.getItem('born.setupSunday'); return v === 'done' || v === 'hidden' ? v : 'show' } catch { return 'show' } })
+  const setSetup = useCallback((v: 'show' | 'done' | 'hidden') => { setSetupState(v); try { localStorage.setItem('born.setupSunday', v) } catch { /* a convenience */ } }, [])
   const [queueChoice, setQueueChoice] = useState<'open' | 'closed' | null>(() => {
     try {
       const v = localStorage.getItem('born.queuePanel')
@@ -235,7 +240,9 @@ export default function App() {
   }, [])
   const queueMax = Math.max(QUEUE_MIN, Math.min(QUEUE_MAX, Math.floor((winWidth / uiFactor) * 0.5)))
   const queueW = Math.min(Math.max(queueWidth, QUEUE_MIN), queueMax)
-  const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen
+  // a profile that has never built a queue opens it, so the first-run checklist (P-12) is where you look
+  useEffect(() => { if (serviceQueue.length > 0 && setupState === 'show') setSetup('done') }, [serviceQueue.length, setupState, setSetup])
+  const queueOpen = queueChoice ? queueChoice === 'open' : serviceQueue.length > 0 || projectionOpen || setupState === 'show'
   const toggleQueue = useCallback(() => {
     const next = queueOpen ? 'closed' : 'open'
     setQueueChoice(next)
@@ -1010,6 +1017,27 @@ export default function App() {
         onAction: () => mutateQueue((q) => placed.reduce((acc, it) => removeById(acc, it.id), q))
       })
       recs.forEach((r) => void window.electronAPI.mediaMarkUsed(r.id))
+    },
+    [mutateQueue, pushToast]
+  )
+  /** A quick-start plan (P-12): its readings go into the queue in one step, with an Undo. Nothing goes live. */
+  const applyTemplate = useCallback(
+    async (id: string) => {
+      const t = templateById(id)
+      if (!t) return
+      const items: QueueItem[] = []
+      for (const r of t.readings) {
+        const p = await window.electronAPI.lookupPassage(r.reference, 'KJV')
+        if (p && !('error' in (p as object))) items.push(passageToItem(p as ResolvedPassage))
+      }
+      if (items.length === 0) { pushToast({ message: 'Those readings could not be found in this Bible.', timeoutMs: 6000 }); return }
+      mutateQueue((q) => [...q, ...items])
+      pushToast({
+        message: `Added ${items.length} reading${items.length === 1 ? '' : 's'} from “${t.name}”. ${t.addNext}`,
+        actionLabel: 'Undo',
+        timeoutMs: 9000,
+        onAction: () => mutateQueue((q) => items.reduce((acc, it) => removeById(acc, it.id), q))
+      })
     },
     [mutateQueue, pushToast]
   )
@@ -2288,6 +2316,7 @@ export default function App() {
             onUiScale={setUiScale}
             clickShows={clickShows}
             onClickShows={setClickShows}
+            onShowSetup={() => { setSetup('show'); if (serviceQueue.length > 0) pushToast({ message: 'The Set up Sunday checklist shows on an empty queue (File → New service).', timeoutMs: 6000 }) }}
             onHelp={() => setShowHelp(true)}
             onShortcuts={() => setShowShortcuts(true)}
           />
@@ -2613,6 +2642,7 @@ export default function App() {
             onMediaSettings={handleMediaSettings}
             onPreflight={() => setPreflightOpen(true)}
             readiness={readiness}
+            setup={setupState === 'show' && serviceQueue.length === 0 ? { projectionOpen, screensChosen: projectionOpen, onScreens: () => window.dispatchEvent(new CustomEvent('born:open-screens')), onTemplate: (id) => void applyTemplate(id), onGo: (s) => setTopTab(s), onDismiss: () => setSetup('hidden') } : null}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}

@@ -17,6 +17,7 @@ export default function AppearanceMenu({
   onUiScale,
   clickShows,
   onClickShows,
+  onShowSetup,
   onHelp,
   onShortcuts
 }: {
@@ -29,6 +30,8 @@ export default function AppearanceMenu({
   /** P-08: a single click shows a verse, slide or paragraph (how earlier versions worked). Off: a click selects; Enter or a double-click shows. */
   clickShows: boolean
   onClickShows: (on: boolean) => void
+  /** bring back the first-run "Set up Sunday" checklist */
+  onShowSetup: () => void
   onHelp: () => void
   onShortcuts: () => void
 }): JSX.Element {
@@ -97,6 +100,7 @@ export default function AppearanceMenu({
           <div className="am-h am-h--help">Help</div>
           <button type="button" className="am-item" onClick={act(onHelp)}>Open the manual <kbd>F1</kbd></button>
           <button type="button" className="am-item" onClick={act(onShortcuts)}>Keyboard shortcuts <kbd>?</kbd></button>
+          <button type="button" className="am-item" onClick={act(onShowSetup)}>Show the Set up Sunday checklist</button>
         </div>
       )}
     </div>

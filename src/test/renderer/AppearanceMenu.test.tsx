@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import AppearanceMenu from '../../renderer/src/components/AppearanceMenu'
 
 afterEach(cleanup)
-const props = () => ({ theme: 'dark' as const, onTheme: vi.fn(), contrast: false, onContrast: vi.fn(), uiScale: 'auto' as const, onUiScale: vi.fn(), clickShows: false, onClickShows: vi.fn(), onHelp: vi.fn(), onShortcuts: vi.fn() })
+const props = () => ({ theme: 'dark' as const, onTheme: vi.fn(), contrast: false, onContrast: vi.fn(), uiScale: 'auto' as const, onUiScale: vi.fn(), clickShows: false, onClickShows: vi.fn(), onShowSetup: vi.fn(), onHelp: vi.fn(), onShortcuts: vi.fn() })
 
 describe('the ⚙ menu: appearance, interface size, Help (P-01 / P-11)', () => {
   it('is one button with a name, closed until pressed', () => {

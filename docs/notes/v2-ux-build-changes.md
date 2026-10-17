@@ -41,3 +41,7 @@ Plain language. Updated with every slice of the UX build.
 ## Verses, song slides and sermon paragraphs
 - A **single click now only selects** the row (it gets a purple edge). It no longer puts anything on the screens by accident. **Enter**, **Space** or a **double-click** shows it, and the row's **Show** button always shows it. The **Show** and **+ Queue** buttons appear when you point at a row, tab to it or select it (always on a touch screen).
 - If your team likes the old one-click way: **⚙ menu → A single click shows it**.
+
+## The first time (new profiles only)
+- A brand-new install opens with the queue panel showing a **Set up Sunday** checklist: choose your screens, add tonight's items, check that it is ready. It has three **plans** that line up the usual public-domain readings in one step (with an Undo): **Sunday morning** (Psalm 100, the Lord's Prayer, the benediction), **Midweek**, **Funeral or memorial** (Psalm 23, John 14, 1 Thessalonians 4, Revelation 21). You add the songs and the sermon.
+- It disappears when the queue first has something in it, or with **Hide this checklist**. Existing installs with a queue never see it. **⚙ → Show the Set up Sunday checklist** brings it back.

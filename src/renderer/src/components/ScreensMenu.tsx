@@ -100,6 +100,12 @@ export default function ScreensMenu({
   onOpenChannel
 }: Props): JSX.Element {
   const [open, setOpen] = useState(false)
+  // "Open the Screens menu" from the first-run checklist
+  useEffect(() => {
+    const h = (): void => setOpen(true)
+    window.addEventListener('born:open-screens', h)
+    return () => window.removeEventListener('born:open-screens', h)
+  }, [])
   const wrapRef = useRef<HTMLDivElement>(null)
   const [managerOpen, setManagerOpen] = useState(false)
   const [managerTab, setManagerTab] = useState<ManagerTab>('displays')

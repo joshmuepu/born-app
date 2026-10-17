@@ -62,6 +62,8 @@ interface Props {
   onOpenPack?: () => void
   /** What the last "Is tonight ready?" check found, if it still applies to this queue (null = not checked, or the queue has changed since). */
   readiness?: { fail: number; warn: number } | null
+  /** The first-run checklist shown on the start screen (null = not now). */
+  setup?: import('./StartScreen').SetupSunday | null
   recents: RecentService[]
   onOpenRecent: (path: string) => void
   /** Set when Open/Import couldn't read or parse a file — a damaged or
@@ -173,6 +175,7 @@ export default function ServiceQueue({
   onMediaSettings,
   onPreflight,
   readiness,
+  setup,
   background
 }: Props) {
   const actions = useAppActions()
@@ -536,7 +539,7 @@ export default function ServiceQueue({
             setDropIndex(null)
           }}
         >
-          <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} />
+          <StartScreen recents={recents} onOpen={onOpenService} onOpenRecent={onOpenRecent} setup={setup} />
         </div>
       ) : (
         <div
