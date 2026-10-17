@@ -5,6 +5,8 @@
  * record says (play/pause, speed, volume, output device) and seeks only when the record's `epoch` changes, so its own position reports can
  * never make it jump. Reports go out about 4 times a second while playing, and at once on every event that matters.
  */
+import { plainPlayError } from '../../shared/playError'
+
 type Apply = {
   type: 'apply'
   fileId: string
@@ -18,6 +20,7 @@ type Apply = {
 }
 type Msg = Apply | { type: 'unload' }
 
+import { plainPlayError } from '../../shared/playError'
 const api = window.electronAPI
 const audio = new Audio()
 audio.preload = 'auto'
@@ -89,7 +92,7 @@ async function apply(m: Apply): Promise<void> {
   }
   wantPlaying = m.status === 'playing'
   if (wantPlaying) {
-    if (audio.paused && ready) audio.play().catch((e) => report({ error: `The tape could not start (${(e as Error).message}).`, errorKind: 'decode' }))
+    if (audio.paused && ready) audio.play().catch((e) => { console.warn('tape play() failed', e); report({ error: `The tape could not start: ${plainPlayError(e)}.`, errorKind: 'decode' }) })
   } else if (!audio.paused) audio.pause()
 }
 

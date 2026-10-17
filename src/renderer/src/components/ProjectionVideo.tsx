@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { PlaybackWire } from '../../../shared/videoPlayback'
+import { plainPlayError } from '../../../shared/playError'
 
 /**
  * The video on the main output (the congregation window). This window is the LEADER: it really plays (with sound), applies the
@@ -51,7 +52,7 @@ export default function ProjectionVideo({ mediaId, fit, playback }: { mediaId: s
     }
     if (m.status === 'playing') {
       if (v.paused) {
-        v.play().catch((e) => { error.current = String(e && (e as Error).message ? (e as Error).message : e); report({ error: error.current }) })
+        v.play().catch((e) => { console.warn('video play() failed', e); error.current = plainPlayError(e); report({ error: error.current }) })
       }
     } else if (!v.paused) {
       v.pause()
