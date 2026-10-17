@@ -22,6 +22,7 @@ import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResu
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import type { TapeAction, TapeWire } from '../shared/tapePlayback'
 import { cleanOverrides } from '../shared/tapeLanguage'
+import { cleanSyncMarks, cleanSyncRegions, cleanTextLanguage, cleanTapeSettingsPatch } from '../shared/tapeClean'
 import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
 import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
 import type { SyncMark, SyncMap, SyncRegion, SyncSource } from '../shared/tape'
@@ -259,10 +260,7 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
   })
   ipcMain.handle('tape:settings-get', () => tapeSettings())
   ipcMain.handle('tape:settings-set', (_e, patch: Partial<TapeSettings>) => {
-    const keys = Object.keys(TAPE_DEFAULTS) as Array<keyof TapeSettings>
-    const clean: Partial<TapeSettings> = {}
-    for (const k of keys) if (patch && k in patch && typeof (patch as Record<string, unknown>)[k] === typeof TAPE_DEFAULTS[k]) (clean as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k]
-    const next = { ...tapeSettings(), ...clean }
+    const next = { ...tapeSettings(), ...cleanTapeSettingsPatch(patch) }
     updateSettings({ tape: next })
     return next
   })
@@ -341,15 +339,7 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
   })
 
   // ── sync maps (docs/design/sermon-audio/02 §4) ──
-  const cleanMarks = (x: unknown): SyncMark[] =>
-    (Array.isArray(x) ? x : [])
-      .filter((m) => m && Number.isInteger(m.n) && m.n >= 1 && m.n < 100000 && (m.kind === 'start' || m.kind === 'skip'))
-      .map((m) => ({ n: m.n as number, t: m.kind === 'skip' ? null : Number.isFinite(m.t) ? (m.t as number) : null, confidence: typeof m.confidence === 'number' ? Math.min(1, Math.max(0, m.confidence)) : null, kind: m.kind as 'start' | 'skip' }))
-  const cleanRegions = (x: unknown): SyncRegion[] =>
-    (Array.isArray(x) ? x : [])
-      .filter((r) => r && (r.kind === 'gap' || r.kind === 'differs') && Number.isFinite(r.start) && Number.isFinite(r.end))
-      .map((r) => ({ kind: r.kind as 'gap' | 'differs', start: r.start as number, end: r.end as number, note: typeof r.note === 'string' ? r.note.slice(0, 200) : undefined }))
-  const lang = (x: unknown): string | null => (typeof x === 'string' && /^[a-z]{2,3}$/.test(x) ? x : null)
+  const cleanMarks = cleanSyncMarks, cleanRegions = cleanSyncRegions, lang = cleanTextLanguage
 
   ipcMain.handle('tape:map-get', (_e, recordingId: string, textLanguage: string | null): SyncMap | null => getTapeDb()?.getMap(String(recordingId), lang(textLanguage)) ?? null)
   ipcMain.handle('tape:map-languages', (_e, recordingId: string) => getTapeDb()?.listMapLanguages(String(recordingId)) ?? [])
