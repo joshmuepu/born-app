@@ -2478,6 +2478,7 @@ export default function App() {
                   className={`rail-btn rail-btn--${id}${topTab === id ? ' active' : ''}`}
                   onClick={() => { setTopTab(id); setView('prepare') }}
                   aria-current={topTab === id && view === 'prepare' ? 'page' : undefined}
+                  aria-label={label}
                 >
                   <Icon width={20} height={20} strokeWidth={1.9} aria-hidden="true" />
                   <span>{label}</span>
@@ -2487,6 +2488,7 @@ export default function App() {
                 className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
                 onClick={() => setSavedOpen((v) => !v)}
                 aria-pressed={savedOpen}
+                aria-label="Saved: favorites and recents"
                 title="Favorites and recents"
               >
                 <Star width={20} height={20} strokeWidth={1.9} aria-hidden="true" />

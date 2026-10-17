@@ -27,6 +27,7 @@ import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
 import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, getTapeLibrary, hub as tapeHub } from './tapeService'
 import { initAutoTiming, enqueueUntimed } from './tapeAuto'
 import { installAppMenu } from './appMenu'
+import { testHook } from './testHooks'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -3050,6 +3051,13 @@ ipcMain.handle('indexer:stop', () => {
 
 app.whenReady().then(async () => {
   log.boot()
+  // Test-only (a packaged app never honours it): automated runs that click everything must not be stopped by a native file dialog, so every open/save/message dialog answers "cancel" at once.
+  if (testHook('BORN_TEST_AUTO_CANCEL_DIALOGS', app.isPackaged)) {
+    const d = dialog as unknown as Record<string, unknown>
+    d.showOpenDialog = async () => ({ canceled: true, filePaths: [] })
+    d.showSaveDialog = async () => ({ canceled: true, filePath: undefined })
+    d.showMessageBox = async (...a: unknown[]) => { const o = (a[a.length - 1] ?? {}) as { cancelId?: number }; return { response: o.cancelId ?? 0, checkboxChecked: false } }
+  }
   // Deliberately different from v1's "Branham or Nothing": this name is what
   // Electron derives the default userData path from, so an unreleased v2
   // build run without BORN_USER_DATA_DIR still never shares a settings/

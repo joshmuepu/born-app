@@ -42,6 +42,7 @@ const outDir = path.join(ROOT, 'qa-out', 'sweep-' + round); fs.mkdirSync(path.jo
         for (const label of st.path) { if (!(await page.click(label.split(' ').slice(0, 5).join(' ')))) { ok = false; break } await sleep(420) }
         if (!ok) { found.set('unreachable|' + st.id + '|' + v.name, { check: 'unreachable', sev: 'P2', sel: st.id, text: st.path.join(' > '), detail: v.name, variants: [v.name], states: [st.id] }); continue }
         await sleep(250)
+        await page.key('Tab'); await page.key('Tab', { shift: true }) // keyboard modality, so :focus-visible rings can be measured
         const fs_ = await page.ev(checks)
         runs++
         for (const f of fs_) {

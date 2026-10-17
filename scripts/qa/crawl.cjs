@@ -8,7 +8,7 @@ const { launch, sleep, ROOT } = require('./lib.cjs')
 const [profile = '/tmp/qa-populated', port = '9961', maxStates = '260', maxDepth = '3', start = ''] = process.argv.slice(2)
 const name = path.basename(profile) + (start ? '-' + start.toLowerCase().replace(/\W+/g, '') : '')
 const RAIL = ['Sermons', 'Bible', 'Songs', 'Media', 'Saved', 'Tape', 'Queue']
-const SKIP = /(^|\s)(remove|delete|clear|forget|reset|quit|exit|close projection|open projection|show|hide screen|blackout|unlink|purge|empty|discard|restore defaults|new service|install|download|check for update|update now|restart|relaunch|uninstall)\b|…$|\.\.\.$|choose|browse|import|export|open folder|reveal|save|print|add recording|sign out|stop indexing|start indexing|re-?index|identify|test pattern|go live|take|project/i
+const SKIP = /(^|\s)(remove|delete|clear|forget|reset|quit|exit|close projection|open projection|show|hide screen|blackout|unlink|purge|empty|discard|restore defaults|new service|uninstall|restart|relaunch|install|update now)\b|open [a-z ]*folder|reveal|show in finder|show in folder|go live|take\b|project\b|stop indexing|re-?index/i // native dialogs answer 'cancel' by themselves in a QA launch (BORN_TEST_AUTO_CANCEL_DIALOGS)
 const CANDS = `(() => {
   const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth }
   const out = []
@@ -28,7 +28,9 @@ const SIG = `(() => {
   const tabs = q('[role=tab][aria-selected=true]').map((t) => t.innerText.trim())
   const rail = q('[aria-current=page],[aria-current=true]').map((t) => (t.getAttribute('aria-label') || t.innerText).trim().slice(0, 20)).slice(0, 4)
   const pop = q('[role=dialog],[role=menu],[role=listbox],.modal,[class*=popover]').map((d) => (d.getAttribute('aria-label') || d.className.toString().slice(0, 30) || d.tagName))
-  return JSON.stringify({ heads, tabs, rail, pop })
+  const ctl = [...new Set(q('button,[role=tab],[role=menuitem],input,select,textarea,summary').map((c) => ((c.getAttribute('aria-label') || c.innerText || c.placeholder || '') + '').replace(/[0-9]+/g, '#').replace(/\s+/g, ' ').trim().slice(0, 28)).filter(Boolean))].sort().join('|')
+  let h = 0; for (const ch of ctl) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return JSON.stringify({ heads, tabs, rail, pop, ctl: h })
 })()`
 const TEXTS = `(() => { const t = new Set(); const add = (s) => { s = (s || '').replace(/\\s+/g, ' ').trim().toLowerCase(); if (s && s.length < 160) t.add(s) }
   document.querySelectorAll('*').forEach((e) => { const r = e.getBoundingClientRect(); if (!r.width || !r.height) return; ['aria-label', 'title', 'placeholder'].forEach((a) => add(e.getAttribute(a))); if (e.children.length === 0) add(e.textContent) })

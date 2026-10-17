@@ -51,7 +51,7 @@ async function launch(o) {
   const port = o.port || 9950
   fs.mkdirSync(o.profile, { recursive: true })
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) try { fs.rmSync(path.join(o.profile, f), { force: true }) } catch { /* none */ }
-  const env = { ...process.env, BORN_USER_DATA_DIR: o.profile, BORN_REMOTE_PORT: String(o.remotePort || 4350), BORN_MDNS_NAME: o.mdns || 'born-qa', ...(o.env || {}) }
+  const env = { ...process.env, BORN_USER_DATA_DIR: o.profile, BORN_REMOTE_PORT: String(o.remotePort || 4350), BORN_MDNS_NAME: o.mdns || 'born-qa', BORN_TEST_AUTO_CANCEL_DIALOGS: '1', ...(o.env || {}) }
   delete env.ELECTRON_RUN_AS_NODE
   const bin = path.join(ROOT, 'node_modules', '.bin', 'electron')
   const proc = spawn(bin, [o.app || '.', `--remote-debugging-port=${port}`, ...(o.args || [])], { cwd: ROOT, env, stdio: ['ignore', fs.openSync(o.log || path.join(o.profile, 'qa-stdout.log'), 'a'), fs.openSync(o.log || path.join(o.profile, 'qa-stdout.log'), 'a')], detached: false })
@@ -65,6 +65,8 @@ async function launch(o) {
     proc, port, profile: o.profile,
     targets: () => getJson(`http://127.0.0.1:${port}/json`),
     async page(match = (t) => t.type === 'page' && (t.title === 'Born Again')) { const ts = await this.targets(); const t = ts.find(match); if (!t) throw new Error('no such window'); return new Page(t).connect() },
+    /** open a URL (the phone remote, a Graphics page) as a new tab of this app's browser and attach to it */
+    async openUrl(url) { const t = await new Promise((res, rej) => { const req = http.request(`http://127.0.0.1:${port}/json/new?${encodeURI(url)}`, { method: 'PUT' }, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => { try { res(JSON.parse(d)) } catch (e) { rej(e) } }) }); req.on('error', rej); req.end() }); return new Page(t).connect() },
     async kill() { try { proc.kill('SIGTERM') } catch { /* gone */ } await sleep(1500); try { proc.kill('SIGKILL') } catch { /* gone */ } }
   }
   await sleep(o.settle ?? 6000)

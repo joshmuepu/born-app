@@ -5,7 +5,8 @@
   const sel = (e) => { const p = []; let n = e; while (n && n.nodeType === 1 && p.length < 4) { let t = n.tagName.toLowerCase(); if (n.id) { t += '#' + n.id; p.unshift(t); break } const c = (n.className && n.className.toString().split(/\s+/).filter(Boolean)[0]) || ''; if (c) t += '.' + c; p.unshift(t); n = n.parentElement } return p.join(' > ') }
   const txt = (e) => ((e.getAttribute && e.getAttribute('aria-label')) || e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
   const add = (check, sev, e, detail) => F.push({ check, sev, sel: sel(e), text: txt(e), detail: detail || '' })
-  const all = [...document.querySelectorAll('body *')].filter(vis)
+  const hiddenOnPurpose = (e) => { if (e.closest('.sr-only,.skip-links,.visually-hidden,[data-qa-ignore]')) return true; const r = e.getBoundingClientRect(); return r.width <= 2 || r.height <= 2 }
+  const all = [...document.querySelectorAll('body *')].filter((e) => vis(e) && !hiddenOnPurpose(e))
   // a scroll container / clipped region ancestor
   const clipsAncestor = (e) => { let n = e.parentElement; while (n && n !== document.body) { const s = getComputedStyle(n); if (/(auto|scroll|hidden|clip)/.test(s.overflowX + s.overflowY)) return n; n = n.parentElement } return null }
 
