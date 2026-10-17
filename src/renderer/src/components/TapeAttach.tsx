@@ -150,7 +150,7 @@ export default function TapeAttach({
           <div className="tape-section">
             <div className="tape-caps">Your “Tape audio” folder</div>
             <div className="tape-row">
-              <span className="tape-folder">{folder ?? 'Not chosen yet — keep your recordings in one folder and BORN will find them.'}</span>
+              <span className="tape-folder">{folder ?? 'Using your Downloads folder until you choose another — keep your recordings in one folder and BORN will find them.'}</span>
               <button className="btn-quiet btn-sm" onClick={() => void pickFolder()}>{folder ? 'Change…' : 'Choose folder…'}</button>
               {folder && <button className="btn-quiet btn-sm" onClick={() => void scan()} aria-label="Look again"><RefreshCw width={13} height={13} aria-hidden="true" /> Look again</button>}
             </div>
