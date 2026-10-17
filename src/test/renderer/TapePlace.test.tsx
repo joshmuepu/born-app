@@ -23,7 +23,7 @@ let library: unknown[] = []
 const toast = vi.fn()
 beforeEach(() => {
   listeners = []; current = null; library = [E_MISSING, E_READY, E_NEEDS]; toast.mockReset()
-  try { localStorage.clear() } catch { /* */ }
+  try { localStorage.clear(); localStorage.setItem('born.tape.hints.v1', JSON.stringify({ bar: true, place: true })) } catch { /* */ }
   api = {
     tapeLibrary: vi.fn(async () => library),
     tapeGet: vi.fn(async () => current),
@@ -186,3 +186,14 @@ describe('the other tabs', () => {
     expect(api.tapeOpenAudioPage).toHaveBeenCalled()
   })
 })
+
+describe('the one-time hint', () => {
+  it('welcomes the operator once, in plain words, and can be dismissed for good', async () => {
+    try { localStorage.removeItem('born.tape.hints.v1') } catch { /* */ }
+    await open()
+    expect(screen.getByRole('note').textContent).toMatch(/Welcome to the Tape place.*Nothing plays until you press Play/)
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+})
+

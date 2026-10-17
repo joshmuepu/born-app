@@ -31,6 +31,8 @@ export interface AlignResult {
   marks: SyncMark[]
   regions: SyncRegion[]
   stats: AlignStats
+  /** paragraph numbers whose start was NOT found in what was heard (their time is a guess between neighbours, or none): the ones to listen to first */
+  unlocated?: number[]
 }
 
 /** One comparable word: letters and digits of any script (and an apostrophe), lower-cased; empty for pure punctuation. */
@@ -123,6 +125,7 @@ export function alignParagraphs(heard: HeardWord[], paragraphs: AlignParagraph[]
 
   // ── each paragraph's start ──
   const marks: SyncMark[] = []
+  const unlocated: number[] = []
   const startHeard: number[] = []
   const quality: number[] = []
   const reaction = 0 // the heard word's time is the word's own start
@@ -208,6 +211,7 @@ export function alignParagraphs(heard: HeardWord[], paragraphs: AlignParagraph[]
     const coverage = r1 > r0 ? m / (r1 - r0) : 0
     const t = times[pi]
     if (t === null) continue
+    if (quality[pi] < 0.5) unlocated.push(paragraphs[pi].n)
     // a paragraph with practically nothing heard and no start evidence is "not on this tape"
     if (quality[pi] <= 0.25 && coverage < 0.1 && r1 - r0 >= 4) {
       marks.push({ n: paragraphs[pi].n, t: null, kind: 'skip', confidence: 0.2 })
@@ -227,7 +231,7 @@ export function alignParagraphs(heard: HeardWord[], paragraphs: AlignParagraph[]
   }
   if (H[0].t > 30) regions.unshift({ kind: 'gap', start: 0, end: Math.round((H[0].t - 0.5) * 100) / 100, note: 'nothing was recognised here' })
 
-  return { marks, regions, stats: { paragraphs: paragraphs.length, located, lowConfidence: lowConf, matchedWordsPct: total ? Math.round((matched / total) * 1000) / 10 : 0, anchors: chain.length } }
+  return { marks, regions, unlocated, stats: { paragraphs: paragraphs.length, located, lowConfidence: lowConf, matchedWordsPct: total ? Math.round((matched / total) * 1000) / 10 : 0, anchors: chain.length } }
 }
 
 /** Read whisper.cpp's JSON output (`-oj` with `-ml 1 -sow`: one word per entry) into timed words. */

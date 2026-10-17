@@ -5,6 +5,7 @@ import { tapeStatusNote } from '../../../shared/tapePlayback'
 import { useTapeNow } from '../useTapeNow'
 import { useTapeScreen } from '../useTapeScreen'
 import { setTapeActions } from '../tapeActions'
+import { useTapeHint } from '../tapeHint'
 import type { LiveChannel } from '../types'
 import { TapeOutputMenu, TapeSeek, TapeVolume } from './TapeControls'
 import './TapeBar.css'
@@ -31,6 +32,7 @@ export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (
   const { wire, rec } = n
   const screen = useTapeScreen({ recording: rec, sermonId: wire?.sermonId ?? null, title: rec?.file.name ?? '', map: n.map })
   const [devOpen, setDevOpen] = useState(false)
+  const hint = useTapeHint('bar')
 
   // the keyboard and the command palette do exactly what these buttons do
   const loaded = !!wire && !!rec
@@ -123,6 +125,12 @@ export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (
           <span className="gtb-screens-text">{screen.onScreens ? 'Text on the screens' : 'Text: not on the screens'}</span>
         </button>
       </div>
+      {hint.show && !warn && (
+        <div className="gtb-hint" role="note">
+          <span><b>The tape player.</b> It stays here in every section, so you can pause the tape while you run songs or verses. Click the title to open the Tape place. Play and pause from anywhere with <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>.</span>
+          <button className="btn-quiet btn-sm" onClick={hint.dismiss}>Got it</button>
+        </div>
+      )}
       {warn && (
         <div className="gtb-note" role="alert"><AlertTriangle width={14} height={14} aria-hidden="true" /> <span>{note}</span> {fix()}</div>
       )}

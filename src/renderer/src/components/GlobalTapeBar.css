@@ -36,3 +36,7 @@
 /* toasts sit above the bar, never over its buttons */
 body:has(.gtb) .toast-host { bottom: 104px; }
 body:has(.gtb .gtb-note) .toast-host { bottom: 136px; }
+
+.gtb-hint { display: flex; align-items: center; gap: 12px; padding: 0 14px 8px; font-size: var(--text-sm); color: var(--text-secondary); }
+.gtb-hint kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 4px; }
+body:has(.gtb .gtb-hint) .toast-host { bottom: 136px; }

@@ -62,3 +62,5 @@
 .tp-options .tsp-note, .tp-options .tsp-fixed { max-width: 560px; }
 @media (max-width: 1060px) { .tp-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .tp-lib { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); } .tp-rec { min-width: 220px; } }
 @media (prefers-reduced-motion: reduce) { .tfl { scroll-behavior: auto; } }
+
+.tp-hint { display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); }

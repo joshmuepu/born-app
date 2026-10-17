@@ -7,6 +7,7 @@ import { libraryStatus, sortLibrary } from '../../../shared/tapeLibrary'
 import type { Quote } from '../types'
 import { emitTape, onTape } from '../tapeBus'
 import { useTape } from '../useTape'
+import { useTapeHint } from '../tapeHint'
 import { useTapeFollow } from '../useTapeFollow'
 import TapeAddPanel from './TapeAddPanel'
 import TapeFollowList from './TapeFollowList'
@@ -35,6 +36,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
   const [selId, setSelId] = useState<string | null>(null)
   const [tab, setTab] = useState<TapeTab>('follow')
   const { wire } = useTape(1000)
+  const hint = useTapeHint('place')
   const picked = useRef(false) // the operator chose a recording themself: do not move the selection under their hand
 
   const reload = useCallback(async () => {
@@ -76,6 +78,12 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
           <h2 className="tp-title"><Headphones width={18} height={18} aria-hidden="true" /> Recordings</h2>
         </div>
       </header>
+      {hint.show && (
+        <div className="tp-hint" role="note">
+          <span><b>Welcome to the Tape place.</b> Recordings live here: add one, time it once, and the text follows it. The player is the bar at the bottom of every section; <b>Put on the screens</b> shows the text to the congregation. Nothing plays until you press Play.</span>
+          <button className="btn-quiet btn-sm" onClick={hint.dismiss}>Got it</button>
+        </div>
+      )}
       {loaded && entries.length === 0 ? (
         <div className="tp-empty">
           <div className="tp-empty-ico"><Headphones width={28} height={28} aria-hidden="true" /></div>

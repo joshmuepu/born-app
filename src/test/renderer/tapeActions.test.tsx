@@ -59,6 +59,7 @@ let listeners: Array<(w: TapeWire | null) => void> = []
 let liveCb: (c: unknown[]) => void = () => {}
 let api: Record<string, ReturnType<typeof vi.fn>>
 beforeEach(() => {
+  try { localStorage.setItem('born.tape.hints.v1', JSON.stringify({ bar: true, place: true })) } catch { /* */ }
   listeners = []
   api = {
     tapeGet: vi.fn(async () => null), onTapeState: vi.fn((cb: (w: TapeWire | null) => void) => { listeners.push(cb); return () => { listeners = listeners.filter((x) => x !== cb) } }),

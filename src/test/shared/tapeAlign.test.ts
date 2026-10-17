@@ -121,6 +121,14 @@ describe('proposing paragraph starts from what was heard', () => {
     expect(performance.now() - t0).toBeLessThan(2000)
     expect(res.marks.length).toBe(400)
   })
+  it('lists the paragraphs whose start was not found in what was heard (the ones to check first), and none for a clean hearing', () => {
+    const s = makeSermon(30, 29)
+    expect(alignParagraphs(speak(s).heard, s).unlocated).toEqual([])
+    const { heard } = speak(s, { skip: [12, 13] })
+    const res = alignParagraphs(heard, s)
+    expect(res.unlocated).toEqual(expect.arrayContaining([12, 13]))
+    expect(res.unlocated!.length).toBeLessThanOrEqual(4)
+  })
   it('nothing heard or nothing to align yields nothing, never an exception', () => {
     expect(alignParagraphs([], makeSermon(5)).marks).toEqual([])
     expect(alignParagraphs([{ w: 'a', t: 1 }], []).marks).toEqual([])

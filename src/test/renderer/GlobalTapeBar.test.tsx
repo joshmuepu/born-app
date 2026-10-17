@@ -15,6 +15,7 @@ const push = (w: TapeWire | null): void => { for (const l of [...listeners]) l(w
 let api: Record<string, ReturnType<typeof vi.fn>>
 let map: SyncMap | null = MAP
 beforeEach(() => {
+  try { localStorage.setItem('born.tape.hints.v1', JSON.stringify({ bar: true, place: true })) } catch { /* */ }
   listeners = []; map = MAP
   api = {
     tapeGet: vi.fn(async () => null),
@@ -149,3 +150,23 @@ describe('the status pill', () => {
     expect(tapeBarState({ ...base, stalled: true, hasTiming: false }).label).toBe('Sound stopped')
   })
 })
+
+describe('the one-time hint', () => {
+  it('appears once, explains the bar, and is gone for good after "Got it" (also after a reload)', async () => {
+    try { localStorage.clear() } catch { /* */ }
+    const first = await open(wire())
+    expect(screen.getByRole('note').textContent).toMatch(/stays here in every section/)
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(screen.queryByRole('note')).toBeNull()
+    first.unmount()
+    await open(wire())
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+  it('is not shown on top of a warning (the warning comes first)', async () => {
+    try { localStorage.clear() } catch { /* */ }
+    await open(wire({ status: 'playing', stalled: true }))
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByRole('alert')).toBeTruthy()
+  })
+})
+
