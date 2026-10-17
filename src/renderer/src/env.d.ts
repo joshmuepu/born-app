@@ -58,6 +58,7 @@ declare global {
   interface DataRecoveryInfo {
     sermons: DbRecoveryStatus
     library: DbRecoveryStatus
+    queue?: DbRecoveryStatus
   }
 
   interface RemoteAdapterInfo {
