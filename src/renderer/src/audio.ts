@@ -20,7 +20,6 @@ type Apply = {
 }
 type Msg = Apply | { type: 'unload' }
 
-import { plainPlayError } from '../../shared/playError'
 const api = window.electronAPI
 const audio = new Audio()
 audio.preload = 'auto'
