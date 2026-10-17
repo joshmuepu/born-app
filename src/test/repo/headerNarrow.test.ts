@@ -41,3 +41,9 @@ describe('the left rail on a short window', () => {
     expect(css).toMatch(/\.app-rail \{[^}]*overflow-y: auto/)
   })
 })
+
+describe('dialogs on a short window', () => {
+  it('scroll inside the window (the shortcuts list is 1021 px tall: at 640 px its title and bottom rows were off screen and unreachable)', () => {
+    expect(css).toMatch(/\n\.modal \{[^}]*max-height: calc\(90vh \/ var\(--ui-zoom, 1\)\);[^}]*overflow-y: auto/)
+  })
+})
