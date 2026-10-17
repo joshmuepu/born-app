@@ -454,7 +454,11 @@ body {
   padding: 10px 6px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
+  /* a short window or a large interface scale: the last buttons (Saved, Open, Queue) scroll into reach instead of falling off the bottom */
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+.app-rail::-webkit-scrollbar { display: none; }
 .rail-spacer { flex: 1; }
 .rail-btn {
   position: relative;

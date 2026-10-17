@@ -35,3 +35,9 @@ describe('the header on a small laptop, live (1040 px) and at a large interface 
     }
   })
 })
+
+describe('the left rail on a short window', () => {
+  it('scrolls, so Saved, Open and Queue never fall off the bottom (at 150 % on a 1040x640 window the rail is 404 px in a 345 px column)', () => {
+    expect(css).toMatch(/\.app-rail \{[^}]*overflow-y: auto/)
+  })
+})
