@@ -176,7 +176,7 @@
       'c-dl': { n: 'Download happens in the row', p: 'The row shows progress and Cancel; nothing blocks the page.', render: function () { return cPage({ content: cFind('morning', cRow('99-0404E', 'Evening Hymn Service', 'Downloading — 17 of 29 MB<div class="prog" style="width:220px;margin-top:4px"><i style="width:58%"></i></div>', btn('Cancel', { cls: 'sm' }))) }) } },
       'c-downloading': { n: 'Downloading', p: 'See previous.', render: function () { return C.screens['c-dl'].render() } },
       'c-added': { n: 'Added: the row turns into Load', p: 'Lands on Follow with the same “plays now; text follows” banner.', render: function () { return cPage({ items: LIB.concat([NEW]), sel: 'r4', chips: { r4: chip('warn', 'Timing… 8%') }, tab: 'Follow', content: follow(LIB[0], aFollowBanner(8)), toast: toast('ok', 'Added “Evening Hymn Service” · plays now') }) } },
-      'c-err': { n: 'Errors are in the row', p: 'The row says what happened and offers the next move; other rows are untouched.', render: function () { return cPage({ content: cFind('evening', cRow('99-0404E', 'Evening Hymn Service', '<span style="color:var(--ba-danger)">The download site did not answer. Nothing was added.</span>', btn('Try again', { cls: 'sm pri' }) + btn('Publisher’s page', { cls: 'sm q' }))) }) } }
+      'c-err': { n: 'Errors are in the row', p: 'The row says what happened and offers the next move; other rows are untouched.', render: function () { return cPage({ content: cFind('evening', cRow('99-0404E', 'Evening Hymn Service', '<span style="color:var(--ba-danger)">The download site did not answer. Nothing was added.</span>', btn('Try again', { cls: 'sm pri' }) + btn('Download page', { cls: 'sm q' }))) }) } }
     }
   }
 
