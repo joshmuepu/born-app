@@ -13,7 +13,7 @@ This walks through the whole tape service with a recording that is already added
 7. **Phone controls.** Press **Remote**, scan the code with a phone. The **Tape** card has **Play** (greyed until you have started the tape on the computer), **−10 s / +10 s**, **previous / next paragraph**, **volume**, and a paragraph list that follows. Tapping a paragraph asks "Jump to ¶n?" first; an **Undo** appears on the computer.
 8. **The tap-to-sync editor.** Tape place → **Timing** tab → **Edit timing…**. Press **P** to play, then **Space** at the start of paragraphs to place markers; **U** undoes. **Save** keeps it.
 9. **Review the low-confidence paragraphs.** In the editor press **Suggest timing** (needs the optional whisper.cpp tools — the small gear opens where to choose them). It *proposes* times; nothing is saved until you press **Save**. Press **Next least sure** to jump through the paragraphs it was least sure about, listen from one second before each marker (the clock button), nudge with **−/+**, then **Save**.
-10. **Is tonight ready?** Add the sermon to the queue, then press **Check** in the Service Queue. The tape row says the recording is there, the length fits, it has timing, and the sound output is plugged in. Unplug the file's drive (or rename the file) and check again: it names the problem.
+10. **Is tonight ready?** Add the sermon to the queue, then press the **Is tonight ready?** chip at the top of the Service Queue. The tape row says the recording is there, the length fits, it has timing, and the sound output is plugged in. Unplug the file's drive (or rename the file) and check again: it names the problem.
 
 ## The paragraphs automatic timing could not locate
 

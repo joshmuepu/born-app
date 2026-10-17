@@ -47,6 +47,17 @@
   flex-wrap: wrap;
   max-width: 100%;
 }
+/* File ▾ and the readiness chip: one row (P-03) */
+.queue-file-actions { gap: 6px; flex-wrap: nowrap; }
+.readiness {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--target-min, 32px); padding: 0 10px;
+  border-radius: var(--radius-pill, 999px); border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary);
+  font-size: var(--text-sm); font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.readiness:hover:not(:disabled) { color: var(--text-primary); border-color: var(--accent); }
+.readiness:disabled { opacity: 0.55; cursor: default; }
+.readiness--ready { color: var(--ok); border-color: var(--ok); }
+.readiness--warn, .readiness--fail { color: var(--warn); border-color: var(--warn); }
 
 /* ── The list itself ─────────────────────────────────────────────────
  * Two-tier density: everything that isn't the live item collapses to a

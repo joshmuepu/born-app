@@ -63,4 +63,4 @@ warnings, an unplugged drive, and anything that won't play — with the fix. Pla
 ## Limits to know
 
 Born Again was tested on a modern Mac: 1080p video looped for 2 hours, 4K for 20 minutes, with no stalls. **An older church computer may be slower** — that is why 4K gets a warning and why you should
-try the real files on the real computer. Videos can't go inside a **service pack** yet (pictures only); use a plain **Save** and carry the video file separately.
+try the real files on the real computer. Videos can't go inside a **service pack** yet (pictures only); use a plain **File → Save** and carry the video file separately.

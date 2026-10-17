@@ -82,7 +82,7 @@ The rules are the video rules: **Play stays off until you have started the tape 
 
 ## Is tonight ready?
 
-*Is tonight ready?* (**Check** in the Service Queue) checks every sermon in the queue that has a recording: the file is there, its length fits, it has timing, and the chosen sound output is plugged in.
+*Is tonight ready?* (the **Is tonight ready?** chip at the top of the Service Queue) checks every sermon in the queue that has a recording: the file is there, its length fits, it has timing, and the chosen sound output is plugged in.
 
 ## Tape options
 

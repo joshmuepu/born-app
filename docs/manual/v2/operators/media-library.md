@@ -63,7 +63,7 @@ A picture you **linked** (*Don't copy*) lives on its drive. If the drive isn't p
 
 ![A banner says which drive isn't connected; the pictures on it are marked.](../images/media-drive-offline.png)
 
-**Check** ("Is tonight ready?") lists these pictures too, with the same **Find the folder…** button, so you find out on Saturday.
+The **Is tonight ready?** chip lists these pictures too, with the same **Find the folder…** button, so you find out on Saturday.
 
 ## Keyboard
 

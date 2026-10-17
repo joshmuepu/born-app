@@ -29,12 +29,15 @@ export default function Preflight({
   open,
   queue,
   onClose,
-  onRemoveItem
+  onRemoveItem,
+  onResult
 }: {
   open: boolean
   queue: QueueItem[]
   onClose: () => void
   onRemoveItem: (index: number) => void
+  /** The last check's counts, for the readiness chip in the queue header. */
+  onResult?: (counts: { fail: number; warn: number }) => void
 }): JSX.Element | null {
   const [rows, setRows] = useState<Row[]>([])
   const [busy, setBusy] = useState(false)
@@ -163,6 +166,7 @@ export default function Preflight({
     out.push(...tapeRows)
     out.sort((a, b) => rank[a.level] - rank[b.level] || (a.index ?? 999) - (b.index ?? 999))
     setRows(out)
+    onResult?.({ fail: out.filter((r) => r.level === 'fail').length, warn: out.filter((r) => r.level === 'warn').length })
     setCheckedAt(new Date())
     setBusy(false)
   }, [queue])

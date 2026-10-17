@@ -2,7 +2,7 @@
 
 ## Preflight — "Is tonight ready?"
 
-Press **Check** at the top of the queue (or **Ctrl/⌘+K → Check that tonight's service is ready**). BORN looks at every item:
+Press the **Is tonight ready?** chip at the top of the queue (it turns into **Ready** or **N to fix** once it has run) (or **Ctrl/⌘+K → Check that tonight's service is ready**). BORN looks at every item:
 
 ![The check finds a missing picture and tells you what to do.](../images/media-preflight.png)
 

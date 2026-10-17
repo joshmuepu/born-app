@@ -19,7 +19,7 @@
 | The screen went black right after Show | You pressed **Esc** (or **B**, or the phone's Hide screen) while it was loading | Show it again |
 | PDF import says *"nothing was added"* | Too many pages couldn't be drawn, or you cancelled | Export a simpler PDF, or split it |
 
-If something else goes wrong, **Check** (top of the queue) is the best first stop; it explains most problems in one list.
+If something else goes wrong, the **Is tonight ready?** chip (top of the queue) is the best first stop; it explains most problems in one list.
 
 ## Videos
 

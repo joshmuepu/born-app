@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import ServiceQueue from '../../renderer/src/components/ServiceQueue'
@@ -81,12 +82,48 @@ describe('ServiceQueue grouping', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
   })
 
-  it('renders an Import action alongside Open', () => {
+  it('has an Import action alongside Open, both under the File menu', async () => {
     const onImportService = vi.fn()
-    render(
-      <ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onImportService={onImportService} />
-    )
-    screen.getByText('Import').click()
+    const onOpenService = vi.fn()
+    const user = userEvent.setup()
+    render(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onImportService={onImportService} onOpenService={onOpenService} />)
+    await user.click(screen.getByRole('button', { name: /^File/ }))
+    await user.click(screen.getByRole('menuitem', { name: /Open a saved service/ }))
+    expect(onOpenService).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /^File/ }))
+    await user.click(screen.getByRole('menuitem', { name: /Import into this service/ }))
     expect(onImportService).toHaveBeenCalled()
+  })
+
+  it('the File menu holds New, Open, Import, Save, Save with pictures and Open pack, in one button', async () => {
+    const user = userEvent.setup()
+    render(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onSavePack={vi.fn()} onOpenPack={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'New' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /^File/ }))
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual([
+      expect.stringContaining('New service'), 'Open a saved service…', 'Import into this service…', 'Save', 'Save with pictures…', 'Open a service pack…'
+    ])
+  })
+
+  it('Save and Save with pictures are off while the queue is empty', async () => {
+    const user = userEvent.setup()
+    render(<ServiceQueue {...baseProps} queue={[]} onSavePack={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /^File/ }))
+    expect(screen.getByRole('menuitem', { name: 'Save' }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('menuitem', { name: 'Save with pictures…' }).getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('the readiness chip says what the last check found, and runs the check when pressed', async () => {
+    const onPreflight = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onPreflight={onPreflight} readiness={null} />)
+    await user.click(screen.getByRole('button', { name: /Is tonight ready/ }))
+    expect(onPreflight).toHaveBeenCalledOnce()
+    rerender(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onPreflight={onPreflight} readiness={{ fail: 0, warn: 0 }} />)
+    expect(screen.getByRole('button', { name: /Ready/ })).toBeTruthy()
+    rerender(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onPreflight={onPreflight} readiness={{ fail: 0, warn: 2 }} />)
+    expect(screen.getByRole('button', { name: /2 to look at/ })).toBeTruthy()
+    rerender(<ServiceQueue {...baseProps} queue={[songItem('a', 'Song')]} onPreflight={onPreflight} readiness={{ fail: 3, warn: 2 }} />)
+    expect(screen.getByRole('button', { name: /3 to fix/ })).toBeTruthy()
   })
 })

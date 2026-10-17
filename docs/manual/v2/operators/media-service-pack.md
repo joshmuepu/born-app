@@ -6,9 +6,9 @@ The ordinary **Save** (`.born`) is unchanged: it is smaller, and it is still the
 
 > A pack holds **pictures only** — no sermons, songs or settings. Anyone with the file can see the pictures, so share it like a photo album.
 
-## Making one: Save + pictures
+## Making one: File → Save with pictures
 
-1. At the top of the queue press **Save + pictures**.
+1. At the top of the queue press **File** and choose **Save with pictures…**.
 
 ![Save service with pictures: what goes in, and how big it will be.](../images/media-pack-export.png)
 
@@ -20,7 +20,7 @@ If a picture is **missing** (or on an unplugged drive), nothing is saved and BOR
 
 ## Opening one: Open pack
 
-Press **Open pack** (or drop a `.bornpack` onto the BORN window). BORN checks every file inside against its fingerprint **without copying anything**, then shows a review:
+Press **File** and choose **Open a service pack…** (or drop a `.bornpack` onto the BORN window). BORN checks every file inside against its fingerprint **without copying anything**, then shows a review:
 
 ![Open service pack: new, already here, and damaged pictures — nothing has been copied yet.](../images/media-pack-review.png)
 

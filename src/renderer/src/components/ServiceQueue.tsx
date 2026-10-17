@@ -1,3 +1,5 @@
+import MenuButton from './MenuButton'
+import ReadinessChip from './ReadinessChip'
 import { useRef, useState } from 'react'
 import { Mic, BookOpen, Music, Check, Image as ImageIcon, FileQuestion, Globe } from 'lucide-react'
 import type { ChannelInfo, OutputInfo, QueueItem, RecentService, SlidePayload } from '../types'
@@ -58,6 +60,8 @@ interface Props {
   /** Save the queue and its pictures as one .bornpack / open one. Optional: absent = no buttons. */
   onSavePack?: () => void
   onOpenPack?: () => void
+  /** What the last "Is tonight ready?" check found, if it still applies to this queue (null = not checked, or the queue has changed since). */
+  readiness?: { fail: number; warn: number } | null
   recents: RecentService[]
   onOpenRecent: (path: string) => void
   /** Set when Open/Import couldn't read or parse a file — a damaged or
@@ -168,6 +172,7 @@ export default function ServiceQueue({
   onDropItem = () => {},
   onMediaSettings,
   onPreflight,
+  readiness,
   background
 }: Props) {
   const actions = useAppActions()
@@ -497,13 +502,19 @@ export default function ServiceQueue({
       <div className="queue-header">
         <h2>Service Queue</h2>
         <div className="queue-file-actions">
-          <button className="btn-quiet btn-sm" onClick={onNewService} title="Start a new, empty service (clears the queue)">New</button>
-          <button className="btn-quiet btn-sm" onClick={onOpenService} title="Open a saved service file">Open</button>
-          <button className="btn-quiet btn-sm" onClick={onImportService} title="Combine one or more saved service files into the current queue">Import</button>
-          <button className="btn-quiet btn-sm" onClick={onSaveService} title="Save this service to a file" disabled={queue.length === 0}>Save</button>
-          {onSavePack && <button className="btn-quiet btn-sm" onClick={onSavePack} title="Save this service and its pictures together in one file you can carry to another computer" disabled={queue.length === 0 || !queue.some((i) => i.kind === 'media')}>Save + pictures</button>}
-          {onOpenPack && <button className="btn-quiet btn-sm" onClick={onOpenPack} title="Open a service pack (a service with its pictures)">Open pack</button>}
-          {onPreflight && <button className="btn-quiet btn-sm" onClick={onPreflight} title="Check that everything in this service is ready to show" disabled={queue.length === 0}>Check</button>}
+          <MenuButton
+            label="File"
+            title="New, Open, Import, Save"
+            items={[
+              { id: 'new', label: 'New service', hint: 'clears the queue', onSelect: onNewService },
+              { id: 'open', label: 'Open a saved service…', onSelect: onOpenService },
+              { id: 'import', label: 'Import into this service…', onSelect: onImportService },
+              { id: 'save', label: 'Save', onSelect: onSaveService, disabled: queue.length === 0, separatorBefore: true },
+              ...(onSavePack ? [{ id: 'save-pack', label: 'Save with pictures…', onSelect: onSavePack, disabled: queue.length === 0 }] : []),
+              ...(onOpenPack ? [{ id: 'open-pack', label: 'Open a service pack…', onSelect: onOpenPack }] : [])
+            ]}
+          />
+          {onPreflight && <ReadinessChip queueLength={queue.length} readiness={readiness ?? null} onCheck={onPreflight} />}
         </div>
       </div>
 

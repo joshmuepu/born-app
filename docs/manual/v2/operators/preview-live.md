@@ -43,7 +43,7 @@ Removing a queue item, moving one, starting a new service, opening a service fil
 dropping something into the queue shows a toast at the bottom with **Undo** and a shrinking
 bar. Click **Undo** or press **Ctrl+Z** (**⌘Z**) before it goes. Hovering over the toast
 pauses the countdown. Undo only brings back what you removed or replaced; it never changes what is on the
-screen right now. If something is on the screen, **New** still asks first.
+screen right now. If something is on the screen, **File → New service** still asks first.
 
 ## Drag it in
 

@@ -1009,6 +1009,10 @@ export default function App() {
   )
   const [mediaFocusId, setMediaFocusId] = useState<string | null>(null)
   const [preflightOpen, setPreflightOpen] = useState(false)
+  // the last "Is tonight ready?" result, kept only while the queue is exactly as it was when it was checked (the chip in the queue header)
+  const queueSig = useMemo(() => serviceQueue.map((q) => q.id).join('|'), [serviceQueue])
+  const [readinessRaw, setReadinessRaw] = useState<{ sig: string; fail: number; warn: number } | null>(null)
+  const readiness = readinessRaw && readinessRaw.sig === queueSig ? { fail: readinessRaw.fail, warn: readinessRaw.warn } : null
   /** Ctrl/Cmd+Shift+L: put the church logo on screen (or just black if none is set). */
   const showLogo = useCallback(async () => {
     const id = await window.electronAPI.mediaLogoGet()
@@ -2593,6 +2597,7 @@ export default function App() {
             onProject={handleProjectFromQueue}
             onMediaSettings={handleMediaSettings}
             onPreflight={() => setPreflightOpen(true)}
+            readiness={readiness}
             onSelect={handleSelectFromQueue}
             onRemove={handleRemoveFromQueue}
             onPrev={handlePrev}
@@ -2789,7 +2794,7 @@ export default function App() {
       {packExport && <PackExportDialog queue={packExport} title="Sunday service" onClose={() => setPackExport(null)} onSaved={(_p, n) => { setPackExport(null); pushToast({ message: `Saved a service pack with ${n} picture${n === 1 ? '' : 's'}.` }) }} />}
       {packReview && <PackImportDialog review={packReview} onClose={() => setPackReview(null)} onOpened={(sum) => void handlePackOpened(sum)} />}
 
-      <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} />
+      <Preflight open={preflightOpen} queue={serviceQueue} onClose={() => setPreflightOpen(false)} onRemoveItem={(i) => handleRemoveFromQueue(i)} onResult={(c) => setReadinessRaw({ sig: queueSig, ...c })} />
 
       <CommandPalette
         open={paletteOpen}
