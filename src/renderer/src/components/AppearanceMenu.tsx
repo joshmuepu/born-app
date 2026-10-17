@@ -15,6 +15,8 @@ export default function AppearanceMenu({
   onContrast,
   uiScale,
   onUiScale,
+  clickShows,
+  onClickShows,
   onHelp,
   onShortcuts
 }: {
@@ -24,6 +26,9 @@ export default function AppearanceMenu({
   onContrast: (on: boolean) => void
   uiScale: UiScaleChoice
   onUiScale: (c: UiScaleChoice) => void
+  /** P-08: a single click shows a verse, slide or paragraph (how earlier versions worked). Off: a click selects; Enter or a double-click shows. */
+  clickShows: boolean
+  onClickShows: (on: boolean) => void
   onHelp: () => void
   onShortcuts: () => void
 }): JSX.Element {
@@ -84,6 +89,11 @@ export default function AppearanceMenu({
               {SCALE_OPTIONS.map(([v, l]) => <option key={String(v)} value={String(v)}>{l}</option>)}
             </select>
           </div>
+          <div className="am-h am-h--help">Verses, slides and paragraphs</div>
+          <label className="am-check">
+            <input type="checkbox" checked={clickShows} onChange={(e) => onClickShows(e.target.checked)} />
+            <span>A single click shows it<small>Off: a click selects; Enter or a double-click shows. The Show button always shows.</small></span>
+          </label>
           <div className="am-h am-h--help">Help</div>
           <button type="button" className="am-item" onClick={act(onHelp)}>Open the manual <kbd>F1</kbd></button>
           <button type="button" className="am-item" onClick={act(onShortcuts)}>Keyboard shortcuts <kbd>?</kbd></button>

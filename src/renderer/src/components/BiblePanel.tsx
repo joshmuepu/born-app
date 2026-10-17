@@ -1,3 +1,4 @@
+import { rowGesture, useClickShows } from '../rowGesture'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { startQueueDrag } from '../dragItem'
 import { useContextMenu } from './ContextMenu'
@@ -67,6 +68,8 @@ export default function BiblePanel({
   initialTranslation,
   onChapterOpened
 }: Props) {
+  const clickShows = useClickShows()
+  const [selectedVerse, setSelectedVerse] = useState<string | null>(null)
   const isLive = (bookNum: number, chapter: number, verse: number): boolean =>
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const actions = useAppActions()
@@ -383,7 +386,7 @@ export default function BiblePanel({
             {book?.name} {focusVerse.chapter} · {chapterView.translation}
           </span>
           <span className="follow-meta">
-            {projecting ? 'On screen — following along' : 'Tap a verse to put it on screen'}
+            {projecting ? 'On screen — following along' : clickShows ? 'Click a verse to show it' : 'Click selects · Enter or double-click shows'}
           </span>
         </div>
         <div className="follow-list">
@@ -401,7 +404,8 @@ export default function BiblePanel({
                 className={[
                   'bible-verse',
                   live ? 'bible-verse--on-screen' : '',
-                  focused ? 'bible-verse--focus' : ''
+                  focused ? 'bible-verse--focus' : '',
+                  selectedVerse === `${focusVerse.bookNum}-${focusVerse.chapter}-${v.verse}` ? 'is-selected' : ''
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
@@ -426,15 +430,9 @@ export default function BiblePanel({
                     }
                   )
                 )}
-                title={`Show verse ${v.verse} — or drag it into the queue`}
-                onClick={(e) => { project(); e.currentTarget.blur() }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    project()
-                    e.currentTarget.blur()
-                  }
-                }}
+                title={`Verse ${v.verse} — click to select, Enter or double-click to show it, or drag it into the queue`}
+                aria-selected={selectedVerse === `${focusVerse.bookNum}-${focusVerse.chapter}-${v.verse}`}
+                {...rowGesture({ clickShows, show: project, select: () => setSelectedVerse(`${focusVerse.bookNum}-${focusVerse.chapter}-${v.verse}`) })}
               >
                 <span className="bible-verse-num">{v.verse}</span>
                 <span className="bible-verse-text">{v.text}</span>

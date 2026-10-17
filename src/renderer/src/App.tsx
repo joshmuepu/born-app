@@ -15,6 +15,7 @@ import { SECTION_NAMES, cycleRegion } from './regions'
 import SkipLinks from './components/SkipLinks'
 import NowDock from './components/NowDock'
 import AppearanceMenu from './components/AppearanceMenu'
+import { setClickShows, useClickShows } from './rowGesture'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
@@ -268,6 +269,7 @@ export default function App() {
    *  that instead of a generic "needs an internet connection" message. */
   const [dataRecovery, setDataRecovery] = useState<DataRecoveryInfo | null>(null)
   const { theme, toggle: toggleTheme, set: setTheme, contrast, toggleContrast } = useTheme()
+  const clickShows = useClickShows()
 
   // Channels beyond Main (Phase 5) — each with its own label, persisted
   // translation, and outputs. Empty for every user who hasn't added one.
@@ -2284,6 +2286,8 @@ export default function App() {
             onContrast={(on) => { if (on !== contrast) toggleContrast() }}
             uiScale={uiScale}
             onUiScale={setUiScale}
+            clickShows={clickShows}
+            onClickShows={setClickShows}
             onHelp={() => setShowHelp(true)}
             onShortcuts={() => setShowShortcuts(true)}
           />

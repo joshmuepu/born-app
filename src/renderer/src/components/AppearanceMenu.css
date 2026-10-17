@@ -19,3 +19,6 @@
 }
 .am-item:hover { background: var(--bg-hover); }
 .am-item kbd { font-family: var(--font-mono); font-size: var(--text-2xs); padding: 2px 6px; border-radius: var(--r-sm); background: var(--bg-hover); color: var(--text-secondary); }
+.am-check { display: flex; gap: 10px; align-items: flex-start; padding: 4px 8px; min-height: var(--target-min, 32px); cursor: pointer; font-size: var(--text-base); color: var(--text-primary); }
+.am-check input { margin-top: 3px; }
+.am-check small { display: block; color: var(--text-secondary); font-size: var(--text-xs); margin-top: 2px; }

@@ -26,8 +26,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   await api('setDestinationSuppressed', g.id, true); await sleep(1000); await snap('suppressed', '', false)
   await api('setDestinationSuppressed', g.id, false); await sleep(1500); await snap('un-suppressed', T, false)
   await api('setDestinationSuppressed', g.id, false); await sleep(800); await snap('un-suppressed again', T, false)
-  await api('setOutputProfile', g.id, 'lower-third'); await sleep(1200)
-  const prof = await gp.evaluate(() => document.getElementById('stage').dataset.profile); results.push(prof === 'lower-third'); console.log(prof === 'lower-third' ? 'PASS' : 'FAIL', 'profile lower-third', prof)
+  // with Auto on, a Bible verse is full-screen whatever the page is set to; turn Auto off to check the fixed profile
+  await api('setOutputAutoProfile', g.id, false); await api('setOutputProfile', g.id, 'lower-third')
+  let prof = null
+  for (let i = 0; i < 20 && prof !== 'lower-third'; i++) { await sleep(300); prof = await gp.evaluate(() => document.getElementById('stage').dataset.profile) } // the page follows within a few seconds
+  results.push(prof === 'lower-third'); console.log(prof === 'lower-third' ? 'PASS' : 'FAIL', 'profile lower-third', prof)
   await api('setOutputProfile', g.id, 'fullscreen'); await sleep(800)
   console.log(results.length, 'checks,', results.filter((r) => !r).length, 'failed')
   await wk.close(); await browser.close()

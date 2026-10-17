@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import AppearanceMenu from '../../renderer/src/components/AppearanceMenu'
 
 afterEach(cleanup)
-const props = () => ({ theme: 'dark' as const, onTheme: vi.fn(), contrast: false, onContrast: vi.fn(), uiScale: 'auto' as const, onUiScale: vi.fn(), onHelp: vi.fn(), onShortcuts: vi.fn() })
+const props = () => ({ theme: 'dark' as const, onTheme: vi.fn(), contrast: false, onContrast: vi.fn(), uiScale: 'auto' as const, onUiScale: vi.fn(), clickShows: false, onClickShows: vi.fn(), onHelp: vi.fn(), onShortcuts: vi.fn() })
 
 describe('the ⚙ menu: appearance, interface size, Help (P-01 / P-11)', () => {
   it('is one button with a name, closed until pressed', () => {
@@ -58,5 +58,15 @@ describe('the ⚙ menu: appearance, interface size, Help (P-01 / P-11)', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(document.activeElement).toBe(b)
+  })
+  it('has the "A single click shows it" setting for people who want how earlier versions worked', async () => {
+    const p = props()
+    const user = userEvent.setup()
+    render(<AppearanceMenu {...p} />)
+    await user.click(screen.getByRole('button', { name: 'Settings and help' }))
+    const box = screen.getByRole('checkbox', { name: /A single click shows it/ }) as HTMLInputElement
+    expect(box.checked).toBe(false)
+    await user.click(box)
+    expect(p.onClickShows).toHaveBeenCalledWith(true)
   })
 })

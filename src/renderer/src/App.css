@@ -835,6 +835,22 @@ mark.hl {
   outline-offset: 1px;
 }
 
+/* P-08: a click SELECTS the row; the row's buttons (Queue, Show) appear on the hovered, focused or selected row, and always on a touch screen. */
+.follow-para[role='button'].is-selected,
+.bible-verse[role='button'].is-selected,
+.song-slide[role='button'].is-selected {
+  border-color: var(--accent);
+  background-color: var(--bg-panel);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.follow-para .result-actions { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.follow-para:hover .result-actions,
+.follow-para:focus-within .result-actions,
+.follow-para.is-selected .result-actions,
+.follow-para--on-screen .result-actions { opacity: 1; }
+@media (pointer: coarse) { .follow-para .result-actions { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .follow-para .result-actions { transition: none; } }
+
 /* The verse / paragraph the operator opened on — highlighted, but lighter than
    the accent used for what's actually on the projector. */
 .follow-para--focus,

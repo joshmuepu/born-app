@@ -34,7 +34,9 @@ switch sermons without going back.
   the **\\** key) to slide the left side away; click it again to bring it back.
 - **Small windows:** the two panes become one column, with a **Back** button.
 
-Each paragraph has its own **+ Queue** and **Show** buttons.
+Each paragraph has its own **+ Queue** and **Show** buttons, which appear when you point at the paragraph, tab to it, or select it.
+
+**One gesture for verses, slides and paragraphs:** a **click selects** (nothing on the screens changes), **Enter** or a **double-click shows** it, and the **Show** button always shows it. If you prefer how earlier versions worked, open the **⚙** menu and turn on **A single click shows it**.
 
 ## Bible
 

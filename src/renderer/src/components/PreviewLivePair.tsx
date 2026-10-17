@@ -227,9 +227,9 @@ export default function PreviewLivePair({
 
       {isMain && onPrev && onNext && (
         <span className="plp-steps" role="group" aria-label="Step through the queue">
-          <button type="button" className={`plp-step${bump === 'prev' ? ' is-bump' : ''}`} onClick={onPrev} disabled={!canPrev} aria-label="Back" title="Back — previous slide / verse / paragraph (← or Shift+Space)"><ChevronLeft width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
+          <button type="button" className={`plp-step${bump === 'prev' ? ' is-bump' : ''}`} onClick={onPrev} disabled={!canPrev} aria-label="Back in the service" title="Back — previous slide / verse / paragraph (← or Shift+Space)"><ChevronLeft width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
           {position && <span className="plp-pos" aria-live="polite">{position}</span>}
-          <button type="button" className={`plp-step${bump === 'next' ? ' is-bump' : ''}`} onClick={onNext} disabled={!canNext} aria-label="Next" title="Next — next slide / verse / paragraph (→ or Space)"><ChevronRight width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
+          <button type="button" className={`plp-step${bump === 'next' ? ' is-bump' : ''}`} onClick={onNext} disabled={!canNext} aria-label="Next in the service" title="Next — next slide / verse / paragraph (→ or Space)"><ChevronRight width={14} height={14} strokeWidth={2.6} aria-hidden="true" /></button>
         </span>
       )}
 

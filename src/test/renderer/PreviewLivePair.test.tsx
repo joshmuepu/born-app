@@ -164,8 +164,8 @@ describe('PreviewLivePair', () => {
     expect(seen('2 of 9')).toBe(true)
     const steps = screen.getByRole('group', { name: 'Step through the queue' })
     expect(steps.querySelectorAll('button')).toHaveLength(2)
-    await user.click(screen.getByRole('button', { name: 'Back' }))
-    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(screen.getByRole('button', { name: 'Back in the service' }))
+    await user.click(screen.getByRole('button', { name: 'Next in the service' }))
     expect(onPrev).toHaveBeenCalledOnce()
     expect(onNext).toHaveBeenCalledOnce()
     // exactly one primary (filled) button in the box, and it is the one that shows something
@@ -178,8 +178,8 @@ describe('PreviewLivePair', () => {
 
   it('the arrows are off at the ends of the queue, and a second channel has none', async () => {
     const { rerender } = render(<PreviewLivePair {...baseProps({ onPrev: vi.fn(), onNext: vi.fn(), canPrev: false, canNext: false })} />)
-    expect((screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Back in the service' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Next in the service' }) as HTMLButtonElement).disabled).toBe(true)
     rerender(<PreviewLivePair {...baseProps({ channels: [], onPrev: vi.fn(), onNext: vi.fn() })} />)
   })
 })

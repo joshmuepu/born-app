@@ -37,3 +37,7 @@ Plain language. Updated with every slice of the UX build.
 - Two new tabs: **Media** (thumbnails; **Show** or **+ Queue**) and **Tape** (the tape controls and the paragraph list). The phone now has the same six places as the main window.
 - A full-width amber **SCREEN HIDDEN — tap to show** banner appears while the screens are hidden; the button says **Show screen** (before: it said Restore and only its colour changed). The button is at least 56 px high.
 - Words match the main window: **Show** (was Project) and **Hide screen / Show screen** (was Blank / Restore).
+
+## Verses, song slides and sermon paragraphs
+- A **single click now only selects** the row (it gets a purple edge). It no longer puts anything on the screens by accident. **Enter**, **Space** or a **double-click** shows it, and the row's **Show** button always shows it. The **Show** and **+ Queue** buttons appear when you point at a row, tab to it or select it (always on a touch screen).
+- If your team likes the old one-click way: **⚙ menu → A single click shows it**.

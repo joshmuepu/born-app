@@ -121,10 +121,13 @@ describe('only the paragraph NUMBER moves the tape', () => {
     expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 35 })
     expect(screen.queryByText(/Jumped to/)).toBeNull()
   })
-  it('clicking the CARD never moves the tape: it only puts the paragraph on the screen, exactly as it did before there was a tape', async () => {
+  it('clicking the CARD never moves the tape and never changes the screens: it only selects; double-click or Enter shows it', async () => {
     await open(35)
     fireEvent.click(card('4'))
-    expect(onProject).toHaveBeenCalled()
+    expect(onProject).not.toHaveBeenCalled()
+    expect(card('4').classList.contains('is-selected')).toBe(true)
+    fireEvent.doubleClick(card('4'))
+    expect(onProject).toHaveBeenCalledOnce()
     expect(api.tapeCommand).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'seek' }))
     expect(screen.queryByText(/Jumped to/)).toBeNull()
   })
@@ -135,12 +138,14 @@ describe('only the paragraph NUMBER moves the tape', () => {
     expect(api.tapeCommand).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'seek', to: 80 }))
     expect(screen.queryByText(/Jumped to/)).toBeNull()
   })
-  it('without the tape loaded the numbers are plain labels, and a click on the card just projects', async () => {
+  it('without the tape loaded the numbers are plain labels, and Enter on the card shows it', async () => {
     render(<SermonFollowView sermonId={7} anchorRef="header" liveRef={null} onBack={vi.fn()} onProject={onProject} onAddToQueue={vi.fn()} onOpenTape={onOpenTape} />)
     await waitFor(() => expect(screen.getAllByText(/^¶/).length).toBeGreaterThan(3))
     expect(screen.queryByRole('button', { name: /Move the tape to paragraph/ })).toBeNull()
     onProject.mockClear()
     fireEvent.click(card('4'))
+    expect(onProject).not.toHaveBeenCalled()
+    fireEvent.keyDown(card('4'), { key: 'Enter' })
     expect(onProject).toHaveBeenCalled()
   })
 })

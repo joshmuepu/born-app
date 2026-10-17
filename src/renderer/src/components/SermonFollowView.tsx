@@ -1,3 +1,4 @@
+import { rowGesture, useClickShows } from '../rowGesture'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
 import { formatTapeTime, type TapeFileStatus, type TapeRecording } from '../../../shared/tape'
@@ -77,6 +78,8 @@ export default function SermonFollowView({
   language = 'en',
   onOpenTape
 }: Props) {
+  const clickShows = useClickShows()
+  const [selectedPara, setSelectedPara] = useState<string | null>(null)
   const actions = useAppActions()
   const ctx = useContextMenu()
   const [paras, setParas] = useState<Quote[]>([])
@@ -232,7 +235,8 @@ export default function SermonFollowView({
                   'follow-para',
                   live ? 'follow-para--on-screen' : '',
                   onTape ? 'follow-para--tape' : tapeActive ? 'follow-para--tape-dim' : '',
-                  focused ? 'follow-para--focus' : ''
+                  focused ? 'follow-para--focus' : '',
+                  selectedPara === `${sermonId}:${fs.slideIndex}` ? 'is-selected' : ''
                 ].filter(Boolean).join(' ')}
                 role="button"
                 tabIndex={0}
@@ -246,19 +250,10 @@ export default function SermonFollowView({
                     openSermon: false
                   })
                 )}
-                title="Show this paragraph — or drag it into the queue"
-                onClick={(e) => {
-                  // the card only ever puts the paragraph on the screen (as it always did); moving the TAPE is the paragraph NUMBER's job
-                  onProject(fs.quote, fs.slideIndex)
-                  e.currentTarget.blur()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    onProject(fs.quote, fs.slideIndex)
-                    e.currentTarget.blur()
-                  }
-                }}
+                title="Click to select, Enter or double-click to show this paragraph — or drag it into the queue"
+                aria-selected={selectedPara === `${sermonId}:${fs.slideIndex}`}
+                // a click only selects; showing is Enter, a double-click or the Show button. Moving the TAPE is the paragraph NUMBER's job.
+                {...rowGesture({ clickShows, show: () => onProject(fs.quote, fs.slideIndex), select: () => setSelectedPara(`${sermonId}:${fs.slideIndex}`) })}
               >
                 <div className="follow-para-head">
                   {tapeActive && baseNumber(fs.marker) !== null ? (

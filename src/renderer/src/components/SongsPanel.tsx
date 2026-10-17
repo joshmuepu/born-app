@@ -1,3 +1,4 @@
+import { rowGesture, useClickShows } from '../rowGesture'
 import VirtualList, { type VirtualListHandle } from './VirtualList'
 import { startQueueDrag } from '../dragItem'
 import { useContextMenu } from './ContextMenu'
@@ -57,6 +58,8 @@ export default function SongsPanel({
   onProjectSong,
   onSongOpened
 }: Props) {
+  const clickShows = useClickShows()
+  const [selectedSlide, setSelectedSlide] = useState<string | null>(null)
   const actions = useAppActions()
   const ctx = useContextMenu()
   const [tab, setTab] = useState<'search' | 'browse'>('search')
@@ -511,21 +514,12 @@ export default function SongsPanel({
               return (
                 <div
                   key={i}
-                  className={`song-slide${live ? ' song-slide--on-screen' : ''}`}
+                  className={`song-slide${live ? ' song-slide--on-screen' : ''}${selectedSlide === `${selected.id}:${i}` ? ' is-selected' : ''}`}
                   role="button"
                   tabIndex={0}
-                  title="Show this slide"
-                  onClick={(e) => {
-                    onProjectSong(selected, i)
-                    e.currentTarget.blur()
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      onProjectSong(selected, i)
-                      e.currentTarget.blur()
-                    }
-                  }}
+                  title="Click to select, Enter or double-click to show this slide"
+                  aria-selected={selectedSlide === `${selected.id}:${i}`}
+                  {...rowGesture({ clickShows, show: () => onProjectSong(selected, i), select: () => setSelectedSlide(`${selected.id}:${i}`) })}
                 >
                   <div className="song-slide-head">
                     <div className="song-slide-label">{s.label}</div>

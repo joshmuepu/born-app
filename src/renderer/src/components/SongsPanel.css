@@ -246,11 +246,12 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  opacity: 1;
+  opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 .song-slide:hover .song-slide-project,
-.song-slide:focus-within .song-slide-project {
+.song-slide:focus-within .song-slide-project,
+.song-slide.is-selected .song-slide-project {
   opacity: 1;
 }
 

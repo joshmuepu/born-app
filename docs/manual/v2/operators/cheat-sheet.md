@@ -20,7 +20,7 @@ sound desk.*
 | Jump to the search box from anywhere | Press **/** |
 | Move between the header, the sections, the content, the queue and the status bar | Press **F6** (**Shift+F6** goes back). The first **Tab** stop in the window is a hidden **Skip to content / Skip to the queue / Skip to the live controls** link |
 | Find a sermon quote | Type a word/phrase in the search box → click a result's **Show** |
-| Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → **Show** |
+| Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → select the verse and press **Enter** (or click its **Show**) |
 | Find a song | Click **Songs** → search → **Show** |
 | Move to the next slide | Press **→** or **Space**, or click **Next** |
 | Go back a slide | Press **←**, or click **Back** |

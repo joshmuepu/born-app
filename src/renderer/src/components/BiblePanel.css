@@ -209,6 +209,7 @@
 }
 .bible-verse:hover .bible-verse-actions,
 .bible-verse:focus-within .bible-verse-actions,
+.bible-verse.is-selected .bible-verse-actions,
 .bible-verse--on-screen .bible-verse-actions {
   opacity: 1;
 }
