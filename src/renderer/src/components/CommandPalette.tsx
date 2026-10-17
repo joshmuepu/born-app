@@ -261,7 +261,7 @@ export default function CommandPalette({
                 >
                   <span className="palette-item-main">
                     <span className="palette-item-title">{it.title}</span>
-                    {it.sub && <span className="palette-item-sub">{it.sub}</span>}
+                    {it.sub && <span className="palette-item-sub" title={it.sub}>{it.sub}</span>}
                   </span>
                   {i === cursor && (
                     <span className="palette-item-hint">

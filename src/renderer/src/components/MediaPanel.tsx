@@ -558,7 +558,7 @@ export default function MediaPanel({ visible, onAddToQueue, onAddYouTube, onAddS
           <ViewToggle view={view} onChange={setView} />
         </div>
         <div className="media-actions">
-          <button className="btn-primary btn-sm" onClick={() => void pick(false)} disabled={!available.ok || !!progress}><Upload size={14} /> Add pictures</button>
+          <button className="btn-secondary btn-sm" onClick={() => void pick(false)} disabled={!available.ok || !!progress}><Upload size={14} /> Add pictures</button>
           {onAddYouTube && <button className="btn-secondary btn-sm" onClick={onAddYouTube} title="Paste a YouTube link — plays online in YouTube's own player"><Globe size={14} /> YouTube</button>}
           <button className="btn-quiet btn-sm" onClick={() => void pick(true)} disabled={!available.ok || !!progress}><FolderOpen size={14} /> Add folder</button>
           <button className="btn-quiet btn-sm" onClick={() => void importPdfFile()} disabled={!available.ok || !!progress || !!pdfJob} title="Turn the pages of a PDF into a slideshow"><FileText size={14} /> Import PDF</button>

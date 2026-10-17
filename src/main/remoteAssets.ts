@@ -6,6 +6,7 @@
  */
 
 export const APP_CSS = `
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 :root{
   --bg:#08080a; --surface:#16161a; --surface2:#1e1e23; --border:#26262c;
   --text:#f4f2ee; --text2:#b2afaa; --text3:#8a8782;
@@ -1468,7 +1469,7 @@ function queueRowHtml(q, i, editable, richPreview){
     + '<div class="qtitle">' + esc(it.title) + '</div>'
     + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
     + (richPreview && it.slides && it.slides[0] && !it.slides[0].media ? '<div class="qpreview">' + esc(it.slides[0].text) + '</div>' : '');
-  if(it.slides && it.slides[0] && it.slides[0].media){ body = '<img class="qthumb" alt="" src="/media/' + it.slides[0].media.mediaId + '/thumb" onerror="this.remove()">' + body; }
+  if(it.slides && it.slides[0] && it.slides[0].media && !/^yt-/.test(it.slides[0].media.mediaId)){ body = '<img class="qthumb" alt="" src="/media/' + it.slides[0].media.mediaId + '/thumb" onerror="this.remove()">' + body; }
   if(editable){
     return '<div class="' + rowClass + '" data-kind="' + esc(it.kind) + '">'
       + '<div class="qitem-body">' + body + '</div>'

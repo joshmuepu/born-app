@@ -25,3 +25,4 @@
 | F-021 | P2 | Tape language notice (`tapeLanguage.ts`) | the message listed every unmatched paragraph number (a 6-line wall of numbers for a Spanish text) | at most four runs and "and N more"; the full list is still in "Line up the differences" | plain language | 1d169ae |
 | F-022 | P2 | Tape editor / options / player | editor row text truncated with no tooltip; segmented option buttons 26 px, mute/sound-output 30 px, search field 26 px | full text on hover; 32 px floor | truncation, targets | 1d169ae |
 | F-023 | P2 | Command palette, Media categories | the palette field had no visible focus; "Recently used" etc. truncated with no tooltip | accent underline on the focused row; full name on hover | accessibility, truncation | 4342ed5 |
+| F-024 | P2 | Songs toolbar (`SongsPanel.tsx`) | opening Import… while the songbook menu was open (keyboard) left both menus open, overlapping | opening one closes the other | stacked popovers | 709d1ab |

@@ -2815,3 +2815,4 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 .browse-back, .media-link-toggle, .am-check { min-height: var(--target-min, 32px); }
 .media-link-toggle, .am-check { display: inline-flex; align-items: center; gap: 8px; }
 .tsp-seg button, .tape-ico, .tape-chipbtn, .tfl-jump, .tp-input { min-height: var(--target-min, 32px); }
+.tse-seg button, .tse-react input { min-height: var(--target-min, 32px); }

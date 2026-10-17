@@ -27,11 +27,11 @@
     const ov = e.scrollWidth - e.clientWidth
     if (ov > 2 && e.clientWidth > 0) {
       if (s.textOverflow === 'ellipsis' && s.overflowX !== 'visible') { if (!e.title && !e.getAttribute('aria-label') && !e.closest('[title]')) add('truncated-no-tooltip', 'P2', e, `hidden ${ov}px`) }
-      else if (s.overflowX === 'hidden' || s.overflowX === 'clip') add('text-clipped', 'P1', e, `hidden ${ov}px, no ellipsis`)
+      else if ((s.overflowX === 'hidden' || s.overflowX === 'clip') && !(s.webkitLineClamp && s.webkitLineClamp !== 'none')) add('text-clipped', 'P1', e, `hidden ${ov}px, no ellipsis`)
       else if (s.overflowX === 'visible' && vr0(e) > 2 && e.getBoundingClientRect().right > (e.parentElement ? e.parentElement.getBoundingClientRect().right + 2 : 1e9) && s.whiteSpace !== 'normal') add('text-spills-out', 'P1', e, `by ${ov}px`)
     }
     const ovy = e.scrollHeight - e.clientHeight
-    if (ovy > 3 && /(hidden|clip)/.test(s.overflowY) && s.textOverflow !== 'ellipsis' && !/-webkit-box/.test(s.display)) add('text-clipped-v', 'P1', e, `hidden ${ovy}px`)
+    if (ovy > 3 && /(hidden|clip)/.test(s.overflowY) && s.textOverflow !== 'ellipsis' && !/-webkit-box/.test(s.display) && !(s.webkitLineClamp && s.webkitLineClamp !== 'none')) add('text-clipped-v', 'P1', e, `hidden ${ovy}px`)
   }
   // the part of an element that can really be seen: cut by every scrolling / clipping ancestor
   const vrect = (e) => { const r = e.getBoundingClientRect(); let l = r.left, t = r.top, rr = r.right, b = r.bottom; let n = e.parentElement; while (n && n !== document.body) { const st = getComputedStyle(n); if (/(auto|scroll|hidden|clip)/.test(st.overflowX + st.overflowY)) { const p = n.getBoundingClientRect(); l = Math.max(l, p.left); t = Math.max(t, p.top); rr = Math.min(rr, p.right); b = Math.min(b, p.bottom) } n = n.parentElement } return { left: l, top: t, right: rr, bottom: b } }
@@ -65,7 +65,8 @@
   for (const e of document.querySelectorAll('[role=dialog],[role=alertdialog]')) if (vis(e) && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')) add('dialog-no-name', 'P1', e)
   if (!document.querySelector('main,[role=main]') && !/Output|Stage View|Graphics/.test(document.title)) F.push({ check: 'no-main-landmark', sev: 'P2', sel: 'document', text: '', detail: '' })
   // 7. focus indicators (sample)
-  const foc = inter.filter((e) => !e.disabled && e.tabIndex >= 0).slice(0, 40)
+  const modal = document.querySelector('[role=dialog][aria-modal=true]')
+  const foc = inter.filter((e) => !e.disabled && e.tabIndex >= 0 && (!modal || modal.contains(e))).slice(0, 40)
   const sig = (e) => { const s = getComputedStyle(e); return [s.outlineStyle, s.outlineWidth, s.outlineColor, s.boxShadow, s.borderColor, s.backgroundColor].join('|') }
   const prev = document.activeElement
   for (const e of foc) { if (document.activeElement === e) e.blur(); await new Promise((r) => setTimeout(r, 20)); const w = e.parentElement; const wb = w ? sig(w) : ''; const before = sig(e); e.focus({ preventScroll: true }); await new Promise((r) => setTimeout(r, 40)); const after = sig(e); const wa = w ? sig(w) : ''; if (before === after && wb === wa) add('no-focus-indicator', 'P1', e) }
