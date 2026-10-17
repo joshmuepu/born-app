@@ -2763,7 +2763,7 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
    --target-live; on a touch screen everything grows to --target-touch. Padding only: no visual redesign. Scoped with :root .app like the control
    boundaries above so it wins regardless of load order. */
 :root { --target-min: 32px; --target-live: 40px; --target-touch: 44px; }
-:root .app :is(.btn-sm, .btn-quiet, .btn-secondary, .btn-primary, .btn-danger, .panel-subtab, .btn-icon-text, .tab, .chip-btn, .media-mini, .browse-view-toggle button, select.language-select) {
+:root .app :where(.btn-sm, .btn-quiet, .btn-secondary, .btn-primary, .btn-danger, .panel-subtab, .btn-icon-text, .tab, .chip-btn, .media-mini, .browse-view-toggle button, select.language-select) {
   min-height: var(--target-min);
   min-width: var(--target-min);
   box-sizing: border-box;
@@ -2775,7 +2775,8 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 :root .app :is(.plp-take, .plp-clear, .gtb-play) { min-height: var(--target-live); }
 :root .app .app-header > .header-actions > :is(.btn-secondary, .btn-primary, .btn-danger) { min-height: var(--target-live); }
 @media (pointer: coarse) {
-  :root .app :is(.btn-sm, .btn-quiet, .btn-secondary, .btn-primary, .panel-subtab, .btn-icon-text, .tab) { min-height: var(--target-touch); }
+  :root .app :is(.plp-take, .plp-clear, .gtb-play) { min-height: var(--target-touch); }
+  :root .app :where(.btn-sm, .btn-quiet, .btn-secondary, .btn-primary, .panel-subtab, .btn-icon-text, .tab) { min-height: var(--target-touch); }
   :root .app .btn-icon { min-width: var(--target-touch); min-height: var(--target-touch); width: var(--target-touch); height: var(--target-touch); }
 }
 

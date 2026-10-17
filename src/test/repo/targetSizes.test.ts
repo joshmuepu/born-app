@@ -9,7 +9,7 @@ describe('target sizes (P-09)', () => {
     expect(css).toMatch(/--target-min: 32px; --target-live: 40px; --target-touch: 44px;/)
   })
   it('every kind of button, the sub-tabs and the small icon buttons have the minimum', () => {
-    const rule = css.match(/:root \.app :is\(\.btn-sm[^)]*\) \{[^}]*\}/)?.[0] ?? ''
+    const rule = css.match(/:root \.app :where\(\.btn-sm[^)]*\) \{[^}]*\}/)?.[0] ?? ''
     for (const c of ['.btn-sm', '.btn-quiet', '.btn-secondary', '.btn-primary', '.btn-danger', '.panel-subtab', '.media-mini', '.browse-view-toggle button', 'select.language-select']) expect(rule, c).toContain(c)
     expect(rule).toContain('min-height: var(--target-min)')
     expect(css).toMatch(/:root \.app \.btn-icon \{ min-width: var\(--target-min\); min-height: var\(--target-min\);/)
@@ -19,6 +19,6 @@ describe('target sizes (P-09)', () => {
     expect(css).toMatch(/\.app-header > \.header-actions > :is\(\.btn-secondary, \.btn-primary, \.btn-danger\)/)
   })
   it('touch screens get the largest tier', () => {
-    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*:root \.app :is\([^)]*\) \{ min-height: var\(--target-touch\); \}/)
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*:root \.app :where\([^)]*\) \{ min-height: var\(--target-touch\); \}/)
   })
 })
