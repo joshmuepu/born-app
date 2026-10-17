@@ -1,108 +1,158 @@
-import TapeDownload from './TapeDownload'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Headphones, FolderOpen, Globe, RefreshCw, Check } from 'lucide-react'
-import type { TapeFolderHit, TapeImportResult } from '../../../shared/tape'
-import { emitTape } from '../tapeBus'
-import TapeAttach from './TapeAttach'
+import { Headphones, FolderOpen, Globe, RefreshCw, Check, Upload, X } from 'lucide-react'
+import type { TapeAddOutcome, TapeFolderHit } from '../../../shared/tape'
+import TapeDownload from './TapeDownload'
 
-interface SermonRef { id: number; dateCode: string; title: string }
+export interface SermonRef { id: number; dateCode: string; title: string }
+export type PendingFile = TapeAddOutcome['pending'][number]
 const mb = (n: number): string => (n >= 1073741824 ? `${(n / 1073741824).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1048576))} MB`)
 
 /**
- * Add a recording from the Tape place: say which sermon it is for, then use the same "Add the tape" dialog as before (file, drag-drop, Get audio, the checks),
- * or add what the "Tape audio" folder scan found. Nothing is downloaded, and the original file is never changed.
+ * Add a recording (the Tape place's Add tab). One click on "Add a recording…" opens the file picker IN your Tape audio folder; a file whose name says which
+ * sermon it is (65-0418M …) is added at once and the Tape place lands on it. Only a file BORN cannot place waits here, for one click. Below: what is already
+ * in the Tape audio folder, and — if you do not have the file — downloading it from the publisher.
  */
-export default function TapeAddPanel({ preferredSermonId, onChanged }: { preferredSermonId?: number | null; onChanged: () => void }): JSX.Element {
+export default function TapeAddPanel({
+  busy,
+  message,
+  problems,
+  pending,
+  onAdd,
+  onDropPaths,
+  onResolve,
+  onSkip,
+  onChanged,
+  preferredSermonId
+}: {
+  busy: boolean
+  message: string | null
+  problems: string[]
+  pending: PendingFile[]
+  onAdd: () => void
+  onDropPaths: (paths: string[]) => void
+  onResolve: (file: PendingFile, sermonId: number) => void
+  onSkip: (file: PendingFile) => void
+  onChanged: () => void
+  preferredSermonId?: number | null
+}): JSX.Element {
   const [sermons, setSermons] = useState<SermonRef[]>([])
-  const [query, setQuery] = useState('')
-  const [chosen, setChosen] = useState<SermonRef | null>(null)
-  const [attachOpen, setAttachOpen] = useState(false)
   const [folder, setFolder] = useState<string | null>(null)
   const [hits, setHits] = useState<TapeFolderHit[]>([])
-  const [message, setMessage] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [folderMsg, setFolderMsg] = useState<string | null>(null)
 
   useEffect(() => { void Promise.resolve(window.electronAPI.tapeSermonList?.()).then((l) => setSermons(l ?? [])) }, [])
-  useEffect(() => { if (preferredSermonId != null && !chosen) { const s = sermons.find((x) => x.id === preferredSermonId); if (s) setChosen(s) } }, [preferredSermonId, sermons, chosen])
   const scan = useCallback(async () => {
     const info = await window.electronAPI.tapeInfo()
     setFolder(info.folder)
     setHits(info.folder ? ((await window.electronAPI.tapeScanFolder()) as TapeFolderHit[]) : [])
   }, [])
-  useEffect(() => { void scan() }, [scan])
+  useEffect(() => { void scan() }, [scan, message])
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (q.length < 2) return []
-    return sermons.filter((s) => s.title.toLowerCase().includes(q) || s.dateCode.toLowerCase().includes(q.replace(/\s+/g, ''))).slice(0, 8)
-  }, [query, sermons])
-
-  const addHit = async (h: TapeFolderHit, sermonId: number): Promise<void> => {
-    const r = (await window.electronAPI.tapeImportConfirmed([{ path: h.path, sermonId }])) as TapeImportResult[]
-    const ok = r.find((x) => x.ok)
-    const bad = r.find((x): x is Extract<TapeImportResult, { ok: false }> => !x.ok)
-    setMessage(ok ? `Added “${h.name}”.` : bad ? bad.message : 'It could not be added.')
-    if (ok) { onChanged(); emitTape('recordings-changed'); void scan() }
-  }
   const pickFolder = async (): Promise<void> => {
     const f = await window.electronAPI.tapePickFolder()
-    if (f) { await scan(); setMessage(`Your “Tape audio” folder is now ${f}.`) }
+    if (f) { await scan(); setFolderMsg(`Your “Tape audio” folder is now ${f}.`) }
   }
+  const ready = useMemo(() => hits.filter((h) => !h.imported), [hits])
+  const exact = ready.filter((h) => h.match && h.confidence === 'exact')
 
   return (
-    <div className="tpa">
-      <section className="tp-card">
-        <h4><Headphones width={15} height={15} aria-hidden="true" /> Which sermon is the recording for?</h4>
-        <div className="tpa-pick">
-          <input className="tp-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Type a title or a date code, e.g. 65-0418M" aria-label="Find the sermon" />
-          {chosen && <span className="tp-chip tp-chip--ok"><Check width={12} height={12} aria-hidden="true" /> {chosen.dateCode} · {chosen.title}</span>}
-        </div>
-        {matches.length > 0 && (
-          <ul className="tpa-list" aria-label="Matching sermons">
-            {matches.map((s) => (
-              <li key={s.id}><button onClick={() => { setChosen(s); setQuery('') }}><b>{s.dateCode}</b> {s.title}</button></li>
-            ))}
-          </ul>
-        )}
+    <div
+      className={`tpa${dragOver ? ' is-dragover' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); const paths = window.electronAPI.tapePathsForFiles(Array.from(e.dataTransfer.files)); if (paths.length) onDropPaths(paths) }}
+    >
+      <section className="tp-card tpa-main">
+        <h4><Headphones width={15} height={15} aria-hidden="true" /> Add a recording</h4>
         <div className="tpa-actions">
-          <button className="btn-primary btn-sm" disabled={!chosen} onClick={() => setAttachOpen(true)}>Add a recording{chosen ? ` for “${chosen.title}”` : ''}…</button>
+          <button className="btn-primary" onClick={onAdd} disabled={busy}><Upload width={14} height={14} aria-hidden="true" /> {busy ? 'Adding…' : 'Add a recording…'}</button>
+          <span className="tp-faint">or drop the file anywhere on this page</span>
         </div>
-        <h4 className="tpa-get"><Globe width={15} height={15} aria-hidden="true" /> Get audio</h4>
-        <TapeDownload sermon={chosen ? { id: chosen.id, dateCode: chosen.dateCode, title: chosen.title } : null} onDone={() => { onChanged(); emitTape('recordings-changed'); void scan() }} />
+        <p className="tp-faint">The file picker opens in {folder ? 'your Tape audio folder' : 'your Downloads folder'}. A file named with its date code (like <b>65-0418M</b>) goes to the right sermon by itself and shows in the list on the left. BORN keeps its own copy and never changes your file.</p>
+        {message && <p role="status" className="tpa-ok"><Check width={13} height={13} aria-hidden="true" /> {message}</p>}
+        {problems.map((p, i) => <p key={i} role="alert" className="tp-warn">{p}</p>)}
       </section>
 
+      {pending.length > 0 && (
+        <section className="tp-card tpa-pending" aria-label="Which sermon is it?">
+          <h4>Which sermon {pending.length === 1 ? 'is this file' : 'are these files'} for?</h4>
+          {pending.map((f) => <PendingRow key={f.path} file={f} sermons={sermons} preferredSermonId={preferredSermonId ?? null} onResolve={onResolve} onSkip={onSkip} />)}
+        </section>
+      )}
+
       <section className="tp-card">
-        <h4><FolderOpen width={15} height={15} aria-hidden="true" /> Your “Tape audio” folder</h4>
+        <h4><FolderOpen width={15} height={15} aria-hidden="true" /> In your “Tape audio” folder</h4>
         <div className="tpa-actions">
-          <span className="tp-faint tpa-folder">{folder ?? 'Not chosen yet — keep your recordings in one folder and BORN will find them.'}</span>
+          <span className="tp-faint tpa-folder">{folder ?? 'Not chosen yet — pick the folder where you keep recordings and BORN will find them.'}</span>
           <button className="btn-secondary btn-sm" onClick={() => void pickFolder()}>{folder ? 'Change…' : 'Choose a folder…'}</button>
           {folder && <button className="btn-quiet btn-sm" onClick={() => void scan()}><RefreshCw width={12} height={12} aria-hidden="true" /> Look again</button>}
         </div>
-        {message && <p className="tp-faint" role="status">{message}</p>}
-        {folder && hits.length === 0 && <p className="tp-faint">No audio files found in that folder yet.</p>}
-        {hits.length > 0 && (
+        {folderMsg && <p className="tp-faint" role="status">{folderMsg}</p>}
+        {folder && ready.length === 0 && <p className="tp-faint">{hits.length ? 'Everything in that folder is already added.' : 'No audio files found in that folder yet.'}</p>}
+        {exact.length > 1 && <div className="tpa-actions"><button className="btn-primary btn-sm" disabled={busy} onClick={() => onDropPaths(exact.map((h) => h.path))}>Add all {exact.length} that match a sermon</button></div>}
+        {ready.length > 0 && (
           <table className="tp-table">
             <thead><tr><th>File</th><th>Size</th><th>Looks like</th><th /></tr></thead>
             <tbody>
-              {hits.map((h) => (
+              {ready.map((h) => (
                 <tr key={h.path}>
                   <td title={h.path}>{h.name}</td>
                   <td>{mb(h.bytes)}</td>
                   <td>{h.match ? <span className={h.confidence === 'exact' ? 'tp-ok' : 'tp-warn'}>{h.match.dateCode} {h.match.title}{h.confidence === 'exact' ? '' : ' (please check)'}</span> : <span className="tp-faint">no sermon recognised</span>}</td>
-                  <td>
-                    {h.imported ? <span className="tp-faint">Already added</span>
-                      : h.match ? <button className="btn-primary btn-sm" onClick={() => void addHit(h, h.match!.id)}>Add to that sermon</button>
-                      : chosen ? <button className="btn-quiet btn-sm" onClick={() => void addHit(h, chosen.id)}>Add to “{chosen.title}”</button>
-                      : <span className="tp-faint">choose a sermon above</span>}
-                  </td>
+                  <td><button className="btn-secondary btn-sm" disabled={busy} onClick={() => onDropPaths([h.path])}>Add</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </section>
-      {attachOpen && chosen && (
-        <TapeAttach sermonId={chosen.id} sermonTitle={chosen.title} dateCode={chosen.dateCode} onClose={() => { setAttachOpen(false); onChanged(); emitTape('recordings-changed') }} onChanged={() => { onChanged(); emitTape('recordings-changed') }} />
-      )}
+
+      <section className="tp-card">
+        <h4><Globe width={15} height={15} aria-hidden="true" /> Don’t have the file? Get audio</h4>
+        <DownloadPicker sermons={sermons} preferredSermonId={preferredSermonId ?? null} onDone={onChanged} />
+      </section>
+    </div>
+  )
+}
+
+/** One file BORN could not place: its likeliest sermons are one click each; or find the sermon by title or date code. */
+function PendingRow({ file, sermons, preferredSermonId, onResolve, onSkip }: { file: PendingFile; sermons: SermonRef[]; preferredSermonId: number | null; onResolve: (f: PendingFile, id: number) => void; onSkip: (f: PendingFile) => void }): JSX.Element {
+  const [q, setQ] = useState('')
+  const found = useMemo(() => {
+    const s = q.trim().toLowerCase()
+    if (s.length < 2) return []
+    return sermons.filter((x) => x.title.toLowerCase().includes(s) || x.dateCode.toLowerCase().includes(s.replace(/\s+/g, ''))).slice(0, 6)
+  }, [q, sermons])
+  const pref = preferredSermonId != null ? sermons.find((s) => s.id === preferredSermonId) : undefined
+  const choices = file.candidates.length ? file.candidates : pref ? [pref] : []
+  return (
+    <div className="tpa-pending-row">
+      <div className="tpa-pending-file"><b title={file.path}>{file.name}</b> <span className="tp-faint">{mb(file.bytes)}</span><button className="btn-quiet btn-sm" onClick={() => onSkip(file)} aria-label={`Skip ${file.name}`}><X width={12} height={12} aria-hidden="true" /></button></div>
+      {choices.length > 0 && <div className="tpa-choices">{choices.map((c) => <button key={c.id} className="btn-secondary btn-sm" onClick={() => onResolve(file, c.id)}>{c.dateCode} · {c.title}</button>)}</div>}
+      <input className="tp-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the sermon: a title or a date code, e.g. 65-0418M" aria-label={`Find the sermon for ${file.name}`} />
+      {found.length > 0 && <ul className="tpa-list" aria-label="Matching sermons">{found.map((s) => <li key={s.id}><button onClick={() => onResolve(file, s.id)}><b>{s.dateCode}</b> {s.title}</button></li>)}</ul>}
+    </div>
+  )
+}
+
+function DownloadPicker({ sermons, preferredSermonId, onDone }: { sermons: SermonRef[]; preferredSermonId: number | null; onDone: () => void }): JSX.Element {
+  const [q, setQ] = useState('')
+  const [chosen, setChosen] = useState<SermonRef | null>(null)
+  useEffect(() => { if (preferredSermonId != null && !chosen) { const s = sermons.find((x) => x.id === preferredSermonId); if (s) setChosen(s) } }, [preferredSermonId, sermons, chosen])
+  const matches = useMemo(() => {
+    const s = q.trim().toLowerCase()
+    if (s.length < 2) return []
+    return sermons.filter((x) => x.title.toLowerCase().includes(s) || x.dateCode.toLowerCase().includes(s.replace(/\s+/g, ''))).slice(0, 6)
+  }, [q, sermons])
+  return (
+    <div>
+      <div className="tpa-pick">
+        <input className="tp-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a title or a date code, e.g. 65-0418M" aria-label="Find the sermon to download" />
+        {chosen && <span className="tp-chip tp-chip--ok"><Check width={12} height={12} aria-hidden="true" /> {chosen.dateCode} · {chosen.title}</span>}
+      </div>
+      {matches.length > 0 && <ul className="tpa-list" aria-label="Matching sermons">{matches.map((s) => <li key={s.id}><button onClick={() => { setChosen(s); setQ('') }}><b>{s.dateCode}</b> {s.title}</button></li>)}</ul>}
+      <TapeDownload sermon={chosen} onDone={onDone} />
     </div>
   )
 }

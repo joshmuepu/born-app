@@ -59,3 +59,8 @@ Plain language. Updated with every slice of the UX build.
 ## Get audio now downloads the tape
 - On a sermon's **Add the tape** dialog and in the **Tape place → Add** tab, **Get audio** now has **Download the tape for 65-0418M** (English). It fetches the recording from the publisher's own site into your **Tape audio** folder and adds it, with a progress bar and **Cancel**. **Open the publisher's page** is still there for other languages.
 - **Change…** (the Tape audio folder) now says which folder you picked.
+
+## Adding a recording is one click
+- In the Tape place, **Add a recording…** now opens the file picker straight away, **in your Tape audio folder** (Downloads until you choose one), and takes several files. A file named with its date code (65-0418M …) is added to that sermon at once; the Tape place selects it in the list on the left and opens **Timing** if it has none yet. You no longer choose the sermon first or go through a second dialog. Dropping files anywhere on the Tape place does the same.
+- Only a file BORN cannot place asks you once, right on the Add tab (the likeliest sermons are one-click buttons, or search by title or date code).
+- The Add tab also lists what is already in your Tape audio folder (**Add all N** when several match), and **Get audio** (download from the publisher) is its own small card.

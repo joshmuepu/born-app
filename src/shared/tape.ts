@@ -153,3 +153,10 @@ export const TAPE_DEFAULTS: TapeSettings = {
   whisperModelPath: '',
   ffmpegPath: ''
 }
+
+/** What "Add a recording…" did with the files it was given: the ones whose name says which sermon they are were added at once; the rest wait for one click each. */
+export interface TapeAddOutcome {
+  canceled: boolean
+  added: TapeImportResult[]
+  pending: Array<{ path: string; name: string; bytes: number; candidates: Array<{ id: number; dateCode: string; title: string }> }>
+}

@@ -86,8 +86,9 @@ describe('the library', () => {
     await open(null, null)
     expect(await screen.findByText('No recordings yet')).toBeTruthy()
     expect(screen.getByText(/Everything stays on this computer/)).toBeTruthy()
-    expect(screen.getByText('Get audio')).toBeTruthy()
-    expect(screen.getByText(/Your “Tape audio” folder/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Add a recording…/ })).toBeTruthy()
+    expect(screen.getByText(/Get audio/)).toBeTruthy()
+    expect(screen.getByText(/In your “Tape audio” folder/)).toBeTruthy()
   })
 })
 
@@ -170,15 +171,14 @@ describe('the other tabs', () => {
     fireEvent.click(await screen.findByRole('radio', { name: 'Also pauses' }))
     await waitFor(() => expect(api.tapeSettingsSet).toHaveBeenCalledWith({ escRule: 'pause' }))
   })
-  it('Add: find the sermon, add through the same dialog; the folder scan offers files with the sermon they look like', async () => {
+  it('Add: the folder scan lists files with the sermon they look like, and one click adds one to that sermon', async () => {
     await open({ tab: 'add', nonce: 1 })
-    fireEvent.change(await screen.findByLabelText('Find the sermon'), { target: { value: 'rising' } })
-    fireEvent.click(await screen.findByRole('button', { name: /65-0418M/ }))
-    expect(screen.getByRole('button', { name: /Add a recording for “It Is The Rising Of The Sun”…/ })).toBeTruthy()
     expect(await screen.findByText('65-0418M It Is.m4a')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Add to that sermon' }))
-    await waitFor(() => expect(api.tapeImportConfirmed).toHaveBeenCalledWith([{ path: '/tmp/Tape audio/65-0418M It Is.m4a', sermonId: 5 }]))
     expect(screen.getByText(/no sermon recognised/)).toBeTruthy()
+    api.tapeAddPaths = vi.fn(async () => ({ canceled: false, added: [{ ok: true, file: { name: '65-0418M It Is', id: 'f1' }, recording: { id: 'r_ready', sermonId: 5 }, duplicate: false, warnings: [] }], pending: [] }))
+    Object.assign(window.electronAPI, { tapeAddPaths: api.tapeAddPaths })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0])
+    await waitFor(() => expect(api.tapeAddPaths).toHaveBeenCalledWith(['/tmp/Tape audio/65-0418M It Is.m4a']))
   })
   it('Get audio needs a sermon first; the publisher\'s page opens either way', async () => {
     await open({ tab: 'add', nonce: 1 })
@@ -195,6 +195,40 @@ describe('the one-time hint', () => {
     expect(screen.getByRole('note').textContent).toMatch(/Welcome to the Tape place.*Nothing plays until you press Play/)
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
     expect(screen.queryByRole('note')).toBeNull()
+  })
+})
+
+describe('Add a recording: one click, straight to the right place', () => {
+  const ok = (name: string, sermonId: number, recId: string) => ({ ok: true, file: { name, id: 'f_' + recId }, recording: { id: recId, sermonId }, duplicate: false, warnings: [] })
+  it('opens the file picker at once (no dialog first), adds a file whose name says the sermon, and lands on it', async () => {
+    library = [E_READY]
+    const added = { ...E_NEEDS, id: 'r_new', sermonId: 5, timed: 0 }
+    const fn = vi.fn(async () => { library = [E_READY, added]; return { canceled: false, added: [ok('65-0418M It Is', 5, 'r_new')], pending: [] } })
+    Object.assign(window.electronAPI, { tapeAddFiles: fn })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    await waitFor(() => expect(fn).toHaveBeenCalledOnce())
+    // it lands on the new recording (selected in the list)
+    await waitFor(() => expect(document.querySelector('.tp-rec.is-sel')?.textContent).toContain(added.sermonTitle))
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('Added “65-0418M It Is”') }))
+  })
+  it('a cancelled picker changes nothing', async () => {
+    const fn = vi.fn(async () => ({ canceled: true, added: [], pending: [] }))
+    Object.assign(window.electronAPI, { tapeAddFiles: fn })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    await waitFor(() => expect(fn).toHaveBeenCalled())
+    expect(toast).not.toHaveBeenCalled()
+  })
+  it('a file BORN cannot place waits for one click: its likely sermons are buttons', async () => {
+    const fn = vi.fn(async () => ({ canceled: false, added: [], pending: [{ path: '/x/sermon part 2.m4a', name: 'sermon part 2.m4a', bytes: 9 * 1048576, candidates: [{ id: 5, dateCode: '65-0418M', title: 'It Is The Rising Of The Sun' }] }] }))
+    Object.assign(window.electronAPI, { tapeAddFiles: fn })
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a recording…' }))
+    expect(await screen.findByText(/sermon part 2.m4a/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Which sermon is it?' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /65-0418M · It Is The Rising Of The Sun/ }))
+    await waitFor(() => expect(api.tapeImportConfirmed).toHaveBeenCalledWith([{ path: '/x/sermon part 2.m4a', sermonId: 5 }]))
   })
 })
 

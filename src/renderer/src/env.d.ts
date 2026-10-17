@@ -208,6 +208,8 @@ declare global {
       tapeMapExport: (recordingId: string, textLanguage: string | null) => Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }>
       tapeMapImport: (recordingId: string) => Promise<{ ok: true; marks: import('../../shared/tape').SyncMark[]; regions: import('../../shared/tape').SyncRegion[]; textLanguage: string | null; warnings: string[] } | { ok: false; canceled?: boolean; message: string }>
       tapeActivity: (recordingId: string, bins: number) => Promise<{ values: number[]; durationSec: number } | null>
+      tapeAddFiles: () => Promise<import('../../shared/tape').TapeAddOutcome>
+      tapeAddPaths: (paths: string[]) => Promise<import('../../shared/tape').TapeAddOutcome>
       tapeOpenAudioPage: () => Promise<boolean>
       tapeDownload: (sermonId: number) => Promise<{ ok: true; results: import('../../shared/tape').TapeImportResult[]; bytes: number } | { ok: false; message: string }>
       tapeDownloadCancel: () => Promise<boolean>

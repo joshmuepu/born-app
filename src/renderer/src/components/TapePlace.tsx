@@ -9,7 +9,9 @@ import { emitTape, onTape } from '../tapeBus'
 import { useTape } from '../useTape'
 import { useTapeHint } from '../tapeHint'
 import { useTapeFollow } from '../useTapeFollow'
-import TapeAddPanel from './TapeAddPanel'
+import TapeAddPanel, { type PendingFile } from './TapeAddPanel'
+import { addSummary } from '../../../shared/tapeAdd'
+import type { TapeAddOutcome } from '../../../shared/tape'
 import TapeFollowList from './TapeFollowList'
 import TapeLanguageNotice from './TapeLanguageNotice'
 import TapeScreenControls from './TapeScreenControls'
@@ -38,6 +40,12 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
   const { wire } = useTape(1000)
   const hint = useTapeHint('place')
   const picked = useRef(false) // the operator chose a recording themself: do not move the selection under their hand
+  // adding: the picker opens in the Tape audio folder, a file named with its date code goes to its sermon at once, and the place lands on what was added
+  const [adding, setAdding] = useState(false)
+  const [addMsg, setAddMsg] = useState<string | null>(null)
+  const [addProblems, setAddProblems] = useState<string[]>([])
+  const [pending, setPending] = useState<PendingFile[]>([])
+  const titles = useRef(new Map<number, string>())
 
   const reload = useCallback(async () => {
     const l = (await window.electronAPI.tapeLibrary?.()) ?? []
@@ -67,11 +75,47 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
     if (entries.some((e) => e.id === wire.recordingId)) setSelId(wire.recordingId)
   }, [visible, target, wire?.recordingId, entries]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => { void Promise.resolve(window.electronAPI.tapeSermonList?.()).then((l) => { titles.current = new Map((l ?? []).map((s) => [s.id, `${s.dateCode} · ${s.title}`])) }) }, [])
+  const land = useCallback(async (o: TapeAddOutcome): Promise<void> => {
+    const s = addSummary(o, (id) => titles.current.get(id) ?? 'the sermon')
+    setAddMsg(s.message)
+    setAddProblems(s.problems)
+    setPending((cur) => [...cur.filter((c) => !o.pending.some((p) => p.path === c.path)), ...o.pending])
+    if (o.added.some((r) => r.ok)) {
+      emitTape('recordings-changed')
+      await reload()
+      if (s.recordingId) {
+        picked.current = true
+        setSelId(s.recordingId)
+        // landed: the text follows it once it is timed; if it is not, Timing is the next step
+        const lib = (await window.electronAPI.tapeLibrary?.()) ?? []
+        const e = (lib as Entry[]).find((x) => x.id === s.recordingId)
+        setTab(o.pending.length ? 'add' : e && e.timed === 0 ? 'timing' : 'follow')
+        if (!o.pending.length && s.message) pushToast({ message: s.message + (e && e.timed === 0 ? ' It has no timing yet.' : ''), timeoutMs: 6000 })
+      }
+    } else if (o.pending.length || s.problems.length) setTab('add')
+  }, [reload, pushToast])
+  const startAdd = useCallback(async (): Promise<void> => {
+    setAdding(true); setAddMsg(null); setAddProblems([])
+    try { const o = await window.electronAPI.tapeAddFiles(); if (!o.canceled) await land(o) } finally { setAdding(false) }
+  }, [land])
+  const addPaths = useCallback(async (paths: string[]): Promise<void> => {
+    setAdding(true); setAddMsg(null); setAddProblems([])
+    try { await land(await window.electronAPI.tapeAddPaths(paths)) } finally { setAdding(false) }
+  }, [land])
+  const resolve = useCallback(async (f: PendingFile, sermonId: number): Promise<void> => {
+    setAdding(true)
+    try {
+      const r = (await window.electronAPI.tapeImportConfirmed([{ path: f.path, sermonId }])) as TapeAddOutcome['added']
+      setPending((cur) => cur.filter((c) => c.path !== f.path))
+      await land({ canceled: false, added: r, pending: [] })
+    } finally { setAdding(false) }
+  }, [land])
   const sel = entries.find((e) => e.id === selId) ?? null
   const showAdd = tab === 'add' || (loaded && entries.length === 0)
 
   return (
-    <section className="tp" aria-label="Tape">
+    <section className="tp" aria-label="Tape" onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault() }} onDrop={(e) => { const paths = window.electronAPI.tapePathsForFiles(Array.from(e.dataTransfer.files)); if (paths.length) { e.preventDefault(); void addPaths(paths) } }}>
       <header className="tp-head">
         <div>
           <div className="tp-caps">Tape</div>
@@ -89,7 +133,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
           <div className="tp-empty-ico"><Headphones width={28} height={28} aria-hidden="true" /></div>
           <h3>No recordings yet</h3>
           <p>Add a recorded sermon and BORN will play it and keep the text in step — on your screen, the congregation screen, the stage monitor and the phone. Everything stays on this computer.</p>
-          <TapeAddPanel onChanged={() => void reload()} />
+          <TapeAddPanel busy={adding} message={addMsg} problems={addProblems} pending={pending} onAdd={() => void startAdd()} onDropPaths={(p) => void addPaths(p)} onResolve={(f, id) => void resolve(f, id)} onSkip={(f) => setPending((c) => c.filter((x) => x.path !== f.path))} onChanged={() => void reload()} />
         </div>
       ) : (
         <div className="tp-body">
@@ -106,7 +150,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
                 </li>
               )
             })}
-            <li><button className="btn-secondary btn-sm tp-addbtn" onClick={() => setTab('add')}>Add a recording…</button></li>
+            <li><button className="btn-secondary btn-sm tp-addbtn" onClick={() => void startAdd()} disabled={adding}>{adding ? 'Adding…' : 'Add a recording…'}</button></li>
           </ul>
           <div className="tp-detail">
             <div className="tp-tabs" role="tablist" aria-label="Recording">
@@ -118,7 +162,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
               {tab === 'follow' && (sel ? <FollowTab key={sel.id} entry={sel} pushToast={pushToast} /> : <p className="tp-faint tp-pad">Choose a recording on the left.</p>)}
               {tab === 'timing' && (sel ? <TimingTab key={sel.id} entry={sel} onChanged={() => { emitTape('map-changed'); void reload() }} onRemoved={() => { setSelId(null); emitTape('recordings-changed'); void reload() }} /> : <p className="tp-faint tp-pad">Choose a recording on the left.</p>)}
               {tab === 'options' && <div className="tp-pad tp-options"><TapeSettingsForm /></div>}
-              {showAdd && tab === 'add' && <div className="tp-pad"><TapeAddPanel preferredSermonId={sel?.sermonId ?? null} onChanged={() => void reload()} /></div>}
+              {showAdd && tab === 'add' && <div className="tp-pad"><TapeAddPanel busy={adding} message={addMsg} problems={addProblems} pending={pending} onAdd={() => void startAdd()} onDropPaths={(p) => void addPaths(p)} onResolve={(f, id) => void resolve(f, id)} onSkip={(f) => setPending((c) => c.filter((x) => x.path !== f.path))} preferredSermonId={sel?.sermonId ?? null} onChanged={() => void reload()} /></div>}
             </div>
           </div>
         </div>

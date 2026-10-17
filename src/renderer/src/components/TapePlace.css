@@ -64,3 +64,11 @@ html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: 
 @media (prefers-reduced-motion: reduce) { .tfl { scroll-behavior: auto; } }
 
 .tp-hint { display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); }
+.tpa.is-dragover { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: var(--r-lg); }
+.tpa-ok { display: flex; align-items: center; gap: 6px; color: var(--ok); margin: 8px 0 0; font-size: var(--text-sm); }
+.tpa-main .btn-primary { min-height: var(--target-live, 40px); }
+.tpa-pending-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border); }
+.tpa-pending-row:first-of-type { border-top: 0; }
+.tpa-pending-file { display: flex; align-items: center; gap: 8px; }
+.tpa-pending-file .btn-quiet { margin-left: auto; }
+.tpa-choices { display: flex; gap: 6px; flex-wrap: wrap; }

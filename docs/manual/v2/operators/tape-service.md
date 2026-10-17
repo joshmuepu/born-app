@@ -15,7 +15,7 @@ Everything stays on this computer. Born Again does not stream recordings. To get
 
 ## Getting ready (once per recording)
 
-1. Open the **Tape place** and choose **Add**. Say which sermon the recording is for (type a title or a date code), then **Add a recording for “…”…** — choose the file, drop it on the window, or let Born Again find it in your **Tape audio** folder.
+1. Open the **Tape place** and press **Add a recording…** (on the left, under your recordings). The file picker opens **in your Tape audio folder** — choose the recording (or several), or drop the file anywhere on the Tape place. A file named with its date code (like `65-0418M …`) goes to the right sermon by itself, shows in the list on the left and is selected; if it has no timing yet you land on **Timing**. Only a file BORN cannot place asks you once: its likeliest sermons are buttons, or type a title or date code. Don't have the file? **Add → Get audio** downloads it from the publisher (English).
    File names like `65-0418M It Is The Rising Of The Sun VGR.m4a` are matched to the sermon by their date code; if it is not certain, you are asked to confirm.
    (From the Sermons reader, **Add a recording** takes you here with that sermon already chosen.)
 2. Born Again **checks the file** (it must be complete, with a length that fits the sermon) and keeps a **managed copy**, so a missing USB stick never breaks a service.

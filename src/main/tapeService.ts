@@ -7,7 +7,7 @@ import { app, dialog, ipcMain, BrowserWindow, protocol, shell, powerMonitor } fr
 import Database from 'better-sqlite3'
 import { Readable } from 'stream'
 import { createReadStream, existsSync, statSync, statfsSync } from 'fs'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { log } from './logger'
 import { testHook } from './testHooks'
 import { getDb } from './db'
@@ -18,7 +18,7 @@ import { TapeHub } from './tapeHub'
 import { AUDIO_EXTENSIONS, audioActivity } from './audioProbe'
 import { readFileSync, writeFileSync } from 'fs'
 import { parseRange } from '../shared/httpRange'
-import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
+import { TAPE_AUDIO_PAGE, type TapeAddOutcome, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import { sanitizeTapeAction, type TapeWire } from '../shared/tapePlayback'
 import { cleanOverrides } from '../shared/tapeLanguage'
@@ -299,12 +299,49 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     if (test) paths = test.split('|')
     else {
       const win = getMain()
-      const r = await dialog.showOpenDialog(win ?? undefined!, { title: 'Choose the recording', properties: ['openFile'], filters: [{ name: 'Audio', extensions: AUDIO_EXTENSIONS }] })
+      const folder = getSettings().tapeFolder
+      const r = await dialog.showOpenDialog(win ?? undefined!, { title: 'Choose the recording', defaultPath: folder && existsSync(folder) ? folder : app.getPath('downloads'), properties: ['openFile'], filters: [{ name: 'Audio', extensions: AUDIO_EXTENSIONS }] })
       if (r.canceled || r.filePaths.length === 0) return { canceled: true, results: [] as TapeImportResult[] }
       paths = r.filePaths
     }
     return { canceled: false, results: await importPaths(paths, opts ?? {}) }
   })
+  /** "Add a recording…": the picker opens in the Tape audio folder (or Downloads); a file whose name says which sermon it is is added at once, the rest wait for one click each. */
+  const classify = async (paths: string[]): Promise<TapeAddOutcome> => {
+    const refs = sermonRefs()
+    const added: TapeImportResult[] = []
+    const pending: TapeAddOutcome['pending'] = []
+    const slim = (s: { id: number; date_code: string; title: string }) => ({ id: s.id, dateCode: s.date_code, title: s.title })
+    for (const p of paths.filter((x) => typeof x === 'string')) {
+      const m = matchSermon(parseTapeName(basename(p)), refs)
+      if (m.best && m.confidence === 'exact') added.push(...(await importPaths([p], { sermonId: m.best.id })))
+      else {
+        let bytes = 0
+        try { bytes = statSync(p).size } catch { /* it will fail with a clear message when added */ }
+        pending.push({ path: p, name: basename(p), bytes, candidates: m.candidates.map(slim) })
+      }
+    }
+    return { canceled: false, added, pending }
+  }
+  ipcMain.handle('tape:add-files', async (): Promise<TapeAddOutcome> => {
+    const test = testHook('BORN_TEST_PICK_TAPE', app.isPackaged)
+    let paths: string[]
+    if (test) paths = test.split('|')
+    else {
+      const win = getMain()
+      const folder = getSettings().tapeFolder
+      const r = await dialog.showOpenDialog(win ?? undefined!, {
+        title: 'Choose the recording',
+        defaultPath: folder && existsSync(folder) ? folder : app.getPath('downloads'),
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Audio', extensions: AUDIO_EXTENSIONS }]
+      })
+      if (r.canceled || r.filePaths.length === 0) return { canceled: true, added: [], pending: [] }
+      paths = r.filePaths
+    }
+    return classify(paths)
+  })
+  ipcMain.handle('tape:add-paths', (_e, paths: string[]) => classify(Array.isArray(paths) ? paths : []))
   ipcMain.handle('tape:remove', (_e, recordingId: string) => {
     getTapeDb()?.removeRecording(String(recordingId))
     return true
