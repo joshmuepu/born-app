@@ -184,6 +184,17 @@ export class TapeDb {
     const rows = this.db.prepare('SELECT * FROM recordings WHERE sermon_id = ? AND deleted_at IS NULL ORDER BY created_at, id').all(sermonId) as RecRow[]
     return rows.map((r) => this.hydrate(r)).filter((x): x is TapeRecording => !!x)
   }
+  /** Every recording that is still attached to a sermon, newest first (for the Tape place's library). */
+  listAll(): TapeRecording[] {
+    const rows = this.db.prepare('SELECT * FROM recordings WHERE deleted_at IS NULL ORDER BY created_at DESC, id').all() as RecRow[]
+    return rows.map((r) => this.hydrate(r)).filter((x): x is TapeRecording => !!x)
+  }
+  /** How many paragraphs have a time in this recording's own map (0 = no timing yet). */
+  timedParagraphs(recordingId: string): number {
+    const r = this.db.prepare(`SELECT COUNT(*) AS c FROM sync_marks k JOIN sync_maps m ON m.id = k.map_id
+      WHERE m.recording_id = ? AND m.text_language IS NULL AND k.kind = 'start' AND k.start_sec IS NOT NULL`).get(recordingId) as { c: number }
+    return r.c
+  }
   /** Sermon ids that have at least one recording (for a "has a tape" badge in lists). */
   sermonsWithTapes(): number[] {
     return (this.db.prepare('SELECT DISTINCT sermon_id FROM recordings WHERE deleted_at IS NULL').all() as Array<{ sermon_id: number }>).map((r) => r.sermon_id)

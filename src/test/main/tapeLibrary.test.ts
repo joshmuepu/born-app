@@ -140,6 +140,17 @@ describe('tape.db', () => {
     db.removeRecording(rec.id)
     expect(db.getOverrides(rec.id, 'es')).toEqual([])
   })
+  it('the library lists every attached recording (newest first), and counts the timed paragraphs of each recording\'s own map', async () => {
+    const a = (await lib.importFile(put('la.m4a', m4a(20, 21)), { sermonId: 11 })) as { ok: true; recording: { id: string } }
+    const b = (await lib.importFile(put('lb.m4a', m4a(20, 22)), { sermonId: 12 })) as { ok: true; recording: { id: string } }
+    expect(db.listAll().map((r) => r.id)).toEqual(expect.arrayContaining([a.recording.id, b.recording.id]))
+    expect(db.timedParagraphs(a.recording.id)).toBe(0)
+    db.saveMap(a.recording.id, null, 'tap', [{ n: 1, t: 2, kind: 'start', confidence: null }, { n: 2, t: null, kind: 'skip', confidence: null }, { n: 3, t: 9, kind: 'start', confidence: null }], [])
+    db.saveMap(a.recording.id, 'es', 'tap', [{ n: 1, t: 3, kind: 'start', confidence: null }], [])
+    expect(db.timedParagraphs(a.recording.id)).toBe(2) // the recording's own map only; skipped paragraphs do not count
+    db.removeRecording(b.recording.id)
+    expect(db.listAll().map((r) => r.id)).not.toContain(b.recording.id)
+  })
   it('opening it again keeps every row (migrations never rewrite data)', async () => {
     await lib.importFile(put('k.m4a', m4a(20, 7)), { sermonId: 3 })
     const again = new TapeDb(raw)

@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
 import GlobalTapeBar from './components/GlobalTapeBar'
+import TapePlace, { type TapePlaceTarget } from './components/TapePlace'
+import TapeRailButton from './components/TapeRailButton'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
@@ -66,7 +68,7 @@ const QUEUE_MIN = 280
 const QUEUE_MAX = 560
 const QUEUE_DEFAULT = 360
 
-type TopTab = 'sermons' | 'bible' | 'songs' | 'media'
+type TopTab = 'sermons' | 'bible' | 'songs' | 'media' | 'tape'
 type SermonsSubTab = 'search' | 'browse'
 
 interface Projected {
@@ -190,6 +192,9 @@ export default function App() {
   const [updateFile, setUpdateFile] = useState<string | null>(null)
   const [stageOpen, setStageOpen] = useState(false)
   const [topTab, setTopTab] = useState<TopTab>('sermons')
+  // where the Tape place should land when it is opened from somewhere else (the bar, a sermon's chip)
+  const [tapeTarget, setTapeTarget] = useState<TapePlaceTarget | null>(null)
+  const openTapePlace = useCallback((t: Omit<TapePlaceTarget, 'nonce'> = {}) => { setTapeTarget({ ...t, nonce: Date.now() }); setTopTab('tape') }, [])
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { toasts, push: pushToast, dismiss: dismissToast, undoLatest } = useToasts()
   const { choice: uiScale, setChoice: setUiScale } = useUiScale()
@@ -2362,6 +2367,7 @@ export default function App() {
                 <span>{label}</span>
               </button>
             ))}
+            <TapeRailButton active={topTab === 'tape'} onClick={() => { setTapeTarget(null); setTopTab('tape') }} />
             <span className="rail-spacer" />
             <button
               className={`rail-btn rail-btn--saved${savedOpen ? ' active' : ''}`}
@@ -2484,6 +2490,10 @@ export default function App() {
               onProjectSong={handleProjectSong}
               onSongOpened={(id) => recordNav({ kind: 'song', songId: id })}
             />
+          </div>
+
+          <div className="panel-view" hidden={topTab !== 'tape'}>
+            <TapePlace visible={topTab === 'tape'} target={tapeTarget} pushToast={pushToast} />
           </div>
 
           <div className="panel-view" hidden={topTab !== 'media'}>
@@ -2782,7 +2792,7 @@ export default function App() {
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
 
-      <GlobalTapeBar onOpenTape={(sermonId) => openSermonAt(sermonId, '1')} />
+      <GlobalTapeBar onOpenTape={(sermonId) => openTapePlace({ sermonId })} />
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

@@ -64,7 +64,7 @@ describe('the v2 identity and the release gate are unchanged', () => {
 
 describe('colours in the tape screens of the OPERATOR app come from tokens', () => {
   const dir = join(root, 'src/renderer/src/components')
-  const operator = ['TapeAttach.css', 'TapeBar.css', 'TapeSyncEditor.css', 'TapeScreenControls.css', 'TapeLanguageNotice.css', 'TapeSettingsPanel.css', 'GlobalTapeBar.css']
+  const operator = ['TapeAttach.css', 'TapeBar.css', 'TapeSyncEditor.css', 'TapeScreenControls.css', 'TapeLanguageNotice.css', 'TapeSettingsPanel.css', 'GlobalTapeBar.css', 'TapePlace.css']
   it.each(operator)('%s uses var(--token) colours only (no hex, rgb() or named colours)', (f) => {
     const css = readFileSync(join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
     const bad = css.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? []

@@ -179,6 +179,8 @@ declare global {
       onMediaPlaybackStop: (cb: (channelId: string) => void) => () => void
       tapeInfo: () => Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }>
       tapeRecordings: (sermonId: number) => Promise<Array<import('../../shared/tape').TapeRecording & { status: import('../../shared/tape').TapeFileStatus }>>
+      tapeLibrary: () => Promise<Array<import('../../shared/tape').TapeRecording & { status: import('../../shared/tape').TapeFileStatus; sermonTitle: string; dateCode: string; timed: number }>>
+      tapeSermonList: () => Promise<Array<{ id: number; dateCode: string; title: string }>>
       tapeSermonsWithTapes: () => Promise<number[]>
       tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<import('../../shared/tape').TapeImportResult[]>
       tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }) => Promise<{ canceled: boolean; results: import('../../shared/tape').TapeImportResult[] }>

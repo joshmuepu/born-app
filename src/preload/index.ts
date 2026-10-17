@@ -447,6 +447,8 @@ const api = {
   // Tape service (sermon audio + follow-along) — docs/design/sermon-audio
   tapeInfo: (): Promise<{ available: boolean; message: string | null; folder: string | null; audioPage: string }> => ipcRenderer.invoke('tape:info'),
   tapeRecordings: (sermonId: number): Promise<unknown[]> => ipcRenderer.invoke('tape:recordings', sermonId),
+  tapeLibrary: (): Promise<unknown[]> => ipcRenderer.invoke('tape:library'),
+  tapeSermonList: (): Promise<Array<{ id: number; dateCode: string; title: string }>> => ipcRenderer.invoke('tape:sermon-list'),
   tapeSermonsWithTapes: (): Promise<number[]> => ipcRenderer.invoke('tape:sermons-with-tapes'),
   tapeImportPaths: (paths: string[], opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<unknown[]> => ipcRenderer.invoke('tape:import-paths', paths, opts),
   tapePickAndImport: (opts?: { sermonId?: number; language?: string; link?: boolean }): Promise<{ canceled: boolean; results: unknown[] }> => ipcRenderer.invoke('tape:pick-and-import', opts),

@@ -134,6 +134,21 @@ export function recordingsFor(sermonId: number): RecordingInfo[] {
   return db.listRecordings(sermonId).map((r) => ({ ...r, status: l.status(r.file) }))
 }
 
+export interface LibraryEntry extends RecordingInfo {
+  sermonTitle: string
+  dateCode: string
+  /** paragraphs with a time in this recording's own timing (0 = none yet) */
+  timed: number
+}
+/** Every recording with its status, its sermon and how much of it is timed — the Tape place's library. Read-only. */
+export function libraryEntries(): LibraryEntry[] {
+  const db = getTapeDb()
+  const l = getTapeLibrary()
+  if (!db || !l) return []
+  const refs = new Map(sermonRefs().map((x) => [x.id, x]))
+  return db.listAll().map((r) => ({ ...r, status: l.status(r.file), sermonTitle: refs.get(r.sermonId)?.title ?? `Sermon ${r.sermonId}`, dateCode: refs.get(r.sermonId)?.date_code ?? '', timed: db.timedParagraphs(r.id) }))
+}
+
 // ── the audio engine (hidden window) and the one tape record ─────────────────────────────────────────────
 let engineWin: BrowserWindow | null = null
 let engineReady = false
@@ -275,6 +290,8 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
 
   ipcMain.handle('tape:info', () => ({ available: !!getTapeDb(), message: unavailable, folder: getSettings().tapeFolder, audioPage: TAPE_AUDIO_PAGE }))
   ipcMain.handle('tape:recordings', (_e, sermonId: number) => (Number.isFinite(sermonId) ? recordingsFor(Number(sermonId)) : []))
+  ipcMain.handle('tape:library', () => libraryEntries())
+  ipcMain.handle('tape:sermon-list', () => sermonRefs().map((x) => ({ id: x.id, dateCode: x.date_code, title: x.title })))
   ipcMain.handle('tape:sermons-with-tapes', () => getTapeDb()?.sermonsWithTapes() ?? [])
 
   const importPaths = async (paths: string[], opts: { sermonId?: number; language?: string; link?: boolean }): Promise<TapeImportResult[]> => {

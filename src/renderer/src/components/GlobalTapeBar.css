@@ -33,3 +33,6 @@
 @media (max-width: 1180px) { .gtb .tape-chip-text { display: none; } .gtb .tape-vol input { width: 56px; } }
 @media (max-width: 1060px) { .gtb .tape-vol input { display: none; } .gtb-id { max-width: 150px; } .gtb-screens-text { max-width: 8.5em; overflow: hidden; text-overflow: ellipsis; } }
 @media (prefers-reduced-motion: reduce) { .gtb-eq i { animation: none; } }
+/* toasts sit above the bar, never over its buttons */
+body:has(.gtb) .toast-host { bottom: 104px; }
+body:has(.gtb .gtb-note) .toast-host { bottom: 136px; }
