@@ -103,3 +103,5 @@ html[data-w~='1060'] .tp-body { grid-template-columns: 1fr; grid-template-rows: 
 .tp-folder-setting { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .tp-sheet .tape-download { display: flex; flex-direction: column; gap: 8px; } .tp-sheet .tape-download p { margin: 0; }
 .tp-lib-item .tp-rec { padding-right: 40px; } /* the row's ⋯ button sits in this gutter, not on top of the status chip */
+/* the folder line in Options may be long: it wraps (it used to be cut off with no way to read it) */
+.tp-folder-setting .tsp-label { white-space: normal; overflow: visible; text-overflow: clip; min-width: 0; flex: 1 1 280px; }

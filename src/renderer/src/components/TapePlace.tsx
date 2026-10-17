@@ -233,7 +233,7 @@ function FollowTab({ entry, pushToast }: { entry: Entry; pushToast: Toast }): JS
       {!tf.mine && (
         <div className="tp-banner" role="status">
           <span>This recording is not in the player yet. Loading it does not play it.</span>
-          <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.tapeLoad(entry.id)}>Load it into the player</button>
+          <button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.tapeLoad(entry.id)}>Load it into the player</button>
         </div>
       )}
       {tf.map === null && (tm

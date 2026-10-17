@@ -19,7 +19,7 @@
 .drill-left > * { min-width: 300px; }
 .drill[data-collapsed='true'] .drill-left { width: 0; opacity: 0; pointer-events: none; }
 .drill-seam {
-  flex: 0 0 18px;
+  flex: 0 0 24px; /* the handle is a 24 px-wide target */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,7 +30,7 @@
 .drill-handle {
   display: grid;
   place-items: center;
-  width: 18px;
+  width: 24px;
   height: 56px;
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);

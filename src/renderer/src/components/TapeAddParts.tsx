@@ -32,8 +32,8 @@ export function AddButton({ busy, onChoose, onDownload }: { busy: boolean; onCho
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   return (
     <div className="tp-addsplit">
-      <button className="btn-primary btn-sm" onClick={onChoose} disabled={busy} title="Choose a file (opens in your Tape audio folder)">{busy ? 'Adding…' : '＋ Add recording…'}</button>
-      <button className="btn-primary btn-sm tp-addsplit-more" aria-label="More ways to add" aria-haspopup="menu" title="More ways to add" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setMenu({ x: r.left, y: r.bottom + 4 }) }}><ChevronDown width={13} height={13} aria-hidden="true" /></button>
+      <button className="btn-secondary btn-sm" onClick={onChoose} disabled={busy} title="Choose a file (opens in your Tape audio folder)">{busy ? 'Adding…' : '＋ Add recording…'}</button>
+      <button className="btn-secondary btn-sm tp-addsplit-more" aria-label="More ways to add" aria-haspopup="menu" title="More ways to add" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setMenu({ x: r.left, y: r.bottom + 4 }) }}><ChevronDown width={13} height={13} aria-hidden="true" /></button>
       {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} items={[
         { id: 'choose', label: 'Choose a file…', hint: 'or drop one here', onSelect: onChoose },
         { id: 'download', label: 'Download…', onSelect: onDownload }

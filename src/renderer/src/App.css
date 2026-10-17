@@ -2796,3 +2796,7 @@ html[data-cssw='tight'] .status-live .status-chip:nth-child(n+3) { display: none
 .setup-template small { margin: 0; }
 .setup-go { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--text-secondary); font-size: var(--text-sm); flex-wrap: wrap; }
 .setup-dismiss { margin-top: 10px; }
+
+/* Target floor (docs/design/born-again-ui-direction.md): every control the operator can press is at least --target-min tall. These were 22–31 px. */
+.plp-channel, .tp-lang select, .tape-toggle, .tape-screen-row .tse-seg button, .tape-screen-lead select, .help-sidebar button, .filter-mode-btn, .filter-input,
+.bible-scope-option, .bible-scope-book, .remote-automation-head, .status-update-link { min-height: var(--target-min, 32px); }
