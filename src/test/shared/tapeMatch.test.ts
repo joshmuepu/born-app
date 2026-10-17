@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseTapeName, matchSermon, durationPlausible, titleSimilarity } from '../../shared/tapeMatch'
-import { numberedParagraphs, numberAgreement, baseNumber, flatIndexFor } from '../../shared/tapeParagraphs'
+import { numberedParagraphs, numberAgreement, baseNumber, flatIndexFor, screenItemsOf } from '../../shared/tapeParagraphs'
 import type { Quote } from '../../shared/queueItem'
 
 const S = [
@@ -124,3 +124,21 @@ describe('finding the tape\'s place in the reader list', () => {
     expect(flatIndexFor(markers, 3, -2)).toBe(4)
   })
 })
+
+describe('the screens\' items from a sermon\'s rows', () => {
+  const row = (ref: string, text: string): Quote => ({ text, sermonTitle: 'T', dateCode: '00-0000', sermonId: 1, paragraphIndex: 0, paragraphRef: ref })
+  it('every PAGE of every numbered paragraph, in order; headings (no number) are left out; a range row gives its paragraphs', () => {
+    const items = screenItemsOf([row('header', 'A TITLE 00-0000'), row('1-3', '1 Alpha one. 2 Bravo two. 3 Charlie three.'), row('4', '4 Delta four.')])
+    expect(items.map((i) => i.n)).toEqual([1, 2, 3, 4])
+    expect(items[1].text).toContain('Bravo')
+    expect(items.every((i) => i.marker && i.text.trim())).toBe(true)
+  })
+  it('a long paragraph becomes several pages that all carry its number', () => {
+    const long = 'This is a sentence of placeholder words for paging. '.repeat(14)
+    const items = screenItemsOf([row('5', `5 ${long}`)])
+    expect(items.length).toBeGreaterThan(1)
+    expect(items.every((i) => i.n === 5)).toBe(true)
+  })
+  it('nothing in, nothing out', () => { expect(screenItemsOf([])).toEqual([]) })
+})
+

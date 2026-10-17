@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Search, Sun, Moon, Contrast, Eye, EyeOff, X, Mic2, BookOpen, Music2, Image as ImageIcon, ListOrdered, Star, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import BornMark from './components/BornMark'
+import GlobalTapeBar from './components/GlobalTapeBar'
 import CommandPalette, { type PaletteCommand } from './components/CommandPalette'
 import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
@@ -2780,6 +2781,8 @@ export default function App() {
       />
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
+
+      <GlobalTapeBar onOpenTape={(sermonId) => openSermonAt(sermonId, '1')} />
 
       <footer className="status-bar">
         <div className="status-trigger-wrap">

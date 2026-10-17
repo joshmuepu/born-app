@@ -77,3 +77,19 @@ export function flatIndexFor(markers: Array<string | undefined>, n: number | nul
   const k = progress === null ? 0 : Math.min(idx.length - 1, Math.floor(Math.max(0, Math.min(0.999999, progress)) * idx.length))
   return idx[k]
 }
+
+/** One page of a numbered paragraph, as the screens show it. */
+export interface ScreenItem { n: number; marker: string; text: string }
+
+/** A sermon's rows as the screens' items: every PAGE of every numbered paragraph (headings, which have no number, are left out). Same split the reader and projector use. */
+export function screenItemsOf(rows: Quote[]): ScreenItem[] {
+  const out: ScreenItem[] = []
+  for (const q of rows) {
+    for (const sl of quoteToItem(q).slides) {
+      const marker = sl.marker ?? q.paragraphRef
+      const n = baseNumber(marker)
+      if (n !== null && sl.text.trim()) out.push({ n, marker, text: sl.text })
+    }
+  }
+  return out
+}

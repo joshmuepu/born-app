@@ -157,10 +157,12 @@ describe('keys and buttons for paragraphs', () => {
     fireEvent.keyDown(v, { key: 'ArrowLeft', shiftKey: true })
     expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'skip', by: -30 })
   })
-  it('the seek bar shows a tick at every paragraph start and previous/next work from the bar', async () => {
+  it('the reader is a reader: it has no player — no Play, no seek bar, no skip buttons (those live in the bottom bar)', async () => {
     await open(35)
-    expect(document.querySelectorAll('.tape-tick')).toHaveLength(6)
-    fireEvent.click(screen.getByRole('button', { name: 'Next paragraph' }))
-    expect(api.tapeCommand).toHaveBeenLastCalledWith({ type: 'seek', to: 50 })
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
+    expect(screen.queryByRole('slider', { name: 'Position in the tape' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Next paragraph' })).toBeNull()
+    expect(document.querySelectorAll('.tape-tick')).toHaveLength(0)
   })
 })

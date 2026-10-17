@@ -241,3 +241,21 @@ export function parseTimingFile(text: string): TimingParse {
   }
   return { ok: true, file, marks, regions }
 }
+
+/**
+ * Where "previous paragraph" goes: more than 3 s into a paragraph it goes back to that paragraph's start; otherwise to the one before; at the very
+ * start, to 0. `null` when the recording has no timing.
+ */
+export function prevParagraphTime(marks: SyncMark[], regions: SyncRegion[], pos: number): number | null {
+  const s = startsOnly(marks)
+  if (s.length === 0) return null
+  const here = paragraphAt(marks, regions, pos)
+  if (here.start !== null && pos - here.start > 3) return here.start
+  const before = s.filter((m) => m.t < (here.start ?? pos) - 0.01)
+  return before.length ? before[before.length - 1].t : 0
+}
+/** Where "next paragraph" goes: the next timed paragraph's start, or null (no timing, or already in the last paragraph). */
+export function nextParagraphTime(marks: SyncMark[], regions: SyncRegion[], pos: number): number | null {
+  const here = paragraphAt(marks, regions, pos)
+  return here.next ? here.next.t : null
+}

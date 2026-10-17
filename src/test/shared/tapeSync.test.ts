@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { paragraphAt, tickTimes, validateMap, editorReduce, emptyEditor, nextTarget, tapTime, toTimingFile, parseTimingFile, timedCount, startOf, MAX_GAP_WARN_SEC } from '../../shared/tapeSync'
+import { paragraphAt, tickTimes, validateMap, editorReduce, emptyEditor, nextTarget, tapTime, toTimingFile, parseTimingFile, timedCount, startOf, MAX_GAP_WARN_SEC, prevParagraphTime, nextParagraphTime } from '../../shared/tapeSync'
 import type { SyncMark, SyncRegion } from '../../shared/tape'
 
 const m = (n: number, t: number | null, kind: 'start' | 'skip' = 'start', confidence: number | null = null): SyncMark => ({ n, t, kind, confidence })
@@ -178,3 +178,26 @@ describe('the times-only timing file', () => {
     expect(r.ok && r.regions).toHaveLength(2)
   })
 })
+
+describe('previous and next paragraph', () => {
+  const marks = [m(1, 10), m(2, 100), m(3, 200)]
+  it('next goes to the next timed start; none in the last paragraph or without timing', () => {
+    expect(nextParagraphTime(marks, [], 50)).toBe(100)
+    expect(nextParagraphTime(marks, [], 150)).toBe(200)
+    expect(nextParagraphTime(marks, [], 250)).toBeNull()
+    expect(nextParagraphTime([], [], 5)).toBeNull()
+  })
+  it('previous: more than 3 s in goes to the start of this paragraph, otherwise to the one before, and at the very start to 0', () => {
+    expect(prevParagraphTime(marks, [], 150)).toBe(100)
+    expect(prevParagraphTime(marks, [], 101.5)).toBe(10)
+    expect(prevParagraphTime(marks, [], 5)).toBe(0)
+    expect(prevParagraphTime(marks, [], 11)).toBe(0)
+    expect(prevParagraphTime([], [], 5)).toBeNull()
+  })
+  it('skipped paragraphs (no time) are never a destination', () => {
+    const withSkip = [m(1, 10), m(2, null, 'skip'), m(3, 200)]
+    expect(nextParagraphTime(withSkip, [], 50)).toBe(200)
+    expect(prevParagraphTime(withSkip, [], 201)).toBe(10)
+  })
+})
+
