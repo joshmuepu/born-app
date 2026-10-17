@@ -19,6 +19,6 @@ describe('target sizes (P-09)', () => {
     expect(css).toMatch(/\.app-header > \.header-actions > :is\(\.btn-secondary, \.btn-primary, \.btn-danger\)/)
   })
   it('touch screens get the largest tier', () => {
-    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*:root \.app :where\([^)]*\) \{ min-height: var\(--target-touch\); \}/)
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*:root \.app :is\(\.plp-take, \.plp-clear, \.gtb-play\) \{ min-height: var\(--target-touch\); \}\s*:root \.app :where\([^)]*\) \{ min-height: var\(--target-touch\); \}/)
   })
 })
