@@ -10,7 +10,7 @@ for s in hist dnd az reg rem gfx2; do
   rm -rf "$OUT/profile"; mkdir -p "$OUT/profile"
   (env -u ELECTRON_RUN_AS_NODE BORN_USER_DATA_DIR="$OUT/profile" BORN_REMOTE_PORT=4317 BORN_MDNS_NAME=born-reg ./node_modules/.bin/electron-vite dev --remoteDebuggingPort 9920 > "$OUT/dev.log" 2>&1 &)
   for i in $(seq 1 60); do curl -s localhost:9920/json 2>/dev/null | grep -q "Born Again" && break; sleep 1; done; sleep 8
-  node "scripts/regression/$s.cjs" "$OUT" > "$OUT/$s.log" 2>&1
-  printf '%-5s exit %s  %s\n' "$s" "$?" "$(grep -E ' checks, ' "$OUT/$s.log" | tail -1)"
+  node "scripts/regression/$s.cjs" "$OUT" > "$OUT/$s.log" 2>&1; rc=$?
+  printf '%-5s exit %s  %s\n' "$s" "$rc" "$(grep -E ' checks, ' "$OUT/$s.log" | tail -1)"
 done
 pkill -f "remoteDebuggingPort 9920" 2>/dev/null
