@@ -10,6 +10,7 @@ import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
 import SavedPanel from './components/SavedPanel'
 import PanelResizer from './components/PanelResizer'
+import { escBlanksScreens, trackEscOverlay } from './escRule'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
@@ -1557,6 +1558,8 @@ export default function App() {
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
+  useEffect(() => trackEscOverlay(), [])
+
   useEffect(() => {
     const isTyping = (el: EventTarget | null): boolean => {
       const n = el as HTMLElement | null
@@ -1578,7 +1581,7 @@ export default function App() {
 
       // Esc toggles the projector blackout from anywhere in the control window —
       // including while a search box has focus, so it works under live pressure.
-      if (e.key === 'Escape' && projectionOpen) {
+      if (e.key === 'Escape' && projectionOpen && escBlanksScreens(e)) {
         e.preventDefault()
         // Shift+Esc blanks (never un-blanks) and pauses the tape; plain Esc toggles and leaves the tape playing unless Tape options say otherwise
         const wasBlanked = isScreenBlankedRef.current
@@ -2622,7 +2625,7 @@ export default function App() {
 
       {showAlertDialog && (
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Show a message on screen" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title-row">
               <h3 className="modal-title">Show a message on screen</h3>
               <button className="btn-icon btn-sm" onClick={() => setShowAlertDialog(false)} aria-label="Close">
@@ -2671,7 +2674,7 @@ export default function App() {
 
       {showShortcuts && (
         <div className="modal-overlay" onClick={() => setShowShortcuts(false)}>
-          <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal shortcuts-modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
               <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
@@ -2710,7 +2713,7 @@ export default function App() {
           if (!ch) return null
           return (
             <div className="modal-overlay" onClick={() => setOpenChannelId(null)}>
-              <div className="modal channel-operator-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal channel-operator-modal" role="dialog" aria-modal="true" aria-label={ch.label} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-title-row">
                   <div className="channel-modal-title-wrap">
                     <h3 className="modal-title">{ch.label}</h3>
