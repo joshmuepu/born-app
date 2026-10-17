@@ -32,3 +32,4 @@
 | F-027 | P2 | settings.json (`settings.ts`) | an unreadable settings file silently fell back to defaults and was overwritten by the next save | renamed to settings.corrupt-….json first | no silent data loss | 316948a |
 | F-028 | P1 | Start-up (`index.ts`) | with a read-only/locked data folder the app died on an unhandled error while quarantining the database and never showed a window | a plain-words dialog (path + what to do) and a clean stop; logged | silent failure to start | 9cc3daf |
 | F-029 | P2 | ⚙ menu interface-size select (`App.css`) | an unthemed native select: bright white on the dark menu (and a dark-on-light mismatch in light/high-contrast) | element-level select style from tokens | visual consistency | f6370bf |
+| F-030 | P2 | Remote `/command` (`webRemote.ts`) | the request body was read into memory without a limit (a 2 MB body was accepted) | 256 KB cap, answered with 413 and a plain message | local-network robustness | 9eb62f0 |

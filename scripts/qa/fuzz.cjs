@@ -15,6 +15,7 @@ const WORDS = ['holy spirit', 'John 3:16', 'ترنيمة', '主', '🎶', 'a'.re
 ;(async () => {
   const app = await launch({ profile, port: +port, remotePort: 4440 + (+port % 40), mdns: 'born-qa-fuzz' })
   let page = await app.page()
+  const rawSend = page.send.bind(page); page.send = (m, pr) => Promise.race([rawSend(m, pr), sleep(10000).then(() => { throw new Error('CDP call timed out: ' + m) })]) // a frozen page must show up as a finding, not hang the run
   const log = []; const issues = []
   const t0 = Date.now(); const end = t0 + +minutes * 60000
   let n = 0, maxNodes = 0, lastNodes = 0
@@ -46,6 +47,7 @@ const WORDS = ['holy spirit', 'John 3:16', 'ترنيمة', '主', '🎶', 'a'.re
     }
     if (n % 200 === 0) { try { await page.send('Page.reload'); await sleep(2000) } catch { /* ok */ } } // fresh page now and then: state must survive reloads too
     await sleep(40)
+    if (n % 50 === 0) fs.writeFileSync(path.join(ROOT, 'qa-out', `fuzz-${seedArg}.json`), JSON.stringify({ seed: seedArg, minutes: +minutes, steps: n, maxDomNodes: maxNodes, lastDomNodes: lastNodes, issues, partial: true }, null, 1))
   }
   const out = { seed: seedArg, minutes: +minutes, steps: n, maxDomNodes: maxNodes, lastDomNodes: lastNodes, issues }
   fs.writeFileSync(path.join(ROOT, 'qa-out', `fuzz-${seedArg}.json`), JSON.stringify(out, null, 1))
