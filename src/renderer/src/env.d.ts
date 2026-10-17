@@ -201,6 +201,7 @@ declare global {
         | { ok: false; message: string; canceled?: boolean }
       >
       tapeAlignCancel: () => Promise<boolean>
+      onMenuAction: (cb: (a: 'help' | 'shortcuts') => void) => () => void
       tapeOpenFolder: () => Promise<boolean>
       onTapeFolderChanged: (cb: () => void) => () => void
       tapeTimingState: () => Promise<{ active: { id: string; phase: 'prepare' | 'listen' | 'match'; pct: number } | null; queued: string[]; available: boolean }>

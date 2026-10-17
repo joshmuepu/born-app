@@ -1086,6 +1086,7 @@ export default function App() {
   }, [doProject, pushToast])
   const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
   useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
+  useEffect(() => window.electronAPI.onMenuAction?.((a) => (a === 'help' ? setShowHelp(true) : setShowShortcuts(true))), [])
   // plain-words messages from the main process (the tape paused a video, an alert was kept off the YouTube player, …)
   // A phone moved the tape to another paragraph (it asked first): say so on the computer, with an Undo that puts the tape back where it was.
   useEffect(() => window.electronAPI.onTapePhoneJumped?.((j) => pushToast({

@@ -420,6 +420,11 @@ const api = {
   mediaTestSetPdf: (path: string): Promise<boolean> => ipcRenderer.invoke('media:test-set-pdf', path),
   mediaLogoGet: (): Promise<string | null> => ipcRenderer.invoke('media:logo-get'),
   mediaLogoSet: (id: string | null): Promise<boolean> => ipcRenderer.invoke('media:logo-set', id),
+  onMenuAction: (cb: (a: 'help' | 'shortcuts') => void): (() => void) => {
+    const h = (_e: IpcRendererEvent, a: 'help' | 'shortcuts'): void => cb(a)
+    ipcRenderer.on('menu:action', h)
+    return () => ipcRenderer.removeListener('menu:action', h)
+  },
   onLogoShortcut: (cb: () => void): (() => void) => {
     const h = (): void => cb()
     ipcRenderer.on('shortcut:logo', h)

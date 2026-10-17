@@ -26,6 +26,7 @@ import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, t
 import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
 import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, getTapeLibrary, hub as tapeHub } from './tapeService'
 import { initAutoTiming, enqueueUntimed } from './tapeAuto'
+import { installAppMenu } from './appMenu'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -3103,6 +3104,7 @@ app.whenReady().then(async () => {
     pauseVideo: () => playbackHub.pauseAll()
   })
   registerPackIpc(() => mainWindow, () => ({ backgrounds: getSettingsSafe().mediaBackgrounds, logoId: getSettingsSafe().mediaLogoId ?? null }))
+  installAppMenu((a) => sendToMain('menu:action', a))
   createMainWindow()
 
   // Global, not per-window — works even if an output window's own
