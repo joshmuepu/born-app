@@ -22,7 +22,7 @@ const VIEWPORTS = [
   await dpage.click('.bible-panel .panel-subtab:has-text("Browse")'); await sleep(400)
   await dpage.locator('.bible-browse-book').nth(42).click(); await sleep(300)
   await dpage.locator('.bible-browse-chapter').nth(2).click(); await sleep(1000)
-  await dpage.locator('.bible-right .bible-verse button:has-text("Project")').nth(15).click(); await sleep(2000)
+  await dpage.locator('.bible-right .bible-verse button:has-text("Show")').nth(15).click(); await sleep(2000)
   for (const [ename, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     for (const [vname, w, h, touch] of VIEWPORTS) {
       for (const scheme of ['dark', 'light']) {

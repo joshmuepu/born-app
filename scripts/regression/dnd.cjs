@@ -107,7 +107,7 @@ const check = (name, ok, detail = '') => { log.push({ name, ok, detail }); conso
   check('song landed at the top', /Tis|Brand|Child|Vessel|Above|Agnus|Ain/.test(tq[0] ?? ''), JSON.stringify(tq.slice(0, 3)))
 
   // ---- 6. while something is live
-  await page.locator('.queue-row').nth(2).locator('button:has-text("Project")').click(); await sleep(1500)
+  await page.locator('.queue-row').nth(2).locator('button:has-text("Show")').click(); await sleep(1500)
   const liveBefore = await live()
   check('an item is live', !!liveBefore?.text, JSON.stringify(liveBefore))
   const activeBefore = await page.$$eval('.queue-row--active .queue-item-title', (e) => e.map((x) => x.textContent))

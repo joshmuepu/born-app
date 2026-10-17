@@ -73,7 +73,7 @@ const check = (name, ok, detail = '') => { results.push({ area: cur, name, ok, d
   await main.click('.bible-panel .panel-subtab:has-text("Browse")'); await sleep(400)
   await main.locator('.bible-browse-book').nth(42).click(); await sleep(300)
   await main.locator('.bible-browse-chapter').nth(2).click(); await sleep(1000)
-  await main.locator('.bible-right .bible-verse button:has-text("Project")').nth(15).click(); await sleep(2500)
+  await main.locator('.bible-right .bible-verse button:has-text("Show")').nth(15).click(); await sleep(2500)
   const ml = await mainLive()
   check('Main shows John 3:16', /John 3:16/.test(ml?.current?.reference || ''), ml?.current?.reference)
   const fl = (await live()).find((c) => c.id === fr2?.id)
