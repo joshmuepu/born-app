@@ -4,7 +4,8 @@
  * result is saved as an automatic timing. The tape plays the whole time — the text only starts following once its timing is saved.
  * It never touches what is live and it runs at low priority so a service is not affected.
  */
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
+import { testHook } from './testHooks'
 import { log } from './logger'
 import { alignRecording, cancelAlign, type AlignProgress } from './tapeAligner'
 import { bundledTools } from './tapeTools'
@@ -61,6 +62,7 @@ export function enqueueTiming(id: string): boolean {
 
 /** At start: every untimed English recording waits its turn (a short delay so starting up stays quick). */
 export function enqueueUntimed(): void {
+  if (testHook('BORN_TEST_NO_AUTO_TIMING', app.isPackaged)) return // measurements and QA runs that must not be disturbed by a background job (never in an installed app)
   setTimeout(() => {
     for (const r of deps?.db()?.listAll() ?? []) enqueueTiming(r.id)
   }, 15000).unref()

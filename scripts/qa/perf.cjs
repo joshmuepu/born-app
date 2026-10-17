@@ -9,7 +9,7 @@ const cpu = (pid) => { try { const all = [pid, ...execSync(`pgrep -P ${pid} || t
 const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0 }
 ;(async () => {
   const t0 = Date.now()
-  const app = await launch({ profile, port: +port, remotePort: 4470 + (+port % 20), mdns: 'born-qa-perf', settle: 0, timeout: 60000 })
+  const app = await launch({ profile, port: +port, remotePort: 4470 + (+port % 20), mdns: 'born-qa-perf', settle: 800, timeout: 60000, env: { BORN_TEST_NO_AUTO_TIMING: '1' } })
   const page = await app.page(); await page.viewport(1366, 768)
   await page.waitFor(`!!document.querySelector('nav.app-rail button') && document.readyState==='complete'`, 30000)
   const startupMs = Date.now() - t0
@@ -34,7 +34,9 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length 
   for (let i = 0; i < +soak; i++) for (const sec of ['Bible', 'Songs', 'Media', 'Tape', 'Sermons']) { await page.click(sec); await sleep(120) }
   await sleep(3000)
   const memEnd = rss(pid), nodes1 = await page.ev('document.getElementsByTagName("*").length')
-  const out = { label, profile: path.basename(profile), startupMs, switchMsMedian: Math.round(median(switches) * 10) / 10, switchMsMax: Math.round(Math.max(...switches)), searchMsMedian: Math.round(median(sLat)), searchMs: sLat.map(Math.round), idleCpuPctOfOneCore: Math.round(median(cpuSamples) * 10) / 10, rssMB: memStart, rssAfterSoakMB: memEnd, soakRounds: +soak, domNodes: nodes0, domNodesAfter: nodes1 }
+  await page.click('Songs'); await sleep(500)
+  const songs = await page.ev(`new Promise((res) => { const t0 = performance.now(); const b = [...document.querySelectorAll('button,a')].find((x) => /browse all songs/i.test(x.innerText)); b.click(); const iv = setInterval(() => { if (/All Songs/.test(document.body.innerText) || performance.now() - t0 > 8000) { clearInterval(iv); res(Math.round(performance.now() - t0)) } }, 10) })`)
+  const out = { label, songsBrowseMs: songs, profile: path.basename(profile), startupMs, switchMsMedian: Math.round(median(switches) * 10) / 10, switchMsMax: Math.round(Math.max(...switches)), searchMsMedian: Math.round(median(sLat)), searchMs: sLat.map(Math.round), idleCpuPctOfOneCore: Math.round(median(cpuSamples) * 10) / 10, rssMB: memStart, rssAfterSoakMB: memEnd, soakRounds: +soak, domNodes: nodes0, domNodesAfter: nodes1 }
   console.log(JSON.stringify(out)); fs.appendFileSync(path.join(ROOT, 'qa-out', 'perf.jsonl'), JSON.stringify(out) + '\n')
   page.close(); await app.kill()
 })().catch((e) => { console.error(e); process.exit(1) })
