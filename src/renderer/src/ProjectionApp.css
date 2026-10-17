@@ -160,3 +160,6 @@ body {
 .projection-bg img, .projection-bg-video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .projection-bg-dim { position: absolute; inset: 0; }
 .projection-active.has-bg > :not(.projection-bg) { z-index: 1; } /* label, text and reference are already absolutely placed */
+
+/* a line with no spaces (a web address pasted into an announcement, a long unbroken word) wraps instead of running off the screen */
+.projection-text-inner { overflow-wrap: anywhere; }

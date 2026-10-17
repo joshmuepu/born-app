@@ -187,7 +187,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #3a6186;
+  color: #6f9bc4; /* was #3a6186: 3.05:1 on the stage background */
   margin-bottom: 12px;
 }
 
@@ -200,8 +200,7 @@ body {
    glance what's current vs what's coming. */
 .stage-next {
   flex: 0 0 auto;
-  max-height: 30vh;
-  overflow: hidden;
+  /* no height cap: the text is clamped to 4 lines already, and a cap cut the reference line in half */
   padding: clamp(16px, 2.5vh, 32px) clamp(18px, 2vw, 32px);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
@@ -230,7 +229,7 @@ body {
 .stage-next-ref {
   margin-top: 8px;
   font-size: clamp(0.75rem, 1.1vw, 1.1rem);
-  color: #5a5a5a;
+  color: #9a9a9a; /* was #5a5a5a: 2.7:1 */
 }
 
 ::-webkit-scrollbar { width: 0; }
@@ -243,3 +242,5 @@ body {
 .stage-video-bar { width: min(80vw, 1200px); height: 1.2vh; min-height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 .stage-video-bar i { display: block; height: 100%; background: #fff; transition: width 250ms linear; }
 @media (prefers-reduced-motion: reduce) { .stage-video-bar i { transition: none; } }
+
+.stage-current-text, .stage-next-text, .stage-cg-text { overflow-wrap: anywhere; }

@@ -916,7 +916,7 @@ function buildGraphicsHTML(id: string): string {
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   #stage { position: relative; height: 100vh; }
   /* the line decides its own direction (Arabic/Hebrew read right-to-left and align right; the profile text-align is start) */
-  #text-inner { width: 100%; unicode-bidi: plaintext; }
+  #text-inner { width: 100%; unicode-bidi: plaintext; overflow-wrap: anywhere; }
 ${profileCSS}
   #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; }
   #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 0; background: #000; }
