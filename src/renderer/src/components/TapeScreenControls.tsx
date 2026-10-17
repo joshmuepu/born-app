@@ -13,7 +13,7 @@ const MODE_LABEL: Record<Mode, string> = { highlight: 'Highlight', one: 'One at 
  * Put the sermon on the congregation screen as a TAPE screen (the paragraph being spoken follows the tape), choose how it looks, and decide whether the
  * screens follow the tape. Nothing here starts sound or moves the tape. Taking is an explicit button — nothing changes what is live by itself.
  */
-export default function TapeScreenControls({ recording, sermonId, title, items, map, position }: {
+export default function TapeScreenControls({ recording, sermonId, title, items, map, position, onTaken }: {
   recording: TapeRecording
   sermonId: number
   title: string
@@ -21,6 +21,8 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
   map: SyncMap | null
   /** the tape's position right now (to say what is on the screen when it is taken) */
   position: number
+  /** told when the operator puts the tape on the screens, with the page showing (for "Recently played") */
+  onTaken?: (item: TapeScreenItem | null) => void
 }): JSX.Element | null {
   const [mode, setMode] = useState<Mode>('highlight')
   const [lead, setLead] = useState(4)
@@ -50,14 +52,15 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
     }
   }, [map, items, recording.id, sermonId, title, mode, lead, palette])
 
-  const send = (s: TapeScreenSpec): void => {
+  const send = (s: TapeScreenSpec): TapeScreenItem | null => {
     const v = tapeScreenView(s, position)
     const text = v.index !== null ? items[v.index].text : title
     const payload: SlidePayload = { kind: 'quote', text, label: title, marker: v.shown !== null ? String(v.shown) : undefined, tape: s }
     window.electronAPI.showSlide(payload)
     window.electronAPI.updateStage(payload, null)
+    return v.index !== null ? items[v.index] : null
   }
-  const take = (): void => { const s = spec(); if (s) send(s) }
+  const take = (): void => { const s = spec(); if (s) onTaken?.(send(s)) }
   // choosing how it looks never changes the screens by itself: while it is up, a change waits for "Apply to the screens"
   const changed = !!live && (live.mode !== mode || (mode === 'one' && live.leadSec !== lead) || (live.palette ?? 'dark') !== palette)
   const apply = (): void => { if (live) { const s = spec({ pinned: live.pinned }); if (s) send(s) } }

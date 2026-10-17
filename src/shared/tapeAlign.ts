@@ -244,3 +244,70 @@ export function heardFromWhisperJson(json: unknown): HeardWord[] {
   }
   return out
 }
+
+/** The loudness of a recording as short frames (root-mean-square), for snapping proposed starts to real speech. */
+export interface Envelope {
+  frameSec: number
+  rms: Float32Array
+}
+
+export interface RefineStats { moved: number; maxMoveSec: number; medianMoveSec: number }
+
+/**
+ * A recogniser's word times are unreliable around silence (it can put the first words of a paragraph INTO the pause before it, or let the last word of
+ * the previous paragraph swallow the pause). A paragraph cannot start in silence, so: if there is no speech right at a proposed start, move it forward
+ * to the first sustained speech after it — never past the next paragraph's start, never more than `maxForwardSec`. Starts already on speech, and anything
+ * on a tape too noisy to tell speech from room (no clear quiet), are left alone.
+ */
+export function refineToSpeech(marks: SyncMark[], env: Envelope, opts: { maxForwardSec?: number } = {}): { marks: SyncMark[]; stats: RefineStats } {
+  const maxForward = opts.maxForwardSec ?? 8
+  const n = env.rms.length
+  if (n < 50) return { marks, stats: { moved: 0, maxMoveSec: 0, medianMoveSec: 0 } }
+  const sorted = Float32Array.from(env.rms).sort()
+  const loud = sorted[Math.floor(n * 0.95)]
+  const quiet = sorted[Math.floor(n * 0.05)] // a sermon is mostly speech: look at its quietest 5 %, not 20 %
+  // no clear difference between speech and the quiet parts: do nothing rather than guess
+  if (!(loud > 0) || quiet > loud * 0.25) return { marks, stats: { moved: 0, maxMoveSec: 0, medianMoveSec: 0 } }
+  const thr = Math.max(loud * 0.08, quiet * 3)
+  const sp = (i: number): boolean => i >= 0 && i < n && env.rms[i] > thr
+  const win = Math.max(1, Math.round(0.1 / env.frameSec))
+  const hold = Math.max(1, Math.round(0.25 / env.frameSec))
+  const starts = marks.filter((m) => m.kind === 'start' && typeof m.t === 'number').sort((a, b) => (a.t as number) - (b.t as number))
+  const nextOf = new Map<number, number | null>()
+  starts.forEach((m, i) => nextOf.set(m.n, i + 1 < starts.length ? (starts[i + 1].t as number) : null))
+  const moves: number[] = []
+  const out = marks.map((m) => {
+    if (m.kind !== 'start' || typeof m.t !== 'number') return m
+    const t = m.t
+    const i0 = Math.floor(t / env.frameSec)
+    let hit = 0
+    for (let k = 0; k < hold; k++) if (sp(i0 + k)) hit++
+    if (hit >= hold * 0.4) return m // already on speech
+    const limit = Math.min(t + maxForward, (nextOf.get(m.n) ?? Infinity) - 0.1)
+    for (let j = i0; j * env.frameSec <= limit && j < n; j++) {
+      let c = 0
+      for (let k = 0; k < win; k++) if (sp(j + k)) c++
+      if (c >= win * 0.8) {
+        const nt = Math.round(j * env.frameSec * 100) / 100
+        if (nt > t) { moves.push(nt - t); return { ...m, t: nt } }
+        return m
+      }
+    }
+    return m
+  })
+  moves.sort((a, b) => a - b)
+  return { marks: out, stats: { moved: moves.length, maxMoveSec: moves.length ? Math.round(moves[moves.length - 1] * 100) / 100 : 0, medianMoveSec: moves.length ? Math.round(moves[Math.floor(moves.length / 2)] * 100) / 100 : 0 } }
+}
+
+/** RMS envelope of 16-bit mono PCM samples. */
+export function envelopeOf(samples: Int16Array, sampleRate: number, frameSec = 0.02): Envelope {
+  const per = Math.max(1, Math.round(sampleRate * frameSec))
+  const frames = Math.floor(samples.length / per)
+  const rms = new Float32Array(frames)
+  for (let f = 0; f < frames; f++) {
+    let s = 0
+    for (let i = f * per; i < (f + 1) * per; i++) s += samples[i] * samples[i]
+    rms[f] = Math.sqrt(s / per) / 32768
+  }
+  return { frameSec: per / sampleRate, rms }
+}

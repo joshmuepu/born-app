@@ -1,0 +1,13 @@
+.tsp-backdrop { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 60; }
+.tsp { width: min(560px, 92vw); max-height: 88vh; overflow: auto; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); }
+.tsp header { display: flex; align-items: center; justify-content: space-between; }
+.tsp h2 { font-size: var(--text-lg, 1.1rem); }
+.tsp h3 { font-size: var(--text-sm); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+.tsp section { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+.tsp-note, .tsp-fixed { font-size: var(--text-sm); color: var(--text-secondary); }
+.tsp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tsp-label { color: var(--text-secondary); font-size: var(--text-sm); }
+.tsp-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-md); overflow: hidden; }
+.tsp-seg button { background: none; border: 0; color: var(--text-secondary); padding: 5px 12px; font-weight: 600; cursor: pointer; }
+.tsp-seg button.is-on { background: var(--accent); color: var(--bg-primary); }
+.tsp select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 3px 8px; }

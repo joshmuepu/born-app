@@ -1,5 +1,5 @@
-.tse-overlay { position: fixed; inset: 0; z-index: 70; background: var(--scrim, rgba(4,4,6,.64)); display: grid; place-items: center; }
-.tse { width: min(1240px, 97vw); height: min(92vh, 980px); background: var(--bg-primary); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow-xl, 0 28px 70px rgba(0,0,0,.56)); display: flex; flex-direction: column; overflow: hidden; outline: none; }
+.tse-overlay { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: grid; place-items: center; }
+.tse { width: min(1240px, 97vw); height: min(92vh, 980px); background: var(--bg-primary); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; outline: none; }
 .tse-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex-wrap: wrap; }
 .tse-head h3 { margin: 2px 0 0; font-size: var(--text-lg); }
 .tse-caps { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); font-weight: 600; }
@@ -8,7 +8,7 @@
 .tse-chip--warn { border-color: var(--warn); color: var(--warn); }
 .tse-chip--gap { border-color: var(--sermons); } .tse-chip--differs { border-color: var(--warn); color: var(--warn); }
 .tse-confirm { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: color-mix(in srgb, var(--warn) 12%, transparent); border-bottom: 1px solid var(--warn); font-size: var(--text-sm); }
-.tse-guide { padding: 10px 16px; display: flex; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--border); background: var(--accent-wash, color-mix(in srgb, var(--accent) 12%, transparent)); min-height: 46px; }
+.tse-guide { padding: 10px 16px; display: flex; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 12%, transparent); min-height: 46px; }
 .tse-guide-label { font-weight: 700; font-size: var(--text-sm); color: var(--text-primary); white-space: nowrap; }
 .tse-guide-text { font: 400 17px/1.4 Georgia, 'Iowan Old Style', serif; color: var(--text-primary); }
 .tse-timeline-wrap { padding: 10px 16px 4px; }
@@ -46,7 +46,7 @@
 .tse-row { display: grid; grid-template-columns: 44px 92px 1fr 120px 232px; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: var(--text-sm); cursor: pointer; }
 .tse-row--head { background: var(--bg-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-tertiary); cursor: default; }
 .tse-row.is-untimed { opacity: .72; }
-.tse-row.is-target { background: var(--accent-wash, color-mix(in srgb, var(--accent) 12%, transparent)); box-shadow: inset 3px 0 0 var(--accent); opacity: 1; }
+.tse-row.is-target { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent); opacity: 1; }
 .tse-row.is-now { box-shadow: inset 3px 0 0 var(--ok); }
 .tse-n { font-family: var(--font-mono, ui-monospace, monospace); }
 .tse-time { font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }

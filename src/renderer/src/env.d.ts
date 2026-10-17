@@ -193,8 +193,9 @@ declare global {
       tapeMapLanguages: (recordingId: string) => Promise<Array<string | null>>
       tapeMapSave: (recordingId: string, textLanguage: string | null, source: import('../../shared/tape').SyncSource, marks: import('../../shared/tape').SyncMark[], regions: import('../../shared/tape').SyncRegion[]) => Promise<{ ok: true; map: import('../../shared/tape').SyncMap; issues: import('../../shared/tapeSync').MapIssue[] } | { ok: false; issues: import('../../shared/tapeSync').MapIssue[] }>
       tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg') => Promise<string | null>
+      tapeEsc: (shift: boolean, blanking: boolean) => void
       tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>) => Promise<
-        | { ok: true; result: import('../../shared/tapeAlign').AlignResult; seconds: number; heardWords: number }
+        | { ok: true; result: import('../../shared/tapeAlign').AlignResult; seconds: number; heardWords: number; refined: { moved: number; maxMoveSec: number; medianMoveSec: number } | null }
         | { ok: false; message: string; canceled?: boolean }
       >
       tapeAlignCancel: () => Promise<boolean>

@@ -114,7 +114,8 @@ describe('the operator controls', () => {
       getLiveState: vi.fn(async () => []), onLiveChanged: vi.fn((cb: (c: unknown[]) => void) => { liveCb = cb; return vi.fn() })
     })
   })
-  const mount = async () => { const r = render(<TapeScreenControls recording={rec} sermonId={1} title="A Sermon" items={items} map={map} position={35} />); await act(async () => {}); return r }
+  const onTaken = vi.fn()
+  const mount = async () => { const r = render(<TapeScreenControls recording={rec} sermonId={1} title="A Sermon" items={items} map={map} position={35} onTaken={onTaken} />); await act(async () => {}); return r }
 
   it('nothing is shown until the operator presses Put on the screens, and then the payload carries the tape screen and the current paragraph', async () => {
     await mount()
@@ -125,6 +126,7 @@ describe('the operator controls', () => {
     expect(p.text).toBe('Second paragraph, page a.')
     expect(p.tape).toMatchObject({ recordingId: 'r_1', mode: 'highlight', pinned: null, leadSec: 4 })
     expect(p.tape.items).toHaveLength(4)
+    expect(onTaken).toHaveBeenCalledWith(items[1]) // "Recently played" learns which paragraph went up
     expect(window.electronAPI.updateStage).toHaveBeenCalledWith(p, null) // the stage monitor gets its own layout of the same screen
   })
   it('choosing a view or colours changes nothing on the screens until Put on the screens', async () => {

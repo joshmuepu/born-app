@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mkdtempSync, writeFileSync, chmodSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { alignRecording, checkTools, cancelAlign, alignBusy } from '../../main/tapeAligner'
+import { alignRecording, checkTools, cancelAlign, alignBusy, wavEnvelope } from '../../main/tapeAligner'
 
 /** a stand-in for whisper-cli: prints progress and writes <of>.json with the words of a tiny fake sermon */
 function fakeWhisper(dir: string, body?: string): string {
@@ -75,3 +75,74 @@ describe('tape aligner runner', () => {
     if (!r.ok) expect(r.message).toMatch(/Settings/)
   })
 })
+
+/** a 16-bit mono PCM WAV: `quietSec` of near-silence, then `loudSec` of a tone, then quiet again */
+function makeWav(path: string, plan: Array<[number, 'quiet' | 'loud']>, rate = 16000, claimedDataLen?: number): void {
+  const samples: number[] = []
+  let seed = 7
+  const rnd = (): number => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32 - 0.5 }
+  for (const [sec, kind] of plan) for (let i = 0; i < sec * rate; i++) samples.push(kind === 'loud' ? Math.round(9000 * Math.sin((2 * Math.PI * 220 * i) / rate) + rnd() * 400) : Math.round(rnd() * 40))
+  const data = Buffer.alloc(samples.length * 2)
+  samples.forEach((v, i) => data.writeInt16LE(v, i * 2))
+  const h = Buffer.alloc(44)
+  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8); h.write('fmt ', 12); h.writeUInt32LE(16, 16)
+  h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34)
+  h.write('data', 36); h.writeUInt32LE(claimedDataLen ?? data.length, 40)
+  writeFileSync(path, Buffer.concat([h, data]))
+}
+
+describe('reading the loudness of a WAV', () => {
+  it('finds loud and quiet stretches', () => {
+    const d = mkdtempSync(join(tmpdir(), 'al-')); const w = join(d, 'e.wav')
+    makeWav(w, [[2, 'quiet'], [2, 'loud'], [1, 'quiet']])
+    const e = wavEnvelope(w)!
+    expect(e.frameSec).toBeCloseTo(0.02)
+    expect(e.rms.length).toBe(250)
+    expect(e.rms[50]).toBeLessThan(0.01)
+    expect(e.rms[150]).toBeGreaterThan(0.1)
+  })
+  it('a streamed WAV that claims a length of 0 (or too much) is still read to its real end', () => {
+    const d = mkdtempSync(join(tmpdir(), 'al-')); const w = join(d, 's.wav')
+    makeWav(w, [[1, 'quiet'], [1, 'loud']], 16000, 0)
+    expect(wavEnvelope(w)!.rms.length).toBe(100)
+    makeWav(w, [[1, 'quiet'], [1, 'loud']], 16000, 0x7fffffff)
+    expect(wavEnvelope(w)!.rms.length).toBe(100)
+  })
+  it('anything that is not a plain 16-bit WAV gives nothing (so nothing is guessed)', () => {
+    const d = mkdtempSync(join(tmpdir(), 'al-'))
+    const junk = join(d, 'j.wav'); writeFileSync(junk, Buffer.from('not a wav file at all, just text'))
+    expect(wavEnvelope(junk)).toBeNull()
+    expect(wavEnvelope(join(d, 'missing.wav'))).toBeNull()
+  })
+})
+
+describe('a start the recogniser put into the silence before the speech', () => {
+  it('is moved to where the speech begins, and the result says how many were moved', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'al-'))
+    const model = join(d, 'm.bin'); writeFileSync(model, 'x')
+    const wav = join(d, 'a.wav')
+    // 4 s of quiet, then 6 s of "speech", quiet 3 s, then 6 s of speech
+    makeWav(wav, [[4, 'quiet'], [6, 'loud'], [3, 'quiet'], [6, 'loud']])
+    // the fake recogniser says the first paragraph's words start at 0.3 s (inside the silence), the second's at 10.5 (inside the pause)
+    const whisper = join(d, 'fw.sh')
+    writeFileSync(whisper, `#!/bin/bash
+while [ $# -gt 0 ]; do case "$1" in -of) OF="$2"; shift;; esac; shift; done
+cat > "$OF.json" <<'J'
+{"transcription":[
+{"offsets":{"from":300,"to":700},"text":" the"},{"offsets":{"from":700,"to":1100},"text":" lord"},{"offsets":{"from":1100,"to":1500},"text":" is"},{"offsets":{"from":1500,"to":1900},"text":" my"},{"offsets":{"from":1900,"to":2300},"text":" shepherd"},
+{"offsets":{"from":10500,"to":10900},"text":" he"},{"offsets":{"from":10900,"to":11300},"text":" maketh"},{"offsets":{"from":11300,"to":11700},"text":" me"},{"offsets":{"from":11700,"to":12100},"text":" to"},{"offsets":{"from":12100,"to":12500},"text":" lie"}
+]}
+J
+`)
+    chmodSync(whisper, 0o755)
+    const r = await alignRecording(wav, [{ n: 1, text: 'The Lord is my shepherd' }, { n: 2, text: 'He maketh me to lie down' }], { whisper, model, ffmpeg: '' }, () => {})
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      const t = (n: number): number => r.result.marks.find((m) => m.n === n)!.t as number
+      expect(t(1)).toBeCloseTo(4, 1)
+      expect(t(2)).toBeCloseTo(13, 1)
+      expect(r.refined).toMatchObject({ moved: 2 })
+    }
+  })
+})
+

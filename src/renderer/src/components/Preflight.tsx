@@ -58,6 +58,27 @@ export default function Preflight({
       api.listOutputs().catch(() => [] as OutputInfo[]),
       api.mediaBackgroundsGet().catch(() => null)
     ])
+    // Tape: every sermon in the queue that has a recording attached is checked (file there, length plausible, timing, sound output)
+    const tapeRows: Row[] = []
+    try {
+      const sermons = new Map<number, string>()
+      for (const it of queue) if (it.kind === 'quote') sermons.set(it.quote.sermonId, it.quote.sermonTitle)
+      if (sermons.size && api.tapeRecordings) {
+        const [devices, ts] = await Promise.all([api.tapeDevices?.().catch(() => []) ?? Promise.resolve([]), api.tapeSettingsGet?.().catch(() => null) ?? Promise.resolve(null)])
+        const wanted = ts?.outputDeviceId ?? ''
+        const outputDevice = wanted ? { present: devices.some((d) => d.id === wanted), label: ts?.outputDeviceLabel || undefined } : null
+        for (const [sermonId, sermonTitle] of sermons) {
+          const recs = await api.tapeRecordings(sermonId).catch(() => [])
+          for (const rec of recs) {
+            const r = await api.tapePreflight(rec.id, { outputDevice }).catch(() => null)
+            if (!r) continue
+            const bad = r.checks.filter((c) => c.level !== 'ok')
+            if (bad.length === 0) tapeRows.push({ key: `t:${rec.id}`, level: 'pass', title: `Tape for “${sermonTitle}”`, detail: 'The recording is there, and it is timed.' })
+            for (const c of bad) tapeRows.push({ key: `t:${rec.id}:${c.id}`, level: c.level === 'fail' ? 'fail' : 'warn', title: `Tape for “${sermonTitle}”: ${c.title}`, detail: c.detail })
+          }
+        }
+      }
+    } catch { /* the tape checks are an extra: a failure here never hides the others */ }
     if (mine !== seq.current) return
     const byId = new Map(pf.map((r) => [r.id, r]))
 
@@ -139,6 +160,7 @@ export default function Preflight({
         if (badBg.length) out.push({ key: 'bg', level: 'warn', title: 'A background picture has a problem', detail: `${badBg.map((x) => x.name).join(', ')} — text will still show, without that background.` })
       }
     }
+    out.push(...tapeRows)
     out.sort((a, b) => rank[a.level] - rank[b.level] || (a.index ?? 999) - (b.index ?? 999))
     setRows(out)
     setCheckedAt(new Date())

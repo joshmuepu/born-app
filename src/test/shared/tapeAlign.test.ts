@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { alignParagraphs, heardFromWhisperJson, normWord, tokenize, type HeardWord } from '../../shared/tapeAlign'
+import { alignParagraphs, heardFromWhisperJson, normWord, tokenize, refineToSpeech, envelopeOf, type Envelope, type HeardWord } from '../../shared/tapeAlign'
+import type { SyncMark } from '../../shared/tape'
 
 /** deterministic pseudo-words: a small seeded generator, so a "sermon" of any size can be built without any real text */
 function rng(seed: number): () => number { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32 } }
@@ -148,5 +149,77 @@ describe('reading whisper.cpp output', () => {
     expect(heardFromWhisperJson(j)).toEqual([{ w: 'The', t: 27.68 }, { w: 'Lord', t: 28.08 }])
     expect(heardFromWhisperJson(null)).toEqual([])
     expect(heardFromWhisperJson({ transcription: 'x' })).toEqual([])
+  })
+})
+
+/** a made-up loudness picture: speech (0.3) in the given [from,to] second ranges, quiet room (0.002) elsewhere */
+function env(total: number, speech: Array<[number, number]>, frameSec = 0.02): Envelope {
+  const rms = new Float32Array(Math.floor(total / frameSec)).fill(0.002)
+  for (const [a, b] of speech) for (let i = Math.floor(a / frameSec); i < Math.floor(b / frameSec); i++) rms[i] = 0.3
+  return { frameSec, rms }
+}
+const mk = (n: number, t: number): SyncMark => ({ n, t, kind: 'start', confidence: 0.9 })
+
+describe('snapping proposed starts to real speech', () => {
+  const e = env(60, [[4, 12], [15, 25], [30, 40]])
+  it('a start placed in the silence BEFORE the speech moves forward to where the speech begins', () => {
+    const r = refineToSpeech([mk(1, 0.4), mk(2, 13.0), mk(3, 30.5)], e)
+    expect(r.marks[0].t).toBeCloseTo(4, 1)
+    expect(r.marks[1].t).toBeCloseTo(15, 1)
+    expect(r.marks[2].t).toBe(30.5) // already on speech: untouched
+    expect(r.stats).toMatchObject({ moved: 2 })
+    expect(r.stats.maxMoveSec).toBeGreaterThan(3)
+  })
+  it('never moves a start earlier, never past the next paragraph, never further than the limit', () => {
+    const r = refineToSpeech([mk(1, 12.5), mk(2, 14.0)], e)
+    expect(r.marks[0].t).toBeLessThan(14)
+    expect(r.marks.every((m, i) => (m.t as number) >= [12.5, 14][i])).toBe(true)
+    const far = refineToSpeech([mk(1, 0.5)], env(60, [[40, 50]]))
+    expect(far.marks[0].t).toBe(0.5) // 40 s away: beyond the 8 s limit, so left alone
+  })
+  it('a start already on speech is left exactly as it was', () => {
+    const r = refineToSpeech([mk(1, 5.2), mk(2, 16.1)], e)
+    expect(r.marks.map((m) => m.t)).toEqual([5.2, 16.1])
+    expect(r.stats.moved).toBe(0)
+  })
+  it('a noisy tape (no clear quiet) is not touched, and neither are skipped paragraphs', () => {
+    const noisy = env(60, []); noisy.rms.fill(0.2); for (let i = 0; i < 400; i++) noisy.rms[i] = 0.3
+    expect(refineToSpeech([mk(1, 0.5)], noisy).marks[0].t).toBe(0.5)
+    const skip: SyncMark = { n: 9, t: null, kind: 'skip', confidence: 0.2 }
+    expect(refineToSpeech([skip], e).marks[0]).toBe(skip)
+  })
+  it('a very short click of noise in the pause is not mistaken for speech', () => {
+    const e2 = env(60, [[4, 12]]); for (let i = 100; i < 103; i++) e2.rms[i] = 0.3 // a 60 ms click at 2 s
+    expect(refineToSpeech([mk(1, 0.4)], e2).marks[0].t).toBeCloseTo(4, 1)
+  })
+  it('the envelope of real samples: a loud second and a quiet second', () => {
+    const sr = 1000
+    const s = new Int16Array(2000)
+    for (let i = 0; i < 1000; i++) s[i] = i % 2 ? 12000 : -12000
+    for (let i = 1000; i < 2000; i++) s[i] = i % 2 ? 30 : -30
+    const ev = envelopeOf(s, sr, 0.02)
+    expect(ev.frameSec).toBeCloseTo(0.02)
+    expect(ev.rms.length).toBe(100)
+    expect(ev.rms[10]).toBeGreaterThan(0.3)
+    expect(ev.rms[60]).toBeLessThan(0.002)
+  })
+  it('an alignment that put a paragraph in the silence before it is repaired end to end', () => {
+    const s = makeSermon(12, 23)
+    const { heard, truth } = speak(s)
+    // make the recogniser swallow each pause: every paragraph's first words are reported 3 s early
+    const early = heard.map((h) => ({ ...h }))
+    for (const tr of truth) {
+      const prevEnd = Math.max(0, ...heard.filter((h) => h.t < tr.t - 0.01).map((h) => h.t))
+      const shift = Math.min(5, Math.max(0, (tr.t - prevEnd) * 0.8)) // inside its own pause, as the real recogniser does (a few seconds, never the whole intro)
+      for (let i = 0; i < early.length; i++) if (early[i].t >= tr.t - 0.01 && early[i].t < tr.t + 1.2) early[i].t -= shift
+    }
+    const speechRanges: Array<[number, number]> = truth.map((tr, i) => [tr.t, Math.max(tr.t + 2, (heard.filter((h) => h.t < (truth[i + 1]?.t ?? 1e9) - 0.01).pop()?.t ?? tr.t) + 0.3)])
+    const res = alignParagraphs(early, s)
+    const before = errs(res, truth)
+    const fixed = refineToSpeech(res.marks, env(truth[truth.length - 1].t + 40, speechRanges))
+    const after = errs({ ...res, marks: fixed.marks }, truth)
+    expect(before[before.length - 1]).toBeGreaterThan(0.8)
+    expect(after[Math.floor(after.length / 2)]).toBeLessThan(0.6) // the generator's own words start ~0.4 s after the paragraph does
+    expect(after[after.length - 1]).toBeLessThan(before[before.length - 1])
   })
 })

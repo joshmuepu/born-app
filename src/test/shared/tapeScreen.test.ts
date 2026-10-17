@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tapeScreenView, pageAt, lowerThirdSpec, lowerThirdNow, LOWER_THIRD_CHARS, clampLead, describeView, MIN_PAGE_SECONDS, type TapeScreenSpec } from '../../shared/tapeScreen'
+import { tapeGraphicsKey, withoutTapeBody, tapeScreenView, pageAt, lowerThirdSpec, lowerThirdNow, LOWER_THIRD_CHARS, clampLead, describeView, MIN_PAGE_SECONDS, type TapeScreenSpec } from '../../shared/tapeScreen'
 
 const items = [
   { n: 1, marker: '1', text: 'one' },
@@ -115,5 +115,29 @@ describe('the lower third / Graphics output', () => {
   })
   it('nothing yet before the first timed paragraph', () => {
     expect(lowerThirdNow(big, 2)).toBeNull()
+  })
+})
+
+describe('Graphics frames and what outside observers see', () => {
+  const long2 = 'Alpha sentence one is here. Bravo sentence two follows it. Charlie sentence three comes next. Delta sentence four ends it. '.repeat(3).trim()
+  const sp = spec({ items: [{ n: 1, marker: '1', text: 'Short one.' }, { n: 2, marker: '2a', text: long2 }, { n: 3, marker: '3', text: 'Short three.' }] })
+  it('the Graphics key stays the same while the page is the same and changes exactly when the page turns', () => {
+    const keys = [31, 32, 33, 34, 60, 85, 95].map((t) => tapeGraphicsKey(sp, t))
+    expect(keys[0]).toBe(keys[1])
+    expect(keys[1]).toBe(keys[2])
+    expect(new Set(keys).size).toBeGreaterThan(2)
+    expect(tapeGraphicsKey(sp, 2)).toMatch(/\|none$/)
+  })
+  it('pinning, or another recording, is a different frame even at the same position', () => {
+    expect(tapeGraphicsKey({ ...sp, pinned: 3 }, 35)).not.toBe(tapeGraphicsKey(sp, 35))
+    expect(tapeGraphicsKey({ ...sp, recordingId: 'other' }, 35)).not.toBe(tapeGraphicsKey(sp, 35))
+  })
+  it('observers get the slide without the paragraphs and timing, but still know what it is', () => {
+    const out = withoutTapeBody({ kind: 'quote', text: 'x', tape: sp })!
+    expect(out.tape).toMatchObject({ recordingId: 'r', mode: 'highlight', pinned: null, items: [], marks: [], regions: [] })
+    expect(JSON.stringify(out).length).toBeLessThan(400)
+    expect(withoutTapeBody(null)).toBeNull()
+    const plain = { kind: 'quote', text: 'x' }
+    expect(withoutTapeBody(plain)).toBe(plain)
   })
 })

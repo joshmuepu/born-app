@@ -140,3 +140,16 @@ export function lowerThirdNow(spec: TapeScreenSpec, pos: number): { text: string
   const it = lt.items[v.index]
   return { text: it.text, marker: it.marker, index: v.index }
 }
+
+/** A key that changes exactly when a Graphics output needs a NEW frame for this tape screen (a new page, a pin change, a different recording). */
+export function tapeGraphicsKey(spec: TapeScreenSpec, pos: number): string {
+  const now = lowerThirdNow(spec, pos)
+  return `${spec.recordingId}|${spec.pinned ?? ''}|${now ? now.index : 'none'}`
+}
+
+/** A slide as outside observers (automation API, health snapshot) see it: a tape screen's paragraphs and timing are left out — only what it is. */
+export function withoutTapeBody<S extends { tape?: TapeScreenSpec }>(s: S | null): S | null {
+  if (!s || !s.tape) return s
+  const t = s.tape
+  return { ...s, tape: { v: 1, recordingId: t.recordingId, sermonId: t.sermonId, title: t.title, mode: t.mode, leadSec: t.leadSec, pinned: t.pinned, items: [], marks: [], regions: [] } }
+}

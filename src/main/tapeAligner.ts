@@ -4,19 +4,70 @@
  * It runs as a child process (never on the UI thread), reports progress, can be cancelled, and only ever RETURNS a proposal.
  */
 import { spawn, type ChildProcess } from 'child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync } from 'fs'
 import { tmpdir, cpus } from 'os'
 import { join, dirname } from 'path'
-import { alignParagraphs, heardFromWhisperJson, type AlignParagraph, type AlignResult } from '../shared/tapeAlign'
+import { alignParagraphs, heardFromWhisperJson, refineToSpeech, type AlignParagraph, type AlignResult, type Envelope, type RefineStats } from '../shared/tapeAlign'
 
 export interface AlignTools { whisper: string; model: string; ffmpeg: string }
 export interface AlignProgress { phase: 'prepare' | 'listen' | 'match'; pct: number }
-export type AlignOutcome = { ok: true; result: AlignResult; seconds: number; heardWords: number } | { ok: false; message: string; canceled?: boolean }
+export type AlignOutcome = { ok: true; result: AlignResult; seconds: number; heardWords: number; refined: RefineStats | null } | { ok: false; message: string; canceled?: boolean }
 
 export function checkTools(t: AlignTools): string | null {
   if (!t.whisper || !existsSync(t.whisper)) return 'Choose the whisper.cpp program (whisper-cli) in Settings first.'
   if (!t.model || !existsSync(t.model)) return 'Choose a whisper.cpp model file in Settings first.'
   return null
+}
+
+/** The loudness of a 16-bit PCM WAV, read in pieces (a 2½-hour mono 16 kHz file is ~280 MB; it is never held whole). null when it is not a plain 16-bit WAV. */
+export function wavEnvelope(path: string, frameSec = 0.02): Envelope | null {
+  let fd = -1
+  try {
+    fd = openSync(path, 'r')
+    const head = Buffer.alloc(4096)
+    const got = readSync(fd, head, 0, 4096, 0)
+    if (got < 44 || head.toString('ascii', 0, 4) !== 'RIFF' || head.toString('ascii', 8, 12) !== 'WAVE') return null
+    let off = 12, rate = 0, ch = 0, bits = 0, dataAt = -1, dataLen = 0
+    while (off + 8 <= got) {
+      const id = head.toString('ascii', off, off + 4)
+      const len = head.readUInt32LE(off + 4)
+      if (id === 'fmt ') {
+        if (head.readUInt16LE(off + 8) !== 1) return null // not plain PCM
+        ch = head.readUInt16LE(off + 10); rate = head.readUInt32LE(off + 12); bits = head.readUInt16LE(off + 22)
+      } else if (id === 'data') { dataAt = off + 8; dataLen = len; break }
+      off += 8 + len + (len % 2)
+    }
+    if (dataAt < 0 || bits !== 16 || ch < 1 || ch > 2 || rate < 8000) return null
+    const size = statSync(path).size
+    if (dataLen === 0 || dataLen > size - dataAt) dataLen = size - dataAt // a streamed WAV can claim 0 / too much
+    const perFrame = Math.max(1, Math.round(rate * frameSec))
+    const frames = Math.floor(dataLen / 2 / ch / perFrame)
+    const rms = new Float32Array(frames)
+    const chunkFrames = 4096
+    const buf = Buffer.alloc(chunkFrames * perFrame * ch * 2)
+    let f = 0
+    while (f < frames) {
+      const want = Math.min(chunkFrames, frames - f)
+      const n = readSync(fd, buf, 0, want * perFrame * ch * 2, dataAt + f * perFrame * ch * 2)
+      if (n < want * perFrame * ch * 2) break
+      for (let k = 0; k < want; k++) {
+        let sum = 0
+        for (let i = 0; i < perFrame; i++) {
+          let v = 0
+          for (let c = 0; c < ch; c++) v += buf.readInt16LE(((k * perFrame + i) * ch + c) * 2)
+          v /= ch
+          sum += v * v
+        }
+        rms[f + k] = Math.sqrt(sum / perFrame) / 32768
+      }
+      f += want
+    }
+    return { frameSec: perFrame / rate, rms: f === frames ? rms : rms.slice(0, f) }
+  } catch {
+    return null
+  } finally {
+    if (fd >= 0) try { closeSync(fd) } catch { /* nothing to do */ }
+  }
 }
 
 let current: { procs: ChildProcess[]; canceled: boolean } | null = null
@@ -68,7 +119,15 @@ export async function alignRecording(audioPath: string, paragraphs: AlignParagra
     onProgress({ phase: 'match', pct: 100 })
     const heard = heardFromWhisperJson(JSON.parse(readFileSync(out + '.json', 'utf8')))
     const result = alignParagraphs(heard, paragraphs)
-    return { ok: true, result, seconds: (Date.now() - t0) / 1000, heardWords: heard.length }
+    // a paragraph cannot start in silence: where the recogniser put a start in a pause, move it to where the speech begins
+    const env = wavEnvelope(wav)
+    let refined: RefineStats | null = null
+    if (env) {
+      const r = refineToSpeech(result.marks, env)
+      result.marks = r.marks
+      refined = r.stats
+    }
+    return { ok: true, result, seconds: (Date.now() - t0) / 1000, heardWords: heard.length, refined }
   } catch (e) {
     return { ok: false, message: job.canceled ? 'Canceled.' : `Alignment failed: ${(e as Error).message}`, canceled: job.canceled }
   } finally {

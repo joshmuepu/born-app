@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
 import TapeAttach from './TapeAttach'
+import TapeSettingsPanel from './TapeSettingsPanel'
 import TapeLanguageNotice from './TapeLanguageNotice'
 import TapeScreenControls, { useScreenItems } from './TapeScreenControls'
 import TapeBar from './TapeBar'
@@ -88,6 +89,7 @@ export default function SermonFollowView({
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [tapeOpen, setTapeOpen] = useState(false)
+  const [tapeOptions, setTapeOptions] = useState(false)
   const [syncing, setSyncing] = useState<{ rec: TapeRecording & { status: TapeFileStatus } } | null>(null)
   const [recs, setRecs] = useState<Array<TapeRecording & { status: TapeFileStatus }>>([])
   const [mapVersion, setMapVersion] = useState(0)
@@ -314,6 +316,7 @@ export default function SermonFollowView({
               <span className="tape-faint"> · Tape {tapeRec.language.toUpperCase()}</span>
             </label>
           )}
+          <button className="btn-quiet btn-sm" onClick={() => setTapeOptions(true)} aria-haspopup="dialog">Tape options…</button>
           {tapeActive && !tf.follow && <button className="btn-secondary btn-sm" onClick={() => tf.setFollow(true)}>Back to the tape</button>}
           {!tf.map && <span className="tape-faint">No timing yet — the text can’t follow this recording. Use “Tap to sync”.</span>}
           {jump && (
@@ -322,8 +325,9 @@ export default function SermonFollowView({
         </div>
       )}
       {tapeRec && tf.agreement && tf.foreign && <TapeLanguageNotice agreement={tf.agreement} decision={tf.decision} overrides={tf.overrides} textLabel={languages[language] ?? language.toUpperCase()} onChoose={tf.choose} onSaveOverrides={tf.saveOverrides} />}
-      {tapeRec && <TapeScreenControls recording={tapeRec} sermonId={sermonId} title={title} items={screenItemList} map={tf.map} position={tf.mine ? tf.pos : 0} />}
+      {tapeRec && <TapeScreenControls recording={tapeRec} sermonId={sermonId} title={title} items={screenItemList} map={tf.map} position={tf.mine ? tf.pos : 0} onTaken={(it) => { const f = it ? flatSlides.find((x) => x.marker === it.marker) : null; if (f) window.electronAPI.noteSermonUsed?.(f.quote) }} />}
       {tapeRec && <TapeBar recording={tapeRec} paragraphStarts={tf.starts} onPrevParagraph={tf.map ? tf.prevParagraph : undefined} onNextParagraph={tf.map ? tf.nextParagraph : undefined} />}
+      {tapeOptions && <TapeSettingsPanel onClose={() => setTapeOptions(false)} />}
       {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} onSync={(id) => { const r = recs.find((x) => x.id === id) ?? recs[0]; if (r) { setTapeOpen(false); setSyncing({ rec: r }) } }} />}
       {syncing && <TapeSyncEditor recording={syncing.rec} sermonId={sermonId} sermonTitle={title} dateCode={dateCode} language={language} onClose={() => { setSyncing(null); loadRecs(); setMapVersion((v) => v + 1) }} onSaved={() => { loadRecs(); setMapVersion((v) => v + 1) }} />}
     </div>

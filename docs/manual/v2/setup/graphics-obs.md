@@ -79,3 +79,10 @@ Next: [Presentation profiles](profiles.md).
 
 > **A full OBS setup for a livestream** (scenes, the lower-third and full-screen layouts from one output, sound, YouTube, a Sunday checklist and a "blank overlay" fix list) is on
 > the page [Using BORN with OBS](obs-live.md).
+
+## A recorded sermon on a Graphics output
+
+While a **tape** is on the screens (see *Running a tape service*), a Graphics output shows it as **lower-third pages** — about two lines at a time — and turns the page at the tape's own pace, so a long paragraph is
+shown in pieces that follow the speaker. Nothing to set up: it uses the same **Lower third** and **Full-screen** layouts, and `?profile=lower-third` on a browser source works as before. The sound is only ever
+from the main computer, never from the Graphics page. If the tape is paused, the page stays on the paragraph it was on. If you blank the screens (Esc), the page clears and the tape keeps playing.
+

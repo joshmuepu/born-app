@@ -36,6 +36,9 @@ export interface TapeHubDeps {
   notice?: (message: string) => void
 }
 
+/** How long a playing tape may go without its sound engine answering before it is called stalled. */
+export const ENGINE_SILENT_MS = 5000
+
 export class TapeHub {
   private rec: TapeRecord | null = null
   private ticks = 0
@@ -94,6 +97,8 @@ export class TapeHub {
     return this.rec
   }
   private wantPlay = false
+  /** when the sound engine last answered; a playing tape whose engine goes quiet is not really playing */
+  private lastReport = 0
   /** the volume the operator chose on the computer; the phone may only nudge within ±20 % of it */
   private opVolume: number | null = null
 
@@ -108,6 +113,7 @@ export class TapeHub {
       }
     }
     if (a.type === 'volume') this.opVolume = Math.min(1, Math.max(0, a.value))
+    if (a.type === 'play' || a.type === 'toggle') this.lastReport = this.d.now()
     const next = tapeReduce(this.rec, a, this.d.now())
     if (next !== this.rec) this.put(next)
     return this.rec
@@ -138,6 +144,7 @@ export class TapeHub {
 
   /** The engine says where it really is (about 4 times a second and on every event). It is the clock. */
   report(r: { position: number; playing: boolean; duration?: number | null; ended?: boolean; stalled?: boolean; error?: string | null; errorKind?: TapeErrorKind; ready?: boolean }): void {
+    this.lastReport = this.d.now()
     if (!this.rec) return
     const before = this.rec
     const next = tapeReduce(before, { type: 'report', ...r }, this.d.now())
@@ -184,6 +191,11 @@ export class TapeHub {
   tick(): void {
     if (!this.rec) return
     if (this.rec.status === 'playing') {
+      // the engine answers about four times a second; five seconds of silence means the sound is NOT really playing (a hung or lost player)
+      if (!this.rec.stalled && this.lastReport > 0 && this.d.now() - this.lastReport > ENGINE_SILENT_MS) {
+        this.put({ ...this.rec, stalled: true })
+        this.d.notice?.('The tape’s sound player stopped answering. Press Pause, then Play — and check the sound.')
+      }
       this.d.emit(toTapeWire(this.rec, this.d.now()))
       if (++this.ticks % 5 === 0) this.save()
     }

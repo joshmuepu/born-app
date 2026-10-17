@@ -20,10 +20,10 @@ import { getMediaLibrary, closeMediaLibrary, registerMediaIpc, resolveMediaForHt
 import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
-import { lowerThirdNow } from '../shared/tapeScreen'
+import { lowerThirdNow, tapeGraphicsKey, withoutTapeBody } from '../shared/tapeScreen'
 import { numberedParagraphs } from '../shared/tapeParagraphs'
 import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, type PhoneTapeDeps } from './tapePhone'
-import { tapeWirePosition } from '../shared/tapePlayback'
+import { tapeWirePosition, escPausesTape } from '../shared/tapePlayback'
 import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, hub as tapeHub } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
@@ -343,12 +343,7 @@ function describeObservabilityDestination(
  *  channel, what's live and whether each place it's routed to is actually
  *  reaching someone — built directly on channelRoutingSnapshot() so this
  *  stays a read, never a second source of truth for the registry itself. */
-/** A slide as outside observers (the automation API, the health snapshot) see it: a tape screen's paragraphs and timing are left out — only what it is. */
-function publicSlide(s: SlidePayload | null): SlidePayload | null {
-  if (!s || !s.tape) return s
-  const { tape, ...rest } = s
-  return { ...rest, tape: { v: 1, recordingId: tape.recordingId, sermonId: tape.sermonId, title: tape.title, mode: tape.mode, leadSec: tape.leadSec, pinned: tape.pinned, items: [], marks: [], regions: [] } }
-}
+const publicSlide = (s: SlidePayload | null): SlidePayload | null => withoutTapeBody(s)
 export function observabilitySnapshot(): ObservabilityChannel[] {
   const display = displayInfoPayload()
   return channelRoutingSnapshot().map(({ channel, destinations: routed }) => ({
@@ -753,16 +748,13 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     const mod = input.meta || input.control
-    if (input.key === 'Escape' && input.shift) {
-      // Shift+Esc: blank the screens AND pause the tape (plain Esc leaves the tape playing — the recording is the service)
+    if (input.key === 'Escape') {
+      // Shift+Esc: blank the screens AND pause the tape. Plain Esc toggles the blackout and leaves the tape playing (unless Tape options say otherwise).
       event.preventDefault()
-      if (!channels.get('main')!.blanked) setChannelBlank('main', true)
-      tapeHub.pauseFor('panic')
-    } else if (input.key === 'Escape') {
-      event.preventDefault()
-      const blanking = !channels.get('main')!.blanked
-      setChannelBlank('main', blanking)
-      if (blanking && getSettingsSafe().tape.escRule === 'pause') tapeHub.pauseFor('panic')
+      const wasBlanked = channels.get('main')!.blanked
+      const blanking = input.shift ? true : !wasBlanked
+      if (input.shift ? !wasBlanked : true) setChannelBlank('main', blanking)
+      if (escPausesTape(getSettingsSafe().tape.escRule, input.shift, blanking)) tapeHub.pauseFor('panic')
     } else if (mod && input.shift && input.key.toLowerCase() === 'w') {
       event.preventDefault()
       // Close whichever output window this fired from — this used to always
@@ -1202,8 +1194,7 @@ function tickTapeGraphics(): void {
   for (const [id, c] of channels) {
     const t = c.current?.tape
     if (!t || c.blanked) { tapeGraphicsPage.delete(id); continue }
-    const now = lowerThirdNow(t, tapePositionFor(t.recordingId))
-    const key = `${t.recordingId}|${t.pinned ?? ''}|${now ? now.index : 'none'}`
+    const key = tapeGraphicsKey(t, tapePositionFor(t.recordingId))
     if (tapeGraphicsPage.get(id) !== key) { tapeGraphicsPage.set(id, key); pushGraphicsForChannel(id) }
   }
 }
@@ -1586,6 +1577,11 @@ ipcMain.handle('projection:close', () => {
 
 ipcMain.on('projection:show-slide', (_event, slide: SlidePayload) => {
   showChannelSlide(destinations.get('congregation')?.config.channelId ?? 'main', slide)
+})
+
+/** The control window's Esc / Shift+Esc: it already toggled the blackout itself; this applies the tape's part of the rule (one rule, shared with the output windows). */
+ipcMain.on('tape:esc', (_e, shift: boolean, blanking: boolean) => {
+  if (escPausesTape(getSettingsSafe().tape.escRule, !!shift, !!blanking)) tapeHub.pauseFor('panic')
 })
 
 ipcMain.on('projection:clear', () => {

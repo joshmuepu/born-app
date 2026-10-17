@@ -152,3 +152,33 @@ describe('broadcasting', () => {
     expect(sent.at(-1)?.position).toBeCloseTo(1, 0)
   })
 })
+
+describe('a sound engine that stops answering', () => {
+  it('a playing tape whose engine has been silent for 5 s is flagged as stalled, once, with a plain notice', () => {
+    const { hub, notices, advance, ready } = setup()
+    hub.load('r_1'); ready(); hub.command({ type: 'play' })
+    advance(4000); hub.tick()
+    expect(hub.record!.stalled).toBe(false)
+    advance(2000); hub.tick()
+    expect(hub.record!.stalled).toBe(true)
+    expect(notices.filter((n) => /stopped answering/.test(n))).toHaveLength(1)
+    advance(3000); hub.tick()
+    expect(notices.filter((n) => /stopped answering/.test(n))).toHaveLength(1)
+  })
+  it('an engine that is reporting is never flagged, and a report clears the flag again', () => {
+    const { hub, advance, ready } = setup()
+    hub.load('r_1'); ready(); hub.command({ type: 'play' })
+    for (let i = 0; i < 20; i++) { advance(1000); hub.report({ position: i + 1, playing: true }); hub.tick() }
+    expect(hub.record!.stalled).toBe(false)
+    advance(6000); hub.tick()
+    expect(hub.record!.stalled).toBe(true)
+    hub.report({ position: 40, playing: true })
+    expect(hub.record!.stalled).toBe(false)
+  })
+  it('a paused tape is never "silent"', () => {
+    const { hub, advance, ready } = setup()
+    hub.load('r_1'); ready(); hub.command({ type: 'play' }); hub.command({ type: 'pause' })
+    advance(60_000); hub.tick()
+    expect(hub.record!.stalled).toBe(false)
+  })
+})

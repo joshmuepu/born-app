@@ -1548,7 +1548,10 @@ export default function App() {
       // including while a search box has focus, so it works under live pressure.
       if (e.key === 'Escape' && projectionOpen) {
         e.preventDefault()
-        handleToggleBlank()
+        // Shift+Esc blanks (never un-blanks) and pauses the tape; plain Esc toggles and leaves the tape playing unless Tape options say otherwise
+        const wasBlanked = isScreenBlankedRef.current
+        if (e.shiftKey) { if (!wasBlanked) handleToggleBlank() } else handleToggleBlank()
+        window.electronAPI.tapeEsc?.(e.shiftKey, e.shiftKey ? true : !wasBlanked)
         return
       }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { initialTape, tapeReduce, tapePositionNow, toTapeWire, tapeWirePosition, tapeStatusNote, tapeTimeLeft, clampSpeed, TAPE_SPEEDS } from '../../shared/tapePlayback'
+import { initialTape, tapeReduce, tapePositionNow, toTapeWire, tapeWirePosition, tapeStatusNote, tapeTimeLeft, clampSpeed, TAPE_SPEEDS, escPausesTape } from '../../shared/tapePlayback'
 
 const T0 = 1_000_000
 const base = () => initialTape({ recordingId: 'r_1', fileId: 't_1', sermonId: 1115, position: 100, duration: 8688 }, T0)
@@ -130,5 +130,19 @@ describe('what travels to the windows', () => {
     expect(clampSpeed(NaN)).toBe(1)
     expect(TAPE_SPEEDS.wide).toContain(1.25)
     expect(TAPE_SPEEDS.off).toEqual([1])
+  })
+})
+
+describe('Esc and the tape (one rule for every window)', () => {
+  it('plain Esc blanks and leaves the tape playing by default; it never pauses when UN-blanking', () => {
+    expect(escPausesTape('keep', false, true)).toBe(false)
+    expect(escPausesTape('keep', false, false)).toBe(false)
+  })
+  it('with "Also pauses", plain Esc pauses when it blanks, and only then', () => {
+    expect(escPausesTape('pause', false, true)).toBe(true)
+    expect(escPausesTape('pause', false, false)).toBe(false)
+  })
+  it('Shift+Esc is the panic key: it always pauses, whatever the setting', () => {
+    for (const rule of ['keep', 'pause'] as const) for (const blanking of [true, false]) expect(escPausesTape(rule, true, blanking)).toBe(true)
   })
 })

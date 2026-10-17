@@ -461,6 +461,7 @@ const api = {
   tapeMapLanguages: (recordingId: string): Promise<Array<string | null>> => ipcRenderer.invoke('tape:map-languages', recordingId),
   tapeMapSave: (recordingId: string, textLanguage: string | null, source: string, marks: unknown, regions: unknown): Promise<unknown> => ipcRenderer.invoke('tape:map-save', recordingId, textLanguage, source, marks, regions),
   tapePickTool: (which: 'whisper' | 'model' | 'ffmpeg'): Promise<string | null> => ipcRenderer.invoke('tape:pick-tool', which),
+  tapeEsc: (shift: boolean, blanking: boolean): void => ipcRenderer.send('tape:esc', shift, blanking),
   tapeAlignRun: (recordingId: string, paragraphs: Array<{ n: number; text: string }>): Promise<unknown> => ipcRenderer.invoke('tape:align-run', recordingId, paragraphs),
   tapeAlignCancel: (): Promise<boolean> => ipcRenderer.invoke('tape:align-cancel'),
   onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void): (() => void) => {

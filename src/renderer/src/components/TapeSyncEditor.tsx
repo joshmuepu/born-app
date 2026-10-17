@@ -144,7 +144,7 @@ export default function TapeSyncEditor({
       dispatch({ type: 'replace', marks: r.result.marks, regions: r.result.regions })
       reviewIdx.current = 0
       const { located, paragraphs, lowConfidence } = r.result.stats
-      setMessage({ kind: lowConfidence ? 'warn' : 'ok', text: `Suggestion ready in ${Math.round(r.seconds)} s — ${located} of ${paragraphs} paragraphs found with confidence; ${lowConfidence} to check. Nothing is saved yet.` })
+      setMessage({ kind: lowConfidence ? 'warn' : 'ok', text: `Suggestion ready in ${Math.round(r.seconds)} s — ${located} of ${paragraphs} paragraphs found with confidence; ${lowConfidence} to check.${r.refined && r.refined.moved > 0 ? ` ${r.refined.moved} start${r.refined.moved === 1 ? ' was' : 's were'} moved to where the speech begins.` : ''} Nothing is saved yet.` })
     } finally { off(); setAligning(null) }
   }
   /** Step through the suggested times, least sure first: jump the tape and the list to each. */

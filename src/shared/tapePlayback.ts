@@ -148,3 +148,12 @@ export function tapeStatusNote(s: Pick<TapeRecord, 'status' | 'pausedBy' | 'stal
   }
   return null
 }
+
+/**
+ * Does an Esc press pause the tape? Shift+Esc always blanks AND pauses (the panic key). Plain Esc blanks and leaves the tape playing unless the operator
+ * chose "Also pauses" — and then only when it is BLANKING (un-blanking never pauses). One rule for every window that listens for Esc.
+ */
+export function escPausesTape(rule: 'keep' | 'pause', shift: boolean, blankingNow: boolean): boolean {
+  if (shift) return true
+  return blankingNow && rule === 'pause'
+}
