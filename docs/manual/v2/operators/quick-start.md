@@ -44,6 +44,10 @@ correct and expected.
 > frozen desktop image, not a Born Again logo) — and the button that said "Open projection"
 > now shows the Hide/Show-screen controls instead.
 
+![The top bar: the ON AIR group (Screens, Hide screen, Message, Close projection), Remote and the ⚙ menu with theme, contrast, interface size and Help.](../images/header-onair.png)
+
+The screens controls live together in the outlined **ON AIR** group at the top (red while the screens are live, amber while they are hidden); the ⚙ menu holds theme, high contrast, interface size, Help and the keyboard shortcuts.
+
 ## 4. Show it on the screen
 
 Every result has a **Show** button on it. Click it and that result appears on
@@ -51,6 +55,8 @@ the Congregation screen immediately. (To line several things up first instead of
 projecting one at a time, see the next step.)
 
 ## 5. Build a running order (optional)
+
+![The first-run checklist: Set up Sunday, with the three plans.](../images/setup-sunday.png)
 
 **The first time you open Born Again** the queue panel is already open on the right with a
 **Set up Sunday** checklist: choose your screens, add tonight's items (or start from a plan —

@@ -26,6 +26,8 @@
 .nd-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
 .nd-chip-dot.is-ok { background: var(--ok); }
 .nd-notice { display: flex; align-items: center; gap: 10px; padding: 0 14px 6px; font-size: var(--text-xs); color: var(--text-secondary); flex-wrap: wrap; }
+/* with a tape loaded the LIVE box keeps to its own width, so the tape (about 750 px of controls) gets the rest of the row */
+.now-dock--tape .nd-live { flex: 0 1 300px; max-width: 340px; }
 /* the tape's output and screens buttons fold to their icons below 1440 scaled px, so LIVE, the tape and the status all fit one row */
 html[data-w~='1440'] .now-dock .gtb .tape-chip-text, html[data-w~='1440'] .now-dock .gtb .gtb-screens-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 html[data-w~='1440'] .now-dock .nd-live { flex-basis: 280px; }

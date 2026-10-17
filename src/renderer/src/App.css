@@ -869,8 +869,6 @@ mark.hl {
 .start-screen {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 24px;
   overflow-y: auto;
 }
@@ -878,6 +876,8 @@ mark.hl {
   width: 100%;
   max-width: 340px;
   text-align: center;
+  /* centred with auto margins, not align-items: a tall checklist then starts at the top and scrolls, instead of being cut off above the pane */
+  margin: auto;
 }
 .start-icon {
   margin-left: auto;

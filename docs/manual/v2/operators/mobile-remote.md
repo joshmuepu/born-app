@@ -29,6 +29,9 @@ and the connection indicator (top of the phone screen) shows connected, not
 
 ## The tabs, and the hidden-screen banner
 
+![The phone's Media tab: thumbnails with Show and + Queue, and the six tabs at the bottom.](../images/phone-media.png)
+![The amber SCREEN HIDDEN banner and the Show screen button.](../images/phone-hidden.png)
+
 The bar at the bottom of the phone (the left side on a tablet) has six tabs: **Queue**,
 **Sermons**, **Bible**, **Songs**, **Media** and **Tape**.
 

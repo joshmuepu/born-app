@@ -2,6 +2,8 @@
 
 **Prepare** is the whole workspace: find things on the left, build the queue on the right. **Run** is for the service itself: the **queue** as a big list, and the **live controls** large beside it. Nothing about what is on the screens changes when you switch.
 
+![Run view: the queue as a big list on the left; Show next, Hide screen, the arrows and the Preview and Live pictures on the right.](../images/run-view.png)
+
 ## Switching
 
 - Press **Run view** at the top of the queue (it becomes **‹ Prepare** while you are in Run), or press **Ctrl+Shift+U** (**⌘+Shift+U** on a Mac) — the same keys switch back.
