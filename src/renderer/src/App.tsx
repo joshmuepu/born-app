@@ -10,7 +10,9 @@ import { ToastHost, useToasts } from './components/Toasts'
 import SermonModeStrip from './components/SermonModeStrip'
 import SavedPanel from './components/SavedPanel'
 import PanelResizer from './components/PanelResizer'
-import { escBlanksScreens, trackEscOverlay } from './escRule'
+import { escBlanksScreens, overlayIsOpen, trackEscOverlay } from './escRule'
+import { SECTION_NAMES, cycleRegion } from './regions'
+import SkipLinks from './components/SkipLinks'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
 import { useNavHistory, type NavEntry } from './navHistory'
@@ -1582,6 +1584,8 @@ export default function App() {
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
+      // F6 / Shift+F6: move between the header, the sections, the content, the queue and the status bar (never while a dialog has the keys)
+      if (e.key === 'F6' && !overlayIsOpen()) { e.preventDefault(); cycleRegion(e.shiftKey ? -1 : 1); return }
 
       // Esc toggles the projector blackout from anywhere in the control window —
       // including while a search box has focus, so it works under live pressure.
@@ -2123,6 +2127,7 @@ export default function App() {
   return (
     <AppActionsContext.Provider value={appActions}>
     <div className="app">
+      <SkipLinks openQueue={() => { if (!queueOpen) toggleQueue() }} />
       <header className="app-header">
         <button
           className="app-logo-born"
@@ -2381,7 +2386,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="app-main">
+      <div className="app-main">
         <div className="search-panel">
           <nav className="app-rail" aria-label="Sections">
             {([
@@ -2444,7 +2449,8 @@ export default function App() {
               {serviceQueue.length > 0 && <em className="rail-badge">{serviceQueue.length}</em>}
             </button>
           </nav>
-          <div className="search-main">
+          <div className="search-main" role="main" id="main-content" tabIndex={-1} aria-label={SECTION_NAMES[topTab] ?? 'Born Again'}>
+          <h1 className="sr-only">{SECTION_NAMES[topTab] ?? 'Born Again'} — Born Again</h1>
           <div className="panel-view" hidden={topTab !== 'sermons'}>
             <div className="panel-view" hidden={sermonsTab !== 'search'}>
               <SermonModeStrip
@@ -2626,7 +2632,7 @@ export default function App() {
             onDropItem={handleDropToQueue}
           />
         </div>
-      </main>
+      </div>
 
       {showAlertDialog && (
         <div className="modal-overlay" onClick={() => setShowAlertDialog(false)}>
@@ -2693,6 +2699,7 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Tape: back / forward 10 seconds</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd>/<kbd>]</kbd></dt><dd>Tape: previous / next paragraph</dd></div>
               <div><dt><kbd>Esc</kbd> · <kbd>Shift</kbd>+<kbd>Esc</kbd> with a tape</dt><dd>Esc hides the screens and the tape keeps playing; Shift+Esc hides them and pauses the tape</dd></div>
+              <div><dt><kbd>F6</kbd> / <kbd>Shift</kbd>+<kbd>F6</kbd></dt><dd>Move between the header, the sections, the content, the queue and the status bar</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>
               <div><dt><kbd>\</kbd></dt><dd>Slide the browse columns away / back</dd></div>

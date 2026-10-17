@@ -18,6 +18,7 @@ sound desk.*
 | To do this | Do this |
 |---|---|
 | Jump to the search box from anywhere | Press **/** |
+| Move between the header, the sections, the content, the queue and the status bar | Press **F6** (**Shift+F6** goes back). The first **Tab** stop in the window is a hidden **Skip to content / Skip to the queue / Skip to the live controls** link |
 | Find a sermon quote | Type a word/phrase in the search box → click a result's **Show** |
 | Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → **Show** |
 | Find a song | Click **Songs** → search → **Show** |

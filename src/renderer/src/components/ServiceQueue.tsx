@@ -497,7 +497,7 @@ export default function ServiceQueue({
   }
 
   return (
-    <div className="service-queue">
+    <div className="service-queue" role="complementary" id="queue-pane" tabIndex={-1} aria-label="Service queue">
       {ctx.element}
       <div className="queue-header">
         <h2>Service Queue</h2>

@@ -148,7 +148,7 @@ export default function PreviewLivePair({
       : null
 
   return (
-    <section className="plp" aria-label="Preview and Live">
+    <section className="plp" id={isMain ? 'live-controls' : undefined} tabIndex={isMain ? -1 : undefined} aria-label="Preview and Live">
       {channels.length > 1 && (
         <div className="plp-channels" role="tablist" aria-label="Channel">
           {channels.map((c) => (
