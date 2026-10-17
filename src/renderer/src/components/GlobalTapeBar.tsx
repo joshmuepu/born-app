@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, Headphones, MonitorPlay, MonitorOff, AlertTriangle } from 'lucide-react'
 import { formatTapeTime } from '../../../shared/tape'
 import { tapeStatusNote } from '../../../shared/tapePlayback'
 import { useTapeNow } from '../useTapeNow'
 import { useTapeScreen } from '../useTapeScreen'
+import { setTapeActions } from '../tapeActions'
+import type { LiveChannel } from '../types'
 import { TapeOutputMenu, TapeSeek, TapeVolume } from './TapeControls'
 import './TapeBar.css'
 import './GlobalTapeBar.css'
@@ -24,11 +26,48 @@ export function tapeBarState(o: { status: string; stalled: boolean; errorKind: s
  * The "Now playing" bar (mockups 13 and 18): one compact row at the bottom of EVERY section, shown whenever a tape is loaded. Play lives here (and in the
  * Tape place) — never next to Take / Project. It shows what the audio engine really reports, with the one button that fixes a problem.
  */
-export default function GlobalTapeBar({ onOpenTape }: { onOpenTape: (sermonId: number) => void }): JSX.Element | null {
+export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (sermonId: number) => void; pushToast?: (t: { message: string; actionLabel?: string; onAction?: () => void; timeoutMs?: number }) => void }): JSX.Element | null {
   const n = useTapeNow()
   const { wire, rec } = n
   const screen = useTapeScreen({ recording: rec, sermonId: wire?.sermonId ?? null, title: rec?.file.name ?? '', map: n.map })
   const [devOpen, setDevOpen] = useState(false)
+
+  // the keyboard and the command palette do exactly what these buttons do
+  const loaded = !!wire && !!rec
+  const latest = useRef({ n, screen })
+  latest.current = { n, screen }
+  useEffect(() => {
+    if (!loaded) { setTapeActions(null); return }
+    setTapeActions({
+      toggle: () => latest.current.n.command({ type: 'toggle' }),
+      back: () => latest.current.n.command({ type: 'skip', by: -10 }),
+      forward: () => latest.current.n.command({ type: 'skip', by: 10 }),
+      prevParagraph: () => latest.current.n.prevParagraph(),
+      nextParagraph: () => latest.current.n.nextParagraph(),
+      screens: () => { const sc = latest.current.screen; if (sc.onScreens) sc.takeOff(); else sc.take() },
+      onScreens: () => latest.current.screen.onScreens
+    })
+    return () => setTapeActions(null)
+  }, [loaded])
+
+  // something else was taken while the tape's text was on the screens: say so (the tape keeps playing), and offer the way back
+  const wasOnScreens = useRef(false)
+  const tapeRecId = rec?.id ?? null
+  useEffect(() => {
+    if (!tapeRecId) return
+    const apply = (chs: LiveChannel[]): void => {
+      const c = chs.find((x) => x.id === 'main') ?? chs[0]
+      const cur = c && !c.blanked ? c.current : null
+      const onTape = !!cur?.tape && cur.tape.recordingId === tapeRecId
+      if (wasOnScreens.current && !onTape && cur) {
+        pushToast?.({ message: 'Something else is on the screens, so the tape’s text is off them. The tape keeps playing.', actionLabel: 'Back to the tape text', onAction: () => latest.current.screen.take(), timeoutMs: 12000 })
+      }
+      wasOnScreens.current = onTape
+    }
+    void window.electronAPI.getLiveState?.()?.then((chs) => { const c = chs.find((x) => x.id === 'main') ?? chs[0]; wasOnScreens.current = !!(c && !c.blanked && c.current?.tape?.recordingId === tapeRecId) })
+    return window.electronAPI.onLiveChanged?.(apply)
+  }, [tapeRecId, pushToast])
+
   if (!wire || !rec) return null
 
   const playing = wire.status === 'playing'
