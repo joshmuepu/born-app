@@ -1576,7 +1576,7 @@ export default function App() {
           keywords: 'zoom bigger smaller larger text display scale size',
           run: () => setUiScale(c)
         })),
-      { id: 'view-run', label: view === 'run' ? 'Back to Prepare (find things, build the queue)' : 'Run view — the queue and the live controls, large', keywords: 'run prepare service live big queue layout view', hint: 'Ctrl+Shift+R', run: () => setView((v) => (v === 'run' ? 'prepare' : 'run')) },
+      { id: 'view-run', label: view === 'run' ? 'Back to Prepare (find things, build the queue)' : 'Run view — the queue and the live controls, large', keywords: 'run prepare service live big queue layout view', hint: 'Ctrl+Shift+U', run: () => setView((v) => (v === 'run' ? 'prepare' : 'run')) },
       { id: 'help', label: 'Open the manual', keywords: 'help guide', hint: 'F1', run: () => setShowHelp(true) },
       { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys', hint: '?', run: () => setShowShortcuts(true) }
     ]
@@ -1648,8 +1648,8 @@ export default function App() {
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
-      // ⌘/Ctrl+Shift+R: Run view (the queue and the live controls, large) ⇄ Prepare
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r' && !overlayIsOpen()) { e.preventDefault(); setView((v) => (v === 'run' ? 'prepare' : 'run')); return }
+      // ⌘/Ctrl+Shift+U: Run view (the queue and the live controls, large) ⇄ Prepare
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'u' && !overlayIsOpen()) { e.preventDefault(); setView((v) => (v === 'run' ? 'prepare' : 'run')); return }
       // F6 / Shift+F6: move between the header, the sections, the content, the queue and the status bar (never while a dialog has the keys)
       if (e.key === 'F6' && !overlayIsOpen()) { e.preventDefault(); cycleRegion(e.shiftKey ? -1 : 1); return }
 
@@ -2764,7 +2764,7 @@ export default function App() {
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd></dt><dd>Tape: back / forward 10 seconds</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd>/<kbd>]</kbd></dt><dd>Tape: previous / next paragraph</dd></div>
               <div><dt><kbd>Esc</kbd> · <kbd>Shift</kbd>+<kbd>Esc</kbd> with a tape</dt><dd>Esc hides the screens and the tape keeps playing; Shift+Esc hides them and pauses the tape</dd></div>
-              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></dt><dd>Run view (the queue and the live controls, large) / back to Prepare</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd></dt><dd>Run view (the queue and the live controls, large) / back to Prepare</dd></div>
               <div><dt><kbd>F6</kbd> / <kbd>Shift</kbd>+<kbd>F6</kbd></dt><dd>Move between the header, the sections, the content, the queue and the status bar</dd></div>
               <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></dt><dd>Search everything and run actions</dd></div>

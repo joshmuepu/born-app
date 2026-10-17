@@ -47,6 +47,6 @@ Plain language. Updated with every slice of the UX build.
 - It disappears when the queue first has something in it, or with **Hide this checklist**. Existing installs with a queue never see it. **⚙ → Show the Set up Sunday checklist** brings it back.
 
 ## Run view (new)
-- **Run view** puts the queue (big rows) and the live controls (big **Show next**, **Hide screen**, **‹ N queued ›**, the Preview and Live pictures) on one screen, with the browse panels out of the way. Switch with the **Run view** button above the queue or **Ctrl/⌘+Shift+R**; the rail or ⌘K takes you back to Prepare. Nothing on the screens changes when you switch.
+- **Run view** puts the queue (big rows) and the live controls (big **Show next**, **Hide screen**, **‹ N queued ›**, the Preview and Live pictures) on one screen, with the browse panels out of the way. Switch with the **Run view** button above the queue or **Ctrl/⌘+Shift+U**; the rail or ⌘K takes you back to Prepare. Nothing on the screens changes when you switch.
 - On a brand-new install it switches by itself when the screens open and the queue has items; existing installs keep things as they were (**⚙ → Switch to Run view when the screens open** turns it on).
-- New shortcuts: **Ctrl/⌘+Shift+R** (Run/Prepare), **F6** (regions, earlier slice), **↑ ↓** between queue rows.
+- New shortcuts: **Ctrl/⌘+Shift+U** (Run/Prepare), **F6** (regions, earlier slice), **↑ ↓** between queue rows.

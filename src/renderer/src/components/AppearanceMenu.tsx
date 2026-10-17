@@ -104,7 +104,7 @@ export default function AppearanceMenu({
           </label>
           <label className="am-check">
             <input type="checkbox" checked={autoRun} onChange={(e) => onAutoRun(e.target.checked)} />
-            <span>Switch to Run view when the screens open<small>Run view is the queue and the live controls, large. Ctrl/⌘+Shift+R switches by hand.</small></span>
+            <span>Switch to Run view when the screens open<small>Run view is the queue and the live controls, large. Ctrl/⌘+Shift+U switches by hand.</small></span>
           </label>
           <div className="am-h am-h--help">Help</div>
           <button type="button" className="am-item" onClick={act(onHelp)}>Open the manual <kbd>F1</kbd></button>

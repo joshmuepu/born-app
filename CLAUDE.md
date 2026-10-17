@@ -47,6 +47,10 @@ UI. In short:
   would also zoom the projection output). Pointer maths must use
   `currentUiZoom()`.
 - Honour `prefers-reduced-motion`; keep everything keyboard-operable.
+- **Words:** one word per job, from `src/shared/glossary.ts` (Show, Next/Back, Hide screen/Show screen, Clear, Projection). Never "Project" or "Take" in anything an operator reads; `src/test/repo/glossary.test.ts` enforces it.
+- **Layout rules follow the interface scale:** use `html[data-cssw]` / `html[data-w~='…']` (set in `uiScale.ts`), never `@media (max-width)` — a media query sees the window, not the scaled page (`headerNarrow.test.ts` enforces it).
+- **Sizes:** controls are at least `--target-min` (32 px), the live-critical ones `--target-live` (40 px), 44 px on touch.
+- **Esc** closes whatever is open on top and does not also blank the screens; Shift+Esc always blanks (`escRule.ts`). Do not add shortcuts that the default Electron menu already owns (Ctrl/⌘+R, Ctrl/⌘+Shift+R, ⌘+Shift+V …).
 
 ## Running and testing safely (learned in the media work)
 

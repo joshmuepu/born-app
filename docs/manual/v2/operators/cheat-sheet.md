@@ -18,7 +18,7 @@ sound desk.*
 | To do this | Do this |
 |---|---|
 | Jump to the search box from anywhere | Press **/** |
-| Switch between Prepare and Run (the queue and the live controls, large) | Press **Ctrl+Shift+R** (**⌘+Shift+R**), or **Run view** at the top of the queue |
+| Switch between Prepare and Run (the queue and the live controls, large) | Press **Ctrl+Shift+U** (**⌘+Shift+U**), or **Run view** at the top of the queue |
 | Move between the header, the sections, the content, the queue and the status bar | Press **F6** (**Shift+F6** goes back). The first **Tab** stop in the window is a hidden **Skip to content / Skip to the queue / Skip to the live controls** link |
 | Find a sermon quote | Type a word/phrase in the search box → click a result's **Show** |
 | Find a Bible verse | Click **Bible** → type a reference like `John 3:16` → select the verse and press **Enter** (or click its **Show**) |

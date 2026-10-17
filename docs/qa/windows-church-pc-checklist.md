@@ -22,7 +22,7 @@ The installer is **not code-signed**, so Windows SmartScreen will say "Windows p
 
 **Install and start**
 - [ ] Run the installer. Install it somewhere (the default is fine). Start **Branham or Nothing (v2 dev)**. The window opens.
-- [ ] Click **Help** at the top. The manual opens and the pictures in it show (try *Pictures: the Media library*). No internet is needed for this.
+- [ ] Open the **⚙** menu (top right) → **Open the manual** (or press **F1**). The manual opens and the pictures in it show (try *Pictures: the Media library*). No internet is needed for this.
 
 **Pictures**
 - [ ] Click **Media**. Drag your ten photos in (or **Add pictures**). All ten appear with thumbnails. HEIC photos are included and the right way up.
@@ -30,10 +30,10 @@ The installer is **not code-signed**, so Windows SmartScreen will say "Windows p
 - [ ] In the library, pick a picture and choose **Use as a background → Congregation screen**.
 
 **On the screen**
-- [ ] Open the projection window (**Open projection**). Put each kind of item on the screen with **Take**: a picture, the slideshow (press **Next** a couple of times), a Bible verse (the background shows behind the text).
-- [ ] Press **Check** at the top of the queue. It should say everything is ready.
+- [ ] Open the projection window (**Open projection**). Put each kind of item on the screen with **Show**: a picture, the slideshow (press **Next** a couple of times), a Bible verse (the background shows behind the text).
+- [ ] Press **Is tonight ready?** at the top of the queue. It should say everything is ready.
 - [ ] Press **Esc**. The screen goes blank at once.
-- [ ] Take a picture, then press **Ctrl+Shift+L**. The church logo (or the "no logo set" message) shows — nothing else.
+- [ ] Show a picture, then press **Ctrl+Shift+L**. The church logo (or the "no logo set" message) shows — nothing else.
 
 **Staying put**
 - [ ] Close Born Again completely, then open it again. The pictures, the queue and the background are all still there.
@@ -49,7 +49,7 @@ The installer is **not code-signed**, so Windows SmartScreen will say "Windows p
 
 **Video and moving backgrounds** (a few short MP4 clips: one 1080p, ideally one 4K, one with sound)
 - [ ] Add the clips (drag them into **Media**). They show ▶ and a length. Try one MOV or MKV file too: it should be refused with advice to export an MP4.
-- [ ] Put a clip in the queue, **Take** it: the first frame shows **paused**, nothing plays and there is no sound. Press **Play**: it plays with sound through the projector/speakers. Try Pause, drag the position, volume, loop.
+- [ ] Put a clip in the queue, **Show** it: the first frame shows **paused**, nothing plays and there is no sound. Press **Play**: it plays with sound through the projector/speakers. Try Pause, drag the position, volume, loop.
 - [ ] Press **Esc** while it plays: picture and sound stop at once. Show the screen again: it is back **paused**. Press **Ctrl+Shift+L**: the logo replaces the video.
 - [ ] Press **Check**: the clips are listed as ready; the 4K clip (if any) shows a warning.
 - [ ] If the 4K clip stutters on this PC, note it (that is the information we need).
@@ -78,7 +78,7 @@ On the same PC, with the installed or unpacked app, PowerShell can run the packa
 It starts the app with a throw-away data folder, checks the window loads and the picture library is created, and closes it.
 
 ## YouTube (v2-youtube) — by hand on the church PC
-- [ ] Add a public video; Take: it shows paused, no sound; Play works; Esc closes it at once.
+- [ ] Add a public video; Show it: it shows paused, no sound; Play works; Esc closes it at once.
 - [ ] Check "Is tonight ready?" with the internet on, then **unplug the internet** and check again (should say "Can't check — offline"; item stays).
 - [ ] **Drop the internet mid-video**: the bar should say time is not advancing; Clear + backup works.
 - [ ] A video whose owner disabled embedding: plain message, backup offered.
@@ -93,7 +93,7 @@ Mac results and numbers: `docs/qa/v2-obs-live-report.md`. Manual: *Using BORN wi
 - [ ] Scene switch is instant (source setting *Shutdown when not visible* is OFF); canvas 1920×1080 @ 30, sources stretched to the screen.
 - [ ] Video clip: scene 4 follows the room within about a quarter of a second; the browser source is silent; sound reaches the stream through **Application Audio Capture** of BORN (check the OBS meter).
 - [ ] Right-to-left or long text (if you use it): panel aligns right and stays inside the picture; text readable over a bright camera shot.
-- [ ] Esc and Ctrl+Shift+L clear the stream output as well as the room; phone Blank does too.
+- [ ] Esc and Ctrl+Shift+L clear the stream output as well as the room; phone Hide screen does too.
 - [ ] YouTube item: stream shows the name only (or nothing on the lower third); if window capture is wanted, add *Window Capture* of BORN's output and check it.
 - [ ] 10 minutes of a private/unlisted livestream with the overlay: no stale verse, no frozen overlay; watch OBS *Stats* for dropped frames.
 - [ ] Hardware acceleration off (OBS Advanced): the overlay still draws.
@@ -101,15 +101,31 @@ Mac results and numbers: `docs/qa/v2-obs-live-report.md`. Manual: *Using BORN wi
 ## Tape service (v2-sermon-audio) — by hand on the church PC
 Mac results and numbers: `docs/qa/v2-sermon-audio-progress.md`. Manual: *Running a tape service*. Nothing here has been run on Windows yet.
 - [ ] Add a recording (an M4A, an MP3 and a FLAC if you have them): each is accepted; a half-copied file and a 600 MB WAV are refused with a plain message. A VBR MP3 warns.
-- [ ] **Sound output**: choose the room's speakers in the bar; play 10 s. Then **unplug that output** while playing: the tape pauses and says why; plug it back, choose it again, press Play. Note what Windows does with a USB / HDMI / Bluetooth output.
+- [ ] **Sound output**: choose the room's speakers in the Now strip at the bottom; play 10 s. Then **unplug that output** while playing: the tape pauses and says why; plug it back, choose it again, press Play. Note what Windows does with a USB / HDMI / Bluetooth output.
 - [ ] **Sleep and wake** the PC while a tape is paused and while it is playing: it comes back paused at the same place (never playing by itself).
 - [ ] **Tap to sync** a real recording on this PC (note how long a 2-hour message takes), then the same **Suggest timing** if whisper.cpp is installed: note the minutes it takes and how many paragraphs need fixing. (Mac: 71 s with GPU; 6–30 min expected on a modest PC.)
-- [ ] Take the sermon to the screens in **Highlight** and **One at a time**; stand at the back of the hall: is the highlighted paragraph and the number easy to read? Try **High contrast**.
+- [ ] Show the sermon on the screens in **Highlight** and **One at a time**; stand at the back of the hall: is the highlighted paragraph and the number easy to read? Try **High contrast**.
 - [ ] Press **Esc**: the screens blank and the tape keeps playing. **Shift+Esc**: blanks and pauses.
-- [ ] Take a **video** while a tape plays: the tape pauses and the bar says so. The reverse: start the tape while a video plays — the video pauses.
+- [ ] Show a **video** while a tape plays: the tape pauses and the bar says so. The reverse: start the tape while a video plays — the video pauses.
 - [ ] **Stage monitor**: time, time left, NOW/NEXT, the status word. **Alerts** still show over the tape.
 - [ ] **OBS**: a Graphics output shows the tape as lower-third pages and turns the page at the speaker's pace; Esc clears it; after restarting BORN the overlay returns. The tape's *sound* reaches the stream through Application Audio Capture of BORN (check the meter).
 - [ ] **Phone remote** (real phones, both iPhone and Android if you have them): the Tape card appears; Play is greyed until you have started the tape on the PC; ±10 s, next/previous paragraph, volume (stays within a little of your level), tapping a paragraph asks first and an Undo appears on the PC; no seek bar.
 - [ ] **Is tonight ready?** with a sermon that has a recording in the queue: passes; rename the recording file and check again: it names the problem.
 - [ ] A **2-hour** recording played for 30 minutes at normal speed: highlight stays on the right paragraph; Task Manager shows memory steady.
 - [ ] Packaged app only: the first launch after install finds the "Tape audio" folder you choose and the recording imports without a console window.
+
+## The new layout (v2-ux-build) — by hand on the church PC
+What changed, in plain words: `docs/notes/v2-ux-build-changes.md`. Mac results and numbers: `docs/qa/v2-ux-build-progress.md`. **None of this has been run on Windows.**
+These are the Windows-specific things most likely to differ from the Mac:
+- [ ] **Window size and Windows scaling.** On this PC's own screen (often 1366×768, or 1920×1080 at 125 % / 150 %, which Born Again sees as 1536×864 / 1280×720): the header is one line with nothing cut off, the left rail shows Queue at the bottom, the strip at the bottom is one line (two with a tape on a small window), and **Show next** is visible. Try **⚙ → Interface size** 100 %, 125 %, 150 %.
+- [ ] **Small text.** The labels **FIND / LISTEN / SERVICE** on the rail and the status dots at the bottom are small (about 9–11 px). At the back of the booth, can you read them? (Windows draws small text thinner than a Mac.) The font should be **Inter**; if it looks like Segoe UI, tell us.
+- [ ] **Window frame.** Maximise, restore and drag the window to the second screen: the header and the bottom strip stay in place; the projection window still opens on the right display.
+- [ ] **Shortcuts use Ctrl, not ⌘.** Try: **Ctrl+K** (search), **Ctrl+Shift+U** (Run view / Prepare), **Ctrl+Shift+W** (open/close projection), **Ctrl+Shift+P** (tape play/pause), **F6** (move between the header, rail, content, queue and status), **Esc** and **Shift+Esc**. **Be careful:** the Windows menu bar still has **Ctrl+R** (reload) and **Ctrl+Shift+R** (force reload) — pressing them reloads the operator window. That is how it already was; tell us if you hit it by accident.
+- [ ] **Run view.** Build a queue of six or more items, open the projection (a brand-new install switches to Run by itself; otherwise press **Run view**). **Show next** is big; **→ / Space** steps; **‹ Prepare** comes back. Press a section on the rail: you are back in Prepare.
+- [ ] **Hide screen.** The red outlined **ON AIR** group at the top and the strip at the bottom both say what is on air; **Esc** turns the outline amber and the bottom strip says **Screen hidden**. Press the **⚙** menu **while the screens are live** and **Esc** to close it: the screens must NOT go black. **Shift+Esc** always blanks.
+- [ ] **Click, Enter, double-click.** In the Bible, click a verse (nothing on the screens changes), press **Enter** (it shows), double-click another (it shows). **⚙ → A single click shows it** restores the old way.
+- [ ] **First run.** On a computer that has never run Born Again: the queue panel shows **Set up Sunday**; **Sunday morning** lines up three readings (Undo takes them off); nothing is on the screens.
+- [ ] **Phone (real phones, iPhone and Android).** Six tabs at the bottom (Queue, Sermons, Bible, Songs, **Media**, **Tape**). Media shows thumbnails; **Show** puts the picture on the screens; **+ Queue** only adds it. **Hide screen** shows an amber **SCREEN HIDDEN** banner; tap it to bring the screens back. Buttons are big enough for a thumb.
+- [ ] **Speed.** Starting Born Again, switching between sections and leaving it idle for a few minutes should feel no slower than before (on the Mac: starts in about 0.9 s, a section switch about 9 ms, idle 0.8 % of one core). Note anything that stutters.
+- [ ] **Keyboard only.** Tab from the very start: the first stop is a hidden **Skip to content** link (it appears when focused); every button you reach shows a clear outline.
+

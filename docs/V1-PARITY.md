@@ -111,3 +111,17 @@ There is no v1 branch for it. v2 already has the behaviour (Media 1a Step 1). Ha
 | Video items (MP4, H.264 + AAC), playback bar, follower screens, Graphics follower, stage time-left, phone Play/Pause of the live video, panic keys, motion backgrounds, video preflight | **intentionally different** (v2-only media area) | `docs/design/media/08-phase-1b-build-plan.md`. v1.13.0's own queue reader opens a v2 file with video items without crashing (tested against the real v1 file in `src/test/shared/v1Compat.test.ts`) |
 | `smoke-macos.sh` now isolates its profile and ports | intentionally different | CI script only; the v1 release workflow is untouched |
 
+
+## v2-only: UX build (`v2-ux-build`) — the 13 approved proposals
+
+| Item | v2 status | Notes |
+|---|---|---|
+| One vocabulary: **Show** (was Project / Take), **Hide screen / Show screen** (was Blank / Restore), **Next / Back** | **intentionally different** | `src/shared/glossary.ts`; a repo test keeps the old words out. v1 keeps its words; the manual's glossary says "Project = Show" for v1 users |
+| Header zones: ON AIR group + one ⚙ menu (theme, contrast, interface size, Help, shortcuts) | **intentionally different** | v1's header is unchanged |
+| Rail groups (Find / Listen / Service), one selection colour; Open moved into File | **intentionally different** | |
+| Queue: File menu + "Is tonight ready?" chip; one-line header | **intentionally different** | v1's toolbar text buttons |
+| Now dock (what is on air, the tape, status) replaces the status bar and the tape bar | **intentionally different** | v1 has no tape |
+| Show next as the one primary button; Back / Next as small arrows | **intentionally different** | keys unchanged (→ / Space, ← / Shift+Space) |
+| A click selects a verse / slide / paragraph; Enter or double-click shows | **intentionally different** | ⚙ → "A single click shows it" restores v1's one-click behaviour |
+| Run view, first-run "Set up Sunday" checklist and plans, phone Media/Tape tabs and SCREEN HIDDEN banner, skip links, F6, bigger targets | **intentionally different** (v2-only) | |
+| Bugs found in the UX review that v1 also has (Esc closing a popover also blanks the screens; the shortcuts dialog does not scroll; three unnamed dialogs) | **v1 not touched** | hand-off note: `docs/notes/v1-handoff-ux-review.md` |

@@ -4,7 +4,7 @@
 
 ## Switching
 
-- Press **Run view** at the top of the queue (it becomes **‹ Prepare** while you are in Run), or press **Ctrl+Shift+R** (**⌘+Shift+R** on a Mac) — the same keys switch back.
+- Press **Run view** at the top of the queue (it becomes **‹ Prepare** while you are in Run), or press **Ctrl+Shift+U** (**⌘+Shift+U** on a Mac) — the same keys switch back.
 - On a brand-new install, Born Again switches to Run by itself when you **Open projection** and the queue has items. Everyone else keeps the way it was; turn it on or off in the **⚙** menu → **Switch to Run view when the screens open**.
 - Press any section on the left rail (Sermons, Bible, Songs, Media, Tape) and you are back in Prepare, in that section. Your searches and place are exactly as you left them.
 - **Find something else…** (or **Ctrl/⌘+K**) opens the search box; choosing a verse or song takes you to Prepare to show it.

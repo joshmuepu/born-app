@@ -530,7 +530,7 @@ export default function ServiceQueue({
               className={`btn-secondary btn-sm run-toggle${view === 'run' ? ' is-on' : ''}`}
               onClick={onToggleView}
               aria-pressed={view === 'run'}
-              title={view === 'run' ? 'Back to Prepare: find things and build the queue (Ctrl/⌘+Shift+R)' : 'Run view: the queue and the live controls, large (Ctrl/⌘+Shift+R)'}
+              title={view === 'run' ? 'Back to Prepare: find things and build the queue (Ctrl/⌘+Shift+U)' : 'Run view: the queue and the live controls, large (Ctrl/⌘+Shift+U)'}
             >
               {view === 'run' ? '‹ Prepare' : 'Run view'}
             </button>
