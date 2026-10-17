@@ -191,7 +191,7 @@ export default function TapeSyncEditor({
       >
         <b className="tse-n">{p.n}</b>
         <span className="tse-time">{mk && mk.kind === 'start' && mk.t !== null ? formatTapeTime(mk.t) : mk?.kind === 'skip' ? 'not on tape' : '—'}</span>
-        <span className="tse-text">{p.text.slice(0, 120)}{p.text.length > 120 ? '…' : ''}</span>
+        <span className="tse-text" title={p.text}>{p.text.slice(0, 120)}{p.text.length > 120 ? '…' : ''}</span>
         <span className="tse-status">
           {mk?.kind === 'skip' ? <span className="tse-chip">Skipped</span> : mk && mk.confidence !== null && mk.confidence !== undefined ? <span className={`tse-chip${mk.confidence < 0.7 ? ' tse-chip--warn' : ''}`}>auto · {Math.round(mk.confidence * 100)}%</span> : isTarget ? <span className="tse-chip tse-chip--on">next to tap</span> : null}
         </span>

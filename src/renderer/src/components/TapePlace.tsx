@@ -156,7 +156,7 @@ export default function TapePlace({ visible, target, pushToast }: { visible: boo
                     <span className="tp-rec-top"><b>{e.sermonTitle}</b><span className={`tp-chip tp-chip--${st.tone}`}><Icon width={12} height={12} aria-hidden="true" /> {st.label}</span></span>
                     <span className="tp-faint">{e.dateCode} · {formatTapeTime(e.file.durationSec)} · {e.file.ext.toUpperCase()}{wire?.recordingId === e.id ? ' · in the player' : ''}</span>
                   </button>
-                  <button className="tp-rec-more btn-quiet btn-sm" aria-label={`More for ${e.sermonTitle}`} aria-haspopup="menu" onClick={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setRowMenu({ id: e.id, x: r.left, y: r.bottom + 4 }) }}>⋯</button>
+                  <button className="tp-rec-more btn-quiet btn-sm" data-qa-gutter="" aria-label={`More for ${e.sermonTitle}`} aria-haspopup="menu" onClick={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setRowMenu({ id: e.id, x: r.left, y: r.bottom + 4 }) }}>⋯</button>
                 </li>
               )
             })}

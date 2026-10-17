@@ -10,7 +10,7 @@ import type { SyncMark } from './tape'
 export interface Override { textN: number; mapN: number }
 
 /** "1–112, 114, 116–120": runs of consecutive numbers written as ranges. */
-export function formatRanges(nums: number[]): string {
+export function formatRanges(nums: number[], maxItems?: number): string {
   const s = [...new Set(nums)].sort((a, b) => a - b)
   const out: string[] = []
   for (let i = 0; i < s.length;) {
@@ -19,6 +19,7 @@ export function formatRanges(nums: number[]): string {
     out.push(j > i ? `${s[i]}–${s[j]}` : String(s[i]))
     i = j + 1
   }
+  if (maxItems !== undefined && out.length > maxItems) return `${out.slice(0, maxItems).join(', ')} and ${out.length - maxItems} more`
   return out.join(', ')
 }
 
@@ -69,8 +70,8 @@ export function checkAgreement(textNumbers: number[], marks: SyncMark[], overrid
   const message = ok
     ? ''
     : `${names.map} has ${M.size} timed paragraphs, ${names.text} has ${T.size}. ${common} numbers match.` +
-      (textOnly.length ? ` Only in the text: ${formatRanges(textOnly)}.` : '') +
-      (mapOnly.length ? ` Only in the timing: ${formatRanges(mapOnly)}.` : '') +
+      (textOnly.length ? ` Only in the text: ${formatRanges(textOnly, 4)}.` : '') +
+      (mapOnly.length ? ` Only in the timing: ${formatRanges(mapOnly, 4)}.` : '') +
       (diff[0] !== undefined ? ` From ¶${diff[0]} the numbers may be off.` : '')
   return { ok, textCount: T.size, mapCount: M.size, textOnly, mapOnly, common, firstDifference: diff[0] ?? null, message }
 }

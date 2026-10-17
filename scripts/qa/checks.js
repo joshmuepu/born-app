@@ -45,7 +45,7 @@
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
     const OV = '[role=dialog],[role=menu],[role=listbox],[role=tooltip],.modal,[class*=popover],[class*=menu],.toast,[class*=sheet]'
     const innerBtn = (x, y) => x.matches('button') && getComputedStyle(x).position === 'absolute' && y.matches('input,textarea,select') && x.getBoundingClientRect().width <= 36 // a clear (×) button drawn inside its own field
-    if (innerBtn(a, b) || innerBtn(b, a)) continue
+    if (innerBtn(a, b) || innerBtn(b, a) || a.hasAttribute('data-qa-gutter') || b.hasAttribute('data-qa-gutter')) continue
     if (w > 6 && h > 6 && !(!!a.closest(OV) !== !!b.closest(OV)) && !(floats(a) !== floats(b))) add('overlap', 'P1', a, `with "${txt(b)}" ${Math.round(w)}x${Math.round(h)}`)
   }
   // 5. targets

@@ -96,3 +96,11 @@ describe('which scripts need a font', () => {
     expect(r.find((x) => x.script === 'Ethiopic')!.sample).toBe('ሰ')
   })
 })
+
+describe('the mismatch message stays short', () => {
+  it('lists at most four runs and says how many more, in the message (the full list is in "Line up the differences")', () => {
+    expect(formatRanges([1, 3, 5, 7, 9, 11, 13], 4)).toBe('1, 3, 5, 7 and 3 more')
+    expect(formatRanges([1, 2, 3, 9], 4)).toBe('1–3, 9')
+    expect(formatRanges([1, 3, 5, 7, 9, 11, 13])).toBe('1, 3, 5, 7, 9, 11, 13')
+  })
+})
