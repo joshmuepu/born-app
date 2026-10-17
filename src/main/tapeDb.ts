@@ -83,6 +83,18 @@ export const TAPE_MIGRATIONS: Array<(db: Database) => void> = [
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `)
+  },
+  // v2: the override table for using one recording's timing with text in another language ("French ¶113 is the recording's ¶115"). A new table only.
+  (db) => {
+    db.exec(`
+      CREATE TABLE map_overrides (
+        recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+        text_language TEXT NOT NULL,
+        text_n INTEGER NOT NULL,
+        map_n INTEGER NOT NULL,
+        PRIMARY KEY (recording_id, text_language, text_n)
+      );
+    `)
   }
 ]
 export const TAPE_SCHEMA_VERSION = TAPE_MIGRATIONS.length
@@ -184,6 +196,7 @@ export class TapeDb {
     this.db.transaction(() => {
       this.db.prepare('DELETE FROM sync_maps WHERE recording_id = ?').run(id)
       this.db.prepare('DELETE FROM tape_state WHERE recording_id = ?').run(id)
+      this.db.prepare('DELETE FROM map_overrides WHERE recording_id = ?').run(id)
       this.db.prepare("UPDATE recordings SET deleted_at = datetime('now') WHERE id = ?").run(id)
     })()
   }
@@ -231,6 +244,18 @@ export class TapeDb {
   }
   deleteMap(recordingId: string, textLanguage: string | null = null): void {
     this.db.prepare("DELETE FROM sync_maps WHERE recording_id = ? AND COALESCE(text_language, '') = ?").run(recordingId, textLanguage ?? '')
+  }
+
+  // ── language overrides ──
+  getOverrides(recordingId: string, textLanguage: string): Array<{ textN: number; mapN: number }> {
+    return (this.db.prepare('SELECT text_n, map_n FROM map_overrides WHERE recording_id = ? AND text_language = ? ORDER BY text_n').all(recordingId, textLanguage) as Array<{ text_n: number; map_n: number }>).map((r) => ({ textN: r.text_n, mapN: r.map_n }))
+  }
+  setOverrides(recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>): void {
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM map_overrides WHERE recording_id = ? AND text_language = ?').run(recordingId, textLanguage)
+      const ins = this.db.prepare('INSERT INTO map_overrides (recording_id, text_language, text_n, map_n) VALUES (?,?,?,?)')
+      for (const r of rows) ins.run(recordingId, textLanguage, r.textN, r.mapN)
+    })()
   }
 
   // ── resume ──

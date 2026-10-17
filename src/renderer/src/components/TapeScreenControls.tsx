@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MonitorPlay, MonitorOff } from 'lucide-react'
+import { MonitorPlay, MonitorOff, AlertTriangle } from 'lucide-react'
+import { missingScripts } from '../tapeFonts'
 import type { SyncMap, TapeRecording } from '../../../shared/tape'
 import { clampLead, tapeScreenView, type TapePalette, type TapeScreenItem, type TapeScreenMode, type TapeScreenSpec } from '../../../shared/tapeScreen'
 import type { LiveChannel, SlidePayload } from '../types'
@@ -69,6 +70,8 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
     if (s) send(s)
   }
 
+  // a script this computer has no font for would show boxes on the screens: say so before Take, never after
+  const noFont = useMemo(() => missingScripts(items.map((i) => i.text).join(' ').slice(0, 4000)), [items])
   if (!map) return null
   return (
     <div className="tape-screen-row" role="group" aria-label="Tape on the screens">
@@ -99,6 +102,9 @@ export default function TapeScreenControls({ recording, sermonId, title, items, 
         </>
       ) : (
         <button className="btn-primary btn-sm" onClick={take}><MonitorPlay width={13} height={13} aria-hidden="true" /> Put on the screens</button>
+      )}
+      {noFont.length > 0 && (
+        <p className="tape-screen-warn" role="alert"><AlertTriangle width={13} height={13} aria-hidden="true" /> This text uses {noFont.join(', ')} script, and this computer has no font for it — the screens would show empty boxes. Install a font for it first.</p>
       )}
     </div>
   )

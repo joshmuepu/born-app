@@ -468,6 +468,8 @@ const api = {
     ipcRenderer.on('tape:align-progress', h)
     return () => ipcRenderer.removeListener('tape:align-progress', h)
   },
+  tapeOverridesGet: (recordingId: string, textLanguage: string): Promise<Array<{ textN: number; mapN: number }>> => ipcRenderer.invoke('tape:overrides-get', recordingId, textLanguage),
+  tapeOverridesSet: (recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>): Promise<Array<{ textN: number; mapN: number }>> => ipcRenderer.invoke('tape:overrides-set', recordingId, textLanguage, rows),
   tapeMapDelete: (recordingId: string, textLanguage: string | null): Promise<boolean> => ipcRenderer.invoke('tape:map-delete', recordingId, textLanguage),
   tapeMapExport: (recordingId: string, textLanguage: string | null): Promise<unknown> => ipcRenderer.invoke('tape:map-export', recordingId, textLanguage),
   tapeMapImport: (recordingId: string): Promise<unknown> => ipcRenderer.invoke('tape:map-import', recordingId),
@@ -508,6 +510,11 @@ const api = {
     const h = (_e: unknown, m: string): void => cb(m)
     ipcRenderer.on('operator:notice', h)
     return () => ipcRenderer.removeListener('operator:notice', h)
+  },
+  onTapePhoneJumped: (cb: (j: { fromSec: number; fromParagraph: number | null; toParagraph: number }) => void): (() => void) => {
+    const h = (_e: unknown, j: { fromSec: number; fromParagraph: number | null; toParagraph: number }): void => cb(j)
+    ipcRenderer.on('tape:phone-jumped', h)
+    return () => ipcRenderer.removeListener('tape:phone-jumped', h)
   },
   packEstimate: (queue: unknown): Promise<unknown> => ipcRenderer.invoke('pack:estimate', queue),
   packExport: (queue: unknown, title: string): Promise<unknown> => ipcRenderer.invoke('pack:export', queue, title),

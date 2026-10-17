@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Search, Headphones } from 'lucide-react'
 import TapeAttach from './TapeAttach'
+import TapeLanguageNotice from './TapeLanguageNotice'
 import TapeScreenControls, { useScreenItems } from './TapeScreenControls'
 import TapeBar from './TapeBar'
 import TapeSyncEditor from './TapeSyncEditor'
@@ -75,10 +76,15 @@ export default function SermonFollowView({
   onBack,
   onProject,
   onAddToQueue,
-  language = 'en'
+  language: languageProp = 'en'
 }: Props) {
   const actions = useAppActions()
   const ctx = useContextMenu()
+  // The text language can be chosen here (separately from the recording's language); a channel that follows another language sets it from outside.
+  const [language, setLanguage] = useState(languageProp)
+  useEffect(() => setLanguage(languageProp), [languageProp])
+  const [languages, setLanguages] = useState<Record<string, string>>({})
+  useEffect(() => { void window.electronAPI.getLanguages?.()?.then((l) => setLanguages(l ?? {})).catch(() => {}) }, [])
   const [paras, setParas] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [tapeOpen, setTapeOpen] = useState(false)
@@ -106,7 +112,8 @@ export default function SermonFollowView({
   // ── the tape (docs/design/sermon-audio): the highlight is the TAPE's, the scroll is the user's ──
   const screenItemList = useScreenItems(flatSlides, baseNumber)
   const tapeRec = recs[0] && recs[0].status === 'ok' ? recs[0] : null
-  const tf = useTapeFollow(tapeRec, language, mapVersion)
+  const textNumbers = useMemo(() => [...new Set(flatSlides.map((f) => baseNumber(f.marker)).filter((n): n is number => n !== null))], [flatSlides])
+  const tf = useTapeFollow(tapeRec, language, mapVersion, textNumbers)
   const tapeActive = !!tapeRec && tf.mine && !!tf.map && !!tf.here
   const tapeNumber = tapeActive ? tf.here!.n : null
   const tapeIndex = useMemo(() => (tapeActive ? flatIndexFor(flatSlides.map((f) => f.marker), tf.here!.n, tf.here!.progress) : -1), [tapeActive, flatSlides, tf.here])
@@ -299,6 +306,14 @@ export default function SermonFollowView({
           <button className={`tape-toggle${tf.follow ? ' on' : ''}`} role="switch" aria-checked={tf.follow} onClick={() => tf.setFollow(!tf.follow)} title="The reader scrolls to keep the paragraph being spoken in view (F)">
             <i aria-hidden="true" /> Reader follows the tape
           </button>
+          {Object.keys(languages).length > 1 && (
+            <label className="tape-lang" title="The language of the text on screen. The recording keeps its own language.">
+              Text <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Text language">
+                {Object.entries(languages).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+              </select>
+              <span className="tape-faint"> · Tape {tapeRec.language.toUpperCase()}</span>
+            </label>
+          )}
           {tapeActive && !tf.follow && <button className="btn-secondary btn-sm" onClick={() => tf.setFollow(true)}>Back to the tape</button>}
           {!tf.map && <span className="tape-faint">No timing yet — the text can’t follow this recording. Use “Tap to sync”.</span>}
           {jump && (
@@ -306,6 +321,7 @@ export default function SermonFollowView({
           )}
         </div>
       )}
+      {tapeRec && tf.agreement && tf.foreign && <TapeLanguageNotice agreement={tf.agreement} decision={tf.decision} overrides={tf.overrides} textLabel={languages[language] ?? language.toUpperCase()} onChoose={tf.choose} onSaveOverrides={tf.saveOverrides} />}
       {tapeRec && <TapeScreenControls recording={tapeRec} sermonId={sermonId} title={title} items={screenItemList} map={tf.map} position={tf.mine ? tf.pos : 0} />}
       {tapeRec && <TapeBar recording={tapeRec} paragraphStarts={tf.starts} onPrevParagraph={tf.map ? tf.prevParagraph : undefined} onNextParagraph={tf.map ? tf.nextParagraph : undefined} />}
       {tapeOpen && <TapeAttach sermonId={sermonId} sermonTitle={title} dateCode={dateCode} onClose={() => { setTapeOpen(false); loadRecs() }} onChanged={loadRecs} onSync={(id) => { const r = recs.find((x) => x.id === id) ?? recs[0]; if (r) { setTapeOpen(false); setSyncing({ rec: r }) } }} />}

@@ -199,6 +199,8 @@ declare global {
       >
       tapeAlignCancel: () => Promise<boolean>
       onTapeAlignProgress: (cb: (p: { phase: 'prepare' | 'listen' | 'match'; pct: number }) => void) => () => void
+      tapeOverridesGet: (recordingId: string, textLanguage: string) => Promise<Array<{ textN: number; mapN: number }>>
+      tapeOverridesSet: (recordingId: string, textLanguage: string, rows: Array<{ textN: number; mapN: number }>) => Promise<Array<{ textN: number; mapN: number }>>
       tapeMapDelete: (recordingId: string, textLanguage: string | null) => Promise<boolean>
       tapeMapExport: (recordingId: string, textLanguage: string | null) => Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }>
       tapeMapImport: (recordingId: string) => Promise<{ ok: true; marks: import('../../shared/tape').SyncMark[]; regions: import('../../shared/tape').SyncRegion[]; textLanguage: string | null; warnings: string[] } | { ok: false; canceled?: boolean; message: string }>
@@ -226,6 +228,7 @@ declare global {
       youtubeRecentsGet: () => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
       youtubeRecentsAdd: (r: { videoId: string; title?: string; label?: string }) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
       youtubeRecentsRemove: (videoId: string) => Promise<Array<{ videoId: string; title: string; label?: string; at: number }>>
+      onTapePhoneJumped: (cb: (j: { fromSec: number; fromParagraph: number | null; toParagraph: number }) => void) => () => void
       onOperatorNotice: (cb: (message: string) => void) => () => void
       packEstimate: (queue: unknown) => Promise<import('../../shared/servicePack').PackEstimate | null>
       packExport: (queue: unknown, title: string) => Promise<import('../../shared/servicePack').PackResult<{ bytes: number; count: number; path: string }> & { canceled?: boolean }>

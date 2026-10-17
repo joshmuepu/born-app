@@ -1015,6 +1015,13 @@ export default function App() {
   const [mainBackground, setMainBackground] = useState<{ mediaId: string; dim: number } | null>(null)
   useEffect(() => window.electronAPI.onLogoShortcut(() => void showLogo()), [showLogo])
   // plain-words messages from the main process (the tape paused a video, an alert was kept off the YouTube player, …)
+  // A phone moved the tape to another paragraph (it asked first): say so on the computer, with an Undo that puts the tape back where it was.
+  useEffect(() => window.electronAPI.onTapePhoneJumped?.((j) => pushToast({
+    message: `A phone moved the tape to ¶${j.toParagraph}${j.fromParagraph !== null ? ` (it was at ¶${j.fromParagraph})` : ''}`,
+    actionLabel: 'Undo',
+    timeoutMs: 15000,
+    onAction: () => { void window.electronAPI.tapeCommand({ type: 'seek', to: j.fromSec }) }
+  })), [pushToast])
   useEffect(() => window.electronAPI.onOperatorNotice?.((message) => pushToast({ message, timeoutMs: 9000 })), [pushToast])
   useEffect(() => {
     const load = (): void => {

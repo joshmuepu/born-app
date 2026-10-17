@@ -180,6 +180,10 @@ export interface AutomationHandlers {
   blank: (channelId: string) => void
   show: (channelId: string) => void
   getState: () => AutomationChannelState[]
+  /** The tape (docs/design/sermon-audio/02 §7.3). Optional so older callers and test doubles keep working. */
+  getTape?: () => unknown | null
+  /** play | pause | back | forward | next-paragraph | prev-paragraph — never a seek-to-time, never a jump, never a volume above the operator's level */
+  tapeCommand?: (action: string) => { ok: boolean; reason?: string; message?: string }
 }
 
 let automationHandlers: AutomationHandlers | null = null
@@ -207,7 +211,7 @@ function checkAutomationAuth(req: IncomingMessage, url: URL): boolean {
  *  introduced as a genuinely new message shape a client can branch on by
  *  `v`, instead of silently changing what today's clients already parse. */
 function automationWsFrame(): string {
-  return JSON.stringify({ v: AUTOMATION_WS_VERSION, state: automationHandlers?.getState() ?? [] })
+  return JSON.stringify({ v: AUTOMATION_WS_VERSION, state: automationHandlers?.getState() ?? [], tape: automationHandlers?.getTape?.() ?? null })
 }
 
 function broadcastAutomationState(): void {
@@ -629,6 +633,13 @@ function cssDecl(rec: Record<string, string>): string {
  *  under, so switching treatment is one attribute write, never a reload. */
 /** Set by the main process: turns a library picture id into a file to serve. */
 /** What the phone may see of the live video (set by the main process): status, position, length, whether the operator has started it. */
+let tapeProvider: (() => unknown | null) | null = null
+let tapeParagraphsProvider: (() => unknown | null) | null = null
+/** The phone's view of the tape (position, paragraph, what it may do) and its paragraph list — both set by index.ts. */
+export function setTapeProviders(summary: () => unknown | null, paragraphs: () => unknown | null): void {
+  tapeProvider = summary
+  tapeParagraphsProvider = paragraphs
+}
 let playbackProvider: (() => { mediaId: string; status: string; position: number; duration: number | null; hasPlayedOnce: boolean; stalled: boolean; error: string | null } | null) | null = null
 export function setPlaybackProvider(fn: NonNullable<typeof playbackProvider>): void {
   playbackProvider = fn
@@ -1048,7 +1059,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // phones are actually connected right now" signal for diagnostics,
     // without adding a second mechanism.
     noteClient(req)
-    sendJSON(res, 200, { ...currentState, playback: playbackProvider?.() ?? null })
+    sendJSON(res, 200, { ...currentState, playback: playbackProvider?.() ?? null, tape: tapeProvider?.() ?? null })
     return
   }
 
@@ -1195,6 +1206,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end()
       return
     }
+    if (path === '/api/automation/tape' && req.method === 'GET') {
+      sendJSON(res, 200, automationHandlers?.getTape?.() ?? null)
+      return
+    }
+    const tapeActionMatch = /^\/api\/automation\/tape\/(play|pause|back|forward|next-paragraph|prev-paragraph)$/.exec(path)
+    if (tapeActionMatch && req.method === 'POST') {
+      const r = automationHandlers?.tapeCommand?.(tapeActionMatch[1]) ?? { ok: false, reason: 'nothing-loaded', message: 'No tape is loaded on the main computer.' }
+      sendJSON(res, r.ok ? 200 : 409, r)
+      return
+    }
     if (path === '/api/automation/state' && req.method === 'GET') {
       sendJSON(res, 200, automationHandlers?.getState() ?? [])
       return
@@ -1221,6 +1242,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
     res.writeHead(404)
     res.end()
+    return
+  }
+
+  if (path === '/api/tape/paragraphs' && req.method === 'GET') {
+    sendJSON(res, 200, tapeParagraphsProvider?.() ?? null)
     return
   }
 

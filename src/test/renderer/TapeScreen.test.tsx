@@ -75,6 +75,16 @@ describe('the highlight view', () => {
   })
 })
 
+describe('right-to-left and non-Latin text', () => {
+  const texts: Array<[string, string]> = [['Arabic', 'بسم الله الرحمن الرحيم'], ['Persian', 'به نام خداوند جان و خرد'], ['Urdu', 'اللہ کے نام سے جو بڑا مہربان'], ['Amharic', 'በእግዚአብሔር ስም'], ['Thai', 'ในนามของพระเจ้า']]
+  it.each(texts)('%s: each paragraph decides its own direction, so the number sits on the start side', async (_name, text) => {
+    const { container } = await show(spec({ items: [{ n: 1, marker: '1', text }], marks: [{ n: 1, t: 0, kind: 'start' }] }), wire({ position: 1 }))
+    expect(container.querySelector('.tapescreen-para')!.getAttribute('dir')).toBe('auto')
+    expect(container.querySelector('.tapescreen-tx')!.getAttribute('dir')).toBe('auto')
+    expect(container.querySelector('.tapescreen-tx')!.textContent).toBe(text)
+  })
+})
+
 describe('one at a time', () => {
   it('shows one paragraph, the next one early by the lead, with NEXT ¶ and its countdown', async () => {
     const s = spec({ mode: 'one', leadSec: 4 })

@@ -21,8 +21,10 @@ import { registerPackIpc } from './packService'
 import { PlaybackHub } from './mediaPlayback'
 import { registerYouTubeIpc } from './youtubeService'
 import { lowerThirdNow } from '../shared/tapeScreen'
+import { numberedParagraphs } from '../shared/tapeParagraphs'
+import { phoneTapeCommand, tapeSummary, phoneParagraphList, isPhoneTapeAction, type PhoneTapeDeps } from './tapePhone'
 import { tapeWirePosition } from '../shared/tapePlayback'
-import { registerTapeIpc, closeTape, setTapeFanout, hub as tapeHub } from './tapeService'
+import { registerTapeIpc, closeTape, setTapeFanout, getTapeDb, hub as tapeHub } from './tapeService'
 import { alertTargetsFor, isYouTubeMediaId, type AlertTarget } from '../shared/youtube'
 import type { PlaybackAction, PlaybackWire } from '../shared/videoPlayback'
 import { resolveBackground, clampDim, type MediaBackground } from '../shared/media'
@@ -65,6 +67,7 @@ import {
   graphicsClientCount,
   pushGraphicsPlayback as webPushGraphicsPlayback,
   setPlaybackProvider,
+  setTapeProviders,
   setAutomationToken,
   setMediaResolver,
   buildRemoteConnectionInfo,
@@ -3135,8 +3138,44 @@ app.whenReady().then(async () => {
     const w = playbackHub.get('main')
     return w ? { mediaId: w.mediaId, status: w.status, position: w.position, duration: w.duration, hasPlayedOnce: w.hasPlayedOnce, stalled: w.stalled, error: w.error } : null
   })
+  // The phone's and automation tools' view of the tape, under the rules in tapePhone.ts (no first play, no seek-to-time, bounded volume, confirmed jumps).
+  const tapePhoneDeps: PhoneTapeDeps = {
+    hub: tapeHub,
+    map: (recordingId) => {
+      const m = getTapeDb()?.getMap(recordingId, null)
+      return m ? { marks: m.marks, regions: m.regions, updatedAt: m.updatedAt } : null
+    },
+    onJump: (j) => sendToMain('tape:phone-jumped', j)
+  }
+  let phoneListCache: { key: string; value: unknown } | null = null
+  setTapeProviders(
+    () => tapeSummary(tapePhoneDeps),
+    () => {
+      const w = tapeHub.get()
+      if (!w) return null
+      const m = tapePhoneDeps.map(w.recordingId)
+      if (!m) return { recordingId: w.recordingId, items: [] }
+      const key = `${w.recordingId}|${m.updatedAt}`
+      if (phoneListCache?.key === key) return phoneListCache.value
+      // the first words of each numbered paragraph, from the bundled English text (the phone is a remote, not a reader)
+      const rows = getDb()
+        .prepare<[number], { id: number; paragraph_ref: string; text: string; date_code: string; title: string }>(
+          'SELECT p.id, p.paragraph_ref, p.text, s.date_code, s.title FROM paragraphs p JOIN sermons s ON s.id = p.sermon_id WHERE p.sermon_id = ? ORDER BY p.paragraph_index, p.id'
+        )
+        .all(w.sermonId)
+      const quotes = rows.map((r, i) => ({ text: r.text, sermonTitle: r.title, dateCode: r.date_code, sermonId: w.sermonId, paragraphIndex: i, paragraphRef: stableParagraphRef(r.paragraph_ref, r.id), language: 'en' }))
+      const texts = new Map(numberedParagraphs(quotes).map((p) => [p.n, p.text]))
+      const value = { recordingId: w.recordingId, items: phoneParagraphList(m.marks, texts) }
+      phoneListCache = { key, value }
+      return value
+    }
+  )
   startWebRemote(
     (cmd) => {
+      if (isPhoneTapeAction(cmd.action)) {
+        phoneTapeCommand(tapePhoneDeps, cmd as { action: string; n?: number; confirm?: boolean })
+        return
+      }
       // The phone's video controls: Play/Pause of the LIVE video only (no seek, no volume, no first play with sound).
       if (cmd.action === 'media-play' || cmd.action === 'media-pause') {
         playbackHub.phone('main', cmd.action)
@@ -3251,7 +3290,12 @@ app.whenReady().then(async () => {
       clear: (channelId) => clearChannel(channelId),
       blank: (channelId) => setChannelBlank(channelId, true),
       show: (channelId) => setChannelBlank(channelId, false),
-      getState: automationState
+      getState: automationState,
+      getTape: () => tapeSummary(tapePhoneDeps),
+      tapeCommand: (action) => {
+        const map: Record<string, string> = { play: 'tape-play', pause: 'tape-pause', back: 'tape-back', forward: 'tape-fwd', 'next-paragraph': 'tape-next', 'prev-paragraph': 'tape-prev' }
+        return phoneTapeCommand(tapePhoneDeps, { action: map[action] ?? '' })
+      }
     },
     () => {
       startMdns(REMOTE_PORT, usableNetworkAddresses())

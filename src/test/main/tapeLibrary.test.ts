@@ -4,7 +4,7 @@ import Database from 'better-sqlite3'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { TapeDb, TAPE_SCHEMA_VERSION, TapeDbTooNewError, migrateTapeDb } from '../../main/tapeDb'
+import { TapeDb, TAPE_MIGRATIONS, TAPE_SCHEMA_VERSION, TapeDbTooNewError, migrateTapeDb } from '../../main/tapeDb'
 import { TapeLibrary } from '../../main/tapeLibrary'
 
 let dir: string, db: TapeDb, lib: TapeLibrary, raw: Database.Database
@@ -116,6 +116,29 @@ describe('tape.db', () => {
     newer.pragma(`user_version = ${TAPE_SCHEMA_VERSION + 3}`)
     expect(() => migrateTapeDb(newer)).toThrow(TapeDbTooNewError)
     newer.close()
+  })
+  it('a version-1 database (before the language overrides) upgrades in place and keeps its rows', () => {
+    const old = new Database(':memory:')
+    TAPE_MIGRATIONS[0](old)
+    old.pragma('user_version = 1')
+    old.prepare("INSERT INTO tape_files (id, hash, name, orig_filename, ext, container, codec, bytes, duration_sec, bitrate, seek_ok, storage) VALUES ('t_1','h','n','o','m4a','m4a','c',1,10,1,1,'managed')").run()
+    old.prepare("INSERT INTO recordings (id, sermon_id, file_id, language) VALUES ('r_1',1,'t_1','en')").run()
+    expect(migrateTapeDb(old)).toEqual({ from: 1, to: TAPE_SCHEMA_VERSION })
+    expect(old.prepare('SELECT COUNT(*) AS c FROM recordings').get()).toEqual({ c: 1 })
+    expect(old.prepare('SELECT COUNT(*) AS c FROM map_overrides').get()).toEqual({ c: 0 })
+    old.close()
+  })
+  it('language overrides are kept per recording and text language, replaced wholesale, and go when the recording does (never the sermon)', async () => {
+    const r = await lib.importFile(put('ov.m4a', m4a(20, 8)), { sermonId: 5 })
+    const rec = (r as { ok: true; recording: { id: string } }).recording
+    db.setOverrides(rec.id, 'fr', [{ textN: 113, mapN: 115 }, { textN: 114, mapN: 116 }])
+    db.setOverrides(rec.id, 'es', [{ textN: 3, mapN: 4 }])
+    expect(db.getOverrides(rec.id, 'fr')).toEqual([{ textN: 113, mapN: 115 }, { textN: 114, mapN: 116 }])
+    db.setOverrides(rec.id, 'fr', [{ textN: 9, mapN: 10 }])
+    expect(db.getOverrides(rec.id, 'fr')).toEqual([{ textN: 9, mapN: 10 }])
+    expect(db.getOverrides(rec.id, 'es')).toHaveLength(1)
+    db.removeRecording(rec.id)
+    expect(db.getOverrides(rec.id, 'es')).toEqual([])
   })
   it('opening it again keeps every row (migrations never rewrite data)', async () => {
     await lib.importFile(put('k.m4a', m4a(20, 7)), { sermonId: 3 })

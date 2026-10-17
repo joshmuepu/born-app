@@ -94,6 +94,8 @@ export class TapeHub {
     return this.rec
   }
   private wantPlay = false
+  /** the volume the operator chose on the computer; the phone may only nudge within ±20 % of it */
+  private opVolume: number | null = null
 
   /** The operator's commands (also the keyboard and the panic key). Returns the new record, or null when no tape is loaded. */
   command(a: TapeAction): TapeRecord | null {
@@ -105,9 +107,22 @@ export class TapeHub {
         this.d.notice?.('The video was paused so the tape can play — only one sound at a time.')
       }
     }
+    if (a.type === 'volume') this.opVolume = Math.min(1, Math.max(0, a.value))
     const next = tapeReduce(this.rec, a, this.d.now())
     if (next !== this.rec) this.put(next)
     return this.rec
+  }
+
+  /** The phone's volume: a step up or down, but never outside ±20 % of the level the operator set (and never above full). Returns the level now. */
+  phoneVolume(dir: 1 | -1): number | null {
+    if (!this.rec) return null
+    const op = this.opVolume ?? this.rec.volume
+    if (this.opVolume === null) this.opVolume = op
+    const lo = Math.max(0, op * 0.8), hi = Math.min(1, op * 1.2)
+    const v = Math.round(Math.min(hi, Math.max(lo, this.rec.volume + dir * 0.05)) * 100) / 100
+    const next = tapeReduce(this.rec, { type: 'volume', value: v }, this.d.now())
+    if (next !== this.rec) this.put(next)
+    return v
   }
 
   /** The phone: Play/Pause of the loaded tape only, within the video rules. Play is refused until the operator has started the tape once. */

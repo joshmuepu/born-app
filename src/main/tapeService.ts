@@ -21,6 +21,7 @@ import { parseRange } from '../shared/httpRange'
 import { TAPE_AUDIO_PAGE, type TapeFile, type TapeFolderHit, type TapeImportResult, type TapePreflight, type TapeRecording } from '../shared/tape'
 import { matchSermon, parseTapeName, type SermonRef, type TapeMatch } from '../shared/tapeMatch'
 import type { TapeAction, TapeWire } from '../shared/tapePlayback'
+import { cleanOverrides } from '../shared/tapeLanguage'
 import { alignRecording, cancelAlign, alignBusy } from './tapeAligner'
 import { parseTimingFile, toTimingFile, validateMap, type MapIssue } from '../shared/tapeSync'
 import type { SyncMark, SyncMap, SyncRegion, SyncSource } from '../shared/tape'
@@ -380,6 +381,14 @@ export function registerTapeIpc(getMain: () => BrowserWindow | null): void {
     return alignRecording(path, paras, { whisper: t.whisperPath ?? '', model: t.whisperModelPath ?? '', ffmpeg: t.ffmpegPath ?? '' }, (p) => { if (!e.sender.isDestroyed()) e.sender.send('tape:align-progress', p) })
   })
   ipcMain.handle('tape:align-cancel', () => { cancelAlign(); return alignBusy() })
+  ipcMain.handle('tape:overrides-get', (_e, recordingId: string, textLanguage: string) => (lang(textLanguage) ? getTapeDb()?.getOverrides(String(recordingId), String(textLanguage)) ?? [] : []))
+  ipcMain.handle('tape:overrides-set', (_e, recordingId: string, textLanguage: string, rows: unknown) => {
+    const db = getTapeDb()
+    if (!db || !lang(textLanguage) || !db.getRecording(String(recordingId))) return []
+    const clean = cleanOverrides(rows)
+    db.setOverrides(String(recordingId), String(textLanguage), clean)
+    return clean
+  })
   ipcMain.handle('tape:map-delete', (_e, recordingId: string, textLanguage: string | null) => { getTapeDb()?.deleteMap(String(recordingId), lang(textLanguage)); return true })
   ipcMain.handle('tape:map-export', async (_e, recordingId: string, textLanguage: string | null): Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string }> => {
     const db = getTapeDb()

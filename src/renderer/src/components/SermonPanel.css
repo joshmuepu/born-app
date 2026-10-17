@@ -520,3 +520,6 @@
 .tape-jump { margin-left: auto; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
 .tape-faint { color: var(--text-tertiary); font-size: var(--text-xs); }
 @media (prefers-reduced-motion: reduce) { .follow-view--tape .follow-para, .tape-toggle i, .tape-toggle i::after { transition: none; } }
+
+.tape-lang { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: var(--text-sm); }
+.tape-lang select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 2px 6px; }

@@ -58,7 +58,7 @@ function Highlight({ spec, index }: { spec: TapeScreenSpec; index: number | null
           const sameN = !cur && curN !== null && it.n === curN
           const startOfN = i === 0 || spec.items[i - 1].n !== it.n
           return (
-            <div key={i} ref={(el) => { if (el) rows.current.set(i, el); else rows.current.delete(i) }} className={`tapescreen-para${cur ? ' is-cur' : sameN ? ' is-same' : ''}`} aria-current={cur ? 'true' : undefined}>
+            <div key={i} dir="auto" ref={(el) => { if (el) rows.current.set(i, el); else rows.current.delete(i) }} className={`tapescreen-para${cur ? ' is-cur' : sameN ? ' is-same' : ''}`} aria-current={cur ? 'true' : undefined}>
               <span className="tapescreen-no" aria-hidden="true">{startOfN ? it.n : ''}</span>
               <p className="tapescreen-tx" dir="auto">{it.text}</p>
             </div>
