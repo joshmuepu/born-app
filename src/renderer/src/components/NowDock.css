@@ -1,0 +1,43 @@
+/* The Now dock (P-05). One strip: LIVE · tape · status. Tokens only. */
+.now-dock { flex: none; background: var(--bg-secondary); border-top: 1px solid var(--border); }
+.nd-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 14px; min-height: 56px; }
+.nd-live {
+  display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 340px; max-width: 460px; padding: 4px 8px 4px 12px; min-height: 44px;
+  border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--bg-primary);
+}
+.nd-live--live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
+.nd-live--hidden { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.nd-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--text-secondary); }
+.nd-live--live .nd-dot { background: var(--live); }
+.nd-live--hidden .nd-dot { background: var(--warn); }
+.nd-live-text { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
+.nd-live-title { font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-live small { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-live--live small { color: var(--live); font-weight: 600; }
+.nd-live--hidden small { color: var(--warn); }
+.nd-hide { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.nd-tape { flex: 1 1 560px; min-width: 0; }
+.nd-tape:empty { display: none; }
+.nd-status { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: none; font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-secondary); }
+.nd-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+/* with a tape loaded the chips are dots (their names are in the tooltips): the tape needs the room */
+.now-dock--tape .nd-chip-label { display: none; }
+.now-dock--tape .nd-chip--count { display: none; }
+.nd-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
+.nd-chip-dot.is-ok { background: var(--ok); }
+.nd-notice { display: flex; align-items: center; gap: 10px; padding: 0 14px 6px; font-size: var(--text-xs); color: var(--text-secondary); flex-wrap: wrap; }
+/* the tape's output and screens buttons fold to their icons below 1440 scaled px, so LIVE, the tape and the status all fit one row */
+html[data-w~='1440'] .now-dock .gtb .tape-chip-text, html[data-w~='1440'] .now-dock .gtb .gtb-screens-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+html[data-w~='1440'] .now-dock .nd-live { flex-basis: 280px; }
+html[data-w~='1440'] .now-dock .gtb .tape-vol input { display: none; }
+html[data-w~='1440'] .now-dock .gtb .gtb-id { max-width: 170px; min-width: 110px; }
+/* a small laptop: the tape takes a row of its own under LIVE and the status */
+html[data-w~='1180'] .now-dock .nd-tape { order: 3; flex: 1 1 100%; }
+html[data-w~='1180'] .now-dock .nd-status { margin-left: auto; }
+/* narrow windows: the status chips go (they are in Screens ▾ and the queue pane); LIVE and the tape keep their room */
+html[data-w~='1060'] .nd-status .nd-chip { display: none; }
+html[data-w~='1060'] .nd-live { flex-basis: 260px; }
+/* toasts sit above the dock */
+body:has(.now-dock) .toast-host { bottom: 76px; }
+body:has(.now-dock .gtb) .toast-host { bottom: 76px; }
+@media (prefers-reduced-motion: reduce) { .nd-live { transition: none; } }

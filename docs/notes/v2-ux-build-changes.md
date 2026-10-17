@@ -24,3 +24,8 @@ Plain language. Updated with every slice of the UX build.
 - The screens controls are now together in one outlined group: a label (**ON AIR** in red while the screens are live, **SCREEN HIDDEN** in amber while they are blacked out, **OFF AIR** otherwise), **Screens ▾**, **Hide screen**, **Message** and **Open / Close projection**. Remote sits next to it.
 - The things you set once — light/dark, **High contrast**, **Interface size** — plus **Help** (F1) and **Keyboard shortcuts** (?) moved into one **⚙** menu at the far right. The sun and half-circle buttons, Help and Shortcuts are no longer in the bar. Interface size used to be found only through ⌘K.
 - On a small window the label and Remote shrink to their icons so nothing is cut off.
+
+## The bottom strip (the "Now" dock)
+- The thin status bar and the separate tape bar are now **one strip** at the bottom of every section. On the left, in a box that is outlined **red while the screens are live** (amber while hidden, grey when nothing is on): what is on air, how long it has been up, and **Hide screen / Show screen**. In the middle, the tape (when one is loaded). On the right, small status dots (Screens, Stage) and the version.
+- On a small laptop window the tape takes its own row under the live box. Below ~1440 px the tape's output and "Text on the screens" buttons show only their icons (the words are still read by screen readers, and the tooltip says them).
+- "N in queue" and the version moved: the count is on the Queue button in the rail; the version opens the app-info popover as before.

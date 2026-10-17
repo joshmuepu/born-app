@@ -34,12 +34,19 @@ html[data-w~='1180'] .gtb .tape-chip-text { display: none; } html[data-w~='1180'
 html[data-w~='1060'] .gtb .tape-vol input { display: none; } html[data-w~='1060'] .gtb-id { max-width: 150px; } html[data-w~='1060'] .gtb-screens-text { max-width: 8.5em; overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) { .gtb-eq i { animation: none; } }
 /* toasts sit above the bar, never over its buttons */
-body:has(.gtb) .toast-host { bottom: 104px; }
-body:has(.gtb .gtb-note) .toast-host { bottom: 136px; }
+body:has(.gtb:not(.gtb--embedded)) .toast-host { bottom: 104px; }
+body:has(.gtb:not(.gtb--embedded) .gtb-note) .toast-host { bottom: 136px; }
 
 .gtb-hint { display: flex; align-items: center; gap: 12px; padding: 0 14px 8px; font-size: var(--text-sm); color: var(--text-secondary); }
 .gtb-hint kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 4px; }
-body:has(.gtb .gtb-hint) .toast-host { bottom: 136px; }
+body:has(.gtb:not(.gtb--embedded) .gtb-hint) .toast-host { bottom: 136px; }
+body:has(.now-dock .gtb-hint), body:has(.now-dock .gtb-note) { --toast-extra: 28px; }
 .gtb-keys { white-space: nowrap; }
 .gtb-hint > span { flex: 1; min-width: 0; }
 .gtb-hint .btn-quiet { flex: none; }
+
+/* inside the Now dock (P-05): the dock draws the strip; the bar is just its middle zone */
+.gtb--embedded { border-top: 0; background: none; }
+.gtb--embedded .gtb-row { min-height: 0; padding: 0; }
+.gtb--embedded .gtb-note, .gtb--embedded .gtb-hint { padding: 4px 0 0; flex-wrap: wrap; }
+.gtb--embedded.gtb--bad .gtb-pill { border-color: var(--danger); }

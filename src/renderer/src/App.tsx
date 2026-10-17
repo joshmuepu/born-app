@@ -13,6 +13,7 @@ import PanelResizer from './components/PanelResizer'
 import { escBlanksScreens, overlayIsOpen, trackEscOverlay } from './escRule'
 import { SECTION_NAMES, cycleRegion } from './regions'
 import SkipLinks from './components/SkipLinks'
+import NowDock from './components/NowDock'
 import AppearanceMenu from './components/AppearanceMenu'
 import { useUiScale, type UiScaleChoice } from './uiScale'
 import { AppActionsContext, type AppActions } from './AppActions'
@@ -2829,17 +2830,25 @@ export default function App() {
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
 
-      <GlobalTapeBar onOpenTape={(sermonId) => openTapePlace({ sermonId })} pushToast={pushToast} />
-
-      <footer className="status-bar">
+      <NowDock
+        projectionOpen={projectionOpen}
+        stageOpen={stageOpen}
+        blanked={isScreenBlanked}
+        onToggleBlank={handleToggleBlank}
+        displays={displayInfo ? displayInfo.displays.length : null}
+        queueCount={serviceQueue.length}
+        tapeLoaded={tapeLoaded}
+        tape={<GlobalTapeBar embedded onOpenTape={(sermonId) => openTapePlace({ sermonId })} pushToast={pushToast} />}
+        info={
         <div className="status-trigger-wrap">
           <button
             className="status-trigger"
             ref={statusTriggerRef}
             onClick={() => setStatusPopoverOpen((v) => !v)}
             title="App info"
+            aria-label={`App info — Born Again v${appVersion || '—'}`}
           >
-            Born Again v{appVersion || '—'}
+            v{appVersion || '—'}
             {update?.hasUpdate && updateDismissed && <span className="status-trigger-dot" />}
           </button>
           {statusPopoverOpen && (
@@ -2892,7 +2901,10 @@ export default function App() {
             </div>
           )}
         </div>
-
+        }
+        notice={
+          indexer === null || isRunning || indexer.indexed === 0 || indexer.status !== 'done' ? (
+            <>
         {indexer === null ? (
           <span className="status-text">Starting…</span>
         ) : isRunning ? (
@@ -2922,22 +2934,10 @@ export default function App() {
             <button className="btn-secondary btn-sm" onClick={() => window.electronAPI.startIndexer()}>Resume</button>
           </>
         ) : null}
-        <div className="status-live" aria-live="polite">
-          <span className={`status-chip${projectionOpen ? (isScreenBlanked ? ' is-blank' : ' is-live') : ''}`}>
-            <span className="status-chip-dot" aria-hidden="true" />
-            {projectionOpen ? (isScreenBlanked ? 'Screen hidden' : 'On air') : 'Projection off'}
-          </span>
-          {stageOpen && <span className="status-chip">Stage monitor</span>}
-          {displayInfo && (
-            <span className="status-chip" title={displayInfo.targetName ?? undefined}>
-              {displayInfo.displays.length} display{displayInfo.displays.length === 1 ? '' : 's'}
-            </span>
-          )}
-          <span className="status-chip">
-            {serviceQueue.length} in queue
-          </span>
-        </div>
-      </footer>
+            </>
+          ) : null
+        }
+      />
     </div>
     </AppActionsContext.Provider>
   )

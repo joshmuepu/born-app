@@ -27,7 +27,7 @@ export function tapeBarState(o: { status: string; stalled: boolean; errorKind: s
  * The "Now playing" bar (mockups 13 and 18): one compact row at the bottom of EVERY section, shown whenever a tape is loaded. Play lives here (and in the
  * Tape place) — never next to Take / Project. It shows what the audio engine really reports, with the one button that fixes a problem.
  */
-export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (sermonId: number) => void; pushToast?: (t: { message: string; actionLabel?: string; onAction?: () => void; timeoutMs?: number }) => void }): JSX.Element | null {
+export default function GlobalTapeBar({ onOpenTape, pushToast, embedded = false }: { /** inside the Now dock: no strip of its own */ embedded?: boolean; onOpenTape: (sermonId: number) => void; pushToast?: (t: { message: string; actionLabel?: string; onAction?: () => void; timeoutMs?: number }) => void }): JSX.Element | null {
   const n = useTapeNow()
   const { wire, rec } = n
   const screen = useTapeScreen({ recording: rec, sermonId: wire?.sermonId ?? null, title: rec?.file.name ?? '', map: n.map })
@@ -90,7 +90,7 @@ export default function GlobalTapeBar({ onOpenTape, pushToast }: { onOpenTape: (
   }
 
   return (
-    <div className={`gtb${st.tone === 'bad' ? ' gtb--bad' : ''}`} role="group" aria-label="Tape player">
+    <div className={`gtb${embedded ? ' gtb--embedded' : ''}${st.tone === 'bad' ? ' gtb--bad' : ''}`} role="group" aria-label="Tape player">
       <div className="gtb-row">
         <button className="gtb-id" onClick={() => onOpenTape(wire.sermonId)} title="Open the Tape place" aria-label={`Tape: ${title}${n.here?.n != null ? `, paragraph ${n.here.n}` : ''}. Open the Tape place`}>
           <span className="gtb-cap"><Headphones width={12} height={12} aria-hidden="true" /> TAPE {playing && <span className="gtb-eq" aria-hidden="true"><i /><i /><i /></span>}</span>
