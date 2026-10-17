@@ -35,10 +35,13 @@ const queueCount = (p) => p.ev(`document.body.innerText.match(/(\\d+) in queue/)
     const tape = '/tmp/born-tape-work/Tape audio/65-0418M It Is The Rising Of The Sun VGR.m4a'; const moved = tape + '.qa-moved'; fs.renameSync(tape, moved)
     try { await page.click('Tape'); await sleep(1500); await page.send('Page.reload'); await sleep(2500); await page.click('Tape'); await sleep(1500); await rec.capture(page, 'r4-tape-missing', 'tape file missing'); rec.note('R4 tape row text: ' + await page.ev(`(document.querySelector('.tp-lib')||{}).innerText`)) } finally { fs.renameSync(moved, tape) }
     page.close(); await app.kill() }
-  // R5: read-only profile folder
-  { const prof = copy('ro'); execSync(`chmod -R a-w ${prof}`)
-    try { const r = await reopen(prof, base + 3); rec.note('R5 read-only profile: window up'); await rec.capture(r.page, 'r5-readonly', 'read-only data folder'); await r.page.click('Bible'); await sleep(500); r.page.close(); await r.app.kill() } catch (e) { rec.note('R5 read-only profile: APP DID NOT START ' + String(e).slice(0, 120)) } finally { execSync(`chmod -R u+w ${prof}`) }
-    execSync('pkill -f "remote-debugging-port=' + (base + 3) + '" || true'); await sleep(1500) }
+  // R5: read-only profile folder: the app must say so and stop cleanly (no hang, no half-started app)
+  { const prof = copy('ro'); execSync(`chmod -R a-w ${prof}`); const log = '/tmp/qa-res-ro.log'; fs.rmSync(log, { force: true })
+    let up = false
+    try { const app = await launch({ profile: prof, port: base + 3, remotePort: 4540, mdns: 'born-qa-ro', settle: 1000, timeout: 20000, log }); up = true; await app.kill() } catch { /* expected: it stops */ }
+    const text = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : ''
+    rec.note(`R5 read-only data folder: window came up = ${up}; logged "data folder is not writable" = ${/data folder is not writable/.test(text)}; unhandled errors = ${(text.match(/unhandledRejection|Uncaught/g) || []).length}`)
+    execSync(`chmod -R u+w ${prof}`); execSync('pkill -f "remote-debugging-port=' + (base + 3) + '" || true'); await sleep(1500) }
   // R6: offline
   { const { app, page } = await open('offline', base + 4, { BORN_OFFLINE: '1' })
     await page.click('Songs'); await sleep(700); await page.click('Import'); await sleep(500); await rec.capture(page, 'r6-import-menu', 'import menu offline')

@@ -11,7 +11,7 @@ import {
   shell
 } from 'electron'
 import { basename, join } from 'path'
-import { existsSync, readFileSync, renameSync, statSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { log } from './logger'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
@@ -3070,6 +3070,19 @@ ipcMain.handle('indexer:stop', () => {
 
 app.whenReady().then(async () => {
   log.boot()
+  // A data folder BORN cannot write to (wrong permissions after a restore, a locked or read-only drive) used to end in an unhandled error and no window at all. Say what is wrong, in plain words, and stop.
+  try {
+    const probe = join(app.getPath('userData'), '.write-test')
+    mkdirSync(app.getPath('userData'), { recursive: true })
+    writeFileSync(probe, 'x')
+    rmSync(probe, { force: true })
+  } catch (e) {
+    log.error(`data folder is not writable: ${String(e)}`)
+    if (testHook('BORN_TEST_AUTO_CANCEL_DIALOGS', app.isPackaged)) log.error('(test launch: not showing the error dialog)')
+    else dialog.showErrorBox('Born Again can’t start', `Born Again could not write to its data folder:\n\n${app.getPath('userData')}\n\nThe folder may be read-only or locked. Fix its permissions (or restore it from a backup) and open Born Again again.`)
+    app.quit()
+    return
+  }
   // Test-only (a packaged app never honours it): automated runs that click everything must not be stopped by a native file dialog, so every open/save/message dialog answers "cancel" at once.
   if (testHook('BORN_TEST_AUTO_CANCEL_DIALOGS', app.isPackaged)) {
     const d = dialog as unknown as Record<string, unknown>
