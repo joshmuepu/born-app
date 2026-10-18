@@ -1,4 +1,4 @@
-name: v2 dev build (manual, no release)
+name: QA Windows build (temporary, push to qa-win-ci only, no release)
 
 # Builds an UNSIGNED Windows installer of whatever branch you choose, so the
 # owner can try v2 on a real Windows PC. It never creates a release, never
@@ -10,6 +10,8 @@ name: v2 dev build (manual, no release)
 # download the "v2-dev-windows" artifact at the bottom (kept for 3 days).
 
 on:
+  push:
+    branches: [qa-win-ci]
   workflow_dispatch:
 
 permissions:
