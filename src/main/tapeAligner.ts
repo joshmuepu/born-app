@@ -81,7 +81,7 @@ export function cancelAlign(): void {
 
 function run(cmd: string, args: string[], job: { procs: ChildProcess[] }, onLine?: (s: string) => void, env?: NodeJS.ProcessEnv, lowPriority = false): Promise<number> {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } })
+    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env }, windowsHide: true }) // windowsHide: no black console window flashing up on Windows
     job.procs.push(p)
     if (lowPriority && p.pid) try { setPriority(p.pid, 10) } catch { /* the default priority is fine */ }
     const feed = (b: Buffer): void => { if (onLine) for (const l of b.toString('utf8').split(/\r?\n/)) if (l) onLine(l) }
