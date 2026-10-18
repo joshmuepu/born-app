@@ -82,6 +82,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
                 value={s.label ?? ''}
                 onChange={(e) => updateSlide(i, { label: e.target.value || undefined })}
                 placeholder="No label"
+                aria-label={`Label of slide ${i + 1}`}
                 list="song-editor-label-options"
               />
               <div className="song-editor-slide-actions">
@@ -89,6 +90,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
                   type="button"
                   className="song-editor-slide-btn"
                   title="Split into two slides"
+                  aria-label="Split into two slides"
                   disabled={s.text.split('\n').length < 2}
                   onClick={() => splitSlide(i)}
                 >
@@ -107,6 +109,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
                   type="button"
                   className="song-editor-slide-btn"
                   title="Remove this slide"
+                  aria-label="Remove this slide"
                   onClick={() => removeSlide(i)}
                 >
                   <Trash2 width={13} height={13} strokeWidth={2.2} aria-hidden="true" />
@@ -115,6 +118,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
             </div>
             <textarea
               className="song-editor-slide-text"
+              aria-label={`Text of slide ${i + 1}${s.label ? ` (${s.label})` : ''}`}
               value={s.text}
               onChange={(e) => updateSlide(i, { text: e.target.value })}
               rows={Math.max(2, s.text.split('\n').length)}

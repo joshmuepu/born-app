@@ -34,3 +34,4 @@
 | F-029 | P2 | ⚙ menu interface-size select (`App.css`) | an unthemed native select: bright white on the dark menu (and a dark-on-light mismatch in light/high-contrast) | element-level select style from tokens | visual consistency | f6370bf |
 | F-030 | P2 | Remote `/command` (`webRemote.ts`) | the request body was read into memory without a limit (a 2 MB body was accepted) | 256 KB cap, answered with 413 and a plain message | local-network robustness | 9eb62f0 |
 | F-031 | P2 | Text areas (`App.css`, `SongsPanel.css`) | the paste-a-song field showed the browser's default amber outline instead of the app's focus ring | the same accent ring as every other field (drawn inside, the field fills its panel) | consistency | 85d5499 |
+| F-032 | P2 | Song list rows (`SongsPanel.css`) | a pasted 150-character title filled a card with ten lines and pushed the list around | three lines with the full title on hover | list stability with long titles | 6351aec |

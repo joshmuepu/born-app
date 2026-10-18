@@ -35,7 +35,7 @@
   text-transform: uppercase;
 }
 .plp-unstage {
-  display: grid; place-items: center; width: 18px; height: 18px;
+  display: grid; place-items: center; width: 28px; height: 28px; /* was 18 px */
   background: none; border: 1px solid var(--border-strong); border-radius: 50%;
   color: var(--text-secondary); cursor: pointer; padding: 0;
 }
