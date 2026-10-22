@@ -849,7 +849,7 @@ function showCustomRoleInput(){
   if(input) input.focus();
 }
 
-function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function $(id){ return document.getElementById(id); }
 function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
 function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 'sermon'; }
@@ -1482,14 +1482,14 @@ function queueDetailInnerHtml(i){
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
     html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:\\'' + it.id + '\\'})">Project ▸</button></div>';
+      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:' + esc(JSON.stringify(String(it.id))) + '})">Project ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
   for(var s=0;s<slides.length;s++){
     var sl = slides[s];
     var isLive = (s === activeSlide);
-    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:\\'' + it.id + '\\',slide:' + s + '})">';
+    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:' + esc(JSON.stringify(String(it.id))) + ',slide:' + s + '})">';
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
