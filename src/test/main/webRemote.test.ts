@@ -197,21 +197,26 @@ describe('startWebRemote bind sequencing', () => {
   it('never calls onListening, and marks the remote unavailable, when the port is already taken', async () => {
     // Occupy the port ourselves first, so startWebRemote's own listen() is
     // guaranteed to hit EADDRINUSE rather than racing a real bind.
+    // Listen on 0.0.0.0, the exact address the remote binds: a bare listen(port) takes the IPv6 wildcard, which on Windows
+    // does not collide with an IPv4 bind — the remote then started fine and this test failed (and, with the blocker left
+    // open, took every later test on this port down with it).
     const blocker: Server = createServer()
-    await new Promise<void>((resolve) => blocker.listen(TEST_PORT, resolve))
+    await new Promise<void>((resolve) => blocker.listen(TEST_PORT, '0.0.0.0', resolve))
 
-    const onListening = vi.fn()
-    await new Promise<void>((resolve) => {
-      startWebRemote(() => {}, noopSearch, onListening, TEST_PORT)
-      // listen()'s error event fires asynchronously but promptly — a short
-      // delay is enough to observe it without racing a real network stack.
-      setTimeout(resolve, 50)
-    })
+    try {
+      const onListening = vi.fn()
+      await new Promise<void>((resolve) => {
+        startWebRemote(() => {}, noopSearch, onListening, TEST_PORT)
+        // listen()'s error event fires asynchronously but promptly — a short
+        // delay is enough to observe it without racing a real network stack.
+        setTimeout(resolve, 50)
+      })
 
-    expect(onListening).not.toHaveBeenCalled()
-    expect(isWebRemoteAvailable()).toBe(false)
-
-    await new Promise<void>((resolve) => blocker.close(() => resolve()))
+      expect(onListening).not.toHaveBeenCalled()
+      expect(isWebRemoteAvailable()).toBe(false)
+    } finally {
+      await new Promise<void>((resolve) => blocker.close(() => resolve()))
+    }
   })
 })
 
