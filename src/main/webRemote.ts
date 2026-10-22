@@ -235,7 +235,13 @@ function sendText(res: ServerResponse, status: number, contentType: string, body
   // No caching: the client (CSS/JS/HTML) is a plain string rebuilt into the
   // app on every release, and a phone/tablet that cached last month's copy
   // would silently run stale UI against this app's current command set.
-  res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store' })
+  const headers: Record<string, string> = { 'Content-Type': contentType, 'Cache-Control': 'no-store' }
+  // The remote page is for a phone's own browser tab: it must never be loaded inside another site's frame (clickjacking).
+  if (contentType.startsWith('text/html')) {
+    headers['X-Frame-Options'] = 'DENY'
+    headers['Content-Security-Policy'] = "frame-ancestors 'none'"
+  }
+  res.writeHead(status, headers)
   res.end(body)
 }
 
