@@ -12,6 +12,7 @@ Hardening only. Nothing released, tagged, merged into `main`, or version-bumped.
 | `05-needs-owner-decision.md` | everything not built, with a recommendation each |
 | `06-verification.md` | final checks, compat, identity, what could not be verified, the known test flake |
 | `07-draft-changelog-v1.13.2.md` | DRAFT release notes for operators (not published) |
+| `08-v2-parity.md` | which v1 fix v2 already has (read-only check of `born-again`), and two to port by intent |
 | `screenshots/` | Filters popover before / after (placeholder UI only, ~55 KB each) |
 
 Probes and helpers are in `scripts/qa/` (scripts only, not shipped). `bash scripts/qa/run-all.sh` repeats the verification on isolated profiles.
