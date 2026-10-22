@@ -65,6 +65,7 @@ import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonQuarantining } from './corruptFile'
 import { dataFolderIsWritable } from './dataFolder'
+import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -1646,7 +1647,7 @@ async function getSermonParagraphsFor(sermonId: number, language: string): Promi
         )
         .all(Number(sermonId))
       return rows.map((r, i) => ({
-        text: r.text,
+        text: cleanSourceText(r.text), // display only — see sourceText.ts
         sermonTitle: r.title,
         dateCode: r.date_code,
         sermonId: Number(sermonId),
