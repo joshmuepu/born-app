@@ -17,7 +17,7 @@ Filters, the song key list, Import…), <kbd>Esc</kbd> closes that first and lea
 the screen alone — so closing a menu never blanks the congregation by accident.
 <kbd>Esc</kbd> in a search box that has text in it just clears the box.
 <kbd>Shift</kbd>+<kbd>Esc</kbd> always hides (or shows) the screen straight away,
-even with a window or menu open. <kbd>B</kbd> always does too.
+even with a window or menu open. <kbd>B</kbd> does too (when you're not typing in a box).
 
 While hidden, the confidence-monitor preview in the bottom-right of the Service
 queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
