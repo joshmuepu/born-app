@@ -274,7 +274,9 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .searchbox.bible{border-color:var(--sage)}
 .searchbox svg{flex-shrink:0; color:var(--text2)}
 .searchbox.bible svg{color:var(--sage)}
-.searchbox input{flex:1; background:none; border:none; outline:none; color:var(--text); font-size:15px; min-width:0}
+.searchbox input{flex:1; background:none; border:none; outline:none; color:var(--text); font-size:16px; min-width:0}
+.searchbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
+.searchbox.bible:focus-within{border-color:var(--sage); box-shadow:0 0 0 2px var(--sage)}
 .searchbox input::placeholder{color:var(--text3)}
 .gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800}
 .gobtn:active{background:var(--accent-hover)}
