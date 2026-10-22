@@ -46,3 +46,29 @@ describe('the remote page cannot be shown inside another site', () => {
     expect(r.headers['x-frame-options']).toBeUndefined()
   })
 })
+
+function post(path: string, body: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const req = request({ host: '127.0.0.1', port: PORT, path, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } }, (res) => {
+      res.resume()
+      res.on('end', () => resolve(res.statusCode ?? 0))
+    })
+    req.on('error', (e) => ((e as NodeJS.ErrnoException).code === 'ECONNRESET' ? resolve(413) : reject(e)))
+    req.end(body)
+  })
+}
+
+describe('/command refuses a body that is not a command', () => {
+  it('a normal command still arrives', async () => {
+    const got: unknown[] = []
+    await boot((c) => got.push(c))
+    expect(await post('/command', JSON.stringify({ action: 'next' }))).toBe(204)
+    expect(got).toEqual([{ action: 'next' }])
+  })
+  it('a body over 256 KB is answered with 413 and never reaches the app', async () => {
+    const got: unknown[] = []
+    await boot((c) => got.push(c))
+    expect(await post('/command', JSON.stringify({ action: 'next', pad: 'x'.repeat(300 * 1024) }))).toBe(413)
+    expect(got).toEqual([])
+  })
+})
