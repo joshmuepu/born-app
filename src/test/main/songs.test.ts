@@ -179,7 +179,7 @@ describe('importSongs', () => {
     // friendlyParseError() turns it into the actionable "try pasting instead" message.
     expect(r.failed[0].error).toMatch(/scanned document/i)
     expect(r.failed[0].error).toMatch(/pasting/i)
-  })
+  }, 60_000) // pdfjs took 8-16s on a Windows CI runner, over vitest's 5s default
 })
 
 describe('deleteSong', () => {
