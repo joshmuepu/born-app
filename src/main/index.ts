@@ -63,6 +63,7 @@ import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
+import { readJsonQuarantining } from './corruptFile'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -1238,12 +1239,8 @@ ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
 // ── Queue persistence ─────────────────────────────────────────────────────────
 
 ipcMain.handle('queue:load', () => {
-  try {
-    const queuePath = join(app.getPath('userData'), 'queue.json')
-    return JSON.parse(readFileSync(queuePath, 'utf-8'))
-  } catch {
-    return []
-  }
+  // A damaged queue.json is kept aside (queue.corrupt-<time>.json) rather than silently replaced by the next save.
+  return readJsonQuarantining(join(app.getPath('userData'), 'queue.json'), [])
 })
 
 ipcMain.on('queue:save', (_event, items: unknown) => {
