@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { copyText } from '../copyText'
 import {
   ChevronDown,
   TriangleAlert,
@@ -359,7 +360,7 @@ export default function ScreensMenu({
 
   const copyDiagnostics = async (): Promise<void> => {
     const text = await window.electronAPI.getDisplayDiagnostics()
-    navigator.clipboard?.writeText(text)
+    if (!(await copyText(text))) return // only say "Copied" when it really was
     setDiagCopied(true)
     setTimeout(() => setDiagCopied(false), 1500)
   }
