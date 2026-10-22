@@ -60,6 +60,17 @@ describe('Esc that closes something on top does not also blank', () => {
     expect(blankCalls()).toBe(before + 1)
   })
 
+  it('Filters popover (Sermons search)', async () => {
+    await renderApp()
+    await openProjection()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /filters/i })) })
+    expect(document.querySelector('.filter-popover')).not.toBeNull()
+    const before = blankCalls()
+    await press('Escape', {}, document.body)
+    expect(document.querySelector('.filter-popover')).toBeNull()
+    expect(blankCalls()).toBe(before)
+  })
+
   it('Import menu (Songs)', async () => {
     await renderApp()
     await openProjection()

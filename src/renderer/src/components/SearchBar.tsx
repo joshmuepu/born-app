@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { Search, X, SlidersHorizontal } from 'lucide-react'
 import type { Quote } from '../types'
 import { addRecentSearch } from '../recentSearches'
+import { popoverFit } from '../popoverFit'
 import './SermonPanel.css'
 
 interface Props {
@@ -97,6 +98,27 @@ export default function SearchBar({ onResults, onSearchingChange, externalQuery 
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
+
+  // Esc closes the open Filters popover (it did nothing, and blanked the screens instead — see escRule.ts).
+  useEffect(() => {
+    if (!showFilters) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) setShowFilters(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showFilters])
+
+  // Keep the popover inside the window (narrow left panel at 150% scale pushed it off the left edge and below the bottom).
+  useLayoutEffect(() => {
+    const el = filtersRef.current
+    if (!showFilters || !el) return
+    el.style.transform = ''
+    const { dx, maxHeight } = popoverFit(el.getBoundingClientRect(), window.innerWidth, window.innerHeight)
+    if (dx) el.style.transform = `translateX(${dx}px)`
+    el.style.maxHeight = `${maxHeight}px`
+    el.style.overflowY = 'auto'
+  }, [showFilters])
 
   const closeSuggestions = useCallback(() => {
     setShowSuggestions(false)

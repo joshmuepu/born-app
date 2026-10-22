@@ -3,7 +3,7 @@
  *
  *  The popovers close themselves from their own key listeners, and React has already removed them from the page by the time the app-wide Esc
  *  handler runs (listener order is not fixed either). So whether something was open is recorded in the capture phase, before any of them run. */
-const OVERLAY = '[role="dialog"], [role="menu"], .screens-popover, .remote-popover, .song-key-popover, .modal'
+const OVERLAY = '[role="dialog"], [role="menu"], .screens-popover, .remote-popover, .song-key-popover, .filter-popover, .modal'
 export function overlayIsOpen(root: ParentNode = document): boolean {
   return !!root.querySelector(OVERLAY)
 }

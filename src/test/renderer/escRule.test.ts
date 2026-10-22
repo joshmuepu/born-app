@@ -13,7 +13,7 @@ describe('Esc closes what is on top before it blanks the screens', () => {
   it('does not blank when something was open', () => expect(escBlanksScreens(esc, true)).toBe(false))
   it('Shift+Esc is the panic key: it blanks even with a dialog open', () => expect(escBlanksScreens({ key: 'Escape', shiftKey: true }, true)).toBe(true))
   it('other keys never blank', () => expect(escBlanksScreens({ key: 'b', shiftKey: false }, false)).toBe(false))
-  for (const html of ['<div class="help-modal modal" role="dialog"></div>', '<div class="remote-popover" role="dialog"></div>', '<div class="screens-popover"></div>', '<div role="menu"></div>', '<div class="song-key-popover"></div>', '<div class="modal"></div>'])
+  for (const html of ['<div class="help-modal modal" role="dialog"></div>', '<div class="remote-popover" role="dialog"></div>', '<div class="screens-popover"></div>', '<div role="menu"></div>', '<div class="song-key-popover"></div>', '<div class="filter-popover"></div>', '<div class="modal"></div>'])
     it(`sees this as open: ${html}`, () => { document.body.innerHTML = html; expect(overlayIsOpen()).toBe(true) })
 })
 
