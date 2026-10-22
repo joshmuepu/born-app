@@ -64,6 +64,7 @@ import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonQuarantining } from './corruptFile'
+import { dataFolderIsWritable } from './dataFolder'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -144,8 +145,21 @@ if (process.env.BORN_USER_DATA_DIR) {
  * This closes the whole class of bug: a second launch attempt just quits
  * itself and brings the existing window forward instead.
  */
-const gotSingleInstanceLock = app.requestSingleInstanceLock()
-if (!gotSingleInstanceLock) {
+// If the data folder can't be written to (read-only, full, a bad drive), Chromium can't take the lock either and the
+// app used to just vanish with no window and no message — look first and say what is wrong.
+const dataFolderOk = dataFolderIsWritable(app.getPath('userData'))
+if (!dataFolderOk) {
+  log.error(`data folder is not writable: ${app.getPath('userData')}`)
+  dialog.showErrorBox(
+    "BORN can't save its data",
+    `BORN can't write to its data folder:\n\n${app.getPath('userData')}\n\n` +
+      'Check that the folder is not read-only and the disk is not full, then open BORN again.'
+  )
+  app.exit(1)
+}
+
+const gotSingleInstanceLock = dataFolderOk && app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock && dataFolderOk) {
   app.quit()
 }
 
