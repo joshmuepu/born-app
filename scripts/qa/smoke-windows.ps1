@@ -52,8 +52,8 @@ try {
   $base = "http://127.0.0.1:$Port"
   try { $r = Invoke-WebRequest "$base/ping" -UseBasicParsing -TimeoutSec 15; Check 'remote /ping answers' ($r.StatusCode -eq 200) ("status " + $r.StatusCode) } catch { Check 'remote /ping answers' $false $_.Exception.Message }
   try { $r = Invoke-WebRequest "$base/" -UseBasicParsing -TimeoutSec 15; Check 'remote page is served with frame protection' (($r.Headers['X-Frame-Options'] -eq 'DENY')) ("X-Frame-Options=" + $r.Headers['X-Frame-Options']) } catch { Check 'remote page served' $false $_.Exception.Message }
-  try { $n = @(Invoke-RestMethod "$base/api/search/sermons?q=faith" -TimeoutSec 60).Count; Check 'sermon search returns results' ($n -gt 0) "$n results" } catch { Check 'sermon search returns results' $false $_.Exception.Message }
-  try { $n = @(Invoke-RestMethod "$base/api/search/songs?q=amazing" -TimeoutSec 60).Count; Check 'song search returns results' ($n -gt 0) "$n results" } catch { Check 'song search returns results' $false $_.Exception.Message }
+  try { $r = Invoke-RestMethod "$base/api/search/sermons?q=faith" -TimeoutSec 60; $n = $r.Count; Check 'sermon search returns results' ($n -gt 100) "$n results" } catch { Check 'sermon search returns results' $false $_.Exception.Message }
+  try { $r = Invoke-RestMethod "$base/api/search/songs?q=amazing" -TimeoutSec 60; $n = $r.Count; Check 'song search returns results' ($n -gt 0) "$n results" } catch { Check 'song search returns results' $false $_.Exception.Message }
   try { $b = Invoke-RestMethod "$base/api/search/bible?q=John%203:16" -TimeoutSec 60; Check 'Bible lookup returns a passage' ($b.kind -eq 'passage') ("kind=" + $b.kind) } catch { Check 'Bible lookup returns a passage' $false $_.Exception.Message }
 }
 finally {
@@ -69,25 +69,11 @@ if ($setup) {
   Check 'installer is a real PE, 40 MB or more' (($setup.Length -ge 40MB) -and ($bytes[0] -eq 0x4D) -and ($bytes[1] -eq 0x5A)) ("{0} ({1} MB)" -f $setup.Name, [math]::Round($setup.Length / 1MB, 1))
 } else { Check 'installer present' $false 'none in dist-installers' }
 
-# ── the exe carries the v1 icon, not Electron's default ────────────────────────
-try {
-  Add-Type -AssemblyName System.Drawing
-  function Bmp32($b) { if ($b.Width -ne 32 -or $b.Height -ne 32) { return New-Object System.Drawing.Bitmap($b, 32, 32) } return $b }
-  function Diff($a, $b) {
-    $sum = 0
-    for ($x = 0; $x -lt 32; $x++) { for ($y = 0; $y -lt 32; $y++) {
-      $pa = $a.GetPixel($x, $y); $pb = $b.GetPixel($x, $y)
-      $sum += [math]::Abs($pa.R - $pb.R) + [math]::Abs($pa.G - $pb.G) + [math]::Abs($pa.B - $pb.B) + [math]::Abs($pa.A - $pb.A)
-    } }
-    return $sum / (32 * 32 * 4)
-  }
-  $got = Bmp32 ([System.Drawing.Icon]::ExtractAssociatedIcon($exe.FullName).ToBitmap())
-  $want = Bmp32 ((New-Object System.Drawing.Icon((Resolve-Path 'build\icons\icon.ico').Path, 32, 32)).ToBitmap())
-  $def = Bmp32 ([System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path 'node_modules\electron\dist\electron.exe').Path).ToBitmap())
-  $dWant = [math]::Round((Diff $got $want), 2); $dDef = [math]::Round((Diff $got $def), 2)
-  Check 'exe icon matches build\icons\icon.ico (and not the Electron default)' (($dWant -lt 12) -and ($dDef -gt ($dWant * 3))) "mean pixel difference to icon.ico=$dWant, to Electron default=$dDef"
-  $got.Save((Join-Path $OutDir 'exe-icon-32.png')); $want.Save((Join-Path $OutDir 'icon-ico-32.png'))
-} catch { Check 'exe icon check' $false $_.Exception.Message }
+# ── the exe carries the v1 icon, not Electron's default (read straight from the exe's resources; see verify-exe-icon.cjs) ──
+$iconOut = & node scripts\qa\verify-exe-icon.cjs $exe.FullName 'build\icons\icon.ico' 'node_modules\electron\dist\electron.exe' 2>&1
+$iconOut | ForEach-Object { Write-Host $_ }
+$iconOut | Set-Content (Join-Path $OutDir 'exe-icon.txt')
+Check 'exe icon resources match build\icons\icon.ico (and not the Electron default)' ($LASTEXITCODE -eq 0) (($iconOut | Select-Object -Last 3) -join ' | ')
 $ico = Get-FileHash 'build\icons\icon.ico' -Algorithm SHA256
 Check 'icon.ico in the build is the v1 icon (sha256 starts 4f3e98c7)' ($ico.Hash.ToLower().StartsWith('4f3e98c7')) $ico.Hash.Substring(0, 8).ToLower()
 
