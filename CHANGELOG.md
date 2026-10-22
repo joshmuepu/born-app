@@ -3,7 +3,7 @@
 ## 1.13.2
 
 **Fixed: things that could go wrong during a service**
-- Pressing **Esc** to close a window or menu (the manual, Remote, Screens, the song key list, Import, or the search Filters) no longer also **blanks the congregation screen**. Pressing Esc in a search box that has text in it now just clears the box. **Shift+Esc still always blanks the screens**, as the keyboard shortcuts list says.
+- Pressing **Esc** to close a window or menu (the manual, Remote, Screens, the song key list, Import, or the search Filters) no longer also **blanks the congregation screen**. Pressing Esc in a search box that has text in it now just clears the box. **Shift+Esc still hides the screen right away**, even with a window or menu open.
 - **Ctrl/Cmd+R** no longer reloads BORN in the middle of a service and wipes what is on screen.
 - A very long line with no spaces (for example a web address in an announcement) now wraps on the **projector and the stage monitor** instead of running off the screen. The stage monitor's **Next** box no longer cuts off the reference line.
 - Sermon text no longer starts with an **empty box** (a stray symbol in the source text). It is only hidden when shown; nothing in your library or saved services is changed.

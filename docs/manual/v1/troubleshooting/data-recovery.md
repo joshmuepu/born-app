@@ -23,6 +23,22 @@ Nothing you've saved — your settings, saved service queue files, and any songs
 you've imported yourself — is affected by this; only the large built-in reference
 data (which can always be rebuilt) is ever reset this way.
 
+## If your settings or your remembered queue can't be read
+
+If BORN's settings file or the service queue it remembers between sessions is
+found damaged, BORN starts fresh but **keeps the damaged file** next to the
+others in the data folder, renamed (for example `queue.corrupt-<date>.json` or
+`settings.corrupt-<date>.json`), instead of overwriting it the next time it
+saves. Open the data folder (below) to find it; send it to whoever handles tech
+support if they ask.
+
+## If BORN says it can't save its data
+
+If BORN's data folder is read-only, full, or on a drive that isn't there, BORN
+shows a message with the folder's location and closes, rather than closing
+without a word. Make the folder writable (or free up disk space) and open BORN
+again.
+
 ## If the sermon warning doesn't go away
 
 The sermon index needs an internet connection to rebuild. If it's stuck showing
