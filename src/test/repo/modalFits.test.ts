@@ -14,4 +14,10 @@ describe('dialogs fit a short window', () => {
     expect(b).toMatch(/max-height:\s*calc\(100vh - 32px\)/)
     expect(b).toMatch(/overflow-y:\s*auto/)
   })
+
+  it('.screens-popover is capped to the window and scrolls inside, so every screen row and the Smaller/Larger text buttons stay reachable at 150% scale', () => {
+    const b = block('.screens-popover')
+    expect(b).toMatch(/max-height:\s*calc\(100vh - \d+px\)/)
+    expect(b).toMatch(/overflow-y:\s*auto/)
+  })
 })

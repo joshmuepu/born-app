@@ -1219,6 +1219,9 @@ mark.hl {
   right: 0;
   z-index: 50;
   width: 320px;
+  /* the list grows with every connected screen — keep it inside the window and let it scroll (header 52px + gap + margin) */
+  max-height: calc(100vh - 76px);
+  overflow-y: auto;
   padding: 6px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
