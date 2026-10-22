@@ -62,6 +62,7 @@ import {
 import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
+import { isReloadChord } from '../shared/reloadChord'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -223,6 +224,15 @@ function sendToStage(channel: string, ...args: unknown[]): void {
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
+/** Ctrl/Cmd+R (and +Shift) reload the window through Electron's default menu and wipe what's on screen mid-service. Swallowed in the packaged
+ *  app (preventDefault in before-input-event also stops the menu accelerator); dev builds keep reload. */
+function blockReloadChord(win: BrowserWindow): void {
+  if (!app.isPackaged) return
+  win.webContents.on('before-input-event', (event, input) => {
+    if (isReloadChord(input)) event.preventDefault()
+  })
+}
+
 function createMainWindow(): void {
   log.info('createMainWindow')
   mainWindow = new BrowserWindow({
@@ -261,6 +271,8 @@ function createMainWindow(): void {
   // Esc from the operator window is handled in the renderer (App.tsx) so it can
   // respect focus / typing state; nothing to relay here.
 
+  blockReloadChord(mainWindow)
+
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
     mainWindow = null
@@ -278,6 +290,7 @@ function createMainWindow(): void {
  *  to cover. Attached to every window except the control window, which
  *  already has its own full shortcut set in App.tsx. */
 function attachOperatorShortcuts(win: BrowserWindow): void {
+  blockReloadChord(win)
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     const mod = input.meta || input.control
