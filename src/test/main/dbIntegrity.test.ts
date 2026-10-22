@@ -89,7 +89,8 @@ describe('checkAndRecoverDatabase', () => {
     const db = new Database(path)
     db.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)')
     const ins = db.prepare('INSERT INTO t (v) VALUES (?)')
-    for (let i = 0; i < 500; i++) ins.run(`row ${i} — ${'x'.repeat(40)}`)
+    // one transaction: 500 separate commits (each an fsync) took over 13s on a Windows disk and timed the test out
+    db.transaction(() => { for (let i = 0; i < 500; i++) ins.run(`row ${i} — ${'x'.repeat(40)}`) })()
     db.close()
     const bytes = readFileSync(path)
     const mid = Math.floor(bytes.length / 2)
