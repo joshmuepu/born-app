@@ -1722,6 +1722,8 @@ function renderSermonsTab(){
   }
   renderTabletPreview();
 }
+var sermonSearchSeq = 0;
+var SEARCH_LOST = "Couldn't reach BORN - check the connection and search again.";
 function runSermonSearch(tablet){
   var q = ((tablet ? $('sermonInputT') : $('sermonInput')) || {}).value || '';
   q = q.trim();
@@ -1733,9 +1735,14 @@ function runSermonSearch(tablet){
   var boxIds = ['sermonResultsBox','sermonResultsBoxT'];
   boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = '<div class="empty">Searching…</div>'; });
   var url = '/api/search/sermons?q=' + encodeURIComponent(q) + (dateCode ? '&date=' + encodeURIComponent(dateCode) : '');
+  var seq = ++sermonSearchSeq;
   getJSON(url).then(function(rows){
+    if(seq !== sermonSearchSeq) return; // a newer search already won
     state.sermonResults = rows || [];
     boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = sermonResultsHtml(); });
+  }).catch(function(){
+    if(seq !== sermonSearchSeq) return;
+    boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = '<div class="empty">' + esc(SEARCH_LOST) + '</div>'; });
   });
 }
 function sermonResultsHtml(){
@@ -2094,6 +2101,7 @@ function selectVerse(v){
   var b = state.bibleBook;
   openChapterContext(b.num, state.bibleChapterNum, [v]);
 }
+var bibleSearchSeq = 0;
 function runBibleSearch(tablet){
   var q = ((tablet ? $('bibleInputT') : $('bibleInput')) || {}).value || '';
   q = q.trim();
@@ -2101,8 +2109,14 @@ function runBibleSearch(tablet){
   state.bibleQuery = q;
   state.bibleView = 'results';
   renderBibleTab();
+  var seq = ++bibleSearchSeq;
   getJSON('/api/search/bible?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(bibleScopeParam())).then(function(data){
+    if(seq !== bibleSearchSeq) return; // a newer search already won
     state.bibleResults = data;
+    if(state.bibleView === 'results') renderBibleTab();
+  }).catch(function(){
+    if(seq !== bibleSearchSeq) return;
+    state.bibleResults = { kind: 'error', message: SEARCH_LOST };
     if(state.bibleView === 'results') renderBibleTab();
   });
 }

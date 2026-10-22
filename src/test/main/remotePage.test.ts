@@ -70,3 +70,51 @@ describe('remote queue buttons', () => {
     expect(tapProject(id)).toEqual([['project', { id }]])
   })
 })
+
+describe('remote search', () => {
+  const dom =
+    '<div id="toast"></div><div id="conn-p"><span class="connLabel"></span></div>' +
+    '<input id="sermonInput"><div id="sermonResultsBox"></div>'
+  const row = (t: string): unknown => ({ sermonTitle: t, dateCode: '47-0412', paragraphRef: '1', text: 'x', highlightedText: 'x' })
+  function boot(): { runSermonSearch: () => void; box: HTMLElement; input: HTMLInputElement } {
+    const r = loadRemote<{ runSermonSearch: () => void }>('runSermonSearch: runSermonSearch', dom)
+    return { runSermonSearch: r.runSermonSearch, box: document.getElementById('sermonResultsBox')!, input: document.getElementById('sermonInput') as HTMLInputElement }
+  }
+  const later = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+  it('a slow older answer does not replace the newer search', async () => {
+    const t = boot()
+    global.fetch = vi.fn(async (url: string) => {
+      if (url.includes('q=first')) { await later(80); return new Response(JSON.stringify([row('FIRST')])) }
+      return new Response(JSON.stringify([row('SECOND')]))
+    }) as unknown as typeof fetch
+    t.input.value = 'first'; t.runSermonSearch()
+    t.input.value = 'second'; t.runSermonSearch()
+    await later(160)
+    expect(t.box.textContent).toContain('SECOND')
+    expect(t.box.textContent).not.toContain('FIRST')
+  })
+
+  it('a search that cannot reach BORN says so instead of staying on "Searching…"', async () => {
+    const t = boot()
+    global.fetch = vi.fn(() => Promise.reject(new Error('offline'))) as unknown as typeof fetch
+    t.input.value = 'lost'; t.runSermonSearch()
+    await later(30)
+    expect(t.box.textContent).not.toMatch(/Searching/)
+    expect(t.box.textContent).toMatch(/couldn.t reach born/i)
+  })
+})
+
+describe('remote Bible search', () => {
+  it('a Bible search that cannot reach BORN says so, and an older answer never replaces a newer one', async () => {
+    const dom = '<div id="toast"></div><div id="conn-p"><span class="connLabel"></span></div><div id="view-bible"></div><input id="bibleInput">'
+    const r = loadRemote<{ runBibleSearch: () => void; state: { bibleResults: { kind: string; message?: string } | null } }>('runBibleSearch: runBibleSearch, state: state', dom)
+    const input = document.getElementById('bibleInput') as HTMLInputElement
+    global.fetch = vi.fn(() => Promise.reject(new Error('offline'))) as unknown as typeof fetch
+    input.value = 'faith'
+    try { r.runBibleSearch() } catch { /* drawing needs the full page; the stored state is what matters */ }
+    await new Promise((res) => setTimeout(res, 30))
+    expect(r.state.bibleResults).toMatchObject({ kind: 'error' })
+    expect(r.state.bibleResults?.message).toMatch(/couldn.t reach born/i)
+  })
+})
