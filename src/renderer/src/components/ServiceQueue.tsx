@@ -239,7 +239,7 @@ export default function ServiceQueue({
     const active = index === activeIndex
     const played = !active && playedIds.has(item.id)
     const isNext = !active && projectionOpen && index === nextItemIndex
-    const Icon = KIND_ICON[item.kind]
+    const Icon = KIND_ICON[item.kind] ?? Mic // an item kind this version does not know still gets a row, not a crash
     const dragProps = {
       draggable: true,
       onDragStart: () => setDragIndex(index),
