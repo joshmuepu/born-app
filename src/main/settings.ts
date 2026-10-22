@@ -7,6 +7,7 @@ import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
+import { quarantineCorruptFile } from './corruptFile'
 import type { NamedDisplay } from './displays'
 
 export interface AppSettings {
@@ -98,6 +99,9 @@ export function getSettings(): AppSettings {
       }
     }
   } catch {
+    // Missing file = first launch (nothing to keep). A file that exists but won't parse is moved aside before the
+    // next save writes a fresh one over it.
+    quarantineCorruptFile(settingsPath())
     cache = { ...DEFAULTS }
   }
   return cache

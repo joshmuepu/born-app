@@ -92,3 +92,28 @@ describe('getSettings — legacy fontSize realignment', () => {
     expect(onDisk.fontSize).toBe(3)
   })
 })
+
+describe('getSettings — a damaged settings.json is kept, not overwritten', () => {
+  it('starts from defaults but moves the damaged file aside, so a later save cannot destroy it', async () => {
+    const { readdirSync } = await import('fs')
+    const settingsPath = join(dir, 'settings.json')
+    const damaged = '{"fontSize": 4.5, "namedDisplays": [ {"name": "Sanctuary Proj'
+    writeFileSync(settingsPath, damaged)
+
+    const { getSettings, updateSettings } = await freshSettingsModule()
+    expect(getSettings().fontSize).toBe(4.5) // defaults
+    updateSettings({ theme: 'light' }) // the next save writes a fresh settings.json
+
+    const kept = readdirSync(dir).filter((f) => /^settings\.corrupt-.*\.json$/.test(f))
+    expect(kept).toHaveLength(1)
+    expect(readFileSync(join(dir, kept[0]), 'utf-8')).toBe(damaged)
+    expect(JSON.parse(readFileSync(settingsPath, 'utf-8')).theme).toBe('light')
+  })
+
+  it('a first launch with no settings.json leaves no corrupt-file behind', async () => {
+    const { readdirSync } = await import('fs')
+    const { getSettings } = await freshSettingsModule()
+    getSettings()
+    expect(readdirSync(dir)).toEqual([])
+  })
+})
