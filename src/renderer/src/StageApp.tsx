@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { cleanSourceText } from '../../shared/sourceText'
 import type { SlidePayload } from './types'
 
 type View = 'stage' | 'congregation'
@@ -104,7 +105,7 @@ export default function StageApp() {
           {current!.label && <div className="stage-cg-label">{current!.label}</div>}
           <div className={`stage-cg-text${preClass(current)}`}>
             {current!.marker && <span className="stage-marker">{current!.marker}</span>}
-            {current!.text}
+            {cleanSourceText(current!.text)}
           </div>
           {current!.reference && <div className="stage-cg-ref">{current!.reference}</div>}
         </div>
@@ -116,7 +117,7 @@ export default function StageApp() {
             {current!.label && <div className="stage-current-label">{current!.label}</div>}
             <div className={`stage-current-text${preClass(current)}`}>
               {current!.marker && <span className="stage-marker">{current!.marker}</span>}
-              {current!.text}
+              {cleanSourceText(current!.text)}
             </div>
             {current!.reference && <div className="stage-current-ref">{current!.reference}</div>}
           </div>
@@ -125,7 +126,7 @@ export default function StageApp() {
           {next && (
             <div className="stage-next">
               <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
-              <div className={`stage-next-text${preClass(next)}`}>{next.text}</div>
+              <div className={`stage-next-text${preClass(next)}`}>{cleanSourceText(next.text)}</div>
               {next.reference && <div className="stage-next-ref">{next.reference}</div>}
             </div>
           )}

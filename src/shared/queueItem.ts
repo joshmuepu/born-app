@@ -247,5 +247,8 @@ export function itemTitle(item: QueueItem): string {
       return `${item.reference} · ${item.translation}`
     case 'song':
       return item.title
+    default:
+      // a kind from a newer BORN (or a damaged file): keep the row readable instead of showing nothing
+      return 'Item'
   }
 }

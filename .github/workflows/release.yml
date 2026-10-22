@@ -65,6 +65,11 @@ jobs:
           if [ -f resources/bible-cache.db ]; then export BORN_REUSE_BIBLE=1; fi
           npm run build:library
 
+      # Fail here, not after a release: both libraries must exist and be full-size
+      # (sermons, paragraphs, Bible verses and translations, songs, song slides).
+      - name: Verify the libraries
+        run: node scripts/qa/verify-libraries.cjs resources
+
       - name: Upload prebuilt databases
         uses: actions/upload-artifact@v4
         with:
@@ -149,6 +154,12 @@ jobs:
           Write-Host "window loaded — killing"
           Stop-Process -Id $p.Id -Force
           Get-Content $log | Select-String 'BORN starting|did-finish-load|seed complete|already complete'
+          # The packaged app must carry both libraries (real sizes today: sermons.db.gz 67 MB, library.db.gz 10.8 MB).
+          $min = @{ 'sermons.db.gz' = 30MB; 'library.db.gz' = 5MB }
+          foreach ($f in $min.Keys) {
+            $p2 = "dist-installers\win-unpacked\resources\$f"
+            if (-not (Test-Path $p2) -or (Get-Item $p2).Length -lt $min[$f]) { throw "$f missing or too small in the packaged app" }
+          }
           # Sanity-check the NSIS installer is a real, non-trivial PE.
           $setup = Get-ChildItem dist-installers\*.exe | Select-Object -First 1
           if (-not $setup -or $setup.Length -lt 40MB) { throw "installer missing or too small" }

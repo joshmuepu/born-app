@@ -295,7 +295,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
         placeholder="Filter by city or state…"
         value={locFilter}
         onChange={(e) => setLocFilter(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Escape' && locFilter) { e.preventDefault(); setLocFilter('') } }}
+        onKeyDown={(e) => { if (e.key === 'Escape' && locFilter) { e.preventDefault(); e.stopPropagation(); setLocFilter('') } }}
       />
       {locFilter && (
         <button className="search-clear" onClick={() => setLocFilter('')} title="Clear (Esc)" aria-label="Clear filter"><X width={13} height={13} strokeWidth={2.4} /></button>

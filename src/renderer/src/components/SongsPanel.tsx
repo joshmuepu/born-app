@@ -74,8 +74,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     const onDown = (e: MouseEvent): void => {
       if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) setImportMenuOpen(false)
     }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) setImportMenuOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [importMenuOpen])
 
   const loadRecent = useCallback(() => {
@@ -513,7 +520,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                 placeholder="Search titles & lyrics…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); setQuery('') } }}
+                onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.preventDefault(); e.stopPropagation(); setQuery('') } }}
                 autoFocus
               />
               {query && (

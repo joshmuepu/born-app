@@ -206,8 +206,7 @@ body {
    glance what's current vs what's coming. */
 .stage-next {
   flex: 0 0 auto;
-  max-height: 30vh;
-  overflow: hidden;
+  /* no height cap: the text is clamped to 4 lines already, and a cap cut the reference line in half */
   padding: clamp(16px, 2.5vh, 32px) clamp(18px, 2vw, 32px);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
@@ -247,3 +246,6 @@ body {
 }
 
 ::-webkit-scrollbar { width: 0; }
+
+/* a line with no spaces (a web address, a long unbroken word) wraps instead of running off the screen */
+.stage-current-text, .stage-next-text, .stage-cg-text { overflow-wrap: anywhere; }

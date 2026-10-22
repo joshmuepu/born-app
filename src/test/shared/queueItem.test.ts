@@ -179,3 +179,11 @@ describe('buildBibleSlides', () => {
     expect(slides[slideStarts[1]].reference).toBe('Psalms 119:6 · KJV')
   })
 })
+
+describe('itemTitle for a kind this version does not know', () => {
+  it('gives a plain label instead of undefined', () => {
+    const t = itemTitle({ kind: 'future', id: 'u1', slides: [{ text: 'x' }] } as unknown as Parameters<typeof itemTitle>[0])
+    expect(typeof t).toBe('string')
+    expect(t.length).toBeGreaterThan(0)
+  })
+})

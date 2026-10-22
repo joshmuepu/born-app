@@ -12,6 +12,13 @@ amber and its label changes to **Show screen**; click it again (or press
 <kbd>Esc</kbd> or <kbd>B</kbd> from anywhere in the main window) to bring the text
 back exactly where it was.
 
+If a window or menu is open on top (the manual, Remote, Screens, the search
+Filters, the song key list, Import…), <kbd>Esc</kbd> closes that first and leaves
+the screen alone — so closing a menu never blanks the congregation by accident.
+<kbd>Esc</kbd> in a search box that has text in it just clears the box.
+<kbd>Shift</kbd>+<kbd>Esc</kbd> always hides (or shows) the screen straight away,
+even with a window or menu open. <kbd>B</kbd> does too (when you're not typing in a box).
+
 While hidden, the confidence-monitor preview in the bottom-right of the Service
 queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
 on screen, so you can keep working the queue without losing your place.

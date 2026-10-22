@@ -274,7 +274,9 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .searchbox.bible{border-color:var(--sage)}
 .searchbox svg{flex-shrink:0; color:var(--text2)}
 .searchbox.bible svg{color:var(--sage)}
-.searchbox input{flex:1; background:none; border:none; outline:none; color:var(--text); font-size:15px; min-width:0}
+.searchbox input{flex:1; background:none; border:none; outline:none; color:var(--text); font-size:16px; min-width:0}
+.searchbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
+.searchbox.bible:focus-within{border-color:var(--sage); box-shadow:0 0 0 2px var(--sage)}
 .searchbox input::placeholder{color:var(--text3)}
 .gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800}
 .gobtn:active{background:var(--accent-hover)}
@@ -330,7 +332,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .azstrip{display:flex; gap:4px; padding:2px 2px 10px; overflow-x:auto; flex-shrink:0;
   -webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);
   mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);}
-.azstrip button{flex-shrink:0; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
+.azstrip button{flex-shrink:0; width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
 .azstrip button:disabled{color:var(--text3); opacity:0.4}
 .azstrip button.current{background:var(--accent); color:#fff}
 .songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}
@@ -847,7 +849,7 @@ function showCustomRoleInput(){
   if(input) input.focus();
 }
 
-function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function $(id){ return document.getElementById(id); }
 function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
 function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 'sermon'; }
@@ -1480,14 +1482,14 @@ function queueDetailInnerHtml(i){
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
     html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:\\'' + it.id + '\\'})">Project ▸</button></div>';
+      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:' + esc(JSON.stringify(String(it.id))) + '})">Project ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
   for(var s=0;s<slides.length;s++){
     var sl = slides[s];
     var isLive = (s === activeSlide);
-    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:\\'' + it.id + '\\',slide:' + s + '})">';
+    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:' + esc(JSON.stringify(String(it.id))) + ',slide:' + s + '})">';
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
@@ -1720,6 +1722,8 @@ function renderSermonsTab(){
   }
   renderTabletPreview();
 }
+var sermonSearchSeq = 0;
+var SEARCH_LOST = "Couldn't reach BORN - check the connection and search again.";
 function runSermonSearch(tablet){
   var q = ((tablet ? $('sermonInputT') : $('sermonInput')) || {}).value || '';
   q = q.trim();
@@ -1731,9 +1735,14 @@ function runSermonSearch(tablet){
   var boxIds = ['sermonResultsBox','sermonResultsBoxT'];
   boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = '<div class="empty">Searching…</div>'; });
   var url = '/api/search/sermons?q=' + encodeURIComponent(q) + (dateCode ? '&date=' + encodeURIComponent(dateCode) : '');
+  var seq = ++sermonSearchSeq;
   getJSON(url).then(function(rows){
+    if(seq !== sermonSearchSeq) return; // a newer search already won
     state.sermonResults = rows || [];
     boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = sermonResultsHtml(); });
+  }).catch(function(){
+    if(seq !== sermonSearchSeq) return;
+    boxIds.forEach(function(id){ var el = $(id); if(el) el.innerHTML = '<div class="empty">' + esc(SEARCH_LOST) + '</div>'; });
   });
 }
 function sermonResultsHtml(){
@@ -2092,6 +2101,7 @@ function selectVerse(v){
   var b = state.bibleBook;
   openChapterContext(b.num, state.bibleChapterNum, [v]);
 }
+var bibleSearchSeq = 0;
 function runBibleSearch(tablet){
   var q = ((tablet ? $('bibleInputT') : $('bibleInput')) || {}).value || '';
   q = q.trim();
@@ -2099,8 +2109,14 @@ function runBibleSearch(tablet){
   state.bibleQuery = q;
   state.bibleView = 'results';
   renderBibleTab();
+  var seq = ++bibleSearchSeq;
   getJSON('/api/search/bible?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(bibleScopeParam())).then(function(data){
+    if(seq !== bibleSearchSeq) return; // a newer search already won
     state.bibleResults = data;
+    if(state.bibleView === 'results') renderBibleTab();
+  }).catch(function(){
+    if(seq !== bibleSearchSeq) return;
+    state.bibleResults = { kind: 'error', message: SEARCH_LOST };
     if(state.bibleView === 'results') renderBibleTab();
   });
 }

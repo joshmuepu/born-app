@@ -90,3 +90,15 @@ describe('ServiceQueue grouping', () => {
     expect(onImportService).toHaveBeenCalled()
   })
 })
+
+describe('ServiceQueue with an item kind this version does not know', () => {
+  // A shared service file from a newer BORN, or a damaged one, can carry an item kind v1 has no name for. It is autosaved into
+  // queue.json, so if drawing it crashed, the queue screen would crash on every launch.
+  const unknown = { kind: 'future', id: 'u1', slides: [{ text: 'Some slide text' }] } as unknown as QueueItem
+
+  it('still draws the queue (a plain row) instead of crashing', () => {
+    render(<ServiceQueue {...baseProps} queue={[songItem('a', 'Amazing Grace'), unknown]} />)
+    expect(screen.getByText('Amazing Grace')).toBeInTheDocument()
+    expect(screen.getByText('Some slide text')).toBeInTheDocument()
+  })
+})

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { copyText } from '../copyText'
 import { Smartphone, Copy, Check, AlertTriangle, Stethoscope, Wifi, Cable, Network } from 'lucide-react'
 import QRCode from 'qrcode'
 
@@ -171,16 +172,20 @@ export default function RemotePanel(): JSX.Element {
 
   const copy = (key: string, url: string): void => {
     if (!url) return
-    navigator.clipboard?.writeText(url)
-    setCopied(key)
-    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500)
+    void copyText(url).then((ok) => {
+      if (!ok) return // only say "Copied" when it really was
+      setCopied(key)
+      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500)
+    })
   }
 
   const copyCommands = (): void => {
     if (!diag) return
-    navigator.clipboard?.writeText(diag.firewallCommands.join('\n'))
-    setCmdCopied(true)
-    setTimeout(() => setCmdCopied(false), 1500)
+    void copyText(diag.firewallCommands.join('\n')).then((ok) => {
+      if (!ok) return
+      setCmdCopied(true)
+      setTimeout(() => setCmdCopied(false), 1500)
+    })
   }
 
   const toggleDiagnostics = (): void => {
@@ -198,9 +203,11 @@ export default function RemotePanel(): JSX.Element {
 
   const copyDiagnostics = (): void => {
     if (!diag) return
-    navigator.clipboard?.writeText(buildDiagnosticsText(diag))
-    setDiagCopied(true)
-    setTimeout(() => setDiagCopied(false), 1500)
+    void copyText(buildDiagnosticsText(diag)).then((ok) => {
+      if (!ok) return
+      setDiagCopied(true)
+      setTimeout(() => setDiagCopied(false), 1500)
+    })
   }
 
   return (

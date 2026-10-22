@@ -186,10 +186,34 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
     }
   }, [activeFile, pageAttempt])
 
-  const navigateTo = (file: string): void => {
-    const exists = manifest?.sections.some((s) => s.pages.some((p) => p.file === file))
-    if (exists) setActiveFile(file)
+  /** a section to scroll to once the page it lives on has been drawn (a link like `page.md#section`) */
+  const pendingHash = useRef<string | null>(null)
+  const scrollToHash = (hash: string): void => {
+    // ids are plain slugs, never a selector: look them up by id
+    const el = contentRef.current
+      ? Array.from(contentRef.current.querySelectorAll<HTMLElement>('[id]')).find((e) => e.id === hash)
+      : null
+    el?.scrollIntoView({ behavior: 'smooth' })
   }
+  const navigateTo = (target: string): void => {
+    const [file, hash] = target.split('#')
+    const exists = manifest?.sections.some((s) => s.pages.some((p) => p.file === file))
+    if (!exists) return
+    if (file === activeFile) {
+      if (hash) scrollToHash(hash)
+      return
+    }
+    pendingHash.current = hash || null
+    setActiveFile(file)
+  }
+  useEffect(() => {
+    if (!loading && html && pendingHash.current) {
+      const h = pendingHash.current
+      pendingHash.current = null
+      window.setTimeout(() => scrollToHash(h), 60)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [html, loading])
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>): void => {
     const target = e.target as HTMLElement
@@ -204,7 +228,7 @@ export default function HelpViewer({ onClose }: Props): JSX.Element {
     if (/^https?:\/\//i.test(href)) {
       window.electronAPI.openManualExternalLink(href)
     } else if (href.startsWith('#')) {
-      contentRef.current?.querySelector(href)?.scrollIntoView({ behavior: 'smooth' })
+      scrollToHash(href.slice(1))
     } else if (activeFile) {
       navigateTo(resolveRelative(activeFile, href))
     }

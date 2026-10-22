@@ -34,6 +34,7 @@ import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
+import { escBlanksScreens, trackEscOverlay } from './escRule'
 import { newSerialQueue, serialize } from './serialize'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
@@ -847,6 +848,8 @@ export default function App() {
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
+  useEffect(() => trackEscOverlay(), [])
+
   useEffect(() => {
     const isTyping = (el: EventTarget | null): boolean => {
       const n = el as HTMLElement | null
@@ -862,7 +865,8 @@ export default function App() {
 
       // Esc toggles the projector blackout from anywhere in the control window —
       // including while a search box has focus, so it works under live pressure.
-      if (e.key === 'Escape' && projectionOpen) {
+      // …unless that Esc is closing something open on top (see escRule.ts). Shift+Esc always blanks.
+      if (e.key === 'Escape' && projectionOpen && escBlanksScreens(e)) {
         e.preventDefault()
         handleToggleBlank()
         return

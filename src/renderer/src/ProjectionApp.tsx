@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { cleanSourceText } from '../../shared/sourceText'
 import type { SlidePayload } from './types'
 import { useAutoFitFontSize } from './useAutoFitFontSize'
 
@@ -109,7 +110,7 @@ export default function ProjectionApp() {
       <div ref={textRef} className="projection-text" style={{ fontSize: `${fitFontSize}rem` }}>
         <div className="projection-text-inner">
           {slide.marker && <span className="projection-marker">{slide.marker}</span>}
-          {slide.text}
+          {cleanSourceText(slide.text)}
         </div>
       </div>
       {slide.reference && <div className="projection-reference">{slide.reference}</div>}

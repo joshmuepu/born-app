@@ -125,6 +125,53 @@ describe('HelpViewer navigation', () => {
   })
 })
 
+describe('HelpViewer links to a section of another page', () => {
+  const twoPages = {
+    version: 'v1',
+    sections: [
+      {
+        id: 'ops',
+        title: 'Operators',
+        pages: [
+          { id: 'cheat', title: 'Cheat sheet', file: 'operators/cheat-sheet.md' },
+          { id: 'remote', title: 'Phone remote', file: 'operators/mobile-remote.md' }
+        ]
+      }
+    ]
+  }
+  it('opens the other page and scrolls to the section (it used to do nothing)', async () => {
+    window.electronAPI.getManualManifest = vi.fn(() => Promise.resolve(twoPages))
+    window.electronAPI.getManualPage = vi.fn((file: string) =>
+      Promise.resolve(
+        file === 'operators/cheat-sheet.md'
+          ? "# Cheat sheet\n\nSee [If a phone can't connect](mobile-remote.md#if-a-phone-cant-connect)."
+          : "# Phone remote\n\nIntro.\n\n## If a phone can't connect\n\nCheck the network."
+      )
+    )
+    const scrolled: string[] = []
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) { scrolled.push(this.id) })
+
+    render(<HelpViewer onClose={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('link', { name: "If a phone can't connect" }))
+
+    await waitFor(() => expect(screen.getByText('Check the network.')).toBeInTheDocument())
+    await waitFor(() => expect(scrolled).toContain('if-a-phone-cant-connect'))
+  })
+
+  it('a link to a section of the page already open just scrolls to it', async () => {
+    window.electronAPI.getManualManifest = vi.fn(() => Promise.resolve(twoPages))
+    window.electronAPI.getManualPage = vi.fn(() =>
+      Promise.resolve("# Cheat sheet\n\n[Down](#the-end)\n\n## The end\n\nBye.")
+    )
+    const scrolled: string[] = []
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) { scrolled.push(this.id) })
+
+    render(<HelpViewer onClose={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('link', { name: 'Down' }))
+    expect(scrolled).toEqual(['the-end'])
+  })
+})
+
 describe('HelpViewer closing', () => {
   it('calls onClose when Esc is pressed', async () => {
     window.electronAPI.getManualManifest = vi.fn(() => Promise.resolve(manifest))

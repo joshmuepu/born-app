@@ -322,6 +322,7 @@ export default function BiblePanel({
       if (q) runQuery(q)
     } else if (e.key === 'Escape' && query) {
       e.preventDefault()
+      e.stopPropagation()
       setQuery('')
     }
   }

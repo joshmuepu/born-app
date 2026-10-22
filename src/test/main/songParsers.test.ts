@@ -183,7 +183,8 @@ describe('parseSong — plain text', () => {
   })
 })
 
-describe('parseSong — real .docx / .pdf files', () => {
+// Loading pdfjs and reading a real PDF took 8-16s on a Windows CI runner, over vitest's 5s default.
+describe('parseSong — real .docx / .pdf files', { timeout: 60_000 }, () => {
   // Real files, not synthetic fixtures: be-thou-my-vision.docx was produced
   // with macOS's own `textutil -convert docx`, holy-holy-holy.pdf with
   // `cupsfilter` (both genuine Word/PDF binaries, not hand-rolled markup) —

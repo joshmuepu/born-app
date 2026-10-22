@@ -8,7 +8,7 @@
  */
 import { app } from 'electron'
 import { readFileSync, existsSync } from 'fs'
-import { join, normalize } from 'path'
+import { join, normalize, relative, isAbsolute } from 'path'
 
 export interface ManualPage {
   id: string
@@ -61,7 +61,10 @@ function resolveInsideManual(relPath: string): string | null {
   const base = manualBaseDir()
   if (!base) return null
   const resolved = normalize(join(base, relPath))
-  if (!resolved.startsWith(normalize(base))) return null
+  // A plain startsWith(base) would also accept a sibling folder that merely begins with the same characters (…/v1-private);
+  // relative() tells "inside" from "next to".
+  const rel = relative(normalize(base), resolved)
+  if (rel === '' || rel === '..' || rel.startsWith('../') || rel.startsWith('..\\') || isAbsolute(rel)) return null
   return resolved
 }
 

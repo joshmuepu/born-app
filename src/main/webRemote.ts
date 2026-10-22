@@ -235,17 +235,39 @@ function sendText(res: ServerResponse, status: number, contentType: string, body
   // No caching: the client (CSS/JS/HTML) is a plain string rebuilt into the
   // app on every release, and a phone/tablet that cached last month's copy
   // would silently run stale UI against this app's current command set.
-  res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store' })
+  const headers: Record<string, string> = { 'Content-Type': contentType, 'Cache-Control': 'no-store' }
+  // The remote page is for a phone's own browser tab: it must never be loaded inside another site's frame (clickjacking).
+  if (contentType.startsWith('text/html')) {
+    headers['X-Frame-Options'] = 'DENY'
+    headers['Content-Security-Policy'] = "frame-ancestors 'none'"
+  }
+  res.writeHead(status, headers)
   res.end(body)
 }
 
-function readBody(req: IncomingMessage): Promise<string> {
+/** A remote command is a few hundred bytes; anything past this is not one. */
+export const MAX_BODY_BYTES = 256 * 1024
+
+/** Resolves with the body, or null when it grew past MAX_BODY_BYTES (reading stops there). */
+function readBody(req: IncomingMessage): Promise<string | null> {
   return new Promise((resolve) => {
     let body = ''
+    let size = 0
+    let tooBig = false
     req.on('data', (chunk) => {
+      if (tooBig) return
+      size += chunk.length
+      if (size > MAX_BODY_BYTES) {
+        tooBig = true
+        body = ''
+        resolve(null)
+        return
+      }
       body += chunk
     })
-    req.on('end', () => resolve(body))
+    req.on('end', () => {
+      if (!tooBig) resolve(body)
+    })
   })
 }
 
@@ -404,6 +426,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (path === '/command' && req.method === 'POST') {
     const body = await readBody(req)
+    if (body === null) {
+      res.writeHead(413, { Connection: 'close' })
+      res.end()
+      return
+    }
     try {
       commandCallback?.(JSON.parse(body))
     } catch {

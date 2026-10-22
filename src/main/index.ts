@@ -62,6 +62,10 @@ import {
 import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
+import { isReloadChord } from '../shared/reloadChord'
+import { readJsonQuarantining } from './corruptFile'
+import { dataFolderIsWritable } from './dataFolder'
+import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
@@ -142,8 +146,21 @@ if (process.env.BORN_USER_DATA_DIR) {
  * This closes the whole class of bug: a second launch attempt just quits
  * itself and brings the existing window forward instead.
  */
-const gotSingleInstanceLock = app.requestSingleInstanceLock()
-if (!gotSingleInstanceLock) {
+// If the data folder can't be written to (read-only, full, a bad drive), Chromium can't take the lock either and the
+// app used to just vanish with no window and no message — look first and say what is wrong.
+const dataFolderOk = dataFolderIsWritable(app.getPath('userData'))
+if (!dataFolderOk) {
+  log.error(`data folder is not writable: ${app.getPath('userData')}`)
+  dialog.showErrorBox(
+    "BORN can't save its data",
+    `BORN can't write to its data folder:\n\n${app.getPath('userData')}\n\n` +
+      'Check that the folder is not read-only and the disk is not full, then open BORN again.'
+  )
+  app.exit(1)
+}
+
+const gotSingleInstanceLock = dataFolderOk && app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock && dataFolderOk) {
   app.quit()
 }
 
@@ -223,6 +240,15 @@ function sendToStage(channel: string, ...args: unknown[]): void {
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
+/** Ctrl/Cmd+R (and +Shift) reload the window through Electron's default menu and wipe what's on screen mid-service. Swallowed in the packaged
+ *  app (preventDefault in before-input-event also stops the menu accelerator); dev builds keep reload. */
+function blockReloadChord(win: BrowserWindow): void {
+  if (!app.isPackaged) return
+  win.webContents.on('before-input-event', (event, input) => {
+    if (isReloadChord(input)) event.preventDefault()
+  })
+}
+
 function createMainWindow(): void {
   log.info('createMainWindow')
   mainWindow = new BrowserWindow({
@@ -261,6 +287,8 @@ function createMainWindow(): void {
   // Esc from the operator window is handled in the renderer (App.tsx) so it can
   // respect focus / typing state; nothing to relay here.
 
+  blockReloadChord(mainWindow)
+
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
     mainWindow = null
@@ -278,6 +306,7 @@ function createMainWindow(): void {
  *  to cover. Attached to every window except the control window, which
  *  already has its own full shortcut set in App.tsx. */
 function attachOperatorShortcuts(win: BrowserWindow): void {
+  blockReloadChord(win)
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     const mod = input.meta || input.control
@@ -1225,12 +1254,8 @@ ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
 // ── Queue persistence ─────────────────────────────────────────────────────────
 
 ipcMain.handle('queue:load', () => {
-  try {
-    const queuePath = join(app.getPath('userData'), 'queue.json')
-    return JSON.parse(readFileSync(queuePath, 'utf-8'))
-  } catch {
-    return []
-  }
+  // A damaged queue.json is kept aside (queue.corrupt-<time>.json) rather than silently replaced by the next save.
+  return readJsonQuarantining(join(app.getPath('userData'), 'queue.json'), [])
 })
 
 ipcMain.on('queue:save', (_event, items: unknown) => {
@@ -1622,7 +1647,7 @@ async function getSermonParagraphsFor(sermonId: number, language: string): Promi
         )
         .all(Number(sermonId))
       return rows.map((r, i) => ({
-        text: r.text,
+        text: cleanSourceText(r.text), // display only — see sourceText.ts
         sermonTitle: r.title,
         dateCode: r.date_code,
         sermonId: Number(sermonId),
