@@ -75,6 +75,8 @@ body {
 
 .projection-text-inner {
   width: 100%;
+  /* a line with no spaces (a web address, a long unbroken word) wraps instead of running off the screen */
+  overflow-wrap: anywhere;
 }
 
 /* Was capped by *width* (1.5vw, maxing out around 23px on any screen no
