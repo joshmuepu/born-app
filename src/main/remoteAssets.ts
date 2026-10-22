@@ -332,7 +332,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .azstrip{display:flex; gap:4px; padding:2px 2px 10px; overflow-x:auto; flex-shrink:0;
   -webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);
   mask-image:linear-gradient(to right, black calc(100% - 28px), transparent);}
-.azstrip button{flex-shrink:0; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
+.azstrip button{flex-shrink:0; width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text); background:var(--surface2); border:none}
 .azstrip button:disabled{color:var(--text3); opacity:0.4}
 .azstrip button.current{background:var(--accent); color:#fff}
 .songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}

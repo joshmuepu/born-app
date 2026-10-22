@@ -19,3 +19,11 @@ describe('remote search boxes', () => {
     expect(rule('.searchbox input')).toMatch(/font-size:16px/)
   })
 })
+
+describe('remote A–Z strip', () => {
+  it('has letters an easy 44px touch target', () => {
+    const b = rule('.azstrip button')
+    expect(b).toMatch(/width:44px/)
+    expect(b).toMatch(/height:44px/)
+  })
+})
