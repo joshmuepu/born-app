@@ -187,6 +187,7 @@ export default function SearchBar({ onResults, onSearchingChange, externalQuery 
       if (e.key === 'Enter') handleSearch()
       else if (e.key === 'Escape' && query) {
         e.preventDefault()
+        e.stopPropagation()
         clearSearch()
       }
     },

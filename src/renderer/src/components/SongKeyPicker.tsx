@@ -32,8 +32,18 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
         setOpen(false)
       }
     }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) {
+        setOpen(false)
+        toggleRef.current?.focus()
+      }
+    }
     document.addEventListener('mousedown', onOutside)
-    return () => document.removeEventListener('mousedown', onOutside)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   const pick = (key: string | null): void => {
