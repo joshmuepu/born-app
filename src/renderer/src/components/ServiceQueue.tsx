@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { cleanSourceText } from '../../../shared/sourceText'
 import { Monitor, MonitorPlay, MonitorOff, EyeOff, Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
@@ -263,7 +264,7 @@ export default function ServiceQueue({
 
     if (!active) {
       const subtitle = itemSubtitle(item)
-      const preview = item.slides[0]?.text
+      const preview = item.slides[0]?.text ? cleanSourceText(item.slides[0].text) : item.slides[0]?.text
       const detail = [subtitle, preview].filter(Boolean).join('  —  ')
       return (
         <div
@@ -336,7 +337,7 @@ export default function ServiceQueue({
             </span>
           )}
         </div>
-        <p className="queue-item-text">{liveText}</p>
+        <p className="queue-item-text">{cleanSourceText(liveText)}</p>
         <div className="result-actions">
           <button className="btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onProject(index) }}>Restart</button>
           <button className="btn-quiet btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(index) }}>Remove</button>
