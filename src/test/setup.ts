@@ -1,6 +1,18 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
+// pdfjs-dist (song import from a PDF) needs Promise.withResolvers. Node 20 — the version the release workflow builds with — doesn't
+// have it (Node 22+ and the Electron the app actually runs on do), so the PDF tests failed there with "withResolvers is not a function".
+const P = Promise as unknown as { withResolvers?: () => unknown }
+if (typeof P.withResolvers !== 'function') {
+  P.withResolvers = function <T>(): { promise: Promise<T>; resolve: (v: T | PromiseLike<T>) => void; reject: (e?: unknown) => void } {
+    let resolve!: (v: T | PromiseLike<T>) => void
+    let reject!: (e?: unknown) => void
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+}
+
 // Provide a minimal window.electronAPI mock for renderer tests
 if (typeof window !== 'undefined') {
   // @testing-library/user-event v14 accesses navigator.clipboard at module-load time
