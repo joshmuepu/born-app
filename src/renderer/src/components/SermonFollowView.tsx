@@ -44,6 +44,13 @@ interface FlatSlide {
   text: string
 }
 
+/** "¶41a" for a numbered paragraph; a paragraph with no number is "Slide 2" (or nothing, if it is one slide). */
+function paraLabel(marker: string): string {
+  if (!marker.startsWith('§') && !marker.includes('#')) return `¶${marker}`
+  const page = marker.split('#')[1]
+  return page !== undefined ? `Slide ${Number(page) + 1}` : ''
+}
+
 /**
  * Clicking a search result opens this — the whole sermon, scrolled to the
  * paragraph you picked. Click any paragraph to put it on the screen; once
@@ -82,14 +89,18 @@ export default function SermonFollowView({
 
   const isLive = (fs: { marker: string }): boolean => liveRef !== null && liveRef === fs.marker
   const isFocused = (fs: { marker: string }): boolean =>
-    liveRef === null && heldRef !== null ? heldRef === fs.marker : refsOverlap(focusRef, fs.marker)
+    liveRef === null && heldRef !== null
+      ? heldRef === fs.marker
+      : refsOverlap(focusRef, fs.marker) || fs.marker === `${focusRef}#0`
 
   const flatSlides = useMemo<FlatSlide[]>(() => {
     const out: FlatSlide[] = []
     for (const q of paras) {
       const slides = quoteToItem(q).slides
       slides.forEach((s, i) => {
-        out.push({ quote: q, slideIndex: i, marker: s.marker ?? q.paragraphRef, text: s.text })
+        // No number of its own: name the page after the source row, so each page can be marked on its own.
+        const marker = s.marker ?? (slides.length > 1 ? `${q.paragraphRef}#${i}` : q.paragraphRef)
+        out.push({ quote: q, slideIndex: i, marker, text: s.text })
       })
     }
     return out
@@ -178,7 +189,7 @@ export default function SermonFollowView({
                 }}
               >
                 <div className="follow-para-head">
-                  <span className="follow-para-ref">¶{fs.marker}</span>
+                  <span className="follow-para-ref">{paraLabel(fs.marker)}</span>
                   {live && <span className="on-screen-tag">On screen</span>}
                 </div>
                 <p className="follow-para-text">{highlight(fs.text, query, matchType)}</p>

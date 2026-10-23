@@ -133,3 +133,28 @@ describe('SermonFollowView — where the reader stays', () => {
     await waitFor(() => expect(scrolledTo().at(-1)).toBe('¶9'))
   })
 })
+
+describe('SermonFollowView — a paragraph with no number', () => {
+  const props = { sermonId: 5, onBack: vi.fn(), onProject: vi.fn(), onAddToQueue: vi.fn() }
+  beforeEach(() => {
+    window.electronAPI.getSermonParagraphs = vi.fn(() =>
+      Promise.resolve([
+        { text: 'alpha beta gamma delta. '.repeat(40), sermonTitle: 'P', dateCode: '00-0000', sermonId: 5, paragraphIndex: 0, paragraphRef: '§77' }
+      ])
+    )
+  })
+  it('marks one slide at a time, and never shows the internal id', async () => {
+    const { container } = render(<SermonFollowView {...props} anchorRef="§77" liveRef="§77#1" />)
+    await waitFor(() => expect(container.querySelectorAll('.follow-para').length).toBeGreaterThan(2))
+    expect(container.querySelectorAll('.follow-para--on-screen')).toHaveLength(1)
+    expect(container.querySelector('.follow-para--on-screen')?.textContent).toContain('Slide 2')
+    expect(container.textContent).not.toContain('§')
+  })
+  it('opening it from the queue marks the first slide only', async () => {
+    const { container } = render(<SermonFollowView {...props} anchorRef="§77" liveRef={null} />)
+    await waitFor(() => expect(container.querySelectorAll('.follow-para').length).toBeGreaterThan(2))
+    const marked = [...container.querySelectorAll('.follow-para--focus')]
+    expect(marked).toHaveLength(1)
+    expect(marked[0].textContent).toContain('Slide 1')
+  })
+})

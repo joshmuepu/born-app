@@ -163,6 +163,35 @@ function displayRef(ref: string): string {
   return r
 }
 
+/** a, b … z, aa, ab … — a very long paragraph can run past 26 pages. */
+function pageLetters(i: number): string {
+  let n = i
+  let out = ''
+  do {
+    out = String.fromCharCode(97 + (n % 26)) + out
+    n = Math.floor(n / 26) - 1
+  } while (n >= 0)
+  return out
+}
+
+/**
+ * Which paragraph the reader should mark as "on screen" for slide `slideIndex`
+ * of a sermon item. A numbered paragraph is its label ("41a"); a paragraph with
+ * no number of its own is its source reference, plus "#<page>" when it spans
+ * several pages so that only the page on screen is marked. The third " · "
+ * segment of the reference is only trusted when it is really there: a header
+ * slide's reference ends with the sermon's date code ("63-0825E"), which would
+ * parse as a paragraph range and mark nearly every paragraph.
+ */
+export function liveParagraphRef(item: QuoteItem, slideIndex: number): string {
+  const slide = item.slides[slideIndex]
+  const tail = (slide?.reference || '').split(' · ')
+  if (tail.length >= 3) return tail[tail.length - 1]
+  return !slide?.marker && item.slides.length > 1
+    ? `${item.quote.paragraphRef}#${slideIndex}`
+    : item.quote.paragraphRef
+}
+
 export function quoteToItem(quote: Quote): QuoteItem {
   // Sermon text starts with the paragraph number, e.g. "146 But the …".
   const m = quote.text.match(/^\s*(\d+(?:[-–]\d+)?)\s+(.*)$/s)
@@ -196,7 +225,7 @@ export function quoteToItem(quote: Quote): QuoteItem {
     // A split paragraph gets an a/b/c suffix on every page (including the
     // first), same convention as a long Bible verse — "26a", "26b", ….
     pageTexts.forEach((text, i) => {
-      const suffix = pageTexts.length > 1 ? String.fromCharCode(97 + i) : ''
+      const suffix = pageTexts.length > 1 ? pageLetters(i) : ''
       const num = sub.num !== null ? String(sub.num) : subIdx === 0 ? leadMarker : undefined
       const refValue = sub.num !== null ? String(sub.num) : quote.paragraphRef
       slides.push({
