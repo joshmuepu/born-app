@@ -67,7 +67,7 @@ async function launch(o) {
   delete env.ELECTRON_RUN_AS_NODE
   const log = fs.openSync(path.join(o.profile, 'qa-stdout.log'), 'a')
   const bin = o.exe || path.join(ROOT, 'node_modules', '.bin', 'electron')
-  const args = o.exe ? [`--remote-debugging-port=${port}`] : ['.', `--remote-debugging-port=${port}`]
+  const args = [...(o.extraArgs || []), ...(o.exe ? [`--remote-debugging-port=${port}`] : ['.', `--remote-debugging-port=${port}`])]
   const proc = spawn(bin, args, { cwd: o.cwd || ROOT, env, stdio: ['ignore', log, log] })
   const t0 = Date.now()
   while (Date.now() - t0 < (o.timeout || 60000)) {

@@ -28,7 +28,7 @@ import type {
   SongMatchResult,
   SongGroupToAdd
 } from './types'
-import { quoteToItem, makeId, migrateQueue, itemTitle } from '../../shared/queueItem'
+import { quoteToItem, makeId, migrateQueue, itemTitle, liveParagraphRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
@@ -1391,19 +1391,13 @@ export default function App() {
       }
     }
     if (projected.item.kind === 'quote') {
-      // tail is `slide.reference` split on " · " — title / dateCode / paragraph
-      // (e.g. "41a"), but a sermon's header slide has no third segment at all
-      // ("Title · DateCode"), since it isn't a numbered paragraph. Checking
-      // only `tail[tail.length - 1]` for truthiness doesn't catch that case:
-      // it falls back to the *dateCode* segment (e.g. "63-0825E"), which
-      // parses as a paragraph range [63, 825] and then spuriously overlaps
-      // nearly every real paragraph in the sermon in SermonFollowView's
-      // on-screen matching. Only trust the last segment when it's genuinely
-      // the third one.
+      // The paragraph label of this slide ("41a"); the third " · " segment is
+      // not trusted for a header slide, whose reference ends with its date
+      // code (see liveParagraphRef).
       return {
         kind: 'quote',
         sermonId: projected.item.quote.sermonId,
-        paragraphRef: tail.length >= 3 ? tail[tail.length - 1] : projected.item.quote.paragraphRef
+        paragraphRef: liveParagraphRef(projected.item, projected.slide)
       }
     }
     if (projected.item.kind === 'song') {

@@ -17,6 +17,8 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
   const [recentKeys, setRecentKeys] = useState<string[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
+  const openRef = useRef(false)
+  openRef.current = open
 
   useEffect(() => {
     if (open) window.electronAPI.getRecentKeys().then(setRecentKeys)
@@ -33,7 +35,7 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
       }
     }
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && !e.shiftKey) {
+      if (e.key === 'Escape' && !e.shiftKey && openRef.current) {
         setOpen(false)
         toggleRef.current?.focus()
       }
