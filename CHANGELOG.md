@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.13.3
+
+**Fixed: your place on screen stays put**
+- Pressing **Esc** (or **Hide screen** on the phone) while a sermon is on the screen no longer scrolls the sermon list away. It stays exactly where you were.
+- The same for the **Bible**: the chapter used to close and go back to the book list, then jump to a verse when you showed the screen again. It now stays open at the verse you were on.
+- And for **songs**: the slide list no longer shifts by a few pixels when the screen is hidden or shown.
+- **Esc** no longer moves the keyboard cursor onto a song's key button when the key list is already closed.
+
+**Fixed: getting to a queued sermon paragraph**
+- Opening a queued sermon range now shows its **first** paragraph instead of the last one, and pressing **Project** keeps the paragraph that went to the screen in view.
+- Sermons and book chapters with **no paragraph numbers**: each slide is now labelled **Slide 1, Slide 2, Slide 3 …**, and only the slide actually on the screen is marked. Before, every slide was marked at once and labelled with an internal code.
+- Very long paragraphs that run past 26 pages now have sensible page labels (before they turned into stray characters).
+
+**Fixed: updating from inside BORN**
+- Updating from inside BORN now copes with a connection that drops or stalls partway: it tries again, and if the download still cannot finish it opens the download page in your browser. A download that was cut short is no longer treated as finished — before, BORN could run an installer it had only partly received.
+
+Nothing new was added: no new screens, buttons or settings. Your saved services open and save exactly as before.
+
 ## 1.13.2
 
 **Fixed: things that could go wrong during a service**
