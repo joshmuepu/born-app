@@ -422,6 +422,15 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     [loadSermonsForIds]
   )
 
+  // A picked day's sermons sit below the calendar; on a short window that is below the fold, so bring them into view once they arrive.
+  const dateResultsRef = useRef<HTMLDivElement>(null)
+  const revealDateResults = useRef(false)
+  useEffect(() => {
+    if (!revealDateResults.current) return
+    revealDateResults.current = false
+    dateResultsRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [browsedSermons])
+
   const pickYear = useCallback(
     (y: DateTreeYear) => {
       const firstMonth = y.months[0]?.month ?? 1
@@ -538,6 +547,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
                     disabled={!n}
                     onClick={() => {
                       setDateFocus({ year: year.year, month: calMonth, day: d })
+                      revealDateResults.current = true
                       loadDateSelection(year, calMonth, d)
                     }}
                   >
@@ -566,7 +576,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
           </div>
         </div>
 
-        <div className="browse-date-results">
+        <div className="browse-date-results" ref={dateResultsRef}>
           <div className="browse-back-row">
             <span className="browse-group-label">{groupLabel}</span>
             <span className="browse-count">{browsedSermons.length} sermon{browsedSermons.length === 1 ? '' : 's'}</span>

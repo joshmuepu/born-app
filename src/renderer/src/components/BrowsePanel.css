@@ -452,6 +452,8 @@
 
 .browse-date-results {
   flex: 1;
+  /* never squeezed to nothing under the calendar: on a short window (1366×768) the whole panel scrolls instead */
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   overflow: hidden;

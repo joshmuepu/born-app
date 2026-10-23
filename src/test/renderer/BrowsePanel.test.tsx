@@ -229,6 +229,18 @@ describe('BrowsePanel', () => {
     )
   })
 
+  it('picking a day brings its sermons into view (on a short screen they sit below the calendar)', async () => {
+    const user = userEvent.setup()
+    const scrolled: Element[] = []
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) { scrolled.push(this) })
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    await waitFor(() => screen.getByText('1960'))
+    await user.click(screen.getByText('1960'))
+    await waitFor(() => screen.getByText('January 1960'))
+    await user.click(screen.getByText('1', { selector: '.browse-cal-day' }))
+    await waitFor(() => expect(scrolled.some((e) => e.classList.contains('browse-date-results'))).toBe(true))
+  })
+
   it('drills Location: state → city → sermons', async () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
