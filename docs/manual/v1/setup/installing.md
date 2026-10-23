@@ -37,9 +37,12 @@ window when one is available:
   the downloaded installer for you to click through by hand — on a Mac, drag
   **Branham or Nothing** onto **Applications** again (replacing the old one); on
   Windows, click through the installer window that opens.
-- If the update check or download itself fails, the banner shows **Update didn't
-  go through** with a reason, and an **Open download page** button to get it from
-  the website instead.
+- If the download is interrupted — a connection that drops or stalls partway, which
+  happens on some church networks — BORN tries again on its own. If it still cannot
+  finish, it opens the download page in your browser so you can get the file there,
+  and the banner shows **Update didn't go through** with the reason and an
+  **Open download page** button. A download that was cut short is never treated as
+  finished.
 
 Your settings, saved services, and the sermon/song search data all carry forward
 automatically — updating never asks you to reconfigure anything.
