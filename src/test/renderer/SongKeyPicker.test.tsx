@@ -14,4 +14,13 @@ describe('SongKeyPicker', () => {
     expect(document.querySelector('.song-key-popover')).toBeNull()
     expect(document.activeElement).toBe(btn)
   })
+
+  it('Esc with the picker closed leaves focus where it is', async () => {
+    ;(window as unknown as { electronAPI: Record<string, unknown> }).electronAPI.getRecentKeys = vi.fn(() => Promise.resolve([]))
+    render(<div><input aria-label="elsewhere" /><SongKeyPicker songKey="G" onChange={() => {}} /></div>)
+    const other = screen.getByLabelText('elsewhere')
+    other.focus()
+    await act(async () => { fireEvent.keyDown(other, { key: 'Escape' }) })
+    expect(document.activeElement).toBe(other)
+  })
 })
