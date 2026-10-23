@@ -165,6 +165,18 @@ export default function BiblePanel({
     }
   }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse, preview?.bookNum, preview?.chapter, preview?.verse])
 
+  // Hiding the screen (or anything else that takes the verse off the projector)
+  // must not close the chapter the operator is reading: keep it open at that verse.
+  const lastOnScreen = useRef<{ bookNum: number; chapter: number; verse: number } | null>(null)
+  useEffect(() => {
+    if (onScreen) {
+      lastOnScreen.current = onScreen
+    } else if (lastOnScreen.current) {
+      if (!preview) setBrowseAnchor(lastOnScreen.current)
+      lastOnScreen.current = null
+    }
+  }, [onScreen?.bookNum, onScreen?.chapter, onScreen?.verse])
+
   // Only animate a scroll within the chapter that's already showing (e.g.
   // Next/Prev moving a verse at a time) — jumping to a freshly-loaded chapter
   // should land on the target verse instantly, not visibly scroll there.
