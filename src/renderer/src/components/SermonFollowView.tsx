@@ -71,8 +71,18 @@ export default function SermonFollowView({
   const hasScrolledOnce = useRef(false)
 
   // What to keep in view: the projected paragraph if we're live, else the
-  // paragraph the operator opened the sermon on.
-  const focusRef = liveRef ?? anchorRef
+  // last one that was (hiding the screen must not move the reader: the
+  // operator is still in the same place), else the paragraph the operator
+  // opened the sermon on. A new anchor (another queue row) starts over.
+  const lastLive = useRef<{ sermonId: number; anchor: string; ref: string } | null>(null)
+  if (liveRef !== null) lastLive.current = { sermonId, anchor: anchorRef, ref: liveRef }
+  const held = lastLive.current
+  const heldRef = held && held.sermonId === sermonId && held.anchor === anchorRef ? held.ref : null
+  const focusRef = liveRef ?? heldRef ?? anchorRef
+
+  const isLive = (fs: { marker: string }): boolean => liveRef !== null && liveRef === fs.marker
+  const isFocused = (fs: { marker: string }): boolean =>
+    liveRef === null && heldRef !== null ? heldRef === fs.marker : refsOverlap(focusRef, fs.marker)
 
   const flatSlides = useMemo<FlatSlide[]>(() => {
     const out: FlatSlide[] = []
@@ -84,6 +94,8 @@ export default function SermonFollowView({
     }
     return out
   }, [paras])
+
+  const firstMarked = flatSlides.findIndex((fs) => isLive(fs) || isFocused(fs))
 
   useEffect(() => {
     let alive = true
@@ -131,7 +143,7 @@ export default function SermonFollowView({
         <div className="results-loading"><div className="spinner" /><span>Loading sermon…</span></div>
       ) : (
         <div className="follow-list">
-          {flatSlides.map((fs) => {
+          {flatSlides.map((fs, i) => {
             // Exact match, not refsOverlap: this list is already flattened to
             // one card per page ("1a", "1b", …), so liveRef — the specific
             // page actually on screen — must match exactly. refsOverlap's
@@ -142,12 +154,12 @@ export default function SermonFollowView({
             // screen" at once. `focused` legitimately still wants the fuzzy
             // match: it falls back to the whole clicked/merged anchorRef
             // when nothing from this sermon is live yet.
-            const live = liveRef !== null && liveRef === fs.marker
-            const focused = !live && refsOverlap(focusRef, fs.marker)
+            const live = isLive(fs)
+            const focused = !live && isFocused(fs)
             return (
               <div
                 key={`${fs.quote.paragraphRef}:${fs.slideIndex}`}
-                ref={live || focused ? focusEl : undefined}
+                ref={i === firstMarked ? focusEl : undefined}
                 className={[
                   'follow-para',
                   live ? 'follow-para--on-screen' : '',

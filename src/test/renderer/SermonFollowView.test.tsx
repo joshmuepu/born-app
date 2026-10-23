@@ -87,3 +87,49 @@ describe('SermonFollowView — on-screen marking', () => {
     expect(onScreenTags[0].closest('.follow-para')?.textContent).toContain('¶1b')
   })
 })
+
+describe('SermonFollowView — where the reader stays', () => {
+  const mk = (n: number): Quote => ({
+    text: `${n} Placeholder paragraph number ${n}.`,
+    sermonTitle: 'Placeholder',
+    dateCode: '00-0000',
+    sermonId: 5,
+    paragraphIndex: n,
+    paragraphRef: String(n)
+  })
+  const props = { sermonId: 5, onBack: vi.fn(), onProject: vi.fn(), onAddToQueue: vi.fn() }
+  const scrolledTo = (): string[] =>
+    (Element.prototype.scrollIntoView as unknown as { mock: { contexts: Element[] } }).mock.contexts.map(
+      (el) => el.querySelector('.follow-para-ref')?.textContent ?? ''
+    )
+
+  beforeEach(() => {
+    window.electronAPI.getSermonParagraphs = vi.fn(() => Promise.resolve([5, 6, 7, 8, 9].map(mk)))
+  })
+
+  it('opens a queued range at its first paragraph, not its last', async () => {
+    render(<SermonFollowView {...props} anchorRef="6-8" liveRef={null} />)
+    await waitFor(() => expect(screen.getByText('¶8')).toBeInTheDocument())
+    expect(scrolledTo()).toEqual(['¶6'])
+  })
+
+  it('keeps its place when the screen is hidden (the live paragraph goes away)', async () => {
+    const { rerender } = render(<SermonFollowView {...props} anchorRef="6-8" liveRef="7" />)
+    await waitFor(() => expect(screen.getByText('¶8')).toBeInTheDocument())
+    const before = scrolledTo().length
+    rerender(<SermonFollowView {...props} anchorRef="6-8" liveRef={null} />)
+    await waitFor(() => expect(screen.getByText('¶8')).toBeInTheDocument())
+    expect(scrolledTo().length).toBe(before)
+    const marked = [...document.querySelectorAll('.follow-para--focus')].map((e) => e.textContent)
+    expect(marked).toHaveLength(1)
+    expect(marked[0]).toContain('¶7')
+  })
+
+  it('follows a new anchor after a hide (a different queue row was clicked)', async () => {
+    const { rerender } = render(<SermonFollowView {...props} anchorRef="6" liveRef="7" />)
+    await waitFor(() => expect(screen.getByText('¶8')).toBeInTheDocument())
+    rerender(<SermonFollowView {...props} anchorRef="6" liveRef={null} />)
+    rerender(<SermonFollowView {...props} anchorRef="9" liveRef={null} />)
+    await waitFor(() => expect(scrolledTo().at(-1)).toBe('¶9'))
+  })
+})
