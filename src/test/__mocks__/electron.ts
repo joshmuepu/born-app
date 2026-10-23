@@ -52,3 +52,8 @@ export const nativeTheme = {
   shouldUseDarkColors: true,
   on: vi.fn()
 }
+
+export const shell = {
+  openExternal: vi.fn(() => Promise.resolve()),
+  openPath: vi.fn(() => Promise.resolve(''))
+}
