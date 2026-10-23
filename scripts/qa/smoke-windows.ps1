@@ -1,6 +1,7 @@
 # Packaged-app smoke for Windows (scripts only; run in Windows PowerShell 5.1 or pwsh on the CI runner or any Windows machine).
 # Starts the unpacked app on an isolated profile / remote port / mDNS name, then checks: the window loads, the libraries are seeded and
 # answer through the phone-remote API, the installer is a real PE, and the exe carries the v1 icon (not Electron's default).
+# (Headers come back as a string in Windows PowerShell 5.1 and as a string[] in pwsh 7, hence the @(...)[0] below.)
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\qa\smoke-windows.ps1 [-Unpacked dist-installers\win-unpacked] [-Port 14316] [-OutDir smoke-out]
 param(
   [string]$Unpacked = 'dist-installers\win-unpacked',
@@ -51,7 +52,7 @@ try {
   # ── the phone-remote answers, and the libraries answer through it ───────────
   $base = "http://127.0.0.1:$Port"
   try { $r = Invoke-WebRequest "$base/ping" -UseBasicParsing -TimeoutSec 15; Check 'remote /ping answers' ($r.StatusCode -eq 200) ("status " + $r.StatusCode) } catch { Check 'remote /ping answers' $false $_.Exception.Message }
-  try { $r = Invoke-WebRequest "$base/" -UseBasicParsing -TimeoutSec 15; Check 'remote page is served with frame protection' (($r.Headers['X-Frame-Options'] -eq 'DENY')) ("X-Frame-Options=" + $r.Headers['X-Frame-Options']) } catch { Check 'remote page served' $false $_.Exception.Message }
+  try { $r = Invoke-WebRequest "$base/" -UseBasicParsing -TimeoutSec 15; $xfo = @($r.Headers['X-Frame-Options'])[0]; Check 'remote page is served with frame protection' ([string]$xfo -eq 'DENY') ("X-Frame-Options=" + $xfo) } catch { Check 'remote page served' $false $_.Exception.Message }
   try { $r = Invoke-RestMethod "$base/api/search/sermons?q=faith" -TimeoutSec 60; $n = $r.Count; Check 'sermon search returns results' ($n -gt 100) "$n results" } catch { Check 'sermon search returns results' $false $_.Exception.Message }
   try { $r = Invoke-RestMethod "$base/api/search/songs?q=amazing" -TimeoutSec 60; $n = $r.Count; Check 'song search returns results' ($n -gt 0) "$n results" } catch { Check 'song search returns results' $false $_.Exception.Message }
   try { $b = Invoke-RestMethod "$base/api/search/bible?q=John%203:16" -TimeoutSec 60; Check 'Bible lookup returns a passage' ($b.kind -eq 'passage') ("kind=" + $b.kind) } catch { Check 'Bible lookup returns a passage' $false $_.Exception.Message }
