@@ -6,9 +6,9 @@ After the fixes, reaching a queued paragraph takes one click and under a second.
 - a **"back to the queued paragraph"** button after the operator has scrolled away;
 - a small **mini-map** or paragraph strip for 700+ paragraph sermons.
 
-**v2 already has** the first of these (paragraph-number jump in `SermonFollowView`, `jumpToPara`) and a ◂ ▸ walker between search matches. v1 has none: building it in v1 is a new feature, so it is left out of this hardening line.
+v1 has none of these: building one is a new feature, so it is left out of this hardening line.
 
-Options: (1) do nothing in v1; (2) port v2's paragraph-number jump to v1 as v1.14 (about one component, ~60 lines, plus CSS and tests — small, but a new control on the screen); (3) mini-map (larger, new design).
+Options: (1) do nothing in v1; (2) a paragraph-number jump box in the sermon reader as v1.14 (about one component, ~60 lines, plus CSS and tests — small, but a new control on the screen); (3) mini-map (larger, new design).
 **Recommendation: (1) for v1.13.3 (ship the fixes only), and (2) in a later minor if operators still ask after using the fixes.**
 
 ## B. Whether to ship v1.13.3

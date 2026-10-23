@@ -51,14 +51,6 @@ Steps for the operator: 1 click to open the queued row, 1 click to project, 1 ke
 ## Whole-service hunt
 Covered by: the matrix (sermon far paragraph, Bible, song, queue, search results; screens on/off; stage window present), `flows.cjs` (600-item queue, restart, Tab focus) 8/8, `sweep.cjs` (10 surfaces × sizes × scales × themes) 0 findings, and the packaged smoke. I did **not** build a separate scripted song→Bible→sermon→song service end to end beyond that, and did not drive a real projector or a phone. Nothing else clear was found, so nothing else was changed.
 
-## Does v2 have the same bugs? (read-only look at `born-again`, branch `v2-channels`)
-- Song key Esc focus: **yes**, same line (`SongKeyPicker.tsx:43`).
-- Page letters past 26: **yes** (`queueItem.ts:288`; v2's tape code already clamps with `Math.min(i, 25)`).
-- Bible chapter closing on hide: **yes**, same `focusVerse = preview ?? onScreen ?? browseAnchor`.
-- Sermon reader on hide: **probably yes** — same `focusRef = liveRef ?? anchorRef` and the same blank → `onScreenLoc` null; but v2 already scrolls to the **first** matching card (not the last) and has the paragraph-number jump and the ◂ ▸ search-match walker. Not measured in a running v2.
-- Song tag 4 px and no-number slides: shared code, expected to behave the same; not measured.
-v2 should get fixes 1–5 by intent (this branch is not merged into v2; v2 was not touched).
-
 ## Verification (once, at the head commit)
 - Typecheck clean. Unit tests **63 files, 757 tests, all pass** (start: 61 files, 745 at v1.13.1; `npm test` passed on the first run, no teardown flake).
 - Production build builds. Probes: `flows` 8/8, `sweep` 0 findings, Esc matrix 0/80 failed ×3 sizes.
