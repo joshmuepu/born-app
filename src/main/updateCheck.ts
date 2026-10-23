@@ -11,6 +11,7 @@
  */
 import { app, net, shell, type BrowserWindow } from 'electron'
 import { spawn } from 'child_process'
+import { once } from 'events'
 import { createWriteStream, writeFileSync, accessSync, constants } from 'fs'
 import { unlink } from 'fs/promises'
 import { join, dirname, resolve } from 'path'
@@ -28,6 +29,13 @@ export interface UpdateInfo {
   notes?: string
   /** Filename of the installer for this platform, when an update is available. */
   asset?: string
+  /** Size the RELEASE itself reports for that installer. The download is checked
+   *  against this, not only against the content-length the connection claims, so a
+   *  proxy or a reset that truncates the file can't pass itself off as the whole thing. */
+  assetSize?: number
+  /** The URL the release gives for that installer (instead of one built from the
+   *  version and a naming convention, which would 404 silently if either changed). */
+  assetUrl?: string
   /** The check itself failed (offline, GitHub unreachable, etc.) — distinct
    *  from a successful check that just found no update, so the UI can say
    *  "couldn't check" instead of falsely claiming the app is up to date. */
@@ -83,14 +91,24 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
       signal: AbortSignal.timeout(15000)
     })
     if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-    const json = (await res.json()) as { tag_name?: string; html_url?: string; body?: string }
+    const json = (await res.json()) as {
+      tag_name?: string
+      html_url?: string
+      body?: string
+      assets?: Array<{ name?: string; size?: number; browser_download_url?: string }>
+    }
     const tag = (json.tag_name ?? '').trim()
     if (tag) {
       info.latest = tag.replace(/^v/, '')
       info.hasUpdate = sameMajor(info.latest, current) && cmpVersion(info.latest, current) > 0
       if (json.html_url) info.url = json.html_url
       if (json.body) info.notes = json.body
-      if (info.hasUpdate) info.asset = assetName(info.latest)
+      if (info.hasUpdate) {
+        info.asset = assetName(info.latest)
+        const match = (json.assets ?? []).find((a) => a.name === info.asset)
+        if (match?.size) info.assetSize = match.size
+        if (match?.browser_download_url) info.assetUrl = match.browser_download_url
+      }
     }
     log.info(`update check: current=${current} latest=${info.latest} hasUpdate=${info.hasUpdate}`)
   } catch (e) {
@@ -122,43 +140,135 @@ export interface DownloadResult {
 
 let downloading = false
 
+/** How long the connection may send nothing at all before we treat it as dead.
+ *  Not a limit on the whole download: a 175 MB installer on a slow church line
+ *  legitimately takes many minutes, so only *silence* counts against it. */
+const STALL_MS = 60_000
+/** A reset connection is usually a one-off (TLS-inspecting antivirus, a proxy,
+ *  tired WiFi), so one failure is not the answer — but neither is trying forever. */
+const RETRIES = 3
+const BACKOFF_MS = 2000
+
+/** Test seam only: the production callers pass nothing. */
+export interface DownloadOptions {
+  stallMs?: number
+  retries?: number
+  backoffMs?: number
+}
+
+/** One attempt. Throws on anything that means "do not run this file". */
+async function fetchInstaller(
+  url: string,
+  dest: string,
+  expected: number | undefined,
+  win: BrowserWindow | null,
+  stallMs: number
+): Promise<number> {
+  const controller = new AbortController()
+  const res = await net.fetch(url, {
+    // The check already names itself this way. The download said nothing at all,
+    // so the two halves of one update looked like two different programs to
+    // anything inspecting the traffic; now they match and can be allow-listed together.
+    headers: { Accept: 'application/octet-stream', 'User-Agent': `BORN/${app.getVersion()}` },
+    signal: controller.signal
+  })
+  if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`)
+  const claimed = Number(res.headers.get('content-length')) || 0
+  const total = expected || claimed
+  let received = 0
+  const file = createWriteStream(dest)
+  const reader = res.body.getReader()
+  try {
+    for (;;) {
+      // A connection that is merely slow keeps arriving; one that has died mid-file
+      // just goes quiet, and without this the app waited on it for ever — the
+      // operator watching "Downloading… 37%" had no way to tell the two apart.
+      let timer: NodeJS.Timeout | undefined
+      const wentQuiet = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort()
+          reject(new Error('the connection stopped sending data'))
+        }, stallMs)
+      })
+      let chunk: { done: boolean; value?: Uint8Array }
+      // Aborting makes the read we walked away from reject a moment later. It has to keep a
+      // handler of its own, or that rejection surfaces as an unhandled one in the main process.
+      const reading = reader.read()
+      reading.catch(() => {})
+      try {
+        chunk = await Promise.race([reading, wentQuiet])
+      } finally {
+        clearTimeout(timer)
+      }
+      if (chunk.done || !chunk.value) break
+      received += chunk.value.length
+      // Wait for the disk when it falls behind, instead of holding the whole
+      // installer in memory on the way past.
+      if (!file.write(Buffer.from(chunk.value))) await once(file, 'drain')
+      if (win && !win.isDestroyed()) win.webContents.send('app:download-progress', { received, total })
+    }
+    await new Promise<void>((ok, bad) => file.end((err?: Error | null) => (err ? bad(err) : ok())))
+  } catch (e) {
+    file.destroy()
+    reader.cancel().catch(() => {})
+    throw e
+  }
+  // The one check that matters: an installer that arrived only in part must never
+  // reach applyUpdate(), which on Windows runs it silently with /S.
+  if (total && received !== total) {
+    throw new Error(`the download stopped early (${received} of ${total} bytes)`)
+  }
+  if (!received) throw new Error('the download was empty')
+  return received
+}
+
 /**
  * Download the installer for the latest release into the temp folder, streaming
  * progress to the window. Resolves with the file path.
+ *
+ * Only a whole, verified file is ever returned. When the network will not give us
+ * one — the church connection this was reported on resets the transfer partway —
+ * the release page is opened in the operator's own browser, which does manage it.
  */
-export async function downloadUpdate(win: BrowserWindow | null): Promise<DownloadResult> {
+export async function downloadUpdate(
+  win: BrowserWindow | null,
+  opts: DownloadOptions = {}
+): Promise<DownloadResult> {
   if (downloading) return { ok: false, error: 'A download is already in progress.' }
   const info = cached
   const asset = info?.asset
   if (!info?.latest || !asset) return { ok: false, error: 'No update available for this platform.' }
 
-  const url = `https://github.com/${REPO}/releases/download/v${info.latest}/${asset}`
+  const url = info.assetUrl ?? `https://github.com/${REPO}/releases/download/v${info.latest}/${asset}`
   const dest = join(app.getPath('temp'), asset)
+  const stallMs = opts.stallMs ?? STALL_MS
+  const retries = opts.retries ?? RETRIES
+  const backoffMs = opts.backoffMs ?? BACKOFF_MS
   downloading = true
   log.info(`downloading update: ${url}`)
   try {
-    const res = await net.fetch(url)
-    if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`)
-    const total = Number(res.headers.get('content-length')) || 0
-    let received = 0
-    const file = createWriteStream(dest)
-    const reader = res.body.getReader()
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      file.write(Buffer.from(value))
-      received += value.length
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('app:download-progress', { received, total })
+    let last: unknown
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const received = await fetchInstaller(url, dest, info.assetSize, win, stallMs)
+        log.info(`update downloaded: ${dest} (${received} bytes, attempt ${attempt})`)
+        return { ok: true, path: dest }
+      } catch (e) {
+        last = e
+        log.warn(`update download attempt ${attempt} of ${retries} failed`, e)
+        await unlink(dest).catch(() => {})
+        if (attempt < retries && backoffMs) await new Promise((r) => setTimeout(r, backoffMs * attempt))
       }
     }
-    await new Promise<void>((resolve, reject) => file.end((err?: Error | null) => (err ? reject(err) : resolve())))
-    log.info(`update downloaded: ${dest} (${received} bytes)`)
-    return { ok: true, path: dest }
-  } catch (e) {
-    log.error('downloadUpdate failed', e)
-    await unlink(dest).catch(() => {})
-    return { ok: false, error: e instanceof Error ? e.message : 'Download failed.' }
+    log.error('downloadUpdate failed', last)
+    const why = last instanceof Error ? last.message : 'the connection failed'
+    try {
+      await shell.openExternal(info.url)
+    } catch (e) {
+      log.error('openExternal after a failed download failed', e)
+      return { ok: false, error: `${why}. Get it from the download page instead.` }
+    }
+    return { ok: false, error: `${why}. The download page is open in your browser — get it from there.` }
   } finally {
     downloading = false
   }
@@ -236,18 +346,20 @@ function spawnDetached(cmd: string, args: string[]): void {
  * finish-page UI, which /S skips entirely, so without this the app installs
  * correctly but never comes back up on its own.
  */
+export function windowsUpdateScriptFor(installerPath: string, exePath: string, swaplog = 'born-update.log'): string {
+  return (
+    `@echo off\r\n` +
+    `echo --- born update %date% %time% --- >> "${swaplog}"\r\n` +
+    `"${installerPath}" /S >> "${swaplog}" 2>&1\r\n` +
+    `start "" "${exePath}"\r\n` +
+    `del "${installerPath}" >nul 2>&1\r\n` +
+    `del "%~f0"\r\n`
+  )
+}
+
 function writeWindowsUpdateScript(installerPath: string, exePath: string): string {
   const script = join(app.getPath('temp'), `born-update-${Date.now()}.bat`)
-  const swaplog = join(app.getPath('temp'), 'born-update.log')
-  writeFileSync(
-    script,
-    `@echo off\r\n` +
-      `echo --- born update %date% %time% --- >> "${swaplog}"\r\n` +
-      `"${installerPath}" /S >> "${swaplog}" 2>&1\r\n` +
-      `start "" "${exePath}"\r\n` +
-      `del "${installerPath}" >nul 2>&1\r\n` +
-      `del "%~f0"\r\n`
-  )
+  writeFileSync(script, windowsUpdateScriptFor(installerPath, exePath, join(app.getPath('temp'), 'born-update.log')))
   return script
 }
 

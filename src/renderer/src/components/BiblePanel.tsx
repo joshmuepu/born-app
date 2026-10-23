@@ -134,7 +134,12 @@ export default function BiblePanel({
 
   // What the chapter view is centred on: a queue-item the operator is previewing
   // wins; then the projected verse; then a keyword-hit they opened.
-  const focusVerse = preview ?? onScreen ?? browseAnchor
+  // Hiding the screen (or anything else that takes the verse off the projector) must
+  // not close the chapter being read: the last projected verse stays the place,
+  // decided in this same render so the chapter is never dropped and reloaded.
+  const lastOnScreen = useRef<{ bookNum: number; chapter: number; verse: number } | null>(null)
+  if (onScreen) lastOnScreen.current = onScreen
+  const focusVerse = preview ?? onScreen ?? browseAnchor ?? lastOnScreen.current
 
   useEffect(() => {
     if (!focusVerse) {

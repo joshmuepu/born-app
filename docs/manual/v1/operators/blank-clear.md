@@ -19,6 +19,10 @@ the screen alone — so closing a menu never blanks the congregation by accident
 <kbd>Shift</kbd>+<kbd>Esc</kbd> always hides (or shows) the screen straight away,
 even with a window or menu open. <kbd>B</kbd> does too (when you're not typing in a box).
 
+Hiding or showing the screen never moves you: the sermon reader, the Bible chapter,
+the song slides, the queue and your search results all stay exactly where they were,
+with the same row selected and the cursor where you left it.
+
 While hidden, the confidence-monitor preview in the bottom-right of the Service
 queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
 on screen, so you can keep working the queue without losing your place.

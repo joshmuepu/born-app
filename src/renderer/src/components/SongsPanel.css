@@ -230,6 +230,11 @@
   gap: 8px;
   margin-bottom: 6px;
 }
+.song-slide-head .on-screen-tag {
+  /* the tag's border and padding must not make a live slide taller than the others, or hiding the screen shifts everything below it */
+  margin-top: -2px;
+  margin-bottom: -2px;
+}
 .song-slide-label {
   font-size: var(--text-2xs);
   font-weight: 700;

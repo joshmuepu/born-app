@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { migrateQueue, quoteToItem, itemTitle, type Quote } from '../../shared/queueItem'
+import { migrateQueue, quoteToItem, itemTitle, liveParagraphRef, type Quote } from '../../shared/queueItem'
 import { buildBibleSlides } from '../../shared/bibleSlides'
 
 const quote: Quote = {
@@ -185,5 +185,49 @@ describe('itemTitle for a kind this version does not know', () => {
     const t = itemTitle({ kind: 'future', id: 'u1', slides: [{ text: 'x' }] } as unknown as Parameters<typeof itemTitle>[0])
     expect(typeof t).toBe('string')
     expect(t.length).toBeGreaterThan(0)
+  })
+})
+
+describe('page letters of a very long paragraph', () => {
+  const long = (pages: number): Quote => ({
+    text: '7 ' + Array.from({ length: pages * 12 }, (_, i) => `word${i}`).join(' '),
+    sermonTitle: 'Placeholder',
+    dateCode: '00-0000',
+    sermonId: 9,
+    paragraphIndex: 7,
+    paragraphRef: '7'
+  })
+  it('never runs out of letters: every page of one paragraph has its own label', () => {
+    const item = quoteToItem({ ...long(1), text: '7 ' + 'alpha beta gamma delta. '.repeat(400) })
+    expect(item.slides.length).toBeGreaterThan(27)
+    const markers = item.slides.map((s) => s.marker)
+    expect(new Set(markers).size).toBe(markers.length)
+    for (const m of markers) expect(m).toMatch(/^7[a-z]+$/)
+    expect(markers.slice(0, 3)).toEqual(['7a', '7b', '7c'])
+    expect(markers[26]).toBe('7aa')
+  })
+})
+
+describe('liveParagraphRef', () => {
+  const blank = (n: number): Quote => ({
+    text: 'alpha beta gamma delta. '.repeat(n),
+    sermonTitle: 'Placeholder',
+    dateCode: '00-0000',
+    sermonId: 9,
+    paragraphIndex: 3,
+    paragraphRef: '§77'
+  })
+  it('is the paragraph label for a numbered paragraph', () => {
+    const item = quoteToItem({ ...blank(1), text: '12 Short text.', paragraphRef: '12' })
+    expect(liveParagraphRef(item, 0)).toBe('12')
+  })
+  it('names each page of a paragraph that has no number, so only that page is "on screen"', () => {
+    const item = quoteToItem(blank(40))
+    expect(item.slides.length).toBeGreaterThan(2)
+    expect(liveParagraphRef(item, 0)).toBe('§77#0')
+    expect(liveParagraphRef(item, 2)).toBe('§77#2')
+  })
+  it('keeps the plain reference for a one-slide paragraph with no number', () => {
+    expect(liveParagraphRef(quoteToItem(blank(1)), 0)).toBe('§77')
   })
 })
