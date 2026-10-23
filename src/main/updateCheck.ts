@@ -191,8 +191,12 @@ async function fetchInstaller(
         }, stallMs)
       })
       let chunk: { done: boolean; value?: Uint8Array }
+      // Aborting makes the read we walked away from reject a moment later. It has to keep a
+      // handler of its own, or that rejection surfaces as an unhandled one in the main process.
+      const reading = reader.read()
+      reading.catch(() => {})
       try {
-        chunk = await Promise.race([reader.read(), wentQuiet])
+        chunk = await Promise.race([reading, wentQuiet])
       } finally {
         clearTimeout(timer)
       }
@@ -206,6 +210,7 @@ async function fetchInstaller(
     await new Promise<void>((ok, bad) => file.end((err?: Error | null) => (err ? bad(err) : ok())))
   } catch (e) {
     file.destroy()
+    reader.cancel().catch(() => {})
     throw e
   }
   // The one check that matters: an installer that arrived only in part must never
