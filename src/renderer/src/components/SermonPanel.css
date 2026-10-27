@@ -260,11 +260,20 @@
 /* mark.hl is shared (App.css) — Bible and Songs highlight matches the same way. */
 
 /* Results list only: actions fade in on hover/focus instead of sitting on
-   every card permanently — a quieter list, same one-click path to the screen. */
+   every card permanently — a quieter list, same one-click path to the screen.
+   They sit at the right of the card's title line, not in a band under the text, so each card is shorter and the paragraph
+   with the searched words can be projected without scrolling; the title line keeps their room, so the card never jumps. */
+.result-item { position: relative; }
 .result-item .result-actions {
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out);
+  position: absolute;
+  top: 8px;
+  right: 10px;
 }
+.result-item:has(.result-actions) .result-head { padding-right: 150px; }
+.result-item:has(.result-actions) .result-text { margin-bottom: 0; }
+.result-item:has(.result-actions) .result-more-matches { margin-top: 6px; margin-bottom: 0; }
 .result-item:hover .result-actions,
 .result-item:focus-within .result-actions,
 .result-item--on-screen .result-actions {
