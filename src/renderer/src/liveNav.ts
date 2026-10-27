@@ -9,6 +9,7 @@
  */
 import type { QueueItem, Slide } from '../../shared/queueItem'
 import { quoteToItem } from '../../shared/queueItem'
+import { parseParagraphRef } from '../../shared/paragraphRef'
 import type { Quote } from './types'
 
 export type FlowCursor =
@@ -67,7 +68,15 @@ export async function fetchAdjacentSlide(
       sermonCache.set(cursor.sermonId, paras)
     }
     const pos = paras.findIndex((p) => p.paragraphRef === cursor.paragraphRef)
-    if (pos === -1) return null
+    if (pos === -1) {
+      // a single paragraph cut out of its stored range (a search result, sermonHit.ts): carry on from its place inside that row
+      const n = /^\d+$/.test(cursor.paragraphRef) ? Number(cursor.paragraphRef) : NaN
+      const at = Number.isNaN(n) ? -1 : paras.findIndex((p) => { const r = parseParagraphRef(p.paragraphRef); return !!r && r[0] <= n && n <= r[1] })
+      if (at === -1) return null
+      const base = quoteToItem(paras[at]).slides.findIndex((s) => (s.marker ?? '').replace(/[a-z]+$/, '') === cursor.paragraphRef)
+      if (base === -1) return null
+      return fetchAdjacentSlide({ ...cursor, paragraphRef: paras[at].paragraphRef, page: base + cursor.page }, dir, sermonCache)
+    }
 
     // Step through the pages of the current paragraph first…
     const curPages = quoteToItem(paras[pos]).slides

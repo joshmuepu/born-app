@@ -69,6 +69,7 @@ import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
+import { hitParagraphs } from '../shared/sermonHit'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -1098,7 +1099,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
           .all(buildPhraseQuery(query), ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         if (rows.length > 0) {
           log.debug(`search:query phrase match: ${rows.length} results`)
-          return rows.map((r) => rowToQuote(r, 'phrase'))
+          return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'phrase'), query, 'phrase'))
         }
       } catch (e) {
         log.warn('search:query phrase match FTS error', e)
@@ -1110,7 +1111,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
         if (!tokenQuery) return []
         const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         log.debug(`search:query phrase-fallback all-words match: ${rows.length} results`)
-        return rows.map((r) => rowToQuote(r, 'all'))
+        return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'all'), query, 'all'))
       } catch (e) {
         log.error('search:query token match error', e)
         return []
@@ -1122,7 +1123,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
       if (!tokenQuery) return []
       const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
       log.debug(`search:query ${matchMode} match: ${rows.length} results`)
-      return rows.map((r) => rowToQuote(r, matchMode))
+      return rows.flatMap((r) => hitParagraphs(rowToQuote(r, matchMode), query, matchMode))
     } catch (e) {
       log.error('search:query token match error', e)
       return []

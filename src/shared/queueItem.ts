@@ -114,7 +114,7 @@ const INLINE_PARAGRAPH_START = /(?:^|[.?!"'”’)\]\s])(\d{1,3})(?=\s+["'“‘
  * one boundary just doesn't split — the same combined-text behavior as
  * before the fix, not a broken split.
  */
-function splitSubParagraphs(body: string, lo: number, hi: number): Array<{ num: number; text: string }> {
+export function splitSubParagraphs(body: string, lo: number, hi: number): Array<{ num: number; text: string }> {
   if (hi <= lo) return [{ num: lo, text: body }]
 
   const boundaries: Array<{ index: number; num: number }> = []
