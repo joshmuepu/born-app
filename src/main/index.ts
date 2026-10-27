@@ -1099,7 +1099,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
           .all(buildPhraseQuery(query), ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         if (rows.length > 0) {
           log.debug(`search:query phrase match: ${rows.length} results`)
-          return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'phrase'), query, 'phrase'))
+          return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'phrase'), query, 'phrase')).slice(0, SERMON_SEARCH_LIMIT)
         }
       } catch (e) {
         log.warn('search:query phrase match FTS error', e)
@@ -1111,7 +1111,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
         if (!tokenQuery) return []
         const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         log.debug(`search:query phrase-fallback all-words match: ${rows.length} results`)
-        return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'all'), query, 'all'))
+        return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'all'), query, 'all')).slice(0, SERMON_SEARCH_LIMIT)
       } catch (e) {
         log.error('search:query token match error', e)
         return []
@@ -1123,7 +1123,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
       if (!tokenQuery) return []
       const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
       log.debug(`search:query ${matchMode} match: ${rows.length} results`)
-      return rows.flatMap((r) => hitParagraphs(rowToQuote(r, matchMode), query, matchMode))
+      return rows.flatMap((r) => hitParagraphs(rowToQuote(r, matchMode), query, matchMode)).slice(0, SERMON_SEARCH_LIMIT)
     } catch (e) {
       log.error('search:query token match error', e)
       return []
