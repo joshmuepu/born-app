@@ -2,10 +2,10 @@
  * sermonDbUpgrade.ts — bring a profile's sermon library up to the bundled one's format.
  *
  * A profile's sermons.db is copied from the bundled library once, on first run, and never again. The bundled library is now built with one
- * row per numbered paragraph (PRAGMA user_version 2, scripts/build-sermon-db.ts); a profile made before that still has the source's
- * sections (user_version 0). On start, such a profile gets the new library, and nothing it had is lost:
+ * row per numbered paragraph (PRAGMA user_version 3, scripts/build-sermon-db.ts); a profile made before that still has the source's
+ * sections (user_version 0), or an earlier paragraph format (1, 2). On start, such a profile gets the new library, and nothing it had is lost:
  *   - everything only the old file has is copied in: downloaded translations, and any sermon fetched online after install;
- *   - the old file is kept beside it as sermons.db.sections-<date>.bak.
+ *   - the old file is kept beside it as sermons.db.sections-<date>.bak (format 0) or sermons.db.format<N>-<date>.bak.
  * Nothing happens when the profile is already current, when there is no bundled library, or when the bundled one is not newer.
  * Any failure (a read-only folder, a full disk, a damaged bundled file) leaves the profile's library exactly as it was; the caller logs it.
  */
@@ -14,7 +14,8 @@ import fs from 'fs'
 import { dirname } from 'path'
 import { gunzipSync } from 'zlib'
 
-export const SERMON_DB_FORMAT = 2
+/** The same number means the same library contents in every BORN line. */
+export const SERMON_DB_FORMAT = 3
 /** Room kept free beyond the new file itself (SQLite's own journal while the old rows are copied in). */
 const DISK_HEADROOM = 64 * 1024 * 1024
 
@@ -47,7 +48,8 @@ export function finishInterruptedUpgrade(dbPath: string): boolean {
 
 export function upgradeSermonDb(dbPath: string, bundledGz: string | undefined, now = new Date()): UpgradeResult {
   if (!fs.existsSync(dbPath)) return { upgraded: false, reason: 'no profile library yet (it is seeded fresh)' }
-  if (versionOf(dbPath) >= SERMON_DB_FORMAT) return { upgraded: false, reason: 'already current' }
+  const oldFormat = versionOf(dbPath)
+  if (oldFormat >= SERMON_DB_FORMAT) return { upgraded: false, reason: 'already current' }
   if (!bundledGz || !fs.existsSync(bundledGz)) return { upgraded: false, reason: 'no bundled library' }
 
   const next = nextPath(dbPath)
@@ -84,7 +86,7 @@ export function upgradeSermonDb(dbPath: string, bundledGz: string | undefined, n
       d.close()
     }
 
-    const backup = `${dbPath}.sections-${now.toISOString().slice(0, 10)}.bak`
+    const backup = `${dbPath}.${oldFormat === 0 ? 'sections' : `format${oldFormat}`}-${now.toISOString().slice(0, 10)}.bak`
     fs.renameSync(dbPath, backup)
     try {
       fs.renameSync(next, dbPath)

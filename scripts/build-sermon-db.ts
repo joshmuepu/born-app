@@ -106,8 +106,8 @@ async function main(): Promise<void> {
   errors = failed.length
   if (sectionsKept.length) console.log(`  ${sectionsKept.length} sermon(s) kept in the source's sections (split not trusted): ids ${sectionsKept.join(', ')}`)
 
-  // format 2: one row per numbered paragraph (a profile with an older library is brought up to it on start: src/main/sermonDbUpgrade.ts)
-  db.pragma('user_version = 2')
+  // format 3: one row per numbered paragraph (a profile with an older library is brought up to it on start: src/main/sermonDbUpgrade.ts)
+  db.pragma('user_version = 3')
 
   console.log('optimising (VACUUM + FTS optimize)…')
   db.exec("INSERT INTO paragraphs_fts(paragraphs_fts) VALUES('optimize')")

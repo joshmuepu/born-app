@@ -4,11 +4,12 @@ import fs, { mkdtempSync, writeFileSync, readFileSync, existsSync, readdirSync, 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { gzipSync } from 'zlib'
-import { upgradeSermonDb, finishInterruptedUpgrade } from '../../main/sermonDbUpgrade'
+import { upgradeSermonDb, finishInterruptedUpgrade, SERMON_DB_FORMAT } from '../../main/sermonDbUpgrade'
 import { initSchema } from '../../main/schema'
 
-// synthetic libraries in the real schema: an old profile (sections, user_version 0) and a rebuilt bundled one (paragraph rows, user_version 2)
-function make(path: string, version: number, rows: Array<[number, string, string]>, extra?: (d: Database.Database) => void): void {
+// synthetic libraries in the real schema: an old profile (sections, user_version 0) and a rebuilt bundled one (paragraph rows, user_version 3)
+function make(path: string, version: number, rows: Array<[number, string, string]>, extra?: (d: Database.Database) => void, replace = false): void {
+  if (replace) fs.rmSync(path, { force: true })
   const d = new Database(path)
   initSchema(d)
   d.prepare('INSERT INTO sermons (id, date_code, title) VALUES (1, ?, ?)').run('99-0101M', 'A Sample Message')
@@ -29,7 +30,7 @@ beforeEach(() => {
     d.prepare("INSERT INTO translated_paragraphs (sermon_id, language, paragraph_ref, paragraph_index, text) VALUES (1, 'fr', '10-11', 0, '10 Alpha fr. 11 Bravo fr.')").run()
   })
   const bundled = join(dir, 'bundled.db')
-  make(bundled, 2, [[1, '10', '10 Alpha.'], [1, '11', '11 Bravo.']])
+  make(bundled, 3, [[1, '10', '10 Alpha.'], [1, '11', '11 Bravo.']])
   gz = join(dir, 'sermons.db.gz')
   writeFileSync(gz, gzipSync(readFileSync(bundled)))
 })
@@ -40,7 +41,7 @@ describe('a profile made before the paragraph rebuild gets the new library, and 
     expect(r.upgraded).toBe(true)
     const d = new Database(profile, { readonly: true })
     expect(d.prepare('SELECT paragraph_ref FROM paragraphs WHERE sermon_id = 1 ORDER BY paragraph_index').all().map((x) => (x as { paragraph_ref: string }).paragraph_ref)).toEqual(['10', '11'])
-    expect(d.pragma('user_version', { simple: true })).toBe(2)
+    expect(d.pragma('user_version', { simple: true })).toBe(3)
     d.close()
   })
   it('a sermon fetched after install and a downloaded translation are carried over', () => {
@@ -69,6 +70,34 @@ describe('a profile made before the paragraph rebuild gets the new library, and 
     expect(upgradeSermonDb(fresh, undefined)).toMatchObject({ upgraded: false, reason: 'no bundled library' })
     expect(readdirSync(dir).some((f) => f.endsWith('.upgrade'))).toBe(false)
   })
+})
+
+describe('format 3 is the paragraph library (the same number means the same contents in v1 and v2)', () => {
+  it('the app and the build both name format 3', () => {
+    expect(SERMON_DB_FORMAT).toBe(3)
+    expect(readFileSync(join(__dirname, '../../../scripts/build-sermon-db.ts'), 'utf8')).toMatch(/user_version = \$\{SERMON_DB_FORMAT\}|user_version = 3/)
+  })
+  for (const old of [0, 1, 2]) {
+    it(`a format ${old} profile is brought to format 3: backup kept, fetched sermon and translation carried over, a second start does nothing`, () => {
+      make(profile, old, [[1, '10-11', '10 Alpha. 11 Bravo.']], (d) => {
+        d.prepare("INSERT INTO sermons (id, date_code, title) VALUES (2, '99-0202E', 'Fetched Later')").run()
+        d.prepare("INSERT INTO paragraphs (sermon_id, paragraph_ref, paragraph_index, text) VALUES (2, '1', 0, '1 Late.')").run()
+        d.prepare("INSERT INTO translated_paragraphs (sermon_id, language, paragraph_ref, paragraph_index, text) VALUES (1, 'fr', '10', 0, '10 Alpha fr.')").run()
+      }, true)
+      const r = upgradeSermonDb(profile, gz, new Date('2026-10-27T12:00:00Z'))
+      expect(r).toMatchObject({ upgraded: true, keptSermons: 1, keptTranslations: 1 })
+      // format 0 is the sections library; a later format is named by its number
+      expect(r.backup).toBe(old === 0 ? `${profile}.sections-2026-10-27.bak` : `${profile}.format${old}-2026-10-27.bak`)
+      const b = new Database(r.backup!, { readonly: true })
+      expect(b.pragma('user_version', { simple: true })).toBe(old)
+      b.close()
+      const d = new Database(profile, { readonly: true })
+      expect(d.pragma('user_version', { simple: true })).toBe(3)
+      expect(d.prepare('SELECT title FROM sermons WHERE id = 2').get()).toEqual({ title: 'Fetched Later' })
+      d.close()
+      expect(upgradeSermonDb(profile, gz)).toMatchObject({ upgraded: false, reason: 'already current' })
+    })
+  }
 })
 
 describe('when the upgrade cannot be done, the profile keeps its library exactly as it was', () => {
@@ -115,7 +144,7 @@ describe('when the upgrade cannot be done, the profile keeps its library exactly
     writeFileSync(`${profile}.upgrade`, Buffer.from('half'))
     expect(upgradeSermonDb(profile, gz).upgraded).toBe(true)
     const d = new Database(profile, { readonly: true })
-    expect(d.pragma('user_version', { simple: true })).toBe(2)
+    expect(d.pragma('user_version', { simple: true })).toBe(3)
     d.close()
   })
 })
