@@ -26,3 +26,18 @@ describe('Next / Back from a single paragraph shown from a search result (cut ou
     expect(await fetchAdjacentSlide(at('99'), 'next', new Map())).toBeNull()
   })
 })
+
+describe('Next / Back from an item saved with a range reference the library no longer has as one row', () => {
+  const perPara = [
+    { text: '10 Alpha opens.', sermonTitle: 'S', dateCode: '99-0101M', sermonId: 8, paragraphIndex: 0, paragraphRef: '10' },
+    { text: '11 Charlie speaks.', sermonTitle: 'S', dateCode: '99-0101M', sermonId: 8, paragraphIndex: 1, paragraphRef: '11' },
+    { text: '12 Delta closes.', sermonTitle: 'S', dateCode: '99-0101M', sermonId: 8, paragraphIndex: 2, paragraphRef: '12' },
+    { text: '13 Echo next.', sermonTitle: 'S', dateCode: '99-0101M', sermonId: 8, paragraphIndex: 3, paragraphRef: '13' }
+  ]
+  it('Next from its end goes to the paragraph after the range; Back from its start to the one before', async () => {
+    window.electronAPI.getSermonParagraphs = vi.fn(async () => perPara) as never
+    const old = { kind: 'quote' as const, sermonId: 8, language: 'en', paragraphRef: '11-12', page: 0 }
+    expect((await fetchAdjacentSlide({ ...old, page: 3 }, 'next', new Map()))?.slide.marker).toBe('13')
+    expect((await fetchAdjacentSlide(old, 'prev', new Map()))?.slide.marker).toBe('10')
+  })
+})

@@ -69,6 +69,17 @@ export async function fetchAdjacentSlide(
     }
     const pos = paras.findIndex((p) => p.paragraphRef === cursor.paragraphRef)
     if (pos === -1) {
+      // an item saved before the library was stored one row per paragraph keeps its range ("11-12"): carry on from the paragraph at the
+      // end it is leaving from (the last one for Next, the first for Back), at that paragraph's last or first page
+      const range = parseParagraphRef(cursor.paragraphRef)
+      if (range && range[1] > range[0]) {
+        const edge = String(dir === 'next' ? range[1] : range[0])
+        const row = paras.find((p) => p.paragraphRef === edge)
+        if (row) {
+          const edgePages = quoteToItem(row).slides.length
+          return fetchAdjacentSlide({ ...cursor, paragraphRef: edge, page: dir === 'next' ? edgePages - 1 : 0 }, dir, sermonCache)
+        }
+      }
       // a single paragraph cut out of its stored range (a search result, sermonHit.ts): carry on from its place inside that row
       const n = /^\d+$/.test(cursor.paragraphRef) ? Number(cursor.paragraphRef) : NaN
       const at = Number.isNaN(n) ? -1 : paras.findIndex((p) => { const r = parseParagraphRef(p.paragraphRef); return !!r && r[0] <= n && n <= r[1] })
