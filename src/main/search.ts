@@ -17,6 +17,7 @@ export const SEARCH_BASE = `
   JOIN paragraphs p ON paragraphs_fts.rowid = p.id
   JOIN sermons s    ON s.id = p.sermon_id
   WHERE paragraphs_fts MATCH ?
+    AND p.paragraph_ref != 'header'
 `
 
 /** See src/shared/searchLimits.ts for why this is 25000 and not "big enough
