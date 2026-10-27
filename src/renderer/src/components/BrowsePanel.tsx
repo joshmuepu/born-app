@@ -272,7 +272,10 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     if (browsedSermons.length > 0) return renderSermonList()
     return (
       <div className="browse-list browse-list--grid">
-        {seriesList.length === 0 && <div className="browse-loading">Loading series…</div>}
+        {seriesList.length === 0 && (seriesLoaded
+          // the series list comes from The Table online; an empty answer means no connection, not "still loading"
+          ? <div className="browse-loading" role="status">The series list needs an internet connection. Date, Location and search work without one.</div>
+          : <div className="browse-loading">Loading series…</div>)}
         {seriesList.map((s) => (
           <div
             key={s.i}
