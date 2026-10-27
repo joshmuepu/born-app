@@ -45,7 +45,9 @@ interface FlatSlide {
 }
 
 /** "¶41a" for a numbered paragraph; a paragraph with no number is "Slide 2" (or nothing, if it is one slide). */
-function paraLabel(marker: string): string {
+export function paraLabel(marker: string): string {
+  // the sermon's opening title line (title, date code, place) is stored as "header": show "Title", never the internal name
+  if (marker === 'header') return 'Title'
   if (!marker.startsWith('§') && !marker.includes('#')) return `¶${marker}`
   const page = marker.split('#')[1]
   return page !== undefined ? `Slide ${Number(page) + 1}` : ''
