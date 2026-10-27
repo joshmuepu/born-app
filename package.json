@@ -42,6 +42,7 @@
           "sermons.db.gz",
           "library.db.gz",
           "locations.json",
+          "series.json",
           "remote-icons/*.png"
         ]
       },

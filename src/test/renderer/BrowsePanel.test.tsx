@@ -306,7 +306,7 @@ describe('Browse > Series without an internet connection', () => {
     const user = userEvent.setup()
     render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: /^Series/ }))
-    await waitFor(() => expect(screen.getByText(/needs an internet connection/)).toBeDefined())
+    await waitFor(() => expect(screen.getByText(/could not be loaded/)).toBeDefined())
     expect(screen.queryByText('Loading series…')).toBeNull()
   })
 })

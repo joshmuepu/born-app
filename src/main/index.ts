@@ -104,7 +104,8 @@ import {
   getLocalDateTree,
   getLocalDurationGroups,
   getLocalLocationTree,
-  getOnThisDay
+  getOnThisDay,
+  loadBundledSeries
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings } from './settings'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
@@ -1569,7 +1570,8 @@ ipcMain.handle('search:server', (_event, text: string, searchType: 'AllWords' | 
 
 // ── Browse IPC ────────────────────────────────────────────────────────────────
 
-ipcMain.handle('browse:series', () => fetchAllSeries())
+// online when The Table answers (it may have newer series), the bundled copy when it does not
+ipcMain.handle('browse:series', async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() })
 ipcMain.handle('browse:states', () => fetchAllStates())
 ipcMain.handle('browse:cities', () => fetchAllCities())
 ipcMain.handle('browse:date-groups', () => {
@@ -2100,7 +2102,7 @@ app.whenReady().then(async () => {
             .filter((p) => existsSync(p))
             .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
         ),
-      sermonSeries: () => fetchAllSeries(),
+      sermonSeries: async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() },
       sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
       // Same one-paragraph-per-slide split as the search results above — a
       // browsed or recently-used quote can span several numbered paragraphs
