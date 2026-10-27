@@ -50,5 +50,38 @@ export function paginateText(text: string, maxChars: number = MAX_SLIDE_CHARS): 
     rest = rest.slice(at).trim()
   }
   if (rest) pages.push(rest)
-  return pages
+  return balanceLast(pages, maxChars)
+}
+
+/** A last page this short reads as an orphan on the wall ("Thank you." alone); 12,244 real paragraphs ended like that. */
+const ORPHAN_CHARS = 60
+const ORPHAN_WORDS = 3
+
+/** Where to cut `text` in two so both halves fit: the break nearest the middle, preferring a sentence end, then a clause break, then a space. */
+function cutNearMiddle(text: string, maxChars: number): number | null {
+  const mid = text.length / 2
+  for (const needles of [SENTENCE_ENDS, CLAUSE_BREAKS, [' ']]) {
+    let best: number | null = null
+    for (const n of needles) {
+      for (let i = text.indexOf(n); i >= 0; i = text.indexOf(n, i + 1)) {
+        const at = i + n.length
+        if (at > maxChars || text.length - at > maxChars) continue
+        if (best === null || Math.abs(at - mid) < Math.abs(best - mid)) best = at
+      }
+    }
+    // a sentence or clause break counts only if it leaves the last page a fair share; otherwise try the next kind
+    if (best !== null && Math.min(best, text.length - best) >= ORPHAN_CHARS) return best
+  }
+  return null
+}
+
+/** If the last page is an orphan, share the last two pages' text between them instead (each still fits; nothing is lost or reordered). */
+function balanceLast(pages: string[], maxChars: number): string[] {
+  if (pages.length < 2) return pages
+  const last = pages[pages.length - 1]
+  if (last.length >= ORPHAN_CHARS && last.split(' ').length > ORPHAN_WORDS) return pages
+  const both = `${pages[pages.length - 2]} ${last}`
+  const at = cutNearMiddle(both, maxChars)
+  if (at === null) return pages
+  return [...pages.slice(0, -2), both.slice(0, at).trim(), both.slice(at).trim()]
 }
