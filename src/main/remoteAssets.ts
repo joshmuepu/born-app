@@ -850,6 +850,8 @@ function showCustomRoleInput(){
 }
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// "63-0324E · ¶233"; a Church Age Book chapter (no date code, an internal row token) reads "Book"
+function qmeta(q){ var c = String(q.dateCode || '').trim(), r = String(q.paragraphRef || '').trim(); var p = r && r.charAt(0) !== '§' && /[0-9]/.test(r) ? '¶' + r : ''; return c ? (p ? c + ' · ' + p : c) : (p || 'Book'); }
 function $(id){ return document.getElementById(id); }
 function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
 function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 'sermon'; }
@@ -1757,7 +1759,7 @@ function sermonResultsHtml(){
     var q = rows[i];
     html += '<button class="ritem" onclick="selectSermon(' + i + ')">'
       + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
-      + '<div class="rmeta sermon">' + esc(q.dateCode || '') + ' · ¶' + esc(q.paragraphRef) + '</div>'
+      + '<div class="rmeta sermon">' + esc(qmeta(q)) + '</div>'
       + '<div class="rsnippet">' + (q.highlightedText || esc(q.text).slice(0,160)) + '</div>'
       + '</button>';
   }
@@ -1775,7 +1777,7 @@ function selectSermon(i){
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
-    meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    meta: qmeta(q),
     slides: slides,
     html: q.highlightedText || esc(q.text),
     payload: { quote: q, query: state.sermonQuery }
@@ -1903,7 +1905,7 @@ function openRecentSermons(){
         var q = window._recentSermons[i];
         html += '<button class="ritem" onclick="selectRecentSermon(' + i + ')">'
           + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
-          + '<div class="rmeta sermon">' + esc(q.dateCode || '') + ' · ¶' + esc(q.paragraphRef) + '</div>'
+          + '<div class="rmeta sermon">' + esc(qmeta(q)) + '</div>'
           + '<div class="rsnippet">' + esc(q.text).slice(0,160) + '</div>'
           + '</button>';
       }
@@ -1920,7 +1922,7 @@ function selectRecentSermon(i){
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
-    meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    meta: qmeta(q),
     slides: slides,
     full: q.text,
     payload: { quote: q, query: '' }

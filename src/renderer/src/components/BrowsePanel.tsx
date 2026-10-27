@@ -9,6 +9,7 @@ import type {
   DateTreeYear
 } from '../types'
 import { quoteToItem } from '../../../shared/queueItem'
+import { quoteMeta } from '../../../shared/sermonMeta'
 import './BrowsePanel.css'
 
 interface Props {
@@ -617,7 +618,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
               return (
                 <div key={`${i}:${slideIndex}`} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
                   <div className="browse-para-ref">
-                    {q.sermonTitle} · {q.dateCode} · ¶{marker}
+                    {q.sermonTitle} · {quoteMeta({ dateCode: q.dateCode, paragraphRef: marker }, { year: false })}
                     {live && <span className="on-screen-tag">On screen</span>}
                   </div>
                   <div className="browse-para-text">{s.text}</div>
