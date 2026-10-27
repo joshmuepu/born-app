@@ -1092,6 +1092,13 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
     }
 
     const { sql, extraParams } = buildSearchSQL(filters)
+    // no paragraph has the words (a typed sermon code, a word only in a title): the sermon's title line is the answer, as it always was
+    const titleLines = (mode: 'phrase' | 'all' | 'any'): Quote[] => {
+      const tq = buildTokenQuery(query)
+      if (!tq) return []
+      const t = buildSearchSQL(filters, { titleLines: true })
+      return (db.prepare(t.sql).all(tq, ...t.extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]).map((r) => rowToQuote(r, mode))
+    }
 
     if (matchMode === 'phrase') {
       try {
@@ -1112,6 +1119,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
         if (!tokenQuery) return []
         const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         log.debug(`search:query phrase-fallback all-words match: ${rows.length} results`)
+        if (rows.length === 0) return titleLines('all')
         return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'all'), query, 'all')).slice(0, SERMON_SEARCH_LIMIT)
       } catch (e) {
         log.error('search:query token match error', e)
@@ -1124,6 +1132,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
       if (!tokenQuery) return []
       const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
       log.debug(`search:query ${matchMode} match: ${rows.length} results`)
+      if (rows.length === 0) return titleLines(matchMode)
       return rows.flatMap((r) => hitParagraphs(rowToQuote(r, matchMode), query, matchMode)).slice(0, SERMON_SEARCH_LIMIT)
     } catch (e) {
       log.error('search:query token match error', e)

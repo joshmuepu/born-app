@@ -19,6 +19,9 @@ export const SEARCH_BASE = `
   WHERE paragraphs_fts MATCH ?
     AND p.paragraph_ref != 'header'
 `
+/** Only the title lines (title, code, place): asked for when no paragraph has the words, e.g. a typed sermon code. */
+const TITLE_LINES = "AND p.paragraph_ref != 'header'"
+
 
 /** See src/shared/searchLimits.ts for why this is 25000 and not "big enough
  *  that no real search can ever hit it" — that approach was tried and it
@@ -43,8 +46,8 @@ export interface SearchFilters {
   dateCode?: string
 }
 
-export function buildSearchSQL(filters: SearchFilters): { sql: string; extraParams: unknown[] } {
-  let sql = SEARCH_BASE
+export function buildSearchSQL(filters: SearchFilters, opts: { titleLines?: boolean } = {}): { sql: string; extraParams: unknown[] } {
+  let sql = opts.titleLines ? SEARCH_BASE.replace(TITLE_LINES, "AND p.paragraph_ref = 'header'") : SEARCH_BASE
   const extraParams: unknown[] = []
 
   if (filters.yearFrom) {
@@ -88,6 +91,7 @@ export function buildTokenQuery(query: string): string {
     .filter(Boolean)
     .map((w) => w.replace(/["*()[\]^:]/g, ''))
     .filter(Boolean)
+    .map(ftsWord)
     .join(' ')
 }
 
@@ -99,7 +103,14 @@ export function buildAnyWordQuery(query: string): string {
     .filter(Boolean)
     .map((w) => w.replace(/["*()[\]^:]/g, ''))
     .filter(Boolean)
+    .map(ftsWord)
     .join(' OR ')
+}
+
+/** A word FTS5 would not read as a plain word ("60-1204M", "don't", or an operator like NOT) is quoted, so it is searched as typed
+ *  instead of breaking the whole search. */
+function ftsWord(w: string): string {
+  return /^[\p{L}\p{N}_]+$/u.test(w) && !/^(AND|OR|NOT|NEAR)$/.test(w) ? w : `"${w}"`
 }
 
 export interface QuoteRow {
