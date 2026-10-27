@@ -16,6 +16,64 @@ export function stripHtml(html: string): string {
     .trim()
 }
 
+/**
+ * One row per paragraph, from The Table's own paragraph marks.
+ *
+ * The Table returns a sermon as sections (often several numbered paragraphs each: "183-211"). Inside a section every paragraph is its own
+ * <p>, and a numbered paragraph carries its number in <span class="pn">. So: a <p> with a number starts that paragraph; a <p> without one
+ * continues the paragraph before it, also across sections (the source splits a paragraph there at an interjection); the opening paragraph,
+ * whose number is a decorative symbol in the source, takes its section's first number, unless the source numbers that paragraph itself
+ * further on (some sermons open with a lettered lead-in, "1b", "1c" …, before their real paragraph 1: the lead-in then stays unnumbered).
+ * Words before any numbered paragraph stay as an unnumbered lead-in. The title line ("header") is kept as it is. Every word of every
+ * section ends up in exactly one row, in order.
+ */
+export function paragraphsOfSections(sections: Array<{ ref: string; html: string }>): Array<{ ref: string; index: number; text: string }> {
+  const P = /<p\b[^>]*>[\s\S]*?<\/p>/gi
+  const PN = /<span class="pn">\s*(\d+)\s*<\/span>/i
+  const numberedAnywhere = new Set<string>()
+  for (const sec of sections) for (const b of sec.html.match(P) ?? []) { const n = PN.exec(b)?.[1]; if (n) numberedAnywhere.add(n) }
+  const out: Array<{ ref: string; text: string }> = []
+  let current: { ref: string; text: string } | null = null
+  const emitted = new Set<string>()
+  for (const sec of sections) {
+    if (sec.ref === 'header') { out.push({ ref: 'header', text: stripHtml(sec.html) }); current = null; continue }
+    const lo = /^\s*(\d+)/.exec(sec.ref)?.[1] ?? null
+    const found = sec.html.match(P)
+    const blocks = found ? [...found] : [sec.html]
+    if (found) {
+      const rest = sec.html.replace(P, ' ')
+      if (stripHtml(rest)) blocks.push(rest) // text outside any <p>: kept, after the section's paragraphs
+    }
+    blocks.forEach((b) => {
+      const text = stripHtml(b)
+      if (!text) return
+      let num = PN.exec(b)?.[1] ?? null
+      // the opening paragraph: no number of its own, nothing open yet, and the source does not number it anywhere else
+      if (!num && !current && lo && !emitted.has(lo) && !numberedAnywhere.has(lo)) num = lo
+      if (num) {
+        current = { ref: num, text }
+        out.push(current); emitted.add(num)
+      } else if (current) {
+        current.text = `${current.text} ${text}`
+      } else {
+        // an unnumbered lead-in before a numbered section (as the source has it; its later parts join it); a section with no numbering at
+        // all keeps its own reference
+        if (lo) { current = { ref: '', text }; out.push(current) } else out.push({ ref: sec.ref, text })
+      }
+    })
+  }
+  return out.map((r, index) => ({ ...r, index }))
+}
+
+/** Whether a sermon's paragraph split can be trusted: every numbered paragraph appears once and in order, and the rows hold exactly the
+ *  words of the sections. A sermon that fails this keeps the rows the source sections it into. */
+export function splitIsSafe(rows: Array<{ ref: string; text: string }>, sections: Array<{ ref: string; html: string }>): boolean {
+  const nums = rows.filter((r) => /^\d+$/.test(r.ref)).map((r) => Number(r.ref))
+  for (let i = 1; i < nums.length; i++) if (nums[i] <= nums[i - 1]) return false
+  const words = (t: string): string => t.replace(/\s+/g, ' ').trim()
+  return words(rows.map((r) => r.text).join(' ')) === words(sections.map((s) => stripHtml(s.html)).filter(Boolean).join(' '))
+}
+
 export function parseParagraphIndex(ref: string): number {
   if (ref === 'header') return 0
   const m = ref.match(/^p(\d+)$/)
