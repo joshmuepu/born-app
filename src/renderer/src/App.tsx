@@ -1460,14 +1460,14 @@ export default function App() {
                   // Defaulting to Stage monitor unconditionally used to send a
                   // message nowhere visible whenever no stage monitor was on
                   // for that session — default to it only when it's actually
-                  // showing something, Main screen otherwise.
+                  // showing something, the congregation screen otherwise.
                   setAlertTarget(stageOpen ? 'stage' : 'congregation')
                   setShowAlertDialog(true)
                 }}
                 title={
                   stageOpen
                     ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
-                    : 'Show a short message across the bottom of a screen (defaults to the main screen)'
+                    : 'Show a short message across the bottom of a screen (defaults to the congregation screen)'
                 }
               >
                 Message
@@ -1754,7 +1754,7 @@ export default function App() {
                   className={`filter-mode-btn${alertTarget === t ? ' active' : ''}`}
                   onClick={() => setAlertTarget(t)}
                 >
-                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Main screen' : 'Both'}
+                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Congregation screen' : 'Both'}
                 </button>
               ))}
             </div>

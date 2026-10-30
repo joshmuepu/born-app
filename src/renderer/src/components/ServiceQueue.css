@@ -435,7 +435,7 @@
   width: 100%;
 }
 
-/* Segmented control: preview the main screen or the stage monitor. */
+/* Segmented control: preview the congregation screen or the stage monitor. */
 .monitor-switch {
   display: inline-flex;
   gap: 2px;

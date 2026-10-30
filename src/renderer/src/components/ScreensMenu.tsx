@@ -461,7 +461,7 @@ export default function ScreensMenu({
                   </>
                 ) : (
                   <>
-                    <Copy width={13} height={13} strokeWidth={2.2} aria-hidden="true" /> Copy diagnostic info
+                    <Copy width={13} height={13} strokeWidth={2.2} aria-hidden="true" /> Copy diagnostics
                   </>
                 )}
               </button>

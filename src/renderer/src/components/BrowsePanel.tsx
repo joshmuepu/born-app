@@ -600,7 +600,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
   const renderRecent = (): JSX.Element => (
     <div className="browse-sermons">
       <div className="browse-back-row">
-        <span className="browse-group-label">Recently played</span>
+        <span className="browse-group-label">Recently Played</span>
         {recentQuotes.length > 0 && (
           <button className="browse-back" onClick={clearRecent}>Clear</button>
         )}

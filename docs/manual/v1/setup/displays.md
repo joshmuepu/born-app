@@ -43,7 +43,7 @@ the Screens panel. It walks through, in order:
    switcher (e.g. an ATEM) is available, try routing the screen through its output
    instead of plugging it directly into the computer.
 
-A **Copy diagnostic info** button sits under this checklist — it copies everything
+A **Copy diagnostics** button sits under this checklist — it copies everything
 BORN knows about connected displays as plain text, ready to paste to whoever
 handles tech support.
 
