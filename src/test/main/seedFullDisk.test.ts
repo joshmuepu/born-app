@@ -30,7 +30,8 @@ beforeEach(async () => {
   for (const name of ['sermons', 'library']) {
     const p = join(res, `${name}.db`)
     const d = new Database(p); d.exec('CREATE TABLE filler (x TEXT)'); const ins = d.prepare('INSERT INTO filler VALUES (?)')
-    for (let i = 0; i < 400; i++) ins.run('placeholder row ' + i); d.close()
+    // one transaction: 400 separate inserts each wait for the disk, which took over 10 seconds on the Windows runner
+    d.transaction(() => { for (let i = 0; i < 400; i++) ins.run('placeholder row ' + i) })(); d.close()
     writeFileSync(join(res, `${name}.db.gz`), gzipSync(readFileSync(p)))
   }
   ;(process as { resourcesPath?: string }).resourcesPath = res
