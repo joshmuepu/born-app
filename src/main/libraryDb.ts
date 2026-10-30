@@ -5,7 +5,8 @@
  */
 import Database from 'better-sqlite3'
 import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, mkdirSync } from 'fs'
+import { writeFileAtomic } from './corruptFile'
 import { gunzipSync } from 'zlib'
 import { join } from 'path'
 import { log } from './logger'
@@ -44,7 +45,8 @@ function seedFromBundled(target: string): void {
   try {
     log.info(`libraryDb: seeding library.db from ${src}`)
     mkdirSync(app.getPath('userData'), { recursive: true })
-    writeFileSync(target, gunzipSync(readFileSync(src)))
+    // whole or not at all: half a database (a full disk) would fail to open and stop the app from starting
+    writeFileAtomic(target, gunzipSync(readFileSync(src)))
     log.info('libraryDb: seed complete')
   } catch (e) {
     log.error('libraryDb: seed failed', e)

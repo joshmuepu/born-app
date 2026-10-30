@@ -1992,8 +1992,9 @@ app.whenReady().then(async () => {
   // for it. Opening here is the same lazy-init getDb()/getLibraryDb()
   // would do on first real use anyway; doing it explicitly just removes
   // the race between that first use and the renderer's own status check.
-  getDb()
-  getLibraryDb()
+  // A library that cannot be opened must not stop the window from appearing (it is logged; searches then report it).
+  try { getDb() } catch (e) { log.error('startup: the sermon library could not be opened', e) }
+  try { getLibraryDb() } catch (e) { log.error('startup: the Bible and song library could not be opened', e) }
   createMainWindow()
 
   // Global, not per-window — works even if an output window's own
