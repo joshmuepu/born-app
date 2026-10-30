@@ -42,7 +42,7 @@ step, no dialog.
 If the file has songs you don't have yet, you'll see one review screen
 before the import finishes:
 
-![The song-import review dialog — one new song with a plain checkbox, and one conflicting "Amazing Grace" with a choice between adding it separately or using your own existing version.](../images/operator-song-import-review.png)
+![The song-import review dialog — one new song with a plain checkbox, and one, "Evening Song", already in the library with different words and a choice between adding it separately or using your own existing version.](../images/operator-song-import-review.png)
 
 Each song not already in your library gets its own row, with its title and
 the first line or two of its lyrics so you recognize it. What you do next:

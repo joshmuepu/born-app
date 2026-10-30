@@ -21,29 +21,26 @@ same change.** There's no automated staleness check for this; verify every
 
 ## Regenerating screenshots
 
-Most desktop screenshots are scripted and reproducible:
+The seven screenshots the Help pages use (the six `operator-*.png` and
+`mobile-remote-queue.png`) are retaken in one go from the real app with a
+throwaway profile:
 
-1. In one terminal, start a throwaway dev instance (a scratch user-data-dir
-   keeps this from touching your real settings/recent-services):
-   ```
-   BORN_USER_DATA_DIR=/tmp/born-docsshots ./node_modules/.bin/electron-vite dev --remoteDebuggingPort 9920
-   ```
-   (`ELECTRON_RUN_AS_NODE` must be unset in that terminal.) The real bundled
-   `sermons.db.gz`/`library.db.gz` need to exist under `resources/` first —
-   run `npm run build:db && npm run build:library` if they don't.
-2. In another terminal: `node scripts/docs-screenshots.mjs --port=9920`
-3. Review each changed image before committing — the script clicks through a
-   fixed path and can silently land on the wrong screen if a button's text or
-   a selector changed.
+```
+npm run build
+PW_DIR=/tmp/born-pw node scripts/qa/manual-screenshots.cjs /tmp/born-docsshots /tmp/born-docsshots-out
+```
+
+(`ELECTRON_RUN_AS_NODE` must be unset; Playwright is loaded from `PW_DIR`, it
+is not a dependency.) Pictures may show only the app's own screens, invented
+songs and the KJV — never sermon text: the script replaces any sermon titles
+and paragraphs on screen with placeholders, and the test address with the
+default `10.0.0.124:4316` / `born-remote.local`. Look at every picture before
+committing it, and keep each file under 300 KB.
 
 **Not covered by the script, captured by hand:**
 
-- `mobile-remote-queue.png` — the phone remote has no desktop equivalent to
-  screenshot from the main window. Point a browser (or a second Electron
-  window, as a Chromium stand-in — see the git history of this script for the
-  harness pattern used to generate the current shot) at the address shown in
-  the desktop app's Remote popover, set its viewport to a phone size
-  (390×844 was used for the current shot), and capture it the same way.
+- `remote-connection-check.png`, `remote-network-selector.png`,
+  `remote-network-show-all.png`.
 - A real external display, a real phone on real hardware, Windows, and
   high-DPI scaling — none of these can be faked from this script and must be
   checked by hand if a change touches them.
