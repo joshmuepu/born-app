@@ -63,7 +63,7 @@ import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
-import { readJsonQuarantining } from './corruptFile'
+import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -1272,7 +1272,7 @@ ipcMain.handle('queue:load', () => {
 ipcMain.on('queue:save', (_event, items: unknown) => {
   try {
     const queuePath = join(app.getPath('userData'), 'queue.json')
-    writeFileSync(queuePath, JSON.stringify(items))
+    writeFileAtomic(queuePath, JSON.stringify(items))
   } catch (e) {
     log.error('queue:save error', e)
   }
@@ -1441,7 +1441,7 @@ ipcMain.handle('service:save', async (_event, items: unknown) => {
     defaultPath: 'Sunday service.born'
   })
   if (result.canceled || !result.filePath) return false
-  writeFileSync(result.filePath, JSON.stringify(items, null, 2))
+  writeFileAtomic(result.filePath, JSON.stringify(items, null, 2))
   rememberService(result.filePath)
   return true
 })
@@ -1541,7 +1541,7 @@ ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
   const safeName = (name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) || 'Untitled service'
   const path = join(REMOTE_SAVE_DIR(), `${safeName}.born`)
   try {
-    writeFileSync(path, JSON.stringify(items, null, 2))
+    writeFileAtomic(path, JSON.stringify(items, null, 2))
     rememberService(path)
     return true
   } catch (e) {

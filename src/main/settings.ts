@@ -4,10 +4,10 @@
  * display override, font size).
  */
 import { app } from 'electron'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
-import { quarantineCorruptFile } from './corruptFile'
+import { quarantineCorruptFile, writeFileAtomic } from './corruptFile'
 import type { NamedDisplay } from './displays'
 
 export interface AppSettings {
@@ -93,7 +93,7 @@ export function getSettings(): AppSettings {
     // itself has shown the correct 100% the whole time.
     if (needsFontSizeRealign) {
       try {
-        writeFileSync(settingsPath(), JSON.stringify(cache, null, 2))
+        writeFileAtomic(settingsPath(), JSON.stringify(cache, null, 2))
       } catch (e) {
         log.error('settings write failed (fontSize realign)', e)
       }
@@ -111,7 +111,7 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   const next = { ...getSettings(), ...patch }
   cache = next
   try {
-    writeFileSync(settingsPath(), JSON.stringify(next, null, 2))
+    writeFileAtomic(settingsPath(), JSON.stringify(next, null, 2))
   } catch (e) {
     log.error('settings write failed', e)
   }
