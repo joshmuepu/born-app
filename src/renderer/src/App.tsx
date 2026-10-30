@@ -1537,7 +1537,7 @@ export default function App() {
                   </button>
                 ) : (
                   <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
-                    Get it from the website
+                    Open download page
                   </button>
                 )}
                 <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
