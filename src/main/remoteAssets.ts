@@ -286,7 +286,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .searchbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
 .searchbox.bible:focus-within{border-color:var(--sage); box-shadow:0 0 0 2px var(--sage)}
 .searchbox input::placeholder{color:var(--text3)}
-.gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800; flex-shrink:0}
+.gobtn{width:58px; min-height:44px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800; flex-shrink:0}
 .gobtn:active{background:var(--accent-hover)}
 
 .datebar{padding:8px 18px 0}
@@ -595,8 +595,9 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    ALSO short, which no real tablet in either orientation is (iPad landscape
    is 820px+ tall), so this never touches an actual tablet. */
 /* A phone held sideways in the phone layout (an iPhone SE is 667x375): the top bar, the Prev/Next/Blank row, the search box and
-   the tab bar left the Songs list about 15px. They give back height here, and the tab bar puts each icon beside its label. */
-@media (max-width: 767px) and (max-height: 500px){
+   the tab bar left the Songs list about 15px. They give back height here, and the tab bar puts each icon beside its label. Sideways
+   only: an iPhone SE held upright at 150% page zoom is also under 500px tall, and its four tabs do not fit side by side like this. */
+@media (max-width: 767px) and (max-height: 500px) and (orientation: landscape){
   .topbar{padding-top:calc(6px + env(safe-area-inset-top,0px))}
   .transport{padding-top:6px; gap:12px}
   .transport button{min-height:44px; padding:6px 12px}

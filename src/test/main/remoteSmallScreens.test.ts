@@ -28,11 +28,17 @@ describe('a narrow phone (iPhone SE or a small Android at 150% page zoom)', () =
 
 describe('a phone held sideways (phone layout, under 768px wide and under 500px tall)', () => {
   it('the bars give back height so the song list is more than a sliver', () => {
-    const land = block('@media (max-width: 767px) and (max-height: 500px)')
+    const land = block('@media (max-width: 767px) and (max-height: 500px) and (orientation: landscape)')
     expect(land).toMatch(/\.transport button\{[^}]*min-height:44px/)
     expect(land).toMatch(/\.tab\{[^}]*flex-direction:row/)
     expect(land).toMatch(/\.searchbox\{[^}]*padding:/)
     expect(land).toMatch(/\.songlist\{[^}]*overflow:visible/)
+  })
+
+  // an iPhone SE held upright at 150% page zoom is 250x445: under 500px tall too, but upright. With the sideways layout its tabs put
+  // each icon beside its label, the four no longer fit and Songs sat off the right edge
+  it('only applies sideways, so an upright small phone at 150% keeps all four tabs on screen', () => {
+    expect(css).not.toMatch(/@media \(max-width: 767px\) and \(max-height: 500px\)\{/)
   })
 })
 
@@ -54,6 +60,7 @@ describe('tap targets', () => {
       expect(block(sel), sel).toMatch(/min-height:44px/)
     }
     expect(block('.gobtn{')).toMatch(/flex-shrink:0/)
+    expect(block('.gobtn{')).toMatch(/min-height:44px/) // Go was 37px tall on a sideways phone, where the search box is slimmer
     expect(block('@media (min-width: 768px) and (max-height: 500px)')).toMatch(/\.transport-inline button\{[^}]*min-height:44px/)
   })
 })
