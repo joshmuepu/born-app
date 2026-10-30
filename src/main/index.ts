@@ -89,6 +89,7 @@ import {
   fingerprintAndOrdinal,
   findNamedEntry,
   nameForDisplay,
+  projectionPlacementAfterChange,
   type DisplayLike,
   type NamedDisplay
 } from './displays'
@@ -344,6 +345,8 @@ function createProjectionWindow(): void {
       `fallback=${target.isFallback} override=${target.isOverride}`
   )
   if (target.isFallback) log.warn('projection: no external display — using operator screen')
+  projectionOnProjector = !(target.isFallback && !target.isOverride)
+  projectionDisplaced = false
 
   const onMac = process.platform === 'darwin'
   projectionWindow = new BrowserWindow({
@@ -610,6 +613,10 @@ function displayDiagnosticsText(): string {
 // visibly shakes. Guard: skip when the window is already full-screen on the
 // right display, and ignore the events our own move produces.
 let repositioning = false
+/** Whether the projection is full-screen on a projector (not on the operator's screen as the automatic fallback), and whether it was
+ *  made a normal window because its projector was unplugged (see projectionPlacementAfterChange). */
+let projectionOnProjector = false
+let projectionDisplaced = false
 
 /** Re-place the projection window on the correct display after a hotplug. */
 function repositionProjectionWindow(force = false): void {
@@ -617,6 +624,30 @@ function repositionProjectionWindow(force = false): void {
   const onMac = process.platform === 'darwin'
   const target = resolveProjectionTarget()
   const area = target.display.workArea ?? target.display.bounds
+  const automaticFallback = target.isFallback && !target.isOverride
+
+  if (projectionPlacementAfterChange({ automaticFallback, wasOnProjector: projectionOnProjector, displaced: projectionDisplaced }) === 'windowed') {
+    if (!projectionDisplaced) {
+      log.warn('projection: its screen was unplugged — now a normal window on the operator screen until a projector is back')
+      repositioning = true
+      try {
+        if (onMac) projectionWindow.setSimpleFullScreen(false)
+        else projectionWindow.setFullScreen(false)
+        projectionWindow.setBounds({ x: area.x, y: area.y, width: Math.round(area.width / 2), height: Math.round(area.height / 2) })
+        projectionWindow.center()
+      } catch (e) {
+        log.error('repositionProjectionWindow (windowed) failed', e)
+      }
+      setTimeout(() => {
+        repositioning = false
+      }, 700)
+    }
+    projectionDisplaced = true
+    projectionOnProjector = false
+    return
+  }
+  projectionDisplaced = false
+  projectionOnProjector = !automaticFallback
 
   const winDisplay = screen.getDisplayMatching(projectionWindow.getBounds())
   const isFs = onMac ? projectionWindow.isSimpleFullScreen() : projectionWindow.isFullScreen()

@@ -232,3 +232,11 @@ export function describeDisplay(
   const tags = [d.id === primaryId ? 'primary' : null, d.internal ? 'internal' : null].filter(Boolean)
   return tags.length ? `${name} (${size}, ${tags.join(', ')})` : `${name} (${size})`
 }
+
+/** Where the projection window goes after the screens change. When the projector it was showing on is unplugged mid-service, the
+ *  automatic choice falls back to the operator's own screen; taking that screen over full-screen would hide every control (only
+ *  Esc and ⌘/Ctrl+Shift+W would still work). So, like the stage monitor, it becomes a normal window there until a projector is back.
+ *  A projection opened on the operator's screen on purpose (no projector at all, or that screen chosen by name) stays full-screen. */
+export function projectionPlacementAfterChange(o: { automaticFallback: boolean; wasOnProjector: boolean; displaced: boolean }): 'fullscreen' | 'windowed' {
+  return o.automaticFallback && (o.wasOnProjector || o.displaced) ? 'windowed' : 'fullscreen'
+}
