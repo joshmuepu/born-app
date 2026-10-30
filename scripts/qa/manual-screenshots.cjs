@@ -9,6 +9,7 @@ const pw = require(path.join(process.env.PW_DIR || '/tmp/born-pw', 'node_modules
 const [profile, out] = process.argv.slice(2)
 const PORT = 14316, B = `http://127.0.0.1:${PORT}`
 const W = 1280, H = 772, SCALE = 1.5
+const MDNS = process.env.BORN_MDNS_NAME || 'born-remote-v1-e2e'
 
 const song = (id, title, lines) => ({ kind: 'song', id, songId: 0, title, slides: lines.map((l) => ({ text: l })) })
 const SONGS = [
@@ -22,7 +23,7 @@ const SONGS = [
   const sunday = path.join(profile, 'Sunday morning.born'); fs.writeFileSync(sunday, JSON.stringify([]))
   const shared = path.join(profile, 'From the song leader.born'); fs.writeFileSync(shared, JSON.stringify(SONGS))
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ recentServices: [shared, sunday], theme: 'dark' }))
-  const app = await launch({ profile, remotePort: PORT, port: Number(process.env.CDP_PORT || 9376), mdns: process.env.BORN_MDNS_NAME || 'born-remote-v1-e2e', settle: 8000, extraArgs: ['--require', path.join(__dirname, 'hide-outputs.cjs')] })
+  const app = await launch({ profile, remotePort: PORT, port: Number(process.env.CDP_PORT || 9376), mdns: MDNS, settle: 8000, extraArgs: ['--require', path.join(__dirname, 'hide-outputs.cjs')] })
   const p = await app.page()
   await p.viewport(W, H, SCALE); await sleep(800)
   const shot = async (name) => { await sleep(500); await p.shot(path.join(out, name)) }
@@ -34,7 +35,7 @@ const SONGS = [
     document.querySelectorAll('.on-this-day-title').forEach((e,i)=>e.textContent='Placeholder Sermon Title '+(i+1))
   })()`)
   // this run's address and test name → the defaults a church sees
-  const defaults = () => p.ev(`(()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);for(let n=w.nextNode();n;n=w.nextNode()){n.textContent=n.textContent.replace(/born-remote-v1-e2e/g,'born-remote').replace(/\\b\\d{1,3}(\\.\\d{1,3}){3}:${PORT}\\b/g,'10.0.0.124:4316').replace(/:${PORT}\\b/g,':4316').replace(/port ${PORT}\\b/g,'port 4316')}})()`)
+  const defaults = () => p.ev(`(()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);for(let n=w.nextNode();n;n=w.nextNode()){n.textContent=n.textContent.split(${JSON.stringify(MDNS)}).join('born-remote').replace(/\\b\\d{1,3}(\\.\\d{1,3}){3}:${PORT}\\b/g,'10.0.0.124:4316').replace(/:${PORT}\\b/g,':4316').replace(/port ${PORT}\\b/g,'port 4316')}})()`)
 
   // 1. idle
   await blur(); await placeholders(); await shot('operator-idle.png')
