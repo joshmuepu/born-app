@@ -294,6 +294,9 @@ function createMainWindow(): void {
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
     mainWindow = null
+    // The output windows are driven from this one: with it gone they could not be changed or closed (on macOS the Dock icon would not
+    // bring the operator window back while they were open; on Windows they have no taskbar button and the app never quit). They go too.
+    for (const w of [projectionWindow, stageWindow]) if (w && !w.isDestroyed()) w.close()
   })
 }
 
@@ -2143,7 +2146,7 @@ app.whenReady().then(async () => {
   )
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createMainWindow()
     }
   })
