@@ -858,6 +858,12 @@ export default function App() {
     }
 
     const onKey = (e: KeyboardEvent): void => {
+      // Shift+Esc is the panic key: it hides the screen even with a dialog open (the Message dialog and the shortcuts list included)
+      if (e.key === 'Escape' && e.shiftKey && projectionOpen) {
+        e.preventDefault()
+        handleToggleBlank()
+        return
+      }
       if (showAlertDialog) return
       if (e.key === '?') { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
@@ -1736,7 +1742,7 @@ export default function App() {
                 // is open (so Space/arrows don't leak through while typing a
                 // message) — which also swallows Esc before it ever reaches that
                 // handler, so Esc has to close this dialog itself.
-                else if (e.key === 'Escape') setShowAlertDialog(false)
+                else if (e.key === 'Escape' && !e.shiftKey) setShowAlertDialog(false)
               }}
               autoFocus
             />
