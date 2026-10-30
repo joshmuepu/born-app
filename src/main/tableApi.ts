@@ -6,12 +6,16 @@
 import { stripHtml, parseParagraphIndex, mergeHeadingSections, paragraphsOfSections, splitIsSafe } from './utils'
 
 const BASE = 'https://table.branham.org/rest'
+/** Every call gives up after this long: a network that takes the connection but never answers (a captive portal, weak Wi-Fi) must
+ *  not leave Browse or Next waiting for minutes. */
+const TIMEOUT_MS = 30_000
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${path}`)
   return res.json() as Promise<T>
@@ -412,7 +416,7 @@ export async function fetchSubtitles(
 
 export async function fetchLanguages(): Promise<Record<string, string>> {
   try {
-    const res = await fetch(`${BASE}/resources/localization/en`)
+    const res = await fetch(`${BASE}/resources/localization/en`, { signal: AbortSignal.timeout(TIMEOUT_MS) })
     if (!res.ok) return {}
     const json = await res.json() as {
       Status: string
