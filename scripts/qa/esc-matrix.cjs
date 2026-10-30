@@ -69,7 +69,7 @@ async function scenario(name, setup, scrollSel, frac) {
     await step('Shift+Esc', async () => { await p.key('Escape', { shift: true }) })
     await step('Shift+Esc again', async () => { await p.key('Escape', { shift: true }) })
     // the output pages themselves: they must not scroll or move when hidden/shown
-    const outs = (await app.targets()).filter((t) => /Output|Stage View/.test(t.title))
+    const outs = (await app.targets()).filter((t) => /Output|Stage View|Congregation screen|Stage monitor/.test(t.title))
     for (const t of outs) {
       const op = await app.page((x) => x.id === t.id)
       const m = () => op.ev(`({y:Math.round(scrollY),x:Math.round(scrollX),sh:document.documentElement.scrollHeight<=innerHeight+1,sc:[...document.querySelectorAll('*')].filter(e=>/(auto|scroll)/.test(getComputedStyle(e).overflowY)&&e.scrollTop>0).length})`)
