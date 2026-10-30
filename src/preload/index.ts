@@ -374,7 +374,8 @@ const api = {
   loadQueue: (): Promise<Quote[]> => ipcRenderer.invoke('queue:load'),
 
   // Service files
-  saveService: (items: Quote[]): Promise<boolean> => ipcRenderer.invoke('service:save', items),
+  /** true saved, false cancelled, 'failed' could not be written there */
+  saveService: (items: Quote[]): Promise<boolean | 'failed'> => ipcRenderer.invoke('service:save', items),
   openService: (): Promise<Quote[] | null> => ipcRenderer.invoke('service:open'),
   getRecentServices: (): Promise<Array<{ path: string; name: string; mtimeMs: number }>> =>
     ipcRenderer.invoke('service:recents'),

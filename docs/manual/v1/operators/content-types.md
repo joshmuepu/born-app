@@ -21,8 +21,9 @@ sermons exist for it), **Series**, **Location** (by city or state), and
 
 Whichever way you found a sermon, once you're inside one, every paragraph has its
 own **+ Queue** and **Project** buttons, and the currently on-screen paragraph (if
-any) is marked **On screen**. Click **← Back** (top-left of that view) to return to
-your search results or browse list.
+any) is marked **On screen**. Click **‹ Results** (from a search) or **‹ Back**
+(from Browse), top-left of that view, to return to your search results or browse
+list.
 
 ## Bible
 
@@ -42,8 +43,9 @@ For a word search, three buttons appear under the search box:
 A range dropdown (**Whole Bible** by default) next to the search box narrows a
 word search to the Old Testament, the New Testament, or a single book.
 
-**Browse** — a grid of every book (Old Testament and New Testament, each showing
-its chapter count), then a grid of that book's chapters, then the full chapter text
+**Browse** — choose **All Books** (or **Recently Looked Up** for the passages you
+used last), then a grid of every book (Old Testament and New Testament, each
+showing its chapter count), then a grid of that book's chapters, then the full chapter text
 with each verse individually clickable. Use **← Books** to go back a level.
 
 Whether you searched or browsed to it, click any verse's **+ Queue** or

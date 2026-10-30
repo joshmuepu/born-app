@@ -569,3 +569,29 @@ describe('fetchSubtitles', () => {
     expect(await fetchSubtitles(1)).toEqual([])
   })
 })
+
+describe('fetchSermonContent: one row per numbered paragraph', () => {
+  const P = (n: number | null, w: string): string => `<p class="normal_pn"><span class="first st">${n !== null ? `<span class="pn">${n}</span> ` : ''}${w}</span></p>`
+  const respond = (Sections: Array<{ Paragraph: string; Content: string }>) =>
+    vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse({ Status: 'Successful', Result: { DateCode: '99-0101M', Title: 'Sample', TotalSections: Sections.length, Sections } }) as unknown as Response)
+
+  it('a sermon section holding paragraphs 2-3 becomes two rows', async () => {
+    respond([{ Paragraph: 'header', Content: '<p>Sample 99-0101M</p>' }, { Paragraph: '1', Content: P(null, 'Opening.') }, { Paragraph: '2-3', Content: P(2, 'Two.') + P(3, 'Three.') }])
+    const r = await fetchSermonContent(7)
+    expect(r!.sections.map((s) => s.ref)).toEqual(['header', '1', '2', '3'])
+    expect(r!.sectionsKept).toBe(false)
+    expect(r!.totalSections).toBe(4)
+  })
+  it('a book chapter keeps its sections', async () => {
+    respond([{ Paragraph: '2-3', Content: P(2, 'Two.') + P(3, 'Three.') }])
+    const r = await fetchSermonContent(7, 'en', true)
+    expect(r!.sections.map((s) => s.ref)).toEqual(['2-3'])
+    expect(r!.sectionsKept).toBe(true)
+  })
+  it('a split that cannot be trusted (numbers out of order) keeps the sections', async () => {
+    respond([{ Paragraph: '5-6', Content: P(6, 'Six.') + P(5, 'Five.') }])
+    const r = await fetchSermonContent(7)
+    expect(r!.sections.map((s) => s.ref)).toEqual(['5-6'])
+    expect(r!.sectionsKept).toBe(true)
+  })
+})

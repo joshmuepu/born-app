@@ -1,6 +1,6 @@
 # What BORN is
 
-*BORN manual — v1 · Updated 2026-10-09.*
+*BORN manual — v1 · Updated 2026-10-30.*
 
 **BORN** (short for *Branham or Nothing*) is a free computer program for running the
 screens during a church service. One person — the **operator** — sits at a laptop

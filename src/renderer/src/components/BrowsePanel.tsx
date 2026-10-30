@@ -9,6 +9,7 @@ import type {
   DateTreeYear
 } from '../types'
 import { quoteToItem } from '../../../shared/queueItem'
+import { quoteMeta } from '../../../shared/sermonMeta'
 import './BrowsePanel.css'
 
 interface Props {
@@ -147,16 +148,20 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
 
   // ── Paragraph loading ─────────────────────────────────────────────────────────
 
+  // Only the answer for the sermon opened last is shown: a slow one (a translation fetched online) for a sermon opened before must not
+  // replace it.
+  const paragraphsRequest = useRef(0)
   const loadParagraphs = useCallback(
     async (sermon: SermonIndexItem, lang = language) => {
+      const request = ++paragraphsRequest.current
       setSelectedSermon(sermon)
       setLoadingParagraphs(true)
       setParagraphs([])
       try {
         const paras = await window.electronAPI.getSermonParagraphs(sermon.id, lang)
-        setParagraphs(paras)
+        if (request === paragraphsRequest.current) setParagraphs(paras)
       } finally {
-        setLoadingParagraphs(false)
+        if (request === paragraphsRequest.current) setLoadingParagraphs(false)
       }
     },
     [language]
@@ -271,7 +276,10 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
     if (browsedSermons.length > 0) return renderSermonList()
     return (
       <div className="browse-list browse-list--grid">
-        {seriesList.length === 0 && <div className="browse-loading">Loading series…</div>}
+        {seriesList.length === 0 && (seriesLoaded
+          // the series list comes from The Table online, with a bundled copy; empty means neither could be read, not "still loading"
+          ? <div className="browse-loading" role="status">The series list could not be loaded. Date, Location and search still work.</div>
+          : <div className="browse-loading">Loading series…</div>)}
         {seriesList.map((s) => (
           <div
             key={s.i}
@@ -596,7 +604,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
   const renderRecent = (): JSX.Element => (
     <div className="browse-sermons">
       <div className="browse-back-row">
-        <span className="browse-group-label">Recently played</span>
+        <span className="browse-group-label">Recently Played</span>
         {recentQuotes.length > 0 && (
           <button className="browse-back" onClick={clearRecent}>Clear</button>
         )}
@@ -617,7 +625,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
               return (
                 <div key={`${i}:${slideIndex}`} className={`browse-para-item${live ? ' browse-para-item--on-screen' : ''}`}>
                   <div className="browse-para-ref">
-                    {q.sermonTitle} · {q.dateCode} · ¶{marker}
+                    {q.sermonTitle} · {quoteMeta({ dateCode: q.dateCode, paragraphRef: marker }, { year: false })}
                     {live && <span className="on-screen-tag">On screen</span>}
                   </div>
                   <div className="browse-para-text">{s.text}</div>

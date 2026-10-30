@@ -9,6 +9,7 @@
  */
 import type { QueueItem, Slide } from '../../shared/queueItem'
 import { quoteToItem } from '../../shared/queueItem'
+import { parseParagraphRef } from '../../shared/paragraphRef'
 import type { Quote } from './types'
 
 export type FlowCursor =
@@ -44,7 +45,8 @@ export function cursorsFor(item: QueueItem): FlowCursors {
   return {}
 }
 
-type SermonCache = Map<number, Quote[]>
+/** each sermon's paragraphs, per language (a translated copy has the same paragraph numbers): key `${sermonId}:${language}` */
+type SermonCache = Map<string, Quote[]>
 
 /**
  * Fetch the slide just past `cursor` in the given direction, plus the cursor
@@ -61,13 +63,34 @@ export async function fetchAdjacentSlide(
   if (cursor.kind === 'quote') {
     // paragraphIndex isn't reliably populated; the array order from
     // getSermonParagraphs is the source of truth, keyed by paragraphRef.
-    let paras = sermonCache.get(cursor.sermonId)
+    const key = `${cursor.sermonId}:${cursor.language || 'en'}`
+    let paras = sermonCache.get(key)
     if (!paras) {
       paras = (await window.electronAPI.getSermonParagraphs(cursor.sermonId, cursor.language)) || []
-      sermonCache.set(cursor.sermonId, paras)
+      // an empty answer (no connection yet) is not kept, so Next works once the paragraphs can be read
+      if (paras.length > 0) sermonCache.set(key, paras)
     }
     const pos = paras.findIndex((p) => p.paragraphRef === cursor.paragraphRef)
-    if (pos === -1) return null
+    if (pos === -1) {
+      // an item saved before the library was stored one row per paragraph keeps its range ("11-12"): carry on from the paragraph at the
+      // end it is leaving from (the last one for Next, the first for Back), at that paragraph's last or first page
+      const range = parseParagraphRef(cursor.paragraphRef)
+      if (range && range[1] > range[0]) {
+        const edge = String(dir === 'next' ? range[1] : range[0])
+        const row = paras.find((p) => p.paragraphRef === edge)
+        if (row) {
+          const edgePages = quoteToItem(row).slides.length
+          return fetchAdjacentSlide({ ...cursor, paragraphRef: edge, page: dir === 'next' ? edgePages - 1 : 0 }, dir, sermonCache)
+        }
+      }
+      // a single paragraph cut out of its stored range (a search result, sermonHit.ts): carry on from its place inside that row
+      const n = /^\d+$/.test(cursor.paragraphRef) ? Number(cursor.paragraphRef) : NaN
+      const at = Number.isNaN(n) ? -1 : paras.findIndex((p) => { const r = parseParagraphRef(p.paragraphRef); return !!r && r[0] <= n && n <= r[1] })
+      if (at === -1) return null
+      const base = quoteToItem(paras[at]).slides.findIndex((s) => (s.marker ?? '').replace(/[a-z]+$/, '') === cursor.paragraphRef)
+      if (base === -1) return null
+      return fetchAdjacentSlide({ ...cursor, paragraphRef: paras[at].paragraphRef, page: base + cursor.page }, dir, sermonCache)
+    }
 
     // Step through the pages of the current paragraph first…
     const curPages = quoteToItem(paras[pos]).slides

@@ -117,3 +117,36 @@ describe('getSettings — a damaged settings.json is kept, not overwritten', () 
     expect(readdirSync(dir)).toEqual([])
   })
 })
+
+describe('getSettings — values of the wrong kind', () => {
+  // A settings.json that reads but holds the wrong kind of value (edited by hand, or written by something else) stopped the window
+  // from appearing at all: e.g. a theme of 42 failed in the main process, a list that is null failed in the window. Each wrong value
+  // now falls back to its default, the right ones are kept.
+  it('each wrong value falls back to its default; the right ones are kept', async () => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({
+      namedDisplays: 'x', projectionDisplayName: 5, stageDisplayName: 'Stage TV', fontSize: 'big', recentServices: null, theme: 42,
+      recentSongIds: {}, recentQuotes: 'q', recentBibleRefs: null, recentKeys: [7, 'G'], remoteLastPhoneNetwork: 'wifi'
+    }))
+    const { getSettings } = await freshSettingsModule()
+    const s = getSettings()
+    expect(s).toMatchObject({
+      namedDisplays: [], projectionDisplayName: null, stageDisplayName: 'Stage TV', fontSize: 4.5, recentServices: [], theme: 'dark',
+      recentSongIds: [], recentQuotes: [], recentBibleRefs: [], recentKeys: ['G'], remoteLastPhoneNetwork: null
+    })
+  })
+  it('a font size outside 1.5–8 falls back too', async () => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ fontSize: 900 }))
+    const { getSettings } = await freshSettingsModule()
+    expect(getSettings().fontSize).toBe(4.5)
+  })
+})
+
+describe('getSettings — keys this version does not know', () => {
+  it('are kept, so they survive the next save', async () => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'light', someLaterSetting: { on: true } }))
+    const { getSettings, updateSettings } = await freshSettingsModule()
+    expect(getSettings().theme).toBe('light')
+    updateSettings({ fontSize: 5 })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf-8')).someLaterSetting).toEqual({ on: true })
+  })
+})

@@ -4,10 +4,10 @@
  * display override, font size).
  */
 import { app } from 'electron'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { join } from 'path'
 import { log } from './logger'
-import { quarantineCorruptFile } from './corruptFile'
+import { quarantineCorruptFile, writeFileAtomic } from './corruptFile'
 import type { NamedDisplay } from './displays'
 
 export interface AppSettings {
@@ -73,6 +73,30 @@ const DEFAULTS: AppSettings = {
 
 let cache: AppSettings | null = null
 
+/** Keeps each saved value only when it is the right kind; anything else gets its default. A settings.json that reads but holds the
+ *  wrong kind of value (edited by hand, or written by something else) otherwise stopped the window from appearing at all. */
+function wellFormed(raw: Record<string, unknown>): Partial<AppSettings> {
+  const out: Record<string, unknown> = {}
+  const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+  const list = <T>(v: unknown, ok: (x: unknown) => boolean): T[] | undefined => (Array.isArray(v) ? (v.filter(ok) as T[]) : undefined)
+  const str = (v: unknown): boolean => typeof v === 'string'
+  const nameOrNull = (v: unknown): string | null | undefined => (v === null || typeof v === 'string' ? v : undefined)
+  const put = (k: keyof AppSettings, v: unknown): void => { if (v !== undefined) out[k] = v }
+  put('namedDisplays', list(raw.namedDisplays, (x) => isObj(x) && typeof x.name === 'string'))
+  put('projectionDisplayName', nameOrNull(raw.projectionDisplayName))
+  put('stageDisplayName', nameOrNull(raw.stageDisplayName))
+  put('fontSize', typeof raw.fontSize === 'number' && raw.fontSize >= 1.5 && raw.fontSize <= 8 ? raw.fontSize : undefined)
+  put('recentServices', list(raw.recentServices, str))
+  put('theme', raw.theme === 'dark' || raw.theme === 'light' ? raw.theme : undefined)
+  put('recentSongIds', list(raw.recentSongIds, (x) => typeof x === 'number'))
+  put('recentQuotes', list(raw.recentQuotes, (x) => isObj(x) && typeof x.sermonId === 'number' && typeof x.text === 'string'))
+  put('recentBibleRefs', list(raw.recentBibleRefs, (x) => isObj(x) && typeof x.reference === 'string'))
+  put('recentKeys', list(raw.recentKeys, str))
+  const net = raw.remoteLastPhoneNetwork
+  put('remoteLastPhoneNetwork', net === null || (isObj(net) && typeof net.name === 'string' && typeof net.address === 'string') ? net : undefined)
+  return out as Partial<AppSettings>
+}
+
 function settingsPath(): string {
   return join(app.getPath('userData'), 'settings.json')
 }
@@ -80,12 +104,15 @@ function settingsPath(): string {
 export function getSettings(): AppSettings {
   if (cache) return cache
   try {
-    const raw = JSON.parse(readFileSync(settingsPath(), 'utf-8')) as Partial<AppSettings>
+    const parsed: unknown = JSON.parse(readFileSync(settingsPath(), 'utf-8'))
+    const raw = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
     // The legacy default was 3.0 but the Text control still read "100%" — realign
     // an untouched value to the new, honest 100% (4.5).
     const needsFontSizeRealign = raw.fontSize === 3
     if (needsFontSizeRealign) raw.fontSize = 4.5
-    cache = { ...DEFAULTS, ...raw }
+    // keys this version does not know (a later version's) are kept as they are, so they survive the next save
+    const unknown = Object.fromEntries(Object.entries(raw).filter(([k]) => !(k in DEFAULTS)))
+    cache = { ...DEFAULTS, ...unknown, ...wellFormed(raw) }
     // Without this, the correction above only ever lived in memory — every
     // future launch kept re-deriving it from an unchanged 3.0 on disk, and
     // anything that reads settings.json directly (support, a future
@@ -93,7 +120,7 @@ export function getSettings(): AppSettings {
     // itself has shown the correct 100% the whole time.
     if (needsFontSizeRealign) {
       try {
-        writeFileSync(settingsPath(), JSON.stringify(cache, null, 2))
+        writeFileAtomic(settingsPath(), JSON.stringify(cache, null, 2))
       } catch (e) {
         log.error('settings write failed (fontSize realign)', e)
       }
@@ -111,7 +138,7 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   const next = { ...getSettings(), ...patch }
   cache = next
   try {
-    writeFileSync(settingsPath(), JSON.stringify(next, null, 2))
+    writeFileAtomic(settingsPath(), JSON.stringify(next, null, 2))
   } catch (e) {
     log.error('settings write failed', e)
   }

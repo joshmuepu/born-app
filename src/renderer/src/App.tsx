@@ -128,7 +128,7 @@ export default function App() {
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
-  const sermonCacheRef = useRef<Map<number, Quote[]>>(new Map())
+  const sermonCacheRef = useRef<Map<string, Quote[]>>(new Map())
   const queueLoaded = useRef(false)
   const projectionOpenRef = useRef(false)
   const isScreenBlankedRef = useRef(false)
@@ -278,6 +278,9 @@ export default function App() {
     }
   }, [])
 
+  // Each Project gets a number; one still waiting for the projection window to open is dropped if another came after it, so the
+  // last choice is what stays on screen.
+  const projectSeqRef = useRef(0)
   const doProject = useCallback(
     async (
       item: QueueItem,
@@ -287,7 +290,9 @@ export default function App() {
     ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
+      const seq = ++projectSeqRef.current
       await ensureProjectionOpen()
+      if (seq !== projectSeqRef.current) return
 
       // Private copy so Next/Prev flow-through never mutates the queued item.
       const stored: QueueItem = { ...item, slides: item.slides.map((s) => ({ ...s })) }
@@ -858,8 +863,14 @@ export default function App() {
     }
 
     const onKey = (e: KeyboardEvent): void => {
+      // Shift+Esc is the panic key: it hides the screen even with a dialog open (the Message dialog and the shortcuts list included)
+      if (e.key === 'Escape' && e.shiftKey && projectionOpen) {
+        e.preventDefault()
+        handleToggleBlank()
+        return
+      }
       if (showAlertDialog) return
-      if (e.key === '?') { setShowShortcuts((v) => !v); return }
+      if (e.key === '?' && !isTyping(e.target)) { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
 
@@ -935,7 +946,7 @@ export default function App() {
         case 'b':
         case 'B':
           e.preventDefault()
-          handleToggleBlank()
+          if (projectionOpen) handleToggleBlank()
           break
       }
     }
@@ -1006,15 +1017,11 @@ export default function App() {
     }
   }, [serviceQueue.length, projectionOpen, isScreenBlanked])
 
-  const handleSaveService = useCallback(async () => {
-    const ok = await window.electronAPI.saveService(serviceQueue)
-    if (ok) refreshRecents()
-  }, [serviceQueue, refreshRecents])
-
   // Shown under the queue toolbar when Open/Import can't read or parse a
   // file — a damaged or empty .born file otherwise fails with nothing
-  // visible at all. Auto-clears so it doesn't linger once the operator has
-  // moved on, same pattern as SongsPanel's import message.
+  // visible at all — or when a save could not be written. Auto-clears so it
+  // doesn't linger once the operator has moved on, same pattern as
+  // SongsPanel's import message.
   const [openError, setOpenError] = useState<string | null>(null)
   const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const showOpenError = useCallback((message: string) => {
@@ -1022,6 +1029,12 @@ export default function App() {
     setOpenError(message)
     openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
   }, [])
+
+  const handleSaveService = useCallback(async () => {
+    const ok = await window.electronAPI.saveService(serviceQueue)
+    if (ok === 'failed') showOpenError("Couldn't save the service there (the folder may be read-only or full). Try another place.")
+    else if (ok) refreshRecents()
+  }, [serviceQueue, refreshRecents, showOpenError])
 
   const applyLoadedQueueItems = useCallback((items: QueueItem[]) => {
     setServiceQueue(items)
@@ -1454,14 +1467,14 @@ export default function App() {
                   // Defaulting to Stage monitor unconditionally used to send a
                   // message nowhere visible whenever no stage monitor was on
                   // for that session — default to it only when it's actually
-                  // showing something, Main screen otherwise.
+                  // showing something, the congregation screen otherwise.
                   setAlertTarget(stageOpen ? 'stage' : 'congregation')
                   setShowAlertDialog(true)
                 }}
                 title={
                   stageOpen
                     ? 'Show a short message across the bottom of a screen (defaults to the stage monitor)'
-                    : 'Show a short message across the bottom of a screen (defaults to the main screen)'
+                    : 'Show a short message across the bottom of a screen (defaults to the congregation screen)'
                 }
               >
                 Message
@@ -1524,7 +1537,7 @@ export default function App() {
                   </button>
                 ) : (
                   <button className="btn-primary btn-sm" onClick={() => window.electronAPI.openReleasePage()}>
-                    Get it from the website
+                    Open download page
                   </button>
                 )}
                 <button className="btn-quiet btn-sm" onClick={() => setUpdateDismissed(true)}>
@@ -1736,7 +1749,7 @@ export default function App() {
                 // is open (so Space/arrows don't leak through while typing a
                 // message) — which also swallows Esc before it ever reaches that
                 // handler, so Esc has to close this dialog itself.
-                else if (e.key === 'Escape') setShowAlertDialog(false)
+                else if (e.key === 'Escape' && !e.shiftKey) setShowAlertDialog(false)
               }}
               autoFocus
             />
@@ -1748,7 +1761,7 @@ export default function App() {
                   className={`filter-mode-btn${alertTarget === t ? ' active' : ''}`}
                   onClick={() => setAlertTarget(t)}
                 >
-                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Main screen' : 'Both'}
+                  {t === 'stage' ? 'Stage monitor' : t === 'congregation' ? 'Congregation screen' : 'Both'}
                 </button>
               ))}
             </div>
@@ -1765,12 +1778,13 @@ export default function App() {
           <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
-              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
-              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
+              <div><dt><kbd>→</kbd> <kbd>Space</kbd> <kbd>Page Down</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
+              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>Page Up</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (<kbd>Esc</kbd> closes an open window or menu first)</dd></div>
+              <div><dt><kbd>Shift</kbd>+<kbd>Esc</kbd></dt><dd>Hide / show the congregation screen, even with a window or menu open</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
-              <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
+              <div><dt><kbd>/</kbd> <kbd>⌘/Ctrl</kbd>+<kbd>F</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>

@@ -13,7 +13,7 @@ const mk = (r) => quoteToItem({ text: r.text, sermonTitle: r.title, dateCode: r.
 ;(async () => {
   const profile = path.join(base, 'run-jump'); fs.rmSync(profile, { recursive: true, force: true }); fs.mkdirSync(profile, { recursive: true })
   for (const f of ['sermons.db', 'library.db']) fs.copyFileSync(path.join(base, f), path.join(profile, f))
-  fs.writeFileSync(path.join(profile, 'queue.json'), JSON.stringify([mk(rows[3]), mk(rows.find((r) => r.ref === '396-399'))]))
+  fs.writeFileSync(path.join(profile, 'queue.json'), JSON.stringify([mk(rows[3]), mk(rows.find((r) => r.ref === '396' || r.ref === '396-399'))]))
   const app = await launch({ profile, remotePort: 14345, mdns: 'born-remote-v1rj', port: 9375, settle: 8000, extraArgs: ['--require', path.join(__dirname, 'hide-outputs.cjs')] })
   try {
     const p = await app.page(); await p.viewport(Math.round(+size[1] / +size[3]), Math.round(+size[2] / +size[3]), 1); await sleep(500)

@@ -11,7 +11,7 @@ const label = (page) => page.evaluate(() => [...document.querySelectorAll('.conn
   const c = checks('remote-reconnect')
   let app = await launch({ profile, remotePort: PORT, mdns: 'born-remote-v1rc', port: 9360, settle: 5000 })
   for (const [name, type] of [['chromium', pw.chromium], ['webkit', pw.webkit]]) {
-    const browser = await type.launch()
+    const browser = await type.launch(name === 'chromium' && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' })
     const page = await ctx.newPage()
     await page.goto(`http://127.0.0.1:${PORT}/`); await page.waitForFunction(() => typeof setTab === 'function')

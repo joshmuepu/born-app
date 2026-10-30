@@ -425,6 +425,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   if (path === '/command' && req.method === 'POST') {
+    // Only a JSON request, as the phone page sends. A plain-text or form POST is what a web page in any browser on the network can send
+    // to another site without the browser checking first; a JSON one needs that check, which this server never grants.
+    if (!/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))) {
+      res.writeHead(415, { Connection: 'close' })
+      res.end()
+      return
+    }
     const body = await readBody(req)
     if (body === null) {
       res.writeHead(413, { Connection: 'close' })

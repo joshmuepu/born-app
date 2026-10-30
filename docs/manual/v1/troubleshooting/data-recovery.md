@@ -10,9 +10,9 @@ crashing mid-write), BORN:
 
 1. **Keeps the damaged file** — it's renamed (e.g. `library.db.corrupt-<date>`),
    never deleted, in case support needs to look at it later.
-2. **Rebuilds a fresh copy automatically** — the Bible/songs library rebuilds
-   immediately; the sermon search index rebuilds the same way it did the very
-   first time BORN ran, which needs an internet connection.
+2. **Rebuilds a fresh copy automatically** — both the sermon library and the
+   Bible/songs library are restored straight away from the copy that comes with
+   BORN; no internet connection is needed.
 3. **Tells you, in plain language** — a warning appears in the footer (sermon
    data) or in the app-info popover reached by clicking the footer (library data):
    *"Your local [sermon / Bible/songs] data was damaged — it's been reset and
@@ -41,10 +41,10 @@ again.
 
 ## If the sermon warning doesn't go away
 
-The sermon index needs an internet connection to rebuild. If it's stuck showing
-**Preparing sermon database — search needs an internet connection the first
-time**, connect this computer to the internet and click **Retry** (next to that
-message in the footer).
+The sermon library is restored from the copy that comes with BORN. If the footer
+is still stuck showing **Preparing sermon database**, connect this computer to the
+internet and click **Retry** (next to that message in the footer): BORN then
+fetches what is missing online.
 
 ## Finding the damaged file, or BORN's data folder generally
 

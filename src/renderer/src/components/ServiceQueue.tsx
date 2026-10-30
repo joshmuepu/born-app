@@ -397,17 +397,17 @@ export default function ServiceQueue({
               <div
                 className="monitor-switch"
                 role="tablist"
-                aria-label="Preview the main screen or the stage monitor"
+                aria-label="Preview the congregation screen or the stage monitor"
               >
                 <button
                   role="tab"
                   aria-selected={monitor === 'screen'}
                   className={`monitor-switch-tab${monitor === 'screen' ? ' is-active' : ''}`}
                   onClick={() => setMonitor('screen')}
-                  title="What the congregation sees on the main screen"
+                  title="What the congregation sees"
                 >
                   <Monitor className="monitor-switch-icon" width={14} height={14} strokeWidth={2} aria-hidden="true" />
-                  Main screen
+                  Congregation
                 </button>
                 <button
                   role="tab"

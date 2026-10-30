@@ -299,3 +299,14 @@ describe('BrowsePanel', () => {
     await waitFor(() => expect(screen.getByText(/show up here/i)).toBeDefined())
   })
 })
+
+describe('Browse > Series without an internet connection', () => {
+  it('says the series list needs a connection instead of "Loading series…" forever', async () => {
+    window.electronAPI.getBrowseSeries = vi.fn(() => Promise.resolve([])) as never
+    const user = userEvent.setup()
+    render(<BrowsePanel visible onAddToQueue={vi.fn()} onSendToProjection={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /^Series/ }))
+    await waitFor(() => expect(screen.getByText(/could not be loaded/)).toBeDefined())
+    expect(screen.queryByText('Loading series…')).toBeNull()
+  })
+})

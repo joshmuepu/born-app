@@ -27,7 +27,7 @@ input{font-family:inherit}
 mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; padding:0 2px}
 
 /* ── App shell: two whole shells, one shown per breakpoint ────────── */
-#app{height:100vh; height:100dvh; overflow:hidden;}
+#app{height:100vh; height:100dvh; overflow:hidden; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 #phoneShell{display:flex; flex-direction:column; height:100%}
 #tabletShell{display:none; height:100%}
 
@@ -49,7 +49,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    more often. */
 .transport{flex-shrink:0; display:flex; gap:20px; padding:14px 18px 0}
 .transport button{
-  flex:1; min-height:64px; padding:14px; border-radius:16px;
+  flex:1; min-width:0; min-height:64px; padding:14px; border-radius:16px;
   display:flex; align-items:center; justify-content:center; gap:8px;
   background:var(--surface); border:1.5px solid var(--border); color:var(--text);
   font-size:15px; font-weight:800;
@@ -60,6 +60,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .transport .btn-next:active{background:var(--accent-hover)}
 .transport .blank{flex:0 0 86px; min-height:64px; background:rgba(227,179,65,0.12); border-color:rgba(227,179,65,0.4); color:var(--warn)}
 .transport .blank.active{background:var(--warn); color:var(--warn-ink)}
+/* A narrow phone (an iPhone SE or a small Android at 150% page zoom is 240-250px wide): the three buttons share the width,
+   so Blank is never pushed off the right edge. The arrows go; the words stay. */
+@media (max-width: 340px){
+  .transport{gap:8px; padding:14px 10px 0}
+  .transport button{padding:10px 4px}
+  .transport button svg{display:none}
+  .transport .blank{flex:0 0 72px}
+}
 
 /* Scrolling happens on the active .view itself (not .scroll) so a tab that
    needs an internal fixed-header + independently-scrolling list (Songs, with
@@ -115,7 +123,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   display:flex; align-items:center; gap:6px; margin:8px 18px 0; padding:8px 14px;
   border-radius:11px; background:rgba(139,111,209,0.14); border:1px solid rgba(139,111,209,0.4);
   color:var(--accent); font-size:13px; font-weight:700; align-self:flex-start;
-}
+ min-height:44px}
 .draft-pill:active{background:rgba(139,111,209,0.22)}
 .draft-pill-count{
   display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
@@ -184,7 +192,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 .qstrip-row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 8px}
 .qstrip-row .section-label{padding:0}
-.qstrip-row .viewall{display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0}
+.qstrip-row .viewall{display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0; min-height:44px}
 .qstrip{display:flex; gap:8px; overflow-x:auto; padding:0 18px 4px; -webkit-overflow-scrolling:touch}
 .qstrip-card{flex:0 0 134px; padding:11px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border); text-align:left}
 .qstrip-card[data-kind="song"]{border-left-color:var(--amber)}
@@ -278,7 +286,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .searchbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
 .searchbox.bible:focus-within{border-color:var(--sage); box-shadow:0 0 0 2px var(--sage)}
 .searchbox input::placeholder{color:var(--text3)}
-.gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800}
+.gobtn{width:58px; min-height:44px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800; flex-shrink:0}
 .gobtn:active{background:var(--accent-hover)}
 
 .datebar{padding:8px 18px 0}
@@ -304,7 +312,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .recent-head{padding:20px 18px 0; display:flex; align-items:center; gap:7px}
 .recent-head svg{color:var(--text2)}
 .recent-head span{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
-.recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px}
+.recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px; min-height:44px; min-width:44px}
 /* A horizontal, single-row strip — not a vertical stack. Vertical cards here
    used to grow with the recent count (5 items ≈ 200px+) and, on a short
    landscape-phone viewport, that alone could eat the ENTIRE height budget
@@ -314,7 +322,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    short the screen is. Matches the desktop's own recent-chip treatment
    (SongsPanel.css .songs-recent-chip) for the same feature. */
 .recent-list{padding:8px 18px 0; display:flex; flex-direction:row; flex-shrink:0; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch}
-.recent-item{padding:9px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--border); text-align:left; white-space:nowrap; flex-shrink:0}
+.recent-item{padding:9px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--border); text-align:left; white-space:nowrap; flex-shrink:0; min-height:44px}
 .recent-item:active{background:var(--surface2)}
 .recent-item span{font-size:13px; font-weight:700; color:var(--text)}
 
@@ -337,7 +345,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .azstrip button.current{background:var(--accent); color:#fff}
 .songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}
 .song-letter{position:sticky; top:0; z-index:1; background:var(--bg); font-size:11px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
-.song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none}
+.song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none; min-height:44px}
 .song-row:active{background:var(--surface)}
 .song-row mark{background:rgba(139,111,209,0.35); color:var(--text); font-weight:800; border-radius:2px}
 
@@ -345,7 +353,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .bible-groups{padding:16px 18px 0; flex:1; overflow-y:auto}
 .testament-label{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2); margin:0 0 8px}
 .book-grid{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin-bottom:18px}
-.book-chip{padding:11px 4px; text-align:center; border-radius:9px; background:var(--surface); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text)}
+.book-chip{padding:11px 4px; text-align:center; border-radius:9px; background:var(--surface); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text); min-height:44px}
 .book-chip:active{background:var(--surface2); border-color:var(--sage)}
 
 .chapter-header{padding:16px 18px 0; display:flex; align-items:center; gap:10px}
@@ -359,7 +367,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 /* ── Search scope: default "Whole Bible", opt-in narrowing ───────────── */
 .scope-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap}
-.scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700}
+.scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700; min-height:44px}
 .scope-pill.active{color:var(--sage); border-color:var(--sage); background:rgba(131,192,142,0.14); font-family:ui-monospace,monospace}
 .scope-clear{padding:6px 9px; border-radius:999px; background:rgba(131,192,142,0.14); border:1px solid var(--sage); color:var(--sage); font-size:14px; line-height:1; font-weight:700}
 .scope-translation{font-size:11px; color:var(--text3); margin-left:auto}
@@ -373,7 +381,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .verse-text{font-size:14.5px; line-height:1.45; color:var(--text2)}
 
 /* ── Preview sheet (shared: sermons / bible / songs) ──────────────── */
-.sheet-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:70}
+.sheet-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:70; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 .sheet-overlay.active{display:flex}
 .sheet{
   background:var(--surface); border-top:1px solid var(--border); border-radius:20px 20px 0 0;
@@ -449,7 +457,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .toast.error{background:var(--warn); color:var(--warn-ink)}
 
 /* ── One-time "Add to Home Screen" sheet ──────────────────────────── */
-.a2hs-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:80}
+.a2hs-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:80; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 .a2hs-overlay.active{display:flex}
 .a2hs{background:var(--surface); border-top:1px solid var(--border); border-radius:20px 20px 0 0; padding:22px 22px calc(30px + env(safe-area-inset-bottom,0px)); width:100%; display:flex; flex-direction:column; gap:16px}
 .a2hs h3{margin:0; font-size:17px; font-weight:800; color:var(--text)}
@@ -459,7 +467,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .a2hs-num{flex-shrink:0; width:26px; height:26px; border-radius:8px; background:rgba(139,111,209,0.15); display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:12px; font-weight:800}
 .a2hs-step-text{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text)}
 .a2hs .btn-primary,.role-banner-card .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
-.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
+.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px; min-height:44px}
 /* Deliberately NOT a full-screen modal like .a2hs-overlay (inset:0 + a
  * backdrop that captures every click) — this used to hide the entire app
  * behind it on a device's very first connection until the person noticed
@@ -586,11 +594,29 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    picked the right layout; this narrows it further to viewports that are
    ALSO short, which no real tablet in either orientation is (iPad landscape
    is 820px+ tall), so this never touches an actual tablet. */
+/* A phone held sideways in the phone layout (an iPhone SE is 667x375): the top bar, the Prev/Next/Blank row, the search box and
+   the tab bar left the Songs list about 15px. They give back height here, and the tab bar puts each icon beside its label. Sideways
+   only: an iPhone SE held upright at 150% page zoom is also under 500px tall, and its four tabs do not fit side by side like this. */
+@media (max-width: 767px) and (max-height: 500px) and (orientation: landscape){
+  .topbar{padding-top:calc(6px + env(safe-area-inset-top,0px))}
+  .transport{padding-top:6px; gap:12px}
+  .transport button{min-height:44px; padding:6px 12px}
+  .searchbar{padding-top:8px}
+  .searchbox{padding:7px 14px}
+  .section-label{padding:8px 18px 4px}
+  .azstrip{padding-bottom:4px}
+  .tabbar{padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px))}
+  .tab{flex-direction:row; justify-content:center; gap:6px; min-height:44px; padding:2px; font-size:12px}
+  /* and the Songs tab scrolls as a whole page here instead of squeezing its list into what is left under the headers (the A-Z jump
+     still lands on its letter) */
+  .songs-body{flex:none; overflow:visible}
+  .songlist{flex:none; overflow:visible}
+}
 @media (min-width: 768px) and (max-height: 500px){
   .list-pane{padding-top:14px; padding-bottom:14px}
   .list-pane h2{margin-bottom:8px}
   .list-pane .transport-inline{gap:10px; margin-bottom:8px}
-  .list-pane .transport-inline button{min-height:36px; padding:6px 10px; font-size:13px; border-radius:10px}
+  .list-pane .transport-inline button{min-height:44px; padding:6px 10px; font-size:13px; border-radius:10px}
   /* Same reasoning as the recent-list rewrite above: on this little height,
      every fixed-height header row the Songs tab stacks before its actual
      list (recent strip, section label, A-Z jump row) has to give back
@@ -667,9 +693,9 @@ export function buildAppBody(): string {
       <div class="conn bad" id="conn-p"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="transport">
-      <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
+      <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button>
       <button id="next-p" class="btn-next"><span>Next</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
-      <button class="blank" id="blank-p">Blank</button>
+      <button class="blank" id="blank-p">Hide screen</button>
     </div>
     <div class="scroll">
       <div class="view active" data-view="queue" id="view-queue"></div>
@@ -693,7 +719,7 @@ export function buildAppBody(): string {
       <button class="sidebar-tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
       <div class="sidebar-spacer"></div>
-      <button class="blank" id="blank-t">Blank</button>
+      <button class="blank" id="blank-t">Hide screen</button>
       <div class="led" id="conn-t" title="Connecting…"></div>
     </div>
     <div class="tablet-main">
@@ -819,6 +845,7 @@ function initRoleOverlay(){
   on($('roleSkipBtn'), 'click', function(){
     try { localStorage.setItem('born-remote-role-dismissed', '1'); } catch(e){}
     if(overlay) overlay.classList.remove('active');
+    roleOverlayClosed();
   });
   on($('roleSaveBtn'), 'click', function(){
     var v = ($('roleCustomInput') || {}).value || '';
@@ -837,6 +864,7 @@ function chooseRole(label){
   if(label !== 'Operator') state.queueEditMode = false;
   var overlay = $('roleOverlay');
   if(overlay) overlay.classList.remove('active');
+  roleOverlayClosed();
   toast('Contributing as ' + label);
   refreshQueueHeader();
   renderCurrentTab();
@@ -850,6 +878,8 @@ function showCustomRoleInput(){
 }
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// "63-0324E · ¶233"; a Church Age Book chapter (no date code, an internal row token) reads "Book"
+function qmeta(q){ var c = String(q.dateCode || '').trim(), r = String(q.paragraphRef || '').trim(); var p = r && r.charAt(0) !== '§' && /[0-9]/.test(r) ? '¶' + r : ''; return c ? (p ? c + ' · ' + p : c) : (p || 'Book'); }
 function $(id){ return document.getElementById(id); }
 function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
 function kindClass(k){ return k === 'bible' ? 'bible' : k === 'song' ? 'song' : 'sermon'; }
@@ -1085,7 +1115,7 @@ function setConn(ok){
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){
     var b = $(id); if(!b) return;
-    b.textContent = state.qs.blanked ? 'Restore' : 'Blank';
+    b.textContent = state.qs.blanked ? 'Show screen' : 'Hide screen';
     b.classList.toggle('active', !!state.qs.blanked);
   });
 }
@@ -1139,7 +1169,7 @@ function liveBarHtml(){
    four edits to keep in sync instead of one). */
 function transportInlineHtml(){
   return '<div class="transport-inline">'
-    + '<button class="btn-prev" onclick="cmd(\\'prev\\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>'
+    + '<button class="btn-prev" onclick="cmd(\\'prev\\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button>'
     + '<button class="btn-next" onclick="cmd(\\'next\\')"><span>Next</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>'
     + '</div>';
 }
@@ -1723,7 +1753,7 @@ function renderSermonsTab(){
   renderTabletPreview();
 }
 var sermonSearchSeq = 0;
-var SEARCH_LOST = "Couldn't reach BORN - check the connection and search again.";
+var SEARCH_LOST = "Couldn't reach BORN — check the connection and search again.";
 function runSermonSearch(tablet){
   var q = ((tablet ? $('sermonInputT') : $('sermonInput')) || {}).value || '';
   q = q.trim();
@@ -1757,7 +1787,7 @@ function sermonResultsHtml(){
     var q = rows[i];
     html += '<button class="ritem" onclick="selectSermon(' + i + ')">'
       + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
-      + '<div class="rmeta sermon">' + esc(q.dateCode || '') + ' · ¶' + esc(q.paragraphRef) + '</div>'
+      + '<div class="rmeta sermon">' + esc(qmeta(q)) + '</div>'
       + '<div class="rsnippet">' + (q.highlightedText || esc(q.text).slice(0,160)) + '</div>'
       + '</button>';
   }
@@ -1775,7 +1805,7 @@ function selectSermon(i){
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
-    meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    meta: qmeta(q),
     slides: slides,
     html: q.highlightedText || esc(q.text),
     payload: { quote: q, query: state.sermonQuery }
@@ -1903,7 +1933,7 @@ function openRecentSermons(){
         var q = window._recentSermons[i];
         html += '<button class="ritem" onclick="selectRecentSermon(' + i + ')">'
           + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
-          + '<div class="rmeta sermon">' + esc(q.dateCode || '') + ' · ¶' + esc(q.paragraphRef) + '</div>'
+          + '<div class="rmeta sermon">' + esc(qmeta(q)) + '</div>'
           + '<div class="rsnippet">' + esc(q.text).slice(0,160) + '</div>'
           + '</button>';
       }
@@ -1920,7 +1950,7 @@ function selectRecentSermon(i){
   state.selected = {
     kind: 'sermon',
     title: q.sermonTitle,
-    meta: (q.dateCode || '') + ' · ¶' + q.paragraphRef,
+    meta: qmeta(q),
     slides: slides,
     full: q.text,
     payload: { quote: q, query: '' }
@@ -2454,11 +2484,11 @@ function previewInnerHtml(item){
     + bodyHtml
     + '<div class="sheet-footer">'
     + '<div class="sheet-actions">'
-    + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'
+    + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' + Queue</button>'
     + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Project ▸</button>'
     + '</div>'
     + '<button class="btn-draft" onclick="sheetAction(\\'draft\\')" title="Build up your own list privately, then send it all at once">'
-    + ICON_PLUS + ' Add to My List</button>'
+    + ICON_PLUS + ' Add to My list</button>'
     + '<div class="sheet-hint">' + hint + '</div>'
     + '</div>';
 }
@@ -2566,7 +2596,17 @@ function initA2HS(){
     setTimeout(function(){ showA2HS(true); }, 900);
   }
 }
+// The Home Screen sheet never opens on top of the "Who's this?" prompt: it waits until that is answered or skipped.
+var a2hsWaiting = null;
+function roleOverlayClosed(){
+  if(a2hsWaiting === null) return;
+  var isIOS = a2hsWaiting;
+  a2hsWaiting = null;
+  setTimeout(function(){ showA2HS(isIOS); }, 600);
+}
 function showA2HS(isIOS){
+  var role = $('roleOverlay');
+  if(role && role.classList.contains('active')){ a2hsWaiting = isIOS; return; }
   var steps = $('a2hsSteps');
   var primary = $('a2hsPrimary');
   if(isIOS){

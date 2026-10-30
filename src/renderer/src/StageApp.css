@@ -39,9 +39,13 @@ body {
   overflow: hidden;
 }
 
+.stage-fit {
+  width: 100%;
+}
+
 .stage-current-text {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(2rem, 4.2vw, 5rem);
+  font-size: 1em; /* fitted to the box: see StageApp.tsx */
   line-height: 1.5;
   color: #fafafa;
   margin-bottom: 20px;
@@ -129,6 +133,8 @@ body {
 }
 .stage-congregation {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -146,7 +152,7 @@ body {
 }
 .stage-cg-text {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(2rem, 6vw, 7rem);
+  font-size: 1em; /* fitted to the box: see StageApp.tsx */
   line-height: 1.45;
   color: #fff;
 }

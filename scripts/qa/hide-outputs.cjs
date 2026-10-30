@@ -2,7 +2,7 @@
  * visible or fullscreen, so a real run of the app can "open the screens" without covering the operator's monitors. The windows still exist, load and
  * receive everything (slides, blank, stage updates), so the app behaves as with the screens on. Never ships; scripts only. */
 const { BrowserWindow } = require('electron')
-const isOutput = (w) => { try { return /Output|Stage View/.test(w.getTitle()) } catch { return false } }
+const isOutput = (w) => { try { return /Output|Stage View|Congregation screen|Stage monitor/.test(w.getTitle()) } catch { return false } }
 const P = BrowserWindow.prototype
 for (const m of ['show', 'showInactive', 'focus', 'setSimpleFullScreen', 'setFullScreen', 'moveTop', 'maximize', 'restore']) {
   const orig = P[m]

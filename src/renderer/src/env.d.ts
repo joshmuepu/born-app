@@ -201,7 +201,7 @@ declare global {
       saveQueue: (items: unknown[]) => void
       loadQueue: () => Promise<unknown[]>
       // Service files
-      saveService: (items: unknown[]) => Promise<boolean>
+      saveService: (items: unknown[]) => Promise<boolean | 'failed'>
       openService: () => Promise<unknown[] | null>
       getRecentServices: () => Promise<Array<{ path: string; name: string; mtimeMs: number }>>
       openServicePath: (path: string) => Promise<unknown[] | null>

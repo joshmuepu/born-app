@@ -17,8 +17,9 @@ prepares a service at home gets their songs onto the church computer.
 - **Import** — adds a saved file's items to the *end* of the current queue,
   instead of replacing it. Pick more than one file at once to combine
   several people's prepared lists into one queue.
-- Under **Open**, **Open a saved service…** lists your most recently used
-  files — the fastest way back into one you already had open.
+- When the queue is empty, the start screen in the queue panel lists your
+  **Recent** service files under **Open a saved service…** — the fastest way back
+  into one you already had open.
 
 A `.born` file is plain text (JSON) — attach it to an email, put it on a
 USB drive, or send it any way you'd send a regular file.
@@ -41,7 +42,7 @@ step, no dialog.
 If the file has songs you don't have yet, you'll see one review screen
 before the import finishes:
 
-![The song-import review dialog — one new song with a plain checkbox, and one conflicting "Amazing Grace" with a choice between adding it separately or using your own existing version.](../images/operator-song-import-review.png)
+![The song-import review dialog — one new song with a plain checkbox, and one, "Evening Song", already in the library with different words and a choice between adding it separately or using your own existing version.](../images/operator-song-import-review.png)
 
 Each song not already in your library gets its own row, with its title and
 the first line or two of its lyrics so you recognize it. What you do next:

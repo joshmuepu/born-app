@@ -10,16 +10,15 @@ Download the installer for your computer from BORN's release page:
 - **Windows** — `BORN-<version>-Windows-Setup.exe`. Run it and follow the
   installer.
 
-BORN doesn't need an internet connection to run a service once it's installed —
-only the very first sermon search needs one, to build its local search index (see
-below).
+BORN doesn't need an internet connection to run a service: the sermons, the Bible
+and the songs all come with it.
 
 ## First launch
 
 BORN opens straight into the **Sermons** tab with an empty queue — there's no
-setup wizard to click through. The footer (bottom-left corner) shows its progress
-preparing the sermon search index; the very first time, this needs an internet
-connection and takes a few minutes. After that, BORN works fully offline.
+setup wizard to click through. The first start takes a little longer while BORN
+unpacks its sermon, Bible and song libraries; it works fully offline from the
+start.
 
 ## Updating
 

@@ -30,8 +30,8 @@ on screen, so you can keep working the queue without losing your place.
 ## Showing a message instead
 
 Click **Message** to open a dialog with a text box and a **Show on** choice
-(**Stage monitor**, **Main screen**, or **Both**) — it starts on whichever of
-Stage monitor/Main screen is actually turned on for this session, so the
+(**Stage monitor**, **Congregation screen**, or **Both**) — it starts on whichever of
+Stage monitor/Congregation screen is actually turned on for this session, so the
 message has somewhere to actually appear. Whatever you type appears across
 the bottom of the chosen screen(s) for about 10 seconds — useful for "Please
 silence your phones" or "Nursery: your child needs you" without interrupting
@@ -52,6 +52,6 @@ panel:
 ## Starting over
 
 **New** (top of the Service queue panel) clears the whole queue and starts a fresh,
-empty one — BORN will ask first if the current queue hasn't been saved. See
+empty one — BORN asks first whenever the queue has anything in it. See
 [On service day](../troubleshooting/service-day.md) for saving and reopening a
 queue between services.

@@ -32,7 +32,7 @@ function serve() {
 ;(async () => {
   const c = checks('output-probe')
   const srv = await serve(); const base = `http://127.0.0.1:${srv.address().port}`
-  const browser = await chromium.launch()
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
   const LONG_URL = 'https://example.com/' + 'verylongunbrokenpathsegment'.repeat(8)
   const NEXT_TEXT = 'The next verse is a long one that goes on and on so that the band needs many lines to show it fully. '.repeat(6)
   for (const [w, h] of [[1366, 768], [1920, 1080]]) {

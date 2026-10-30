@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { SearchX, Search, Clock, CalendarDays } from 'lucide-react'
 import type { Quote } from '../types'
-import { highlight, smartSnippet, yearFromDateCode } from '../highlight'
+import { highlight, smartSnippet } from '../highlight'
 import { refsOverlap } from '../../../shared/paragraphRef'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import './SermonPanel.css'
+import { quoteMeta } from '../../../shared/sermonMeta'
 import { getRecentSearches } from '../recentSearches'
 
 interface Props {
@@ -203,7 +204,7 @@ export default function ResultsList({
                 <span className="result-title">{quote.sermonTitle}</span>
                 <span className="result-meta">
                   {live && <span className="on-screen-tag">On screen</span>}
-                  {yearFromDateCode(quote.dateCode)} · ¶{quote.paragraphRef}
+                  {quoteMeta(quote, { code: false })}
                 </span>
               </div>
               <p className="result-text">{highlight(snippet, query, mode)}</p>

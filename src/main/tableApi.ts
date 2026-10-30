@@ -3,15 +3,19 @@
  * Called from the main process only (Node.js fetch available in Electron 21+).
  */
 
-import { stripHtml, parseParagraphIndex, mergeHeadingSections } from './utils'
+import { stripHtml, parseParagraphIndex, mergeHeadingSections, paragraphsOfSections, splitIsSafe } from './utils'
 
 const BASE = 'https://table.branham.org/rest'
+/** Every call gives up after this long: a network that takes the connection but never answers (a captive portal, weak Wi-Fi) must
+ *  not leave Browse or Next waiting for minutes. */
+const TIMEOUT_MS = 30_000
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${path}`)
   return res.json() as Promise<T>
@@ -48,6 +52,8 @@ export interface SermonContent {
   title: string
   totalSections: number
   sections: { ref: string; index: number; text: string }[]
+  /** True when the rows are the source's sections, not one per paragraph (a book, or a split that could not be trusted). */
+  sectionsKept?: boolean
 }
 
 
@@ -87,12 +93,22 @@ export async function fetchSermonContent(
       index: parseParagraphIndex(s.Paragraph),
       text: stripHtml(s.Content)
     })).filter((s) => s.text.length > 0)
+    // A sermon is stored one row per numbered paragraph, from the source's own paragraph marks (paragraphsOfSections); a split that cannot
+    // be trusted (splitIsSafe) keeps the source's sections, and a book always keeps them.
+    let sectionsKept = isBook
+    let byParagraph = rawSections
+    if (!isBook) {
+      const html = Sections.map((s) => ({ ref: s.Paragraph, html: s.Content }))
+      const rows = paragraphsOfSections(html).filter((r) => r.text.length > 0)
+      if (splitIsSafe(rows, html)) byParagraph = rows
+      else sectionsKept = true
+    }
     // The source's own TotalSections/para_count for book content is itself
     // unreliable (it reports 1 for chapters that actually have 44-184 real
     // sections) — sections.length, computed from what we actually fetched
     // and stored, is always accurate instead.
-    const sections = isBook ? mergeHeadingSections(rawSections) : rawSections
-    return { dateCode: DateCode, title: Title, totalSections: sections.length, sections }
+    const sections = isBook ? mergeHeadingSections(rawSections) : byParagraph
+    return { dateCode: DateCode, title: Title, totalSections: sections.length, sections, sectionsKept }
   } catch {
     return null
   }
@@ -400,7 +416,7 @@ export async function fetchSubtitles(
 
 export async function fetchLanguages(): Promise<Record<string, string>> {
   try {
-    const res = await fetch(`${BASE}/resources/localization/en`)
+    const res = await fetch(`${BASE}/resources/localization/en`, { signal: AbortSignal.timeout(TIMEOUT_MS) })
     if (!res.ok) return {}
     const json = await res.json() as {
       Status: string

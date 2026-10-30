@@ -47,9 +47,9 @@ describe('the remote page cannot be shown inside another site', () => {
   })
 })
 
-function post(path: string, body: string): Promise<number> {
+function post(path: string, body: string, type = 'application/json'): Promise<number> {
   return new Promise((resolve, reject) => {
-    const req = request({ host: '127.0.0.1', port: PORT, path, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } }, (res) => {
+    const req = request({ host: '127.0.0.1', port: PORT, path, method: 'POST', headers: { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body) } }, (res) => {
       res.resume()
       res.on('end', () => resolve(res.statusCode ?? 0))
     })
@@ -70,5 +70,23 @@ describe('/command refuses a body that is not a command', () => {
     await boot((c) => got.push(c))
     expect(await post('/command', JSON.stringify({ action: 'next', pad: 'x'.repeat(300 * 1024) }))).toBe(413)
     expect(got).toEqual([])
+  })
+})
+
+describe('/command only takes a JSON request (what the phone page sends)', () => {
+  // A web page in any browser on the network could send a command as plain text: a "simple" request the browser sends to another
+  // site without asking first. A JSON request needs the browser's permission check first, which this server never grants.
+  it('a plain-text command from another page is refused and never reaches the app', async () => {
+    const got: unknown[] = []
+    await boot((c) => got.push(c))
+    expect(await post('/command', JSON.stringify({ action: 'new-service' }), 'text/plain')).toBe(415)
+    expect(await post('/command', JSON.stringify({ action: 'new-service' }), 'application/x-www-form-urlencoded')).toBe(415)
+    expect(got).toEqual([])
+  })
+  it('application/json with a charset still works', async () => {
+    const got: unknown[] = []
+    await boot((c) => got.push(c))
+    expect(await post('/command', JSON.stringify({ action: 'next' }), 'application/json; charset=utf-8')).toBe(204)
+    expect(got).toEqual([{ action: 'next' }])
   })
 })

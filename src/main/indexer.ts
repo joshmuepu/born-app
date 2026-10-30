@@ -105,36 +105,33 @@ export async function startIndexer(win: BrowserWindow, forceRefresh = false): Pr
   running = true
   shouldStop = false
   log.info(`indexer starting${forceRefresh ? ' (forced refresh)' : ''}`)
+  try {
+    await runIndexer(win, forceRefresh)
+  } finally {
+    // an error part way (a full disk, the library closed under it) must not leave every later start skipped as "already running"
+    running = false
+  }
+}
 
+async function runIndexer(win: BrowserWindow, forceRefresh: boolean): Promise<void> {
   const db = getDb()
 
+  // Book-chapter content specifically is worth re-pulling on every manual
+  // refresh, not just when new sermons show up: it's a fixed set of 11
+  // rows (cheap either way) whose parsing (mergeHeadingSections, see
+  // tableApi.ts) can improve independently of anything changing upstream.
+  // Each one is replaced only once its new copy has arrived (below), so a
+  // refresh with no internet keeps them.
+  const refetchBooks = new Set<number>()
   if (forceRefresh) {
     const { added } = await refreshSermonIndex()
-    // Book-chapter content specifically is worth re-pulling on every manual
-    // refresh, not just when new sermons show up: it's a fixed set of 11
-    // rows (cheap either way) whose parsing (mergeHeadingSections, see
-    // tableApi.ts) can improve independently of anything changing upstream.
-    // Deleting first makes the normal "not yet indexed" check below re-fetch
-    // them fresh rather than skipping them as already-present.
-    const bookIds = db
-      .prepare<[], { id: number }>('SELECT id FROM sermon_index WHERE is_book = 1')
-      .all()
-      .map((r) => r.id)
-    if (bookIds.length > 0) {
-      const placeholders = bookIds.map(() => '?').join(',')
-      db.transaction(() => {
-        db.prepare(`DELETE FROM paragraphs WHERE sermon_id IN (${placeholders})`).run(...bookIds)
-        db.prepare(`DELETE FROM sermons WHERE id IN (${placeholders})`).run(...bookIds)
-      })()
-      log.info(`indexer: cleared ${bookIds.length} book-chapter entries for re-fetch`)
-    }
-    log.info(`indexer: refresh found ${added} new sermon(s)`)
+    for (const r of db.prepare<[], { id: number }>('SELECT id FROM sermon_index WHERE is_book = 1').all()) refetchBooks.add(r.id)
+    log.info(`indexer: refresh found ${added} new sermon(s); ${refetchBooks.size} book chapter(s) to re-fetch`)
   }
 
   const ids = await ensureSermonIndex()
   if (ids.length === 0) {
     log.warn('indexer: no sermon IDs found — aborting')
-    running = false
     return
   }
   log.info(`indexer: ${ids.length} total sermons in index`)
@@ -142,9 +139,8 @@ export async function startIndexer(win: BrowserWindow, forceRefresh = false): Pr
   // Fast path: everything is already indexed (e.g. shipped DB). Don't re-scan.
   const haveCount =
     db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM sermons').get()?.n ?? 0
-  if (haveCount >= ids.length) {
+  if (haveCount >= ids.length && refetchBooks.size === 0) {
     log.info(`indexer: already complete (${haveCount}/${ids.length}) — nothing to do`)
-    running = false
     if (!win.isDestroyed()) {
       win.webContents.send('indexer:progress', {
         status: 'done',
@@ -182,9 +178,15 @@ export async function startIndexer(win: BrowserWindow, forceRefresh = false): Pr
   // rather than a permanently-wrong cached value waiting to mislead
   // whatever reads it next.
   const stmtFixParaCount = db.prepare('UPDATE sermon_index SET para_count = ? WHERE id = ?')
+  const stmtDeleteParagraphs = db.prepare('DELETE FROM paragraphs WHERE sermon_id = ?')
+  const stmtDeleteSermon = db.prepare('DELETE FROM sermons WHERE id = ?')
 
   const insertTx = db.transaction(
     (id: number, data: { dateCode: string; title: string; totalSections: number; sections: { ref: string; index: number; text: string }[] }) => {
+      if (refetchBooks.has(id)) {
+        stmtDeleteParagraphs.run(id)
+        stmtDeleteSermon.run(id)
+      }
       stmtInsertSermon.run(id, data.dateCode, data.title, data.totalSections)
       for (const s of data.sections) {
         stmtInsertParagraph.run(id, s.ref, s.index, s.text)
@@ -210,7 +212,7 @@ export async function startIndexer(win: BrowserWindow, forceRefresh = false): Pr
 
     await Promise.all(
       batch.map(async (id) => {
-        const already = (stmtHas.get(id)?.n ?? 0) > 0
+        const already = !refetchBooks.has(id) && (stmtHas.get(id)?.n ?? 0) > 0
         scanned++
         if (already) {
           indexed++
@@ -229,7 +231,6 @@ export async function startIndexer(win: BrowserWindow, forceRefresh = false): Pr
     sendProgress()
   }
 
-  running = false
   log.info(`indexer done: indexed=${indexed} errors=${errors} scanned=${scanned} total=${total}`)
   sendProgress(shouldStop ? 'idle' : 'done')
 }

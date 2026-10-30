@@ -26,7 +26,7 @@ async function scenario(name, setup, scrollSel, frac) {
   const rowOf = (sid, ref) => db.prepare('select p.text,p.paragraph_ref ref,s.title,s.date_code dc from paragraphs p join sermons s on s.id=p.sermon_id where p.sermon_id=? and p.paragraph_ref=?').get(sid, ref)
   const songs = lib.prepare('select id,title from songs where id in (select song_id from song_slides group by song_id having count(*)>=4) order by id limit 2').all()
   const songItem = (s, n) => ({ kind: 'song', id: 's-' + n, songId: s.id, title: s.title, slides: lib.prepare('select label,text from song_slides where song_id=? order by slide_index').all(s.id).map((x) => ({ label: x.label || undefined, text: x.text })) })
-  const r1 = rowOf(711, '396-399')
+  const r1 = rowOf(711, '396') || rowOf(711, '396-399') // one row per paragraph since library format 3
   const queue = [songItem(songs[0], 1), { kind: 'quote', id: 'q-1', quote: { text: r1.text, sermonTitle: r1.title, dateCode: r1.dc, sermonId: 711, paragraphIndex: 0, paragraphRef: r1.ref }, slides: [{ text: r1.text.slice(0, 500), marker: r1.ref, reference: `${r1.title} · ${r1.dc} · ${r1.ref}` }] }]
   for (let i = 0; i < 20; i++) queue.push({ kind: 'quote', id: 'f-' + i, quote: { text: 'Placeholder filler paragraph ' + i, sermonTitle: 'Placeholder Sermon ' + i, dateCode: '00-0101', sermonId: 1, paragraphIndex: 0, paragraphRef: String(i + 1) }, slides: [{ text: 'Placeholder filler paragraph ' + i, marker: String(i + 1) }] })
   queue.push(songItem(songs[1], 99))
@@ -69,7 +69,7 @@ async function scenario(name, setup, scrollSel, frac) {
     await step('Shift+Esc', async () => { await p.key('Escape', { shift: true }) })
     await step('Shift+Esc again', async () => { await p.key('Escape', { shift: true }) })
     // the output pages themselves: they must not scroll or move when hidden/shown
-    const outs = (await app.targets()).filter((t) => /Output|Stage View/.test(t.title))
+    const outs = (await app.targets()).filter((t) => /Output|Stage View|Congregation screen|Stage monitor/.test(t.title))
     for (const t of outs) {
       const op = await app.page((x) => x.id === t.id)
       const m = () => op.ev(`({y:Math.round(scrollY),x:Math.round(scrollX),sh:document.documentElement.scrollHeight<=innerHeight+1,sc:[...document.querySelectorAll('*')].filter(e=>/(auto|scroll)/.test(getComputedStyle(e).overflowY)&&e.scrollTop>0).length})`)
@@ -86,7 +86,7 @@ const projectQueueRow = (i) => `(()=>{const rows=[...document.querySelectorAll('
   const S = {
     // the operator opens the long sermon from a search result, projects a paragraph inside the clicked row and steps Next twice, then reads ahead at 25%
     'sermon reader': [async (p, sleep) => {
-      const db = srcDb('sermons.db'); const row = db.prepare("select text from paragraphs where sermon_id=711 and paragraph_ref='396-399'").get()
+      const db = srcDb('sermons.db'); const row = db.prepare("select text from paragraphs where sermon_id=711 and paragraph_ref IN ('396','396-399')").get()
       await p.click('Sermons', '.panel-tab'); await p.click('Search', '.panel-subtab'); await sleep(300)
       await p.ev("(()=>{const i=[...document.querySelectorAll('input.search-input')].find(e=>e.getClientRects().length);i.focus()})()")
       await p.insertText('"' + row.text.split(/\s+/).slice(0, 6).join(' ').replace(/[^\w ]/g, '') + '"'); await p.key('Enter'); await sleep(2500)

@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.13.4
+
+**The first start after updating takes a moment:** BORN upgrades its sermon library once. It keeps your old library beside it with a dated name, and carries over the translations you downloaded and the sermons you fetched online. If the upgrade cannot finish (a full disk, for example), BORN keeps using the old library.
+
+**Sermon search**
+- Each sermon search result is now **one numbered paragraph**: the one that contains your words, instead of a block of several paragraphs. **+ Queue** and **Project** sit on the result's title line, so more results fit on the screen.
+- Project and + Queue use that paragraph. The sermon reader opens on it, and **Next / Back** carry on from it into the rest of the sermon.
+- Sermon ranges saved in your services, favourites and history before this update still open, and **Next / Back** carry on from them as before.
+- Searching for a **sermon code** (like 60-1204M) or a word with a **hyphen or an apostrophe** (like don't) finds results again.
+- A sermon's title line no longer fills the results when you search for a place.
+- **Browse > Series** works without an internet connection.
+
+**On the projected screen**
+- The **stage monitor** now shrinks long slides to fit, the same way the congregation screen does, instead of cutting them off.
+- A new slide no longer shows for a moment at the previous slide's size and then jumps.
+- A text size change made while the screen is hidden is used when you show the screen again.
+- A long paragraph no longer ends on a slide with only a word or two.
+- **Next / Back** stay in the sermon's own language.
+- Two quick **Project** clicks while the projector is still opening: the one you clicked last stays on screen.
+- If the projector is unplugged during a service, the projection no longer covers your own screen. It moves into a window on your own screen; choose the projector again under **Screens** once it is back.
+
+**In the app**
+- **Shift+Esc** hides the screen even while the Keyboard shortcuts list or the Message window is open.
+- Typing **?** in a search box no longer opens the Keyboard shortcuts list.
+- **B** no longer hides the screen when no projection is open, so the projector can no longer come up black for no visible reason.
+- Closing BORN's main window while projecting now closes the congregation screen and the stage monitor too.
+- **Browse** no longer shows one sermon's paragraphs under another sermon's title when you click quickly.
+- If a service cannot be saved (a read-only or full folder), BORN now tells you.
+- BORN's settings, the queue and your saved services are now **written whole or not at all**. A crash, a power cut or a full disk while saving can no longer leave half a file.
+- BORN opens normally on a nearly full disk, and when its settings file holds an unexpected value.
+- **Refresh sermons** without an internet connection no longer removes the book chapters from search.
+- Online sermon lookups give up after 30 seconds instead of waiting for minutes.
+
+**On the phone and iPad**
+- A web page open in a browser on another device on the same network can no longer send commands to BORN. The phone remote works as before.
+- **Open saved** and **Import saved** on the phone can open only the services the phone is shown.
+- On a small phone, or with large text, **Hide screen** and all four tabs stay on the screen.
+- On a phone held sideways, the **Songs** list is usable and nothing sits under the notch.
+- On first open, the "Add to Home Screen" sheet waits until you have answered "Who's this?".
+- Every button is now big enough to tap with a thumb.
+- A service saved from the phone with a name like CON or NUL is no longer lost on Windows.
+
+**Names and wording**
+- One name for each screen: **Congregation screen** and **Stage monitor**, in the app, the window titles, the phone and Help ("Main screen" is gone).
+- The phone uses the same button names as the app: **Hide screen / Show screen**, **Back**, **+ Queue**.
+- The Keyboard shortcuts list in the app and the Help page now list the same keys.
+- The update banner's download button has one name: **Open download page**.
+- Help pages that no longer matched the app have been corrected, and their pictures retaken.
+
+Nothing new was added: no new screens, buttons or settings. Your saved services open and save exactly as before.
+
 ## 1.13.3
 
 **Fixed: your place on screen stays put**

@@ -63,12 +63,14 @@ import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
-import { readJsonQuarantining } from './corruptFile'
+import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
+import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
+import { hitParagraphs } from '../shared/sermonHit'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -87,6 +89,7 @@ import {
   fingerprintAndOrdinal,
   findNamedEntry,
   nameForDisplay,
+  projectionPlacementAfterChange,
   type DisplayLike,
   type NamedDisplay
 } from './displays'
@@ -103,7 +106,8 @@ import {
   getLocalDateTree,
   getLocalDurationGroups,
   getLocalLocationTree,
-  getOnThisDay
+  getOnThisDay,
+  loadBundledSeries
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings } from './settings'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
@@ -292,6 +296,9 @@ function createMainWindow(): void {
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
     mainWindow = null
+    // The output windows are driven from this one: with it gone they could not be changed or closed (on macOS the Dock icon would not
+    // bring the operator window back while they were open; on Windows they have no taskbar button and the app never quit). They go too.
+    for (const w of [projectionWindow, stageWindow]) if (w && !w.isDestroyed()) w.close()
   })
 }
 
@@ -338,6 +345,8 @@ function createProjectionWindow(): void {
       `fallback=${target.isFallback} override=${target.isOverride}`
   )
   if (target.isFallback) log.warn('projection: no external display — using operator screen')
+  projectionOnProjector = !(target.isFallback && !target.isOverride)
+  projectionDisplaced = false
 
   const onMac = process.platform === 'darwin'
   projectionWindow = new BrowserWindow({
@@ -346,7 +355,7 @@ function createProjectionWindow(): void {
     width: area.width,
     height: area.height,
     backgroundColor: '#000000',
-    title: 'BORN — Output',
+    title: 'BORN — Congregation screen',
     show: false,
     skipTaskbar: true,
     fullscreen: !onMac,
@@ -412,7 +421,7 @@ function createStageWindow(): void {
       y: area.y,
       width: area.width,
       height: area.height,
-      title: 'BORN — Stage View',
+      title: 'BORN — Stage monitor',
       backgroundColor: '#0a0a0a',
       show: false,
       skipTaskbar: true,
@@ -434,7 +443,7 @@ function createStageWindow(): void {
       height: 600,
       minWidth: 520,
       minHeight: 360,
-      title: 'BORN — Stage View',
+      title: 'BORN — Stage monitor',
       backgroundColor: '#0a0a0a',
       alwaysOnTop: true,
       skipTaskbar: true,
@@ -604,6 +613,10 @@ function displayDiagnosticsText(): string {
 // visibly shakes. Guard: skip when the window is already full-screen on the
 // right display, and ignore the events our own move produces.
 let repositioning = false
+/** Whether the projection is full-screen on a projector (not on the operator's screen as the automatic fallback), and whether it was
+ *  made a normal window because its projector was unplugged (see projectionPlacementAfterChange). */
+let projectionOnProjector = false
+let projectionDisplaced = false
 
 /** Re-place the projection window on the correct display after a hotplug. */
 function repositionProjectionWindow(force = false): void {
@@ -611,6 +624,30 @@ function repositionProjectionWindow(force = false): void {
   const onMac = process.platform === 'darwin'
   const target = resolveProjectionTarget()
   const area = target.display.workArea ?? target.display.bounds
+  const automaticFallback = target.isFallback && !target.isOverride
+
+  if (projectionPlacementAfterChange({ automaticFallback, wasOnProjector: projectionOnProjector, displaced: projectionDisplaced }) === 'windowed') {
+    if (!projectionDisplaced) {
+      log.warn('projection: its screen was unplugged — now a normal window on the operator screen until a projector is back')
+      repositioning = true
+      try {
+        if (onMac) projectionWindow.setSimpleFullScreen(false)
+        else projectionWindow.setFullScreen(false)
+        projectionWindow.setBounds({ x: area.x, y: area.y, width: Math.round(area.width / 2), height: Math.round(area.height / 2) })
+        projectionWindow.center()
+      } catch (e) {
+        log.error('repositionProjectionWindow (windowed) failed', e)
+      }
+      setTimeout(() => {
+        repositioning = false
+      }, 700)
+    }
+    projectionDisplaced = true
+    projectionOnProjector = false
+    return
+  }
+  projectionDisplaced = false
+  projectionOnProjector = !automaticFallback
 
   const winDisplay = screen.getDisplayMatching(projectionWindow.getBounds())
   const isFs = onMac ? projectionWindow.isSimpleFullScreen() : projectionWindow.isFullScreen()
@@ -1090,6 +1127,13 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
     }
 
     const { sql, extraParams } = buildSearchSQL(filters)
+    // no paragraph has the words (a typed sermon code, a word only in a title): the sermon's title line is the answer, as it always was
+    const titleLines = (mode: 'phrase' | 'all' | 'any'): Quote[] => {
+      const tq = buildTokenQuery(query)
+      if (!tq) return []
+      const t = buildSearchSQL(filters, { titleLines: true })
+      return (db.prepare(t.sql).all(tq, ...t.extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]).map((r) => rowToQuote(r, mode))
+    }
 
     if (matchMode === 'phrase') {
       try {
@@ -1098,7 +1142,7 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
           .all(buildPhraseQuery(query), ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         if (rows.length > 0) {
           log.debug(`search:query phrase match: ${rows.length} results`)
-          return rows.map((r) => rowToQuote(r, 'phrase'))
+          return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'phrase'), query, 'phrase')).slice(0, SERMON_SEARCH_LIMIT)
         }
       } catch (e) {
         log.warn('search:query phrase match FTS error', e)
@@ -1110,7 +1154,8 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
         if (!tokenQuery) return []
         const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
         log.debug(`search:query phrase-fallback all-words match: ${rows.length} results`)
-        return rows.map((r) => rowToQuote(r, 'all'))
+        if (rows.length === 0) return titleLines('all')
+        return rows.flatMap((r) => hitParagraphs(rowToQuote(r, 'all'), query, 'all')).slice(0, SERMON_SEARCH_LIMIT)
       } catch (e) {
         log.error('search:query token match error', e)
         return []
@@ -1122,7 +1167,8 @@ async function searchSermons(rawQuery: string, filters: SearchFilters = {}) {
       if (!tokenQuery) return []
       const rows = db.prepare(sql).all(tokenQuery, ...extraParams, SERMON_SEARCH_LIMIT) as QuoteRow[]
       log.debug(`search:query ${matchMode} match: ${rows.length} results`)
-      return rows.map((r) => rowToQuote(r, matchMode))
+      if (rows.length === 0) return titleLines(matchMode)
+      return rows.flatMap((r) => hitParagraphs(rowToQuote(r, matchMode), query, matchMode)).slice(0, SERMON_SEARCH_LIMIT)
     } catch (e) {
       log.error('search:query token match error', e)
       return []
@@ -1261,7 +1307,7 @@ ipcMain.handle('queue:load', () => {
 ipcMain.on('queue:save', (_event, items: unknown) => {
   try {
     const queuePath = join(app.getPath('userData'), 'queue.json')
-    writeFileSync(queuePath, JSON.stringify(items))
+    writeFileAtomic(queuePath, JSON.stringify(items))
   } catch (e) {
     log.error('queue:save error', e)
   }
@@ -1430,7 +1476,13 @@ ipcMain.handle('service:save', async (_event, items: unknown) => {
     defaultPath: 'Sunday service.born'
   })
   if (result.canceled || !result.filePath) return false
-  writeFileSync(result.filePath, JSON.stringify(items, null, 2))
+  try {
+    writeFileAtomic(result.filePath, JSON.stringify(items, null, 2))
+  } catch (e) {
+    // a read-only folder, a full disk, a removed USB stick: the operator is told, nothing is half-written
+    log.error('service:save failed', e)
+    return 'failed'
+  }
   rememberService(result.filePath)
   return true
 })
@@ -1527,10 +1579,10 @@ const REMOTE_SAVE_DIR = (): string => {
 }
 
 ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
-  const safeName = (name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) || 'Untitled service'
+  const safeName = safeServiceFileName(name)
   const path = join(REMOTE_SAVE_DIR(), `${safeName}.born`)
   try {
-    writeFileSync(path, JSON.stringify(items, null, 2))
+    writeFileAtomic(path, JSON.stringify(items, null, 2))
     rememberService(path)
     return true
   } catch (e) {
@@ -1568,7 +1620,8 @@ ipcMain.handle('search:server', (_event, text: string, searchType: 'AllWords' | 
 
 // ── Browse IPC ────────────────────────────────────────────────────────────────
 
-ipcMain.handle('browse:series', () => fetchAllSeries())
+// online when The Table answers (it may have newer series), the bundled copy when it does not
+ipcMain.handle('browse:series', async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() })
 ipcMain.handle('browse:states', () => fetchAllStates())
 ipcMain.handle('browse:cities', () => fetchAllCities())
 ipcMain.handle('browse:date-groups', () => {
@@ -1980,8 +2033,9 @@ app.whenReady().then(async () => {
   // for it. Opening here is the same lazy-init getDb()/getLibraryDb()
   // would do on first real use anyway; doing it explicitly just removes
   // the race between that first use and the renderer's own status check.
-  getDb()
-  getLibraryDb()
+  // A library that cannot be opened must not stop the window from appearing (it is logged; searches then report it).
+  try { getDb() } catch (e) { log.error('startup: the sermon library could not be opened', e) }
+  try { getLibraryDb() } catch (e) { log.error('startup: the Bible and song library could not be opened', e) }
   createMainWindow()
 
   // Global, not per-window — works even if an output window's own
@@ -2066,6 +2120,8 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
         mainWindow.webContents.send('webremote:save-queue', cmd.name)
+      } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
+        log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {
         const data = openServiceFile(cmd.path)
         if (data) mainWindow.webContents.send('webremote:open-service', data)
@@ -2099,7 +2155,7 @@ app.whenReady().then(async () => {
             .filter((p) => existsSync(p))
             .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
         ),
-      sermonSeries: () => fetchAllSeries(),
+      sermonSeries: async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() },
       sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
       // Same one-paragraph-per-slide split as the search results above — a
       // browsed or recently-used quote can span several numbered paragraphs
@@ -2130,7 +2186,7 @@ app.whenReady().then(async () => {
   )
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createMainWindow()
     }
   })

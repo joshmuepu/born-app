@@ -264,3 +264,30 @@ export function getLocalLocationTree(db: Database): LocationState[] {
   }
   return tree.sort((a, b) => a.name.localeCompare(b.name))
 }
+
+// ── Series, bundled ─────────────────────────────────────────────────────────────
+// The series list (the Seals, the Church Ages, Hebrews …) comes from The Table online. resources/series.json is a copy of it
+// (scripts/data/fetch-series.mjs), so Browse > Series also works without an internet connection.
+
+export interface BundledSeries { i: number; n: string; s: number[] }
+
+let seriesCache: BundledSeries[] | undefined
+
+export function loadBundledSeries(): BundledSeries[] {
+  if (seriesCache !== undefined) return seriesCache
+  const candidates = [
+    join(process.resourcesPath ?? '', 'series.json'),
+    join(app.getAppPath(), 'resources', 'series.json'),
+    join(app.getAppPath(), '..', 'resources', 'series.json'),
+    join(app.getAppPath(), '..', '..', 'resources', 'series.json')
+  ]
+  for (const p of candidates) {
+    try {
+      const f = JSON.parse(readFileSync(p, 'utf8')) as { series?: BundledSeries[] }
+      if (Array.isArray(f.series) && f.series.length > 0) return (seriesCache = f.series)
+    } catch {
+      /* try the next place */
+    }
+  }
+  return (seriesCache = [])
+}

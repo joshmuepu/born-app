@@ -14,6 +14,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { initSchema } from '../src/main/schema'
 import { fetchSermonList, fetchSermonContent } from '../src/main/tableApi'
+import { checkLibrarySanity } from './sermonLibrarySanity'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'resources')
@@ -73,20 +74,40 @@ async function main(): Promise<void> {
   const bookIds = new Set(entries.filter((e) => e.ct === 'B').map((e) => e.i))
   let done = 0
   let errors = 0
-  for (let i = 0; i < ids.length; i += CONCURRENCY) {
-    const batch = ids.slice(i, i + CONCURRENCY)
-    const results = await Promise.all(batch.map((id) => fetchSermonContent(id, 'en', bookIds.has(id))))
-    batch.forEach((id, j) => {
-      const data = results[j]
-      if (data) insertOne(id, data)
-      else errors++
-    })
-    done += batch.length
-    if (done % 60 === 0 || done === ids.length) {
-      process.stdout.write(`\r  indexed ${done}/${ids.length} (${errors} errors)`)
+  const failed: number[] = []
+  const sectionsKept: number[] = []
+  const fetchAll = async (list: number[]): Promise<number[]> => {
+    const missed: number[] = []
+    for (let i = 0; i < list.length; i += CONCURRENCY) {
+      const batch = list.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(batch.map((id) => fetchSermonContent(id, 'en', bookIds.has(id))))
+      batch.forEach((id, j) => {
+        const data = results[j]
+        if (data) {
+          insertOne(id, data)
+          if (data.sectionsKept && !bookIds.has(id)) sectionsKept.push(id)
+        } else missed.push(id)
+      })
+      done += batch.length
+      if (done % 60 === 0 || done === ids.length) process.stdout.write(`\r  indexed ${done}/${ids.length} (${missed.length} errors)`)
     }
+    return missed
   }
+  failed.push(...(await fetchAll(ids)))
   process.stdout.write('\n')
+  // a fetch that failed once (a dropped connection, a busy server) gets one more try before the build gives up on it
+  if (failed.length > 0) {
+    console.log(`retrying ${failed.length} sermon(s) that failed…`)
+    done = 0
+    const again = await fetchAll(failed.splice(0))
+    failed.push(...again)
+    process.stdout.write('\n')
+  }
+  errors = failed.length
+  if (sectionsKept.length) console.log(`  ${sectionsKept.length} sermon(s) kept in the source's sections (split not trusted): ids ${sectionsKept.join(', ')}`)
+
+  // format 3: one row per numbered paragraph (a profile with an older library is brought up to it on start: src/main/sermonDbUpgrade.ts)
+  db.pragma('user_version = 3')
 
   console.log('optimising (VACUUM + FTS optimize)…')
   db.exec("INSERT INTO paragraphs_fts(paragraphs_fts) VALUES('optimize')")
@@ -98,6 +119,8 @@ async function main(): Promise<void> {
   db.close()
 
   console.log(`built: ${sermonCount.n} sermons, ${paraCount.n} paragraph rows`)
+  // a full build (not a BORN_DB_LIMIT smoke test) must look like the real library, or it is not written
+  if (limit === entries.length) checkLibrarySanity({ sermons: sermonCount.n, paragraphs: paraCount.n, expected: ids.length, missing: errors })
 
   const { readFileSync } = await import('node:fs')
   const raw = readFileSync(TMP_DB)
@@ -114,6 +137,7 @@ async function main(): Promise<void> {
   if (errors > ids.length * 0.05) {
     throw new Error(`too many fetch errors (${errors}/${ids.length}) — not shipping this DB`)
   }
+
 }
 
 main().catch((e) => {

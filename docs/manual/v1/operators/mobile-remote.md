@@ -6,11 +6,11 @@ the platform instead of a laptop.
 
 ## Connecting
 
-1. On the BORN computer, click **Remote** in the header (top-right, next to
-   **Shortcuts**).
+1. On the BORN computer, click **Remote** in the header (top-right, between
+   **Screens** and **Open projection**).
 
 ![The Remote popover — a QR code, the address to type instead, and the Remote connection check button.](../images/operator-remote-popover.png)
-2. A QR code and an address (like `10.0.0.124:4411`) appear. **Scan the QR code
+2. A QR code and an address (like `10.0.0.124:4316`) appear. **Scan the QR code
    once, on the same WiFi** — it stays connected on that phone from then on, no
    re-scanning needed. If you can't scan it, type the address shown into the
    phone's browser instead; tap the copy icon next to it to copy it exactly.
@@ -55,12 +55,12 @@ address, no list.
 
 ## Using it
 
-![The phone remote's Queue tab — Prev/Next/Blank at the top, the live service queue below.](../images/mobile-remote-queue.png)
+![The phone remote's Queue tab — Back, Next and Hide screen at the top, the live service queue below.](../images/mobile-remote-queue.png)
 
 The remote has the same three content tabs as the desktop app — **Sermons**,
 **Bible**, **Songs** — plus a **Queue** tab, along the bottom (or down the left
-side, on a wider tablet). **Prev**, **Next**, and **Blank** sit at the top of every
-tab, so you never have to switch tabs just to advance a slide.
+side, on a wider tablet). **Back**, **Next**, and **Hide screen** (**Show screen** while it is hidden) sit
+at the top of every tab, so you never have to switch tabs just to advance a slide.
 
 Anything added to the queue from a phone shows up on the desktop's Service queue
 immediately, and vice versa — it's the same live queue, shared.

@@ -24,7 +24,7 @@ const fakeRow = (t) => ({ sermonId: 1, sermonTitle: t, dateCode: '47-0412', para
 
   // ── page checks in each engine ──────────────────────────────────────────
   for (const [name, type] of [['chromium', pw.chromium], ['webkit', pw.webkit]]) {
-    const browser = await type.launch()
+    const browser = await type.launch(name === 'chromium' && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: name === 'chromium', hasTouch: true, serviceWorkers: 'block' })
     const page = await ctx.newPage()
     const errs = []

@@ -53,7 +53,7 @@ describe('SermonFollowView — on-screen marking', () => {
         onAddToQueue={vi.fn()}
       />
     )
-    await waitFor(() => expect(screen.getByText('¶header')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Title')).toBeInTheDocument())
 
     // Reproduces a real bug: the header's projected slide has no third
     // " · "-separated paragraph segment, and the caller used to fall back to
@@ -63,7 +63,7 @@ describe('SermonFollowView — on-screen marking', () => {
     // itself must be marked here.
     const onScreenTags = screen.getAllByText('On screen')
     expect(onScreenTags).toHaveLength(1)
-    expect(onScreenTags[0].closest('.follow-para')?.textContent).toContain('¶header')
+    expect(onScreenTags[0].closest('.follow-para')?.textContent).toContain('Title')
   })
 
   it('marks only the specific page live, not every page of the same paginated paragraph', async () => {
