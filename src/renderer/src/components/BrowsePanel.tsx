@@ -148,16 +148,20 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
 
   // ── Paragraph loading ─────────────────────────────────────────────────────────
 
+  // Only the answer for the sermon opened last is shown: a slow one (a translation fetched online) for a sermon opened before must not
+  // replace it.
+  const paragraphsRequest = useRef(0)
   const loadParagraphs = useCallback(
     async (sermon: SermonIndexItem, lang = language) => {
+      const request = ++paragraphsRequest.current
       setSelectedSermon(sermon)
       setLoadingParagraphs(true)
       setParagraphs([])
       try {
         const paras = await window.electronAPI.getSermonParagraphs(sermon.id, lang)
-        setParagraphs(paras)
+        if (request === paragraphsRequest.current) setParagraphs(paras)
       } finally {
-        setLoadingParagraphs(false)
+        if (request === paragraphsRequest.current) setLoadingParagraphs(false)
       }
     },
     [language]
