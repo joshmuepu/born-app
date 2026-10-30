@@ -844,6 +844,7 @@ function initRoleOverlay(){
   on($('roleSkipBtn'), 'click', function(){
     try { localStorage.setItem('born-remote-role-dismissed', '1'); } catch(e){}
     if(overlay) overlay.classList.remove('active');
+    roleOverlayClosed();
   });
   on($('roleSaveBtn'), 'click', function(){
     var v = ($('roleCustomInput') || {}).value || '';
@@ -862,6 +863,7 @@ function chooseRole(label){
   if(label !== 'Operator') state.queueEditMode = false;
   var overlay = $('roleOverlay');
   if(overlay) overlay.classList.remove('active');
+  roleOverlayClosed();
   toast('Contributing as ' + label);
   refreshQueueHeader();
   renderCurrentTab();
@@ -2593,7 +2595,17 @@ function initA2HS(){
     setTimeout(function(){ showA2HS(true); }, 900);
   }
 }
+// The Home Screen sheet never opens on top of the "Who's this?" prompt: it waits until that is answered or skipped.
+var a2hsWaiting = null;
+function roleOverlayClosed(){
+  if(a2hsWaiting === null) return;
+  var isIOS = a2hsWaiting;
+  a2hsWaiting = null;
+  setTimeout(function(){ showA2HS(isIOS); }, 600);
+}
 function showA2HS(isIOS){
+  var role = $('roleOverlay');
+  if(role && role.classList.contains('active')){ a2hsWaiting = isIOS; return; }
   var steps = $('a2hsSteps');
   var primary = $('a2hsPrimary');
   if(isIOS){
