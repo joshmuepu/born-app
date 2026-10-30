@@ -49,7 +49,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    more often. */
 .transport{flex-shrink:0; display:flex; gap:20px; padding:14px 18px 0}
 .transport button{
-  flex:1; min-height:64px; padding:14px; border-radius:16px;
+  flex:1; min-width:0; min-height:64px; padding:14px; border-radius:16px;
   display:flex; align-items:center; justify-content:center; gap:8px;
   background:var(--surface); border:1.5px solid var(--border); color:var(--text);
   font-size:15px; font-weight:800;
@@ -60,6 +60,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .transport .btn-next:active{background:var(--accent-hover)}
 .transport .blank{flex:0 0 86px; min-height:64px; background:rgba(227,179,65,0.12); border-color:rgba(227,179,65,0.4); color:var(--warn)}
 .transport .blank.active{background:var(--warn); color:var(--warn-ink)}
+/* A narrow phone (an iPhone SE or a small Android at 150% page zoom is 240-250px wide): the three buttons share the width,
+   so Blank is never pushed off the right edge. The arrows go; the words stay. */
+@media (max-width: 340px){
+  .transport{gap:8px; padding:14px 10px 0}
+  .transport button{padding:10px 4px}
+  .transport button svg{display:none}
+  .transport .blank{flex:0 0 72px}
+}
 
 /* Scrolling happens on the active .view itself (not .scroll) so a tab that
    needs an internal fixed-header + independently-scrolling list (Songs, with
