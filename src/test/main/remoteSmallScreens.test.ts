@@ -25,3 +25,13 @@ describe('a narrow phone (iPhone SE or a small Android at 150% page zoom)', () =
     expect(narrow).toMatch(/\.transport button svg\{display:none\}/)
   })
 })
+
+describe('a phone held sideways (phone layout, under 768px wide and under 500px tall)', () => {
+  it('the bars give back height so the song list is more than a sliver', () => {
+    const land = block('@media (max-width: 767px) and (max-height: 500px)')
+    expect(land).toMatch(/\.transport button\{[^}]*min-height:44px/)
+    expect(land).toMatch(/\.tab\{[^}]*flex-direction:row/)
+    expect(land).toMatch(/\.searchbox\{[^}]*padding:/)
+    expect(land).toMatch(/\.songlist\{[^}]*overflow:visible/)
+  })
+})

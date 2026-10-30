@@ -594,6 +594,23 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    picked the right layout; this narrows it further to viewports that are
    ALSO short, which no real tablet in either orientation is (iPad landscape
    is 820px+ tall), so this never touches an actual tablet. */
+/* A phone held sideways in the phone layout (an iPhone SE is 667x375): the top bar, the Prev/Next/Blank row, the search box and
+   the tab bar left the Songs list about 15px. They give back height here, and the tab bar puts each icon beside its label. */
+@media (max-width: 767px) and (max-height: 500px){
+  .topbar{padding-top:calc(6px + env(safe-area-inset-top,0px))}
+  .transport{padding-top:6px; gap:12px}
+  .transport button{min-height:44px; padding:6px 12px}
+  .searchbar{padding-top:8px}
+  .searchbox{padding:7px 14px}
+  .section-label{padding:8px 18px 4px}
+  .azstrip{padding-bottom:4px}
+  .tabbar{padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px))}
+  .tab{flex-direction:row; justify-content:center; gap:6px; min-height:44px; padding:2px; font-size:12px}
+  /* and the Songs tab scrolls as a whole page here instead of squeezing its list into what is left under the headers (the A-Z jump
+     still lands on its letter) */
+  .songs-body{flex:none; overflow:visible}
+  .songlist{flex:none; overflow:visible}
+}
 @media (min-width: 768px) and (max-height: 500px){
   .list-pane{padding-top:14px; padding-bottom:14px}
   .list-pane h2{margin-bottom:8px}
