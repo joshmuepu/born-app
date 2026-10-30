@@ -7,8 +7,8 @@ the room fills up. For the full walkthrough, see [Quick start](quick-start.md).
 
 1. Turn on the Congregation screen (and Stage monitor, if used) **before** opening
    BORN.
-2. Open BORN. Confirm the footer (bottom-left) shows a sermon count, not "Starting…"
-   or a damaged-data warning — see
+2. Open BORN. Click the footer (bottom-left, **BORN v…**) and confirm it shows
+   **sermons ready**, not "Starting…" or a damaged-data warning — see
    [Backups and a damaged database](../troubleshooting/data-recovery.md) if it does.
 3. Build the queue: search or browse Sermons/Bible/Songs, **+ Queue** everything in
    order.

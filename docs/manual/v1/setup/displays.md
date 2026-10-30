@@ -51,5 +51,5 @@ handles tech support.
 
 At the bottom of the Screens panel, **Projected text size** has **−** and **+**
 buttons and a percentage (100% by default) — this scales the text on the
-Congregation/Stage screens up or down, independent of the content itself, for a
+Congregation screen up or down (the Stage monitor keeps its own size), independent of the content itself, for a
 screen that's unusually close or far from the congregation.

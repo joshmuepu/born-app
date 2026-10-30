@@ -1,6 +1,6 @@
 # Maintaining the v1 manual
 
-This is the in-app manual (Help menu / <kbd>F1</kbd>), source of truth in
+This is the in-app manual (the **Help** button / <kbd>F1</kbd>), source of truth in
 `docs/manual/v1/*.md` + `manifest.json`, rendered live by `HelpViewer.tsx` over
 IPC (`src/main/manual.ts`) — not a separate static site, and not duplicated
 anywhere else.

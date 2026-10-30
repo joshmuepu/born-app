@@ -52,6 +52,6 @@ panel:
 ## Starting over
 
 **New** (top of the Service queue panel) clears the whole queue and starts a fresh,
-empty one — BORN will ask first if the current queue hasn't been saved. See
+empty one — BORN asks first whenever the queue has anything in it. See
 [On service day](../troubleshooting/service-day.md) for saving and reopening a
 queue between services.

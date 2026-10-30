@@ -17,8 +17,9 @@ prepares a service at home gets their songs onto the church computer.
 - **Import** — adds a saved file's items to the *end* of the current queue,
   instead of replacing it. Pick more than one file at once to combine
   several people's prepared lists into one queue.
-- Under **Open**, **Open a saved service…** lists your most recently used
-  files — the fastest way back into one you already had open.
+- When the queue is empty, the start screen in the queue panel lists your
+  **Recent** service files under **Open a saved service…** — the fastest way back
+  into one you already had open.
 
 A `.born` file is plain text (JSON) — attach it to an email, put it on a
 USB drive, or send it any way you'd send a regular file.
