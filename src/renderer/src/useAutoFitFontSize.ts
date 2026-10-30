@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 /**
  * Shrinks the font size of `containerRef`'s single child (measured via
  * `scrollHeight`) until it fits within the container's own height, starting
- * from `baseRem` and never going below `minRem`. Re-measures whenever
+ * from `baseRem` and never going below `minRem` (nor `floorRatio` of `baseRem`). Re-measures whenever
  * `content` or `baseRem` changes, whenever the container itself comes back
  * on the page (the projector's text is not on the page while the screen is
  * hidden, so a size change made then is applied on Show screen), and on
@@ -21,20 +21,21 @@ export function useAutoFitFontSize(
   containerRef: React.RefObject<HTMLElement | null>,
   content: unknown,
   baseRem: number,
-  minRem = 0.9
+  minRem = 0.9,
+  floorRatio = 0.4
 ): number {
   const [fitRem, setFitRem] = useState(baseRem)
-  const params = useRef({ content, baseRem, minRem })
-  params.current = { content, baseRem, minRem }
+  const params = useRef({ content, baseRem, minRem, floorRatio })
+  params.current = { content, baseRem, minRem, floorRatio }
 
   const fit = useCallback((): void => {
     const el = containerRef.current
-    const { content: c, baseRem: base, minRem: min } = params.current
+    const { content: c, baseRem: base, minRem: min, floorRatio: ratio } = params.current
     if (!el || !c) return
     const inner = el.firstElementChild as HTMLElement | null
     if (!inner) return
     let size = base
-    const floor = Math.max(min, base * 0.4)
+    const floor = Math.max(min, base * ratio)
     el.style.fontSize = `${size}rem`
     let guard = 0
     while (inner.scrollHeight > el.clientHeight + 1 && size > floor && guard < 120) {
