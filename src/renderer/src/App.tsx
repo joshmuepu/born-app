@@ -1771,12 +1771,13 @@ export default function App() {
           <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Keyboard shortcuts</h3>
             <dl className="shortcuts-list">
-              <div><dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
-              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
+              <div><dt><kbd>→</kbd> <kbd>Space</kbd> <kbd>Page Down</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
+              <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>Page Up</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
-              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen</dd></div>
+              <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (<kbd>Esc</kbd> closes an open window or menu first)</dd></div>
+              <div><dt><kbd>Shift</kbd>+<kbd>Esc</kbd></dt><dd>Hide / show the congregation screen, even with a window or menu open</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
-              <div><dt><kbd>/</kbd></dt><dd>Jump to the search box</dd></div>
+              <div><dt><kbd>/</kbd> <kbd>⌘/Ctrl</kbd>+<kbd>F</kbd></dt><dd>Jump to the search box</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Project the top search result</dd></div>
               <div><dt><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Move the on-screen item up / down the queue</dd></div>
               <div><dt><kbd>?</kbd></dt><dd>Show / hide this list</dd></div>
