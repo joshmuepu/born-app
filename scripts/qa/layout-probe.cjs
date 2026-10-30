@@ -17,6 +17,7 @@ const OFF = `(sel)=>{const e=document.querySelector(sel);if(!e)return null;const
     await sleep(400)
     const tag = `${w}x${h}@${sc}`
     // shortcuts dialog
+    await p.ev('document.activeElement && document.activeElement.blur()') // "?" in a text box is just typing
     await p.key('?', { shift: true }); await sleep(300)
     let r = await p.ev(`(${OFF})('.shortcuts-modal')`)
     c.ok(`${tag} shortcuts dialog fits`, r && r.t >= 0 && r.b <= r.vh, JSON.stringify(r))

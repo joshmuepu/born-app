@@ -15,7 +15,7 @@ const rows = (sid) => sdb.prepare('select p.id,p.paragraph_ref ref,p.text,s.titl
 const toQuote = (r, sid) => ({ text: r.text, sermonTitle: r.title, dateCode: r.dc, sermonId: sid, paragraphIndex: 0, paragraphRef: r.ref || '§' + r.id, matchType: 'phrase' })
 const pick = (sid, frac) => { const rs = rows(sid); return rs[Math.min(rs.length - 1, Math.floor(rs.length * frac))] }
 const CASES = [
-  ['60-1204M Revelation, row ~65% (¶ 396-399)', 711, () => rows(711).find((r) => r.ref === '396-399')],
+  ['60-1204M Revelation, row ~65% (¶ 396)', 711, () => rows(711).find((r) => r.ref === '396' || r.ref === '396-399')],
   ['60-1204M Revelation, the very last paragraph', 711, () => rows(711).slice(-1)[0]],
   ['62-0318 longest sermon (389 rows), last row', 835, () => rows(835).slice(-1)[0]],
   ['"1 - The Revelation Of Jesus Christ" (book chapter, NO paragraph numbers), row ~80%', 1386, () => pick(1386, 0.8)],
