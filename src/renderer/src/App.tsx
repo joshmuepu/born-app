@@ -1012,15 +1012,11 @@ export default function App() {
     }
   }, [serviceQueue.length, projectionOpen, isScreenBlanked])
 
-  const handleSaveService = useCallback(async () => {
-    const ok = await window.electronAPI.saveService(serviceQueue)
-    if (ok) refreshRecents()
-  }, [serviceQueue, refreshRecents])
-
   // Shown under the queue toolbar when Open/Import can't read or parse a
   // file — a damaged or empty .born file otherwise fails with nothing
-  // visible at all. Auto-clears so it doesn't linger once the operator has
-  // moved on, same pattern as SongsPanel's import message.
+  // visible at all — or when a save could not be written. Auto-clears so it
+  // doesn't linger once the operator has moved on, same pattern as
+  // SongsPanel's import message.
   const [openError, setOpenError] = useState<string | null>(null)
   const openErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const showOpenError = useCallback((message: string) => {
@@ -1028,6 +1024,12 @@ export default function App() {
     setOpenError(message)
     openErrorTimer.current = setTimeout(() => setOpenError(null), 8000)
   }, [])
+
+  const handleSaveService = useCallback(async () => {
+    const ok = await window.electronAPI.saveService(serviceQueue)
+    if (ok === 'failed') showOpenError("Couldn't save the service there (the folder may be read-only or full). Try another place.")
+    else if (ok) refreshRecents()
+  }, [serviceQueue, refreshRecents, showOpenError])
 
   const applyLoadedQueueItems = useCallback((items: QueueItem[]) => {
     setServiceQueue(items)

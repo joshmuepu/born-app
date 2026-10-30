@@ -14,3 +14,11 @@ export function isOpenableFromRemote(path: unknown, recentServices: string[], re
   const rel = relative(resolve(remoteSaveDir), resolve(path))
   return !!rel && !rel.startsWith('..') && !isAbsolute(rel) && /\.(born|bpservice)$/i.test(path)
 }
+
+/** The file name a service saved from the phone gets (in the phone's save folder): no path characters, and never one of the names
+ *  Windows keeps for devices (CON, NUL, COM1…: a file saved as "CON.born" there goes nowhere) or one ending in a dot or a space. */
+export function safeServiceFileName(name: unknown): string {
+  let n = String(name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80).replace(/[. ]+$/, '')
+  if (/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(n)) n += ' service'
+  return n || 'Untitled service'
+}

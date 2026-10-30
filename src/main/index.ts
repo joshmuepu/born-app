@@ -64,7 +64,7 @@ import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
-import { isOpenableFromRemote } from './remoteServicePath'
+import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -1445,7 +1445,13 @@ ipcMain.handle('service:save', async (_event, items: unknown) => {
     defaultPath: 'Sunday service.born'
   })
   if (result.canceled || !result.filePath) return false
-  writeFileAtomic(result.filePath, JSON.stringify(items, null, 2))
+  try {
+    writeFileAtomic(result.filePath, JSON.stringify(items, null, 2))
+  } catch (e) {
+    // a read-only folder, a full disk, a removed USB stick: the operator is told, nothing is half-written
+    log.error('service:save failed', e)
+    return 'failed'
+  }
   rememberService(result.filePath)
   return true
 })
@@ -1542,7 +1548,7 @@ const REMOTE_SAVE_DIR = (): string => {
 }
 
 ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
-  const safeName = (name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) || 'Untitled service'
+  const safeName = safeServiceFileName(name)
   const path = join(REMOTE_SAVE_DIR(), `${safeName}.born`)
   try {
     writeFileAtomic(path, JSON.stringify(items, null, 2))

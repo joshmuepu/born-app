@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { join } from 'path'
-import { isOpenableFromRemote } from '../../main/remoteServicePath'
+import { isOpenableFromRemote, safeServiceFileName } from '../../main/remoteServicePath'
 
 // The phone remote's Open saved / Import saved sent a file path the computer opened as it was: any path on this computer (or, on
 // Windows, a \\server\share path that makes the PC sign in to that server). Only the files the phone is shown are accepted now.
@@ -23,4 +23,14 @@ describe('service files the phone remote may open', () => {
     expect(isOpenableFromRemote(undefined, recents, saveDir)).toBe(false)
     expect(isOpenableFromRemote(42, recents, saveDir)).toBe(false)
   })
+})
+
+describe('the file name of a service saved from the phone', () => {
+  it('keeps an ordinary name', () => expect(safeServiceFileName('Sunday morning')).toBe('Sunday morning'))
+  it('never a path', () => expect(safeServiceFileName('../a/b')).toBe('..-a-b'))
+  it('never a name Windows keeps for a device (the file would be lost)', () => {
+    for (const n of ['CON', 'nul', 'Com1', 'LPT9', 'aux']) expect(safeServiceFileName(n)).toBe(`${n} service`)
+  })
+  it('no dot or space at the end (Windows drops it)', () => expect(safeServiceFileName('Evening. ')).toBe('Evening'))
+  it('an empty name', () => expect(safeServiceFileName('  ')).toBe('Untitled service'))
 })
