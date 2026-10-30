@@ -27,7 +27,7 @@ input{font-family:inherit}
 mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; padding:0 2px}
 
 /* ── App shell: two whole shells, one shown per breakpoint ────────── */
-#app{height:100vh; height:100dvh; overflow:hidden;}
+#app{height:100vh; height:100dvh; overflow:hidden; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 #phoneShell{display:flex; flex-direction:column; height:100%}
 #tabletShell{display:none; height:100%}
 
@@ -381,7 +381,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .verse-text{font-size:14.5px; line-height:1.45; color:var(--text2)}
 
 /* ── Preview sheet (shared: sermons / bible / songs) ──────────────── */
-.sheet-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:70}
+.sheet-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:70; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 .sheet-overlay.active{display:flex}
 .sheet{
   background:var(--surface); border-top:1px solid var(--border); border-radius:20px 20px 0 0;
@@ -457,7 +457,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .toast.error{background:var(--warn); color:var(--warn-ink)}
 
 /* ── One-time "Add to Home Screen" sheet ──────────────────────────── */
-.a2hs-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:80}
+.a2hs-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:80; padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px)}
 .a2hs-overlay.active{display:flex}
 .a2hs{background:var(--surface); border-top:1px solid var(--border); border-radius:20px 20px 0 0; padding:22px 22px calc(30px + env(safe-area-inset-bottom,0px)); width:100%; display:flex; flex-direction:column; gap:16px}
 .a2hs h3{margin:0; font-size:17px; font-weight:800; color:var(--text)}

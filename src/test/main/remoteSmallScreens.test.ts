@@ -35,3 +35,13 @@ describe('a phone held sideways (phone layout, under 768px wide and under 500px 
     expect(land).toMatch(/\.songlist\{[^}]*overflow:visible/)
   })
 })
+
+describe('a notched iPhone held sideways', () => {
+  // the page asks for the whole screen (viewport-fit=cover), so the left and right insets have to be kept clear by the page itself
+  it('the app, the bottom sheets and the Home Screen sheet stay clear of the notch on both sides', () => {
+    for (const sel of ['#app{', '.sheet-overlay{', '.a2hs-overlay{']) {
+      expect(block(sel)).toMatch(/padding-left:env\(safe-area-inset-left,0px\)/)
+      expect(block(sel)).toMatch(/padding-right:env\(safe-area-inset-right,0px\)/)
+    }
+  })
+})
