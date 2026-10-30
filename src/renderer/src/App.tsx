@@ -278,6 +278,9 @@ export default function App() {
     }
   }, [])
 
+  // Each Project gets a number; one still waiting for the projection window to open is dropped if another came after it, so the
+  // last choice is what stays on screen.
+  const projectSeqRef = useRef(0)
   const doProject = useCallback(
     async (
       item: QueueItem,
@@ -287,7 +290,9 @@ export default function App() {
     ) => {
       const payload = slidePayload(item, slide)
       if (!payload) return
+      const seq = ++projectSeqRef.current
       await ensureProjectionOpen()
+      if (seq !== projectSeqRef.current) return
 
       // Private copy so Next/Prev flow-through never mutates the queued item.
       const stored: QueueItem = { ...item, slides: item.slides.map((s) => ({ ...s })) }
