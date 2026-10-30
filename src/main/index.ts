@@ -64,6 +64,7 @@ import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
+import { isOpenableFromRemote } from './remoteServicePath'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -2082,6 +2083,8 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
         mainWindow.webContents.send('webremote:save-queue', cmd.name)
+      } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
+        log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {
         const data = openServiceFile(cmd.path)
         if (data) mainWindow.webContents.send('webremote:open-service', data)
