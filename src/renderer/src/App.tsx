@@ -865,7 +865,7 @@ export default function App() {
         return
       }
       if (showAlertDialog) return
-      if (e.key === '?') { setShowShortcuts((v) => !v); return }
+      if (e.key === '?' && !isTyping(e.target)) { setShowShortcuts((v) => !v); return }
       if (showShortcuts && e.key === 'Escape') { setShowShortcuts(false); return }
       if (e.key === 'F1') { e.preventDefault(); setShowHelp((v) => !v); return }
 
