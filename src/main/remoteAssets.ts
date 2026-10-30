@@ -692,9 +692,9 @@ export function buildAppBody(): string {
       <div class="conn bad" id="conn-p"><span class="led"></span><span class="connLabel">Connecting…</span></div>
     </div>
     <div class="transport">
-      <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>
+      <button id="prev-p" class="btn-prev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button>
       <button id="next-p" class="btn-next"><span>Next</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
-      <button class="blank" id="blank-p">Blank</button>
+      <button class="blank" id="blank-p">Hide screen</button>
     </div>
     <div class="scroll">
       <div class="view active" data-view="queue" id="view-queue"></div>
@@ -718,7 +718,7 @@ export function buildAppBody(): string {
       <button class="sidebar-tab" data-tab="bible">${ICON.bible}Bible</button>
       <button class="sidebar-tab" data-tab="songs">${ICON.songs}Songs</button>
       <div class="sidebar-spacer"></div>
-      <button class="blank" id="blank-t">Blank</button>
+      <button class="blank" id="blank-t">Hide screen</button>
       <div class="led" id="conn-t" title="Connecting…"></div>
     </div>
     <div class="tablet-main">
@@ -1114,7 +1114,7 @@ function setConn(ok){
 function updateBlankButtons(){
   ['blank-p','blank-t'].forEach(function(id){
     var b = $(id); if(!b) return;
-    b.textContent = state.qs.blanked ? 'Restore' : 'Blank';
+    b.textContent = state.qs.blanked ? 'Show screen' : 'Hide screen';
     b.classList.toggle('active', !!state.qs.blanked);
   });
 }
@@ -1168,7 +1168,7 @@ function liveBarHtml(){
    four edits to keep in sync instead of one). */
 function transportInlineHtml(){
   return '<div class="transport-inline">'
-    + '<button class="btn-prev" onclick="cmd(\\'prev\\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Prev</span></button>'
+    + '<button class="btn-prev" onclick="cmd(\\'prev\\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button>'
     + '<button class="btn-next" onclick="cmd(\\'next\\')"><span>Next</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>'
     + '</div>';
 }
@@ -1752,7 +1752,7 @@ function renderSermonsTab(){
   renderTabletPreview();
 }
 var sermonSearchSeq = 0;
-var SEARCH_LOST = "Couldn't reach BORN - check the connection and search again.";
+var SEARCH_LOST = "Couldn't reach BORN — check the connection and search again.";
 function runSermonSearch(tablet){
   var q = ((tablet ? $('sermonInputT') : $('sermonInput')) || {}).value || '';
   q = q.trim();
@@ -2483,11 +2483,11 @@ function previewInnerHtml(item){
     + bodyHtml
     + '<div class="sheet-footer">'
     + '<div class="sheet-actions">'
-    + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' Add to Queue</button>'
+    + '<button class="btn-queue" onclick="sheetAction(\\'queue\\')">' + ICON_PLUS + ' + Queue</button>'
     + '<button class="btn-project" onclick="sheetAction(\\'project\\')">Project ▸</button>'
     + '</div>'
     + '<button class="btn-draft" onclick="sheetAction(\\'draft\\')" title="Build up your own list privately, then send it all at once">'
-    + ICON_PLUS + ' Add to My List</button>'
+    + ICON_PLUS + ' Add to My list</button>'
     + '<div class="sheet-hint">' + hint + '</div>'
     + '</div>';
 }
