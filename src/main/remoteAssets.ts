@@ -123,7 +123,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   display:flex; align-items:center; gap:6px; margin:8px 18px 0; padding:8px 14px;
   border-radius:11px; background:rgba(139,111,209,0.14); border:1px solid rgba(139,111,209,0.4);
   color:var(--accent); font-size:13px; font-weight:700; align-self:flex-start;
-}
+ min-height:44px}
 .draft-pill:active{background:rgba(139,111,209,0.22)}
 .draft-pill-count{
   display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
@@ -192,7 +192,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 .qstrip-row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 8px}
 .qstrip-row .section-label{padding:0}
-.qstrip-row .viewall{display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0}
+.qstrip-row .viewall{display:flex; align-items:center; gap:2px; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 0; min-height:44px}
 .qstrip{display:flex; gap:8px; overflow-x:auto; padding:0 18px 4px; -webkit-overflow-scrolling:touch}
 .qstrip-card{flex:0 0 134px; padding:11px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border); text-align:left}
 .qstrip-card[data-kind="song"]{border-left-color:var(--amber)}
@@ -286,7 +286,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .searchbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
 .searchbox.bible:focus-within{border-color:var(--sage); box-shadow:0 0 0 2px var(--sage)}
 .searchbox input::placeholder{color:var(--text3)}
-.gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800}
+.gobtn{width:58px; border-radius:13px; background:var(--accent); border:none; color:var(--accent-ink); font-size:14px; font-weight:800; flex-shrink:0}
 .gobtn:active{background:var(--accent-hover)}
 
 .datebar{padding:8px 18px 0}
@@ -312,7 +312,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .recent-head{padding:20px 18px 0; display:flex; align-items:center; gap:7px}
 .recent-head svg{color:var(--text2)}
 .recent-head span{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
-.recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px}
+.recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px; min-height:44px; min-width:44px}
 /* A horizontal, single-row strip — not a vertical stack. Vertical cards here
    used to grow with the recent count (5 items ≈ 200px+) and, on a short
    landscape-phone viewport, that alone could eat the ENTIRE height budget
@@ -322,7 +322,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    short the screen is. Matches the desktop's own recent-chip treatment
    (SongsPanel.css .songs-recent-chip) for the same feature. */
 .recent-list{padding:8px 18px 0; display:flex; flex-direction:row; flex-shrink:0; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch}
-.recent-item{padding:9px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--border); text-align:left; white-space:nowrap; flex-shrink:0}
+.recent-item{padding:9px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--border); text-align:left; white-space:nowrap; flex-shrink:0; min-height:44px}
 .recent-item:active{background:var(--surface2)}
 .recent-item span{font-size:13px; font-weight:700; color:var(--text)}
 
@@ -345,7 +345,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .azstrip button.current{background:var(--accent); color:#fff}
 .songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}
 .song-letter{position:sticky; top:0; z-index:1; background:var(--bg); font-size:11px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
-.song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none}
+.song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none; min-height:44px}
 .song-row:active{background:var(--surface)}
 .song-row mark{background:rgba(139,111,209,0.35); color:var(--text); font-weight:800; border-radius:2px}
 
@@ -353,7 +353,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .bible-groups{padding:16px 18px 0; flex:1; overflow-y:auto}
 .testament-label{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2); margin:0 0 8px}
 .book-grid{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin-bottom:18px}
-.book-chip{padding:11px 4px; text-align:center; border-radius:9px; background:var(--surface); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text)}
+.book-chip{padding:11px 4px; text-align:center; border-radius:9px; background:var(--surface); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text); min-height:44px}
 .book-chip:active{background:var(--surface2); border-color:var(--sage)}
 
 .chapter-header{padding:16px 18px 0; display:flex; align-items:center; gap:10px}
@@ -367,7 +367,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 
 /* ── Search scope: default "Whole Bible", opt-in narrowing ───────────── */
 .scope-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap}
-.scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700}
+.scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700; min-height:44px}
 .scope-pill.active{color:var(--sage); border-color:var(--sage); background:rgba(131,192,142,0.14); font-family:ui-monospace,monospace}
 .scope-clear{padding:6px 9px; border-radius:999px; background:rgba(131,192,142,0.14); border:1px solid var(--sage); color:var(--sage); font-size:14px; line-height:1; font-weight:700}
 .scope-translation{font-size:11px; color:var(--text3); margin-left:auto}
@@ -467,7 +467,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .a2hs-num{flex-shrink:0; width:26px; height:26px; border-radius:8px; background:rgba(139,111,209,0.15); display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:12px; font-weight:800}
 .a2hs-step-text{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text)}
 .a2hs .btn-primary,.role-banner-card .btn-primary{width:100%; padding:15px; border:none; border-radius:13px; background:var(--accent); color:var(--accent-ink); font-size:15px; font-weight:800}
-.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px}
+.a2hs .btn-skip,.role-banner-card .btn-skip{display:block; margin:0 auto; background:none; border:none; color:var(--text3); font-size:12.5px; font-weight:600; padding:4px 12px; min-height:44px}
 /* Deliberately NOT a full-screen modal like .a2hs-overlay (inset:0 + a
  * backdrop that captures every click) — this used to hide the entire app
  * behind it on a device's very first connection until the person noticed
@@ -615,7 +615,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .list-pane{padding-top:14px; padding-bottom:14px}
   .list-pane h2{margin-bottom:8px}
   .list-pane .transport-inline{gap:10px; margin-bottom:8px}
-  .list-pane .transport-inline button{min-height:36px; padding:6px 10px; font-size:13px; border-radius:10px}
+  .list-pane .transport-inline button{min-height:44px; padding:6px 10px; font-size:13px; border-radius:10px}
   /* Same reasoning as the recent-list rewrite above: on this little height,
      every fixed-height header row the Songs tab stacks before its actual
      list (recent strip, section label, A-Z jump row) has to give back

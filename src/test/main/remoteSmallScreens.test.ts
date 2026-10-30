@@ -45,3 +45,15 @@ describe('a notched iPhone held sideways', () => {
     }
   })
 })
+
+describe('tap targets', () => {
+  // measured under 44px by the viewport sweep: book chips 39, song rows 39, My list 34, recent chips 36, scope pill 29,
+  // Clear / View all 19, Skip for now 23, Go 31 wide at 150% zoom, Prev/Next 36 on a sideways phone in the two-column layout
+  it('every one is at least 44px tall', () => {
+    for (const sel of ['.book-chip{', '.song-row{', '.draft-pill{', '.recent-item{', '.scope-pill{', '.recent-clear{', '.qstrip-row .viewall{', '.a2hs .btn-skip,.role-banner-card .btn-skip{']) {
+      expect(block(sel), sel).toMatch(/min-height:44px/)
+    }
+    expect(block('.gobtn{')).toMatch(/flex-shrink:0/)
+    expect(block('@media (min-width: 768px) and (max-height: 500px)')).toMatch(/\.transport-inline button\{[^}]*min-height:44px/)
+  })
+})
