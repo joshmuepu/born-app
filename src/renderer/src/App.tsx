@@ -941,7 +941,7 @@ export default function App() {
         case 'b':
         case 'B':
           e.preventDefault()
-          handleToggleBlank()
+          if (projectionOpen) handleToggleBlank()
           break
       }
     }
