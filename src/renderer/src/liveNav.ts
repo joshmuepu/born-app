@@ -45,7 +45,8 @@ export function cursorsFor(item: QueueItem): FlowCursors {
   return {}
 }
 
-type SermonCache = Map<number, Quote[]>
+/** each sermon's paragraphs, per language (a translated copy has the same paragraph numbers): key `${sermonId}:${language}` */
+type SermonCache = Map<string, Quote[]>
 
 /**
  * Fetch the slide just past `cursor` in the given direction, plus the cursor
@@ -62,10 +63,12 @@ export async function fetchAdjacentSlide(
   if (cursor.kind === 'quote') {
     // paragraphIndex isn't reliably populated; the array order from
     // getSermonParagraphs is the source of truth, keyed by paragraphRef.
-    let paras = sermonCache.get(cursor.sermonId)
+    const key = `${cursor.sermonId}:${cursor.language || 'en'}`
+    let paras = sermonCache.get(key)
     if (!paras) {
       paras = (await window.electronAPI.getSermonParagraphs(cursor.sermonId, cursor.language)) || []
-      sermonCache.set(cursor.sermonId, paras)
+      // an empty answer (no connection yet) is not kept, so Next works once the paragraphs can be read
+      if (paras.length > 0) sermonCache.set(key, paras)
     }
     const pos = paras.findIndex((p) => p.paragraphRef === cursor.paragraphRef)
     if (pos === -1) {

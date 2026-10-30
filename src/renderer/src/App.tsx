@@ -128,7 +128,7 @@ export default function App() {
 
   const queueRef = useRef<QueueItem[]>(serviceQueue)
   const projectedRef = useRef<Projected | null>(null)
-  const sermonCacheRef = useRef<Map<number, Quote[]>>(new Map())
+  const sermonCacheRef = useRef<Map<string, Quote[]>>(new Map())
   const queueLoaded = useRef(false)
   const projectionOpenRef = useRef(false)
   const isScreenBlankedRef = useRef(false)
