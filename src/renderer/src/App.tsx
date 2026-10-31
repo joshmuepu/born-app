@@ -25,7 +25,6 @@ import type {
   RecentService,
   QueueSource,
   SongToMatch,
-  SongMatchResult,
   SongGroupToAdd
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle, liveParagraphRef } from '../../shared/queueItem'
@@ -137,6 +136,8 @@ export default function App() {
   useEffect(() => { isScreenBlankedRef.current = isScreenBlanked }, [isScreenBlanked])
   useEffect(() => { queueRef.current = serviceQueue }, [serviceQueue])
   useEffect(() => { projectedRef.current = projected }, [projected])
+  const playedIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => { playedIdsRef.current = playedIds }, [playedIds])
 
   const activeQueueIndex = projected?.queueIndex ?? null
 
@@ -154,7 +155,10 @@ export default function App() {
     window.electronAPI.loadQueue().then((loaded) => {
       queueLoaded.current = true
       const migrated = migrateQueue(loaded)
-      if (migrated.length > 0) setServiceQueue(migrated)
+      // anything added while the saved queue was being read (a phone sending its list at start) goes after the saved items
+      const next = [...migrated, ...queueRef.current]
+      queueRef.current = next
+      setServiceQueue(next)
     })
   }, [])
 
@@ -843,12 +847,12 @@ export default function App() {
         }
         if (resolved.length === 0) return
         const tagged = resolved.map((it) => ({ ...it, source: contributor }))
-        mutateQueue((q) => {
-          const protectedId = activeQueueIndex != null ? (q[activeQueueIndex]?.id ?? null) : null
-          return replaceContributorItems(q, tagged, contributor.deviceId, playedIds, protectedId)
-        })
+        // what is on screen and what has been shown NOW, after the lookups above: an item projected meanwhile must not be removed
+        mutateQueue((q) =>
+          replaceContributorItems(q, tagged, contributor.deviceId, playedIdsRef.current, projectedRef.current?.item.id ?? null)
+        )
       }),
-    [mutateQueue, playedIds, activeQueueIndex, bibleTranslation]
+    [mutateQueue, bibleTranslation]
   )
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
@@ -999,6 +1003,7 @@ export default function App() {
       return
     }
     if (window.confirm('Clear the current queue and start a new service?')) {
+      queueRef.current = []
       setServiceQueue([])
       projectedRef.current = null
       setProjected(null)
@@ -1037,6 +1042,7 @@ export default function App() {
   }, [serviceQueue, refreshRecents, showOpenError])
 
   const applyLoadedQueueItems = useCallback((items: QueueItem[]) => {
+    queueRef.current = items
     setServiceQueue(items)
     projectedRef.current = null
     setProjected(null)
@@ -1052,11 +1058,6 @@ export default function App() {
       window.electronAPI.setBlankScreen(true)
     }
   }, [])
-
-  const loadServiceItems = useCallback(
-    (loaded: unknown[]) => applyLoadedQueueItems(migrateQueue(loaded)),
-    [applyLoadedQueueItems]
-  )
 
   // ── Queue import: adding shared songs to the library ──────────────────────
   //
@@ -1313,6 +1314,8 @@ export default function App() {
   useEffect(
     () =>
       window.electronAPI.onWebRemoteNewService(() => {
+        // at once, so an item added before the next redraw starts from the empty queue, not the cleared one
+        queueRef.current = []
         setServiceQueue([])
         projectedRef.current = null
         setProjected(null)
@@ -1355,8 +1358,15 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteSaveQueue(async (name) => {
-        await window.electronAPI.saveServiceNamed(name, serviceQueue)
+      window.electronAPI.onWebRemoteSaveQueue(async (name, id) => {
+        // the phone waits for this answer, so it can say when the save failed
+        let ok = false
+        try {
+          ok = (await window.electronAPI.saveServiceNamed(name, serviceQueue)) === true
+        } catch {
+          ok = false
+        }
+        window.electronAPI.reportWebRemoteSaveResult(id, ok)
         refreshRecents()
       }),
     [serviceQueue, refreshRecents]
@@ -1579,9 +1589,7 @@ export default function App() {
               <span>
                 {navigator.platform.startsWith('Mac')
                   ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen BORN.'
-                  : navigator.platform.startsWith('Win')
-                    ? 'The installer is running — click through it, then reopen BORN.'
-                    : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
+                  : 'The installer is running — click through it, then reopen BORN.'}
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
@@ -1780,7 +1788,7 @@ export default function App() {
             <dl className="shortcuts-list">
               <div><dt><kbd>→</kbd> <kbd>Space</kbd> <kbd>Page Down</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>Page Up</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
-              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the Service Queue</dd></div>
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (<kbd>Esc</kbd> closes an open window or menu first)</dd></div>
               <div><dt><kbd>Shift</kbd>+<kbd>Esc</kbd></dt><dd>Hide / show the congregation screen, even with a window or menu open</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
@@ -1825,11 +1833,11 @@ export default function App() {
                       setStatusPopoverOpen(false)
                     }}
                   >
-                    {updateStage === 'ready' ? `restart to update to ${update.latest} →` : `update to ${update.latest} →`}
+                    {updateStage === 'ready' ? `Restart to update to ${update.latest} →` : `Update to ${update.latest} →`}
                   </button>
                 ) : (
                   <button className="status-update-link status-update-link--check" onClick={handleCheckForUpdate}>
-                    check for updates
+                    Check for updates
                   </button>
                 )}
               </div>

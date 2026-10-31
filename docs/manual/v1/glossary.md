@@ -3,9 +3,11 @@
 Plain-language definitions, using the exact words you'll see in BORN itself.
 
 **Display** — Any physical screen your computer can show something on: a TV, a
-projector, a monitor. BORN tells displays apart by model + resolution, plus an
+projector, a monitor. BORN recognises a display by its model, plus an
 operator-given name if you've set one (see
-[Connecting a second screen](setup/displays.md)).
+[Connecting a second screen](setup/displays.md)). Changing its resolution or
+scaling does not make it a different display; the resolution only tells two
+identical screens apart.
 
 **Congregation screen** — The display the congregation looks at; BORN's main
 projected output.
@@ -19,16 +21,16 @@ screen shows). Shows only the clock, full-screen, whenever nothing is projected.
 monitor: BORN picks a sensible connected display without you naming one
 specifically. Right for almost every setup with exactly one extra screen.
 
-**Service queue** — The ordered list of everything lined up for a service (sermon
+**Service Queue** — The ordered list of everything lined up for a service (sermon
 quotes, Bible passages, songs), shown in the panel on the right of the main
 window. Saved and reopened as a single file.
 
 **On screen** — The item (and, inside it, the specific slide/verse/paragraph)
 currently showing on the Congregation screen. Marked with a green **ON SCREEN**
-badge in the Service queue.
+badge in the Service Queue.
 
-**Confidence monitor** — The small preview in the bottom-right corner of the
-Service queue panel, always showing exactly what the Congregation screen currently
+**Preview** — The small preview in the bottom-right corner of the
+Service Queue panel, always showing exactly what the Congregation screen currently
 shows (or **HIDDEN FROM SCREEN**, if the screen is blanked) — so the operator can
 confirm without turning around to look at the real screen.
 

@@ -5,10 +5,10 @@ the next thing. Everything else in this manual is detail on top of this one loop
 
 ## 1. Open BORN
 
-When BORN opens, you land on the **Sermons** tab with an empty **Service queue** on
+When BORN opens, you land on the **Sermons** tab with an empty **Service Queue** on
 the right, ready to go.
 
-![BORN's idle screen on first open — the Sermons tab, empty search box, and an empty Service queue on the right inviting you to add something.](../images/operator-idle.png)
+![BORN's idle screen on first open — the Sermons tab, empty search box, and an empty Service Queue on the right inviting you to add something.](../images/operator-idle.png)
 
 ## 2. Find something
 
@@ -27,7 +27,7 @@ on each of the three tabs.
 
 Every result row has two buttons on the right:
 
-- **+ Queue** — adds it to the **Service queue** on the right, to come back to later
+- **+ Queue** — adds it to the **Service Queue** on the right, to come back to later
   without losing your place.
 - **Project** — puts it on screen immediately.
 
@@ -46,7 +46,7 @@ you don't have one connected yet.
 ## 5. Go live
 
 With the projection window open, click **Project** on whatever you want to show
-first. The **Service queue** panel on the right now shows **Back** and **Next**
+first. The **Service Queue** panel on the right now shows **Back** and **Next**
 buttons at the bottom — use **Next** to move forward through everything in the
 queue, verse by verse, slide by slide, item by item. The bottom-right corner always
 shows a small copy of exactly what the congregation is currently looking at, so you

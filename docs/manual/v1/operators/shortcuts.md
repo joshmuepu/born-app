@@ -7,7 +7,7 @@ in the main window (when you are not typing in a box).
 |---|---|
 | <kbd>→</kbd>, <kbd>Space</kbd> or <kbd>Page Down</kbd> | **Next** — next slide, then rolls into the next verse/paragraph |
 | <kbd>←</kbd>, <kbd>Shift</kbd>+<kbd>Space</kbd> or <kbd>Page Up</kbd> | **Back** — previous slide/verse/paragraph |
-| <kbd>⌘/Ctrl</kbd>+<kbd>→</kbd> / <kbd>←</kbd> | Next / previous **item** in the service queue |
+| <kbd>⌘/Ctrl</kbd>+<kbd>→</kbd> / <kbd>←</kbd> | Next / previous **item** in the Service Queue |
 | <kbd>Esc</kbd> or <kbd>B</kbd> | Hide / show the congregation screen. If a window or menu is open, <kbd>Esc</kbd> closes it first |
 | <kbd>Shift</kbd>+<kbd>Esc</kbd> | Hide / show the congregation screen, even with a window or menu open |
 | <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd> | Open / close the projection window |

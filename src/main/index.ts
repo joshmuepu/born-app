@@ -195,14 +195,12 @@ let projectionState: ProjectionState = {
   blank: false,
   fontSize: getSettingsSafe().fontSize
 }
-let projectionReady = false
 
 interface StageState {
   current: SlidePayload | null
   next: SlidePayload | null
 }
 let stageState: StageState = { current: null, next: null }
-let stageReady = false
 
 function getSettingsSafe(): AppSettings {
   try {
@@ -336,7 +334,6 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
 
 function createProjectionWindow(): void {
   log.info('createProjectionWindow')
-  projectionReady = false
 
   const target = resolveProjectionTarget()
   const area = target.display.workArea ?? target.display.bounds
@@ -389,7 +386,6 @@ function createProjectionWindow(): void {
   projectionWindow.on('closed', () => {
     log.info('projectionWindow closed')
     projectionWindow = null
-    projectionReady = false
     projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
     // Nothing is being projected any more — the stage monitor falls back to the
     // clock rather than freezing on the last slide.
@@ -402,7 +398,6 @@ function createProjectionWindow(): void {
 
 function createStageWindow(): void {
   log.info('createStageWindow')
-  stageReady = false
 
   const target = resolveStageTarget()
   const onMac = process.platform === 'darwin'
@@ -466,7 +461,6 @@ function createStageWindow(): void {
   stageWindow.on('closed', () => {
     log.info('stageWindow closed')
     stageWindow = null
-    stageReady = false
     sendToMain('stage:closed')
   })
 }
@@ -774,7 +768,6 @@ ipcMain.handle('projection:open', () => {
 
 ipcMain.on('projection:ready', () => {
   log.info('ipc projection:ready — replaying state')
-  projectionReady = true
   broadcastDisplayInfo()
   if (projectionState.slide) sendToProjection('projection:show-slide', projectionState.slide)
   sendToProjection('projection:set-font-size', projectionState.fontSize)
@@ -1339,7 +1332,6 @@ ipcMain.handle('stage:open', () => {
 })
 
 ipcMain.on('stage:ready', () => {
-  stageReady = true
   sendToStage('stage:update', stageState)
   sendToStage('stage:set-blank', projectionState.blank)
   sendToStage('stage:display-info', displayInfoPayload())
@@ -1577,6 +1569,20 @@ const REMOTE_SAVE_DIR = (): string => {
   }
   return dir
 }
+
+// The phone's Save: the operator window holds the queue, so it does the save and reports back here; the phone is then answered with
+// the real result instead of "Saved" whatever happened. No answer within 15 s counts as a failed save.
+let remoteSaveSeq = 0
+const remoteSaves = new Map<number, (ok: boolean) => void>()
+function saveQueueFromRemote(win: BrowserWindow, name: string): Promise<{ ok: boolean }> {
+  const id = ++remoteSaveSeq
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { remoteSaves.delete(id); resolve({ ok: false }) }, 15_000)
+    remoteSaves.set(id, (ok) => { clearTimeout(timer); remoteSaves.delete(id); resolve({ ok }) })
+    win.webContents.send('webremote:save-queue', name, id)
+  })
+}
+ipcMain.on('webremote:save-queue-result', (_event, id: number, ok: boolean) => remoteSaves.get(id)?.(ok === true))
 
 ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
   const safeName = safeServiceFileName(name)
@@ -2119,7 +2125,7 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
-        mainWindow.webContents.send('webremote:save-queue', cmd.name)
+        return saveQueueFromRemote(mainWindow, cmd.name)
       } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
         log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {

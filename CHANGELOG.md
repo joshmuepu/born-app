@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.13.5
+
+**On the phone and iPad**
+- **Save this service** on the phone now says "Saved" only when the service really was saved on the computer. If it could not be saved (a full or read-only folder), the phone says so instead.
+- The phone uses the same words as the app: **On screen**, **Hidden from screen**, **Recently Played** and **Save this service**.
+
+**Screens**
+- A projector or stage screen you chose under **Screens** stays chosen, with its name, after you change its resolution or the Windows display scaling. Before, BORN treated it as a new screen. Two identical screens still keep their own names.
+
+**The Service Queue**
+- An item put on screen while a phone sends its list at the same moment is no longer taken out of the queue.
+- Items added in the first moments after BORN starts, while it is still loading the saved queue, are no longer lost.
+- Adding an item straight after **New service** no longer brings back the items you just cleared.
+
+**Names and wording**
+- The update links at the bottom of the window are written the same way as the rest of the app: **Check for updates**, **Update to …**, **Restart to update to …**.
+- Help now writes **Service Queue** like the panel's heading, calls the operator's preview **Preview**, and explains what **Restart here** does.
+
+Nothing new was added: no new screens, buttons or settings. Your saved services open and save exactly as before.
+
 ## 1.13.4
 
 **The first start after updating takes a moment:** BORN upgrades its sermon library once. It keeps your old library beside it with a dated name, and carries over the translations you downloaded and the sermons you fetched online. If the upgrade cannot finish (a full disk, for example), BORN keeps using the old library.

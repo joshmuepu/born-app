@@ -21,7 +21,8 @@ sermons exist for it), **Series**, **Location** (by city or state), and
 
 Whichever way you found a sermon, once you're inside one, every paragraph has its
 own **+ Queue** and **Project** buttons, and the currently on-screen paragraph (if
-any) is marked **On screen**. Click **‹ Results** (from a search) or **‹ Back**
+any) is marked **On screen**; its **Project** button reads **Restart here**, to put
+that paragraph back on screen from its first page. Click **‹ Results** (from a search) or **‹ Back**
 (from Browse), top-left of that view, to return to your search results or browse
 list.
 

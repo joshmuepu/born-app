@@ -39,7 +39,7 @@ function buildDiagnosticsText(diag: RemoteDiagnostics): string {
     ...diag.adapters.map(
       (a) =>
         `  ${a.chosen ? '→' : ' '} ${a.label}: ${a.address}` +
-        ` — ${a.reachable === null ? 'not tested' : a.reachable ? 'answers' : `NO ANSWER (${a.reachError ?? 'unknown'})`}` +
+        ` — ${a.reachable === null ? 'not tested' : a.reachable ? 'answers' : `no answer (${a.reachError ?? 'unknown'})`}` +
         (a.usable ? '' : ` [hidden: ${a.hiddenReason ?? 'virtual/VPN'}]`)
     ),
     '',
