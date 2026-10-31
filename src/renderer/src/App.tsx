@@ -25,7 +25,6 @@ import type {
   RecentService,
   QueueSource,
   SongToMatch,
-  SongMatchResult,
   SongGroupToAdd
 } from './types'
 import { quoteToItem, makeId, migrateQueue, itemTitle, liveParagraphRef } from '../../shared/queueItem'
@@ -1059,11 +1058,6 @@ export default function App() {
       window.electronAPI.setBlankScreen(true)
     }
   }, [])
-
-  const loadServiceItems = useCallback(
-    (loaded: unknown[]) => applyLoadedQueueItems(migrateQueue(loaded)),
-    [applyLoadedQueueItems]
-  )
 
   // ── Queue import: adding shared songs to the library ──────────────────────
   //

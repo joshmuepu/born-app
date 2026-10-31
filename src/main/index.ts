@@ -195,14 +195,12 @@ let projectionState: ProjectionState = {
   blank: false,
   fontSize: getSettingsSafe().fontSize
 }
-let projectionReady = false
 
 interface StageState {
   current: SlidePayload | null
   next: SlidePayload | null
 }
 let stageState: StageState = { current: null, next: null }
-let stageReady = false
 
 function getSettingsSafe(): AppSettings {
   try {
@@ -336,7 +334,6 @@ function attachOperatorShortcuts(win: BrowserWindow): void {
 
 function createProjectionWindow(): void {
   log.info('createProjectionWindow')
-  projectionReady = false
 
   const target = resolveProjectionTarget()
   const area = target.display.workArea ?? target.display.bounds
@@ -389,7 +386,6 @@ function createProjectionWindow(): void {
   projectionWindow.on('closed', () => {
     log.info('projectionWindow closed')
     projectionWindow = null
-    projectionReady = false
     projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
     // Nothing is being projected any more — the stage monitor falls back to the
     // clock rather than freezing on the last slide.
@@ -402,7 +398,6 @@ function createProjectionWindow(): void {
 
 function createStageWindow(): void {
   log.info('createStageWindow')
-  stageReady = false
 
   const target = resolveStageTarget()
   const onMac = process.platform === 'darwin'
@@ -466,7 +461,6 @@ function createStageWindow(): void {
   stageWindow.on('closed', () => {
     log.info('stageWindow closed')
     stageWindow = null
-    stageReady = false
     sendToMain('stage:closed')
   })
 }
@@ -774,7 +768,6 @@ ipcMain.handle('projection:open', () => {
 
 ipcMain.on('projection:ready', () => {
   log.info('ipc projection:ready — replaying state')
-  projectionReady = true
   broadcastDisplayInfo()
   if (projectionState.slide) sendToProjection('projection:show-slide', projectionState.slide)
   sendToProjection('projection:set-font-size', projectionState.fontSize)
@@ -1339,7 +1332,6 @@ ipcMain.handle('stage:open', () => {
 })
 
 ipcMain.on('stage:ready', () => {
-  stageReady = true
   sendToStage('stage:update', stageState)
   sendToStage('stage:set-blank', projectionState.blank)
   sendToStage('stage:display-info', displayInfoPayload())

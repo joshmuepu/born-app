@@ -2,7 +2,7 @@
  * chordPro.ts — parse a ChordPro (.cho/.crd/.chordpro/.pro-text) song.
  * Chords in [brackets] are stripped; {directives} set metadata and sections.
  */
-import type { ParsedSong, ParsedSongSlide } from '../../shared/song'
+import type { ParsedSong } from '../../shared/song'
 import { cleanLyricText } from '../../shared/song'
 
 const DIRECTIVE_RE = /^\{\s*([a-zA-Z_]+)\s*(?::\s*(.*?))?\s*\}$/
