@@ -1,6 +1,96 @@
 {
-  "snapshot": null,
+  "snapshot": "libraries-v1-20261031",
   "note": "Library snapshot used by release builds. Made by the \"refresh libraries (manual)\" workflow; see docs/notes/library-snapshots.md.",
-  "files": [],
-  "counts": {}
+  "created": "2026-10-31",
+  "files": [
+    {
+      "name": "sermons.db.gz",
+      "sha256": "7f67d39eb455b37a7e376408867750242cc41808fd65eacac31ea8115f8893d5",
+      "size": 69482767,
+      "format": 3,
+      "formatFrom": "SERMON_DB_FORMAT in src/main/sermonDbUpgrade.ts (PRAGMA user_version)",
+      "sourceDate": "2026-10-31"
+    },
+    {
+      "name": "library.db.gz",
+      "sha256": "24c818670438e3e866c6e33804d467bdfce3caf511d308d756bf5f9f050b40b9",
+      "size": 10795173,
+      "format": 0,
+      "formatFrom": "PRAGMA user_version (no format constant in the app)",
+      "sourceDate": "2026-10-31"
+    }
+  ],
+  "counts": {
+    "sermons": 1218,
+    "paragraphRows": 224937,
+    "translations": 3,
+    "verses": 93285,
+    "songs": 1163,
+    "slides": 5219
+  },
+  "check": {
+    "comparedWith": "the libraries inside release v1.13.4",
+    "result": "pass",
+    "allowChanges": false,
+    "sermonsOld": 1218,
+    "sermonsNew": 1218,
+    "paragraphRowsOld": 224937,
+    "paragraphRowsNew": 224937,
+    "sermonsMissing": 0,
+    "sermonTextDiffers": 0,
+    "sermonTextDiffersCodes": [],
+    "sermonsInSections": 0,
+    "library": {
+      "bible_translations": {
+        "old": 3,
+        "new": 3,
+        "identical": true
+      },
+      "bible_books": {
+        "old": 66,
+        "new": 66,
+        "identical": true
+      },
+      "bible_verses": {
+        "old": 93285,
+        "new": 93285,
+        "identical": true
+      },
+      "songs": {
+        "old": 1163,
+        "new": 1163,
+        "identical": true
+      },
+      "song_slides": {
+        "old": 5219,
+        "new": 5219,
+        "identical": true
+      }
+    },
+    "versesByTranslation": {
+      "ASV": {
+        "old": 31085,
+        "new": 31085,
+        "changed": 0,
+        "only_old": 0,
+        "only_new": 0
+      },
+      "KJV": {
+        "old": 31102,
+        "new": 31102,
+        "changed": 0,
+        "only_old": 0,
+        "only_new": 0
+      },
+      "WEB": {
+        "old": 31098,
+        "new": 31098,
+        "changed": 0,
+        "only_old": 0,
+        "only_new": 0
+      }
+    },
+    "problems": [],
+    "changes": []
+  }
 }
