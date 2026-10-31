@@ -1148,7 +1148,7 @@ function refreshOpenDetailSheet(){
 function nowStatusHtml(blanked){
   return blanked
     ? '<span class="now-dot now-dot--blanked"></span><span class="now-label now-label--blanked">HIDDEN FROM SCREEN</span>'
-    : '<span class="now-dot"></span><span class="now-label">ON SCREEN NOW</span>';
+    : '<span class="now-dot"></span><span class="now-label">ON SCREEN</span>';
 }
 function liveBarHtml(){
   var on = state.qs.onScreen;
@@ -1157,7 +1157,7 @@ function liveBarHtml(){
   return '<button class="livebar' + (blanked ? ' livebar--blanked' : '') + '" onclick="setTab(\\'queue\\')">'
     + '<span class="livebar-dot' + (blanked ? ' livebar-dot--blanked' : '') + '"></span>'
     + '<div class="livebar-body">'
-    + '<div class="livebar-ref">' + (blanked ? 'HIDDEN' : (on.reference ? esc(on.reference) : 'ON SCREEN')) + '</div>'
+    + '<div class="livebar-ref">' + (blanked ? 'HIDDEN FROM SCREEN' : (on.reference ? esc(on.reference) : 'ON SCREEN')) + '</div>'
     + '<div class="livebar-text">' + esc(on.text) + '</div>'
     + '</div>'
     + ICON_CHEVRON_RIGHT
@@ -1193,7 +1193,7 @@ function queueHeaderHtml(){
   if(isOperator){
     actions = (editing ? '' :
         '<button class="filebtn" title="New, or open a saved service" onclick="openFileMenuSheet()">' + ICON_FOLDER + ' File ' + ICON_CHEVRON_DOWN + '</button>'
-      + '<button class="filebtn" title="Save this queue" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>')
+      + '<button class="filebtn" title="Save this service" onclick="saveQueueSheet()">' + ICON_SAVE + ' Save</button>')
       + '<button class="filebtn' + (editing ? ' filebtn--active' : '') + '" title="Reorder or remove queue items" onclick="toggleQueueEdit()">'
       + (editing ? ICON_CHECK + ' Done' : ICON_PENCIL + ' Edit') + '</button>';
   }
@@ -1547,7 +1547,7 @@ function newService(){
   cmd('new-service').then(function(){ toast('Started a new service'); closeSheet(); });
 }
 function saveQueueSheet(){
-  openGenericSheet('Save this queue', ''
+  openGenericSheet('Save this service', ''
     + '<input class="name-input" id="saveNameInput" placeholder="e.g. Sunday Service — ' + new Date().toLocaleDateString() + '" autocomplete="off"/>'
     + '<button class="btn-project" style="padding:15px;border-radius:13px" onclick="doSaveQueue()">Save</button>');
   setTimeout(function(){ var i = $('saveNameInput'); if(i) i.focus(); }, 150);
@@ -1829,7 +1829,7 @@ function sermonBrowseChipsHtml(){
   return '<div class="browse-chip-row">'
     + '<button class="browse-chip" onclick="openOnThisDay()">' + ICON_CALENDAR + '<span>Date</span></button>'
     + '<button class="browse-chip" onclick="openSeriesList()">' + ICON_BOOK + '<span>Series</span></button>'
-    + '<button class="browse-chip" onclick="openRecentSermons()">' + ICON_CLOCK + '<span>Recent</span></button>'
+    + '<button class="browse-chip" onclick="openRecentSermons()">' + ICON_CLOCK + '<span>Recently Played</span></button>'
     + '</div>'
     + '<div class="empty">Search for a word or phrase, or browse above.</div>';
 }
@@ -2323,7 +2323,7 @@ function songsBodyHtml(){
   var all = state.songsAll;
   var html = '';
   if(recent.length > 0){
-    html += '<div class="recent-head">' + ICON_CLOCK + '<span>RECENT</span><button class="recent-clear" onclick="clearRecentSongs()">Clear</button></div><div class="recent-list">';
+    html += '<div class="recent-head">' + ICON_CLOCK + '<span>RECENTLY PLAYED</span><button class="recent-clear" onclick="clearRecentSongs()">Clear</button></div><div class="recent-list">';
     for(var r=0;r<recent.length;r++){
       html += '<button class="recent-item" onclick="selectSongById(' + recent[r].id + ')"><span>' + esc(recent[r].title) + '</span></button>';
     }
@@ -2477,7 +2477,7 @@ function previewInnerHtml(item){
   } else if(item.html){
     bodyHtml = '<div class="sheet-text">' + item.html + '</div>';
   } else {
-    bodyHtml = '<div class="sheet-text">' + esc(item.full || 'Tap Project to send this live.') + '</div>';
+    bodyHtml = '<div class="sheet-text">' + esc(item.full || 'Tap Project to put this on screen.') + '</div>';
   }
   var hint = (isSlidesItem && item.slides.length > 1)
     ? 'Tap any verse to put it on screen instantly'

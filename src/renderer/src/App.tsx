@@ -1595,9 +1595,7 @@ export default function App() {
               <span>
                 {navigator.platform.startsWith('Mac')
                   ? 'Almost there — the disk image is open. Drag Branham or Nothing onto Applications (replace the old one), then reopen BORN.'
-                  : navigator.platform.startsWith('Win')
-                    ? 'The installer is running — click through it, then reopen BORN.'
-                    : 'The new AppImage is in your file manager — replace the old one and reopen BORN.'}
+                  : 'The installer is running — click through it, then reopen BORN.'}
               </span>
               <span className="update-banner-actions">
                 <button className="btn-primary btn-sm" onClick={() => window.electronAPI.quitApp()}>
@@ -1796,7 +1794,7 @@ export default function App() {
             <dl className="shortcuts-list">
               <div><dt><kbd>→</kbd> <kbd>Space</kbd> <kbd>Page Down</kbd></dt><dd>Next — next slide, then rolls into the next verse / paragraph</dd></div>
               <div><dt><kbd>←</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>Page Up</kbd></dt><dd>Back — previous slide / verse / paragraph</dd></div>
-              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the service queue</dd></div>
+              <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>→</kbd>/<kbd>←</kbd></dt><dd>Next / previous <strong>item</strong> in the Service Queue</dd></div>
               <div><dt><kbd>Esc</kbd> <kbd>B</kbd></dt><dd>Hide / show the congregation screen (<kbd>Esc</kbd> closes an open window or menu first)</dd></div>
               <div><dt><kbd>Shift</kbd>+<kbd>Esc</kbd></dt><dd>Hide / show the congregation screen, even with a window or menu open</dd></div>
               <div><dt><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></dt><dd>Open / close the projection window</dd></div>
@@ -1841,11 +1839,11 @@ export default function App() {
                       setStatusPopoverOpen(false)
                     }}
                   >
-                    {updateStage === 'ready' ? `restart to update to ${update.latest} →` : `update to ${update.latest} →`}
+                    {updateStage === 'ready' ? `Restart to update to ${update.latest} →` : `Update to ${update.latest} →`}
                   </button>
                 ) : (
                   <button className="status-update-link status-update-link--check" onClick={handleCheckForUpdate}>
-                    check for updates
+                    Check for updates
                   </button>
                 )}
               </div>

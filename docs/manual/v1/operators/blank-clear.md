@@ -23,8 +23,8 @@ Hiding or showing the screen never moves you: the sermon reader, the Bible chapt
 the song slides, the queue and your search results all stay exactly where they were,
 with the same row selected and the cursor where you left it.
 
-While hidden, the confidence-monitor preview in the bottom-right of the Service
-queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
+While hidden, the preview in the bottom-right of the Service
+Queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
 on screen, so you can keep working the queue without losing your place.
 
 ## Showing a message instead
@@ -40,7 +40,7 @@ whatever is currently projected. Click **Show message** to send it, or the
 
 ## Clearing an item from the queue
 
-Once an item is on screen, two small buttons appear on it in the **Service queue**
+Once an item is on screen, two small buttons appear on it in the **Service Queue**
 panel:
 
 - **Restart** — jumps back to that item's first slide/verse/paragraph, without
@@ -51,7 +51,7 @@ panel:
 
 ## Starting over
 
-**New** (top of the Service queue panel) clears the whole queue and starts a fresh,
+**New** (top of the Service Queue panel) clears the whole queue and starts a fresh,
 empty one — BORN asks first whenever the queue has anything in it. See
 [On service day](../troubleshooting/service-day.md) for saving and reopening a
 queue between services.

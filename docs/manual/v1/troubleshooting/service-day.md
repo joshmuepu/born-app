@@ -2,7 +2,7 @@
 
 ## Saving and reopening a queue
 
-Click **Save** (top of the Service queue panel) to save the current queue to a
+Click **Save** (top of the Service Queue panel) to save the current queue to a
 file — useful for a repeating order of service, or to hand off to whoever's
 running the next service. **Save** is only enabled once the queue has at least one
 item in it.
