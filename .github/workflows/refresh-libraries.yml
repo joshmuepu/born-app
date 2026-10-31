@@ -1,0 +1,156 @@
+name: refresh libraries (manual)
+
+# Builds the bundled libraries (sermons, Bible, songs) from their sources ONCE and, only if they match what release builds use today,
+# publishes them as a new library snapshot: a pre-release tagged libraries-v1-YYYYMMDD holding sermons.db.gz and library.db.gz, plus a
+# branch with the updated scripts/data/library-snapshot.json to merge. Release builds (release.yml) then use that snapshot and never contact
+# the sources. Run it on purpose, from the Actions tab; it never runs on its own. See docs/notes/library-snapshots.md.
+#
+# Snapshot tags never start with "v": release.yml only builds v1.MINOR.PATCH tags. Old snapshots are never deleted by this workflow;
+# keep the last three.
+
+on:
+  workflow_dispatch:
+    inputs:
+      allow_changes:
+        description: 'Accept changed sermon, Bible or song text (a refresh run on purpose to pick up corrected sources). A missing sermon still fails.'
+        type: boolean
+        default: false
+      fresh_bible:
+        description: 'Fetch the Bible again even when this workflow has a cached copy'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-libraries
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # A speed-up only: the Bible text from an earlier run of this workflow, keyed on the build script.
+      - name: Cache bundled Bible text
+        if: ${{ !inputs.fresh_bible }}
+        uses: actions/cache@v4
+        with:
+          path: resources/bible-cache.db
+          key: bible-cache-v1-${{ hashFiles('scripts/build-library-db.ts') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the sermon library from the source
+        run: npm run build:db
+
+      # Politely: two chapters at a time with a pause, and a long wait (as long as the site asks) whenever it answers 429.
+      - name: Build the Bible and song library
+        env:
+          BORN_BIBLE_CONCURRENCY: '2'
+          BORN_BIBLE_PAUSE_MS: '400'
+        run: |
+          if [ -f resources/bible-cache.db ]; then export BORN_REUSE_BIBLE=1; fi
+          npm run build:library
+
+      - name: Minimum sizes
+        run: node scripts/qa/verify-libraries.cjs resources
+
+      # What release builds use today: the current snapshot, or before the first snapshot, the libraries inside the latest v1 release.
+      - name: Get the libraries release builds use today
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p base
+          current=$(node -p "require('./scripts/data/library-snapshot.json').snapshot || ''")
+          if [ -n "$current" ]; then
+            node scripts/data/fetch-library-snapshot.mjs scripts/data/library-snapshot.json base
+            echo "label=snapshot $current" >> "$GITHUB_OUTPUT"
+          else
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+            case "$tag" in v1.*) ;; *) echo "::error::latest release $tag is not a v1 release"; exit 1 ;; esac
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*-Windows-Setup.exe' --dir rel
+            command -v 7z >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q p7zip-full; }
+            7z x -y -orel/setup rel/*-Windows-Setup.exe >/dev/null
+            7z x -y -orel/app "$(find rel/setup -name 'app-64.7z' | head -1)" >/dev/null
+            cp rel/app/resources/sermons.db.gz rel/app/resources/library.db.gz base/
+            echo "label=the libraries inside release $tag" >> "$GITHUB_OUTPUT"
+          fi
+          ls -l base
+
+      - name: Compare with them (no sermon missing, text identical, paragraphs not sections, same counts)
+        run: |
+          python3 -I scripts/data/check-library-refresh.py base resources check.json "${{ steps.base.outputs.label }}" \
+            ${{ inputs.allow_changes && '--allow-changes' || '' }}
+
+      - name: Keep the checked libraries for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: checked-libraries
+          path: |
+            resources/sermons.db.gz
+            resources/library.db.gz
+            check.json
+          retention-days: 3
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # the snapshot pre-release and the manifest branch
+      pull-requests: write   # to open the pull request for the manifest, where Actions may
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: checked-libraries
+          path: snapshot
+
+      - name: Publish the snapshot and the manifest branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="libraries-v1-$(date -u +%Y%m%d)"
+          n=2; base="$tag"
+          while gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; do tag="$base-$n"; n=$((n+1)); done
+          case "$tag" in v*) echo "::error::a snapshot tag must not start with v"; exit 1 ;; esac
+
+          node scripts/data/write-library-manifest.mjs snapshot "$tag" snapshot/check.json scripts/data/library-snapshot.json
+          gh release create "$tag" snapshot/sermons.db.gz snapshot/library.db.gz --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --latest=false --title "$tag" --notes "Library snapshot used by release builds"
+
+          # the same download and checks a release build does
+          node scripts/data/fetch-library-snapshot.mjs scripts/data/library-snapshot.json fetched
+
+          branch="library-snapshot/$tag"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add scripts/data/library-snapshot.json
+          git commit -m "Library snapshot $tag for release builds"
+          git push origin "$branch"
+          if ! gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+                --title "Library snapshot $tag for release builds" \
+                --body "Points release builds at the library snapshot $tag. The comparison that passed is in the manifest (check)."; then
+            echo "::notice::Actions cannot open pull requests here. Open it at https://github.com/$GITHUB_REPOSITORY/compare/main...$branch?expand=1"
+          fi
+          echo "Snapshots in this repo (keep the last three; none is deleted automatically):"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName --jq '.[].tagName' | grep '^libraries-' || true
