@@ -137,6 +137,8 @@ export default function App() {
   useEffect(() => { isScreenBlankedRef.current = isScreenBlanked }, [isScreenBlanked])
   useEffect(() => { queueRef.current = serviceQueue }, [serviceQueue])
   useEffect(() => { projectedRef.current = projected }, [projected])
+  const playedIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => { playedIdsRef.current = playedIds }, [playedIds])
 
   const activeQueueIndex = projected?.queueIndex ?? null
 
@@ -154,7 +156,10 @@ export default function App() {
     window.electronAPI.loadQueue().then((loaded) => {
       queueLoaded.current = true
       const migrated = migrateQueue(loaded)
-      if (migrated.length > 0) setServiceQueue(migrated)
+      // anything added while the saved queue was being read (a phone sending its list at start) goes after the saved items
+      const next = [...migrated, ...queueRef.current]
+      queueRef.current = next
+      setServiceQueue(next)
     })
   }, [])
 
@@ -843,12 +848,12 @@ export default function App() {
         }
         if (resolved.length === 0) return
         const tagged = resolved.map((it) => ({ ...it, source: contributor }))
-        mutateQueue((q) => {
-          const protectedId = activeQueueIndex != null ? (q[activeQueueIndex]?.id ?? null) : null
-          return replaceContributorItems(q, tagged, contributor.deviceId, playedIds, protectedId)
-        })
+        // what is on screen and what has been shown NOW, after the lookups above: an item projected meanwhile must not be removed
+        mutateQueue((q) =>
+          replaceContributorItems(q, tagged, contributor.deviceId, playedIdsRef.current, projectedRef.current?.item.id ?? null)
+        )
       }),
-    [mutateQueue, playedIds, activeQueueIndex, bibleTranslation]
+    [mutateQueue, bibleTranslation]
   )
 
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
@@ -999,6 +1004,7 @@ export default function App() {
       return
     }
     if (window.confirm('Clear the current queue and start a new service?')) {
+      queueRef.current = []
       setServiceQueue([])
       projectedRef.current = null
       setProjected(null)
@@ -1037,6 +1043,7 @@ export default function App() {
   }, [serviceQueue, refreshRecents, showOpenError])
 
   const applyLoadedQueueItems = useCallback((items: QueueItem[]) => {
+    queueRef.current = items
     setServiceQueue(items)
     projectedRef.current = null
     setProjected(null)
@@ -1313,6 +1320,8 @@ export default function App() {
   useEffect(
     () =>
       window.electronAPI.onWebRemoteNewService(() => {
+        // at once, so an item added before the next redraw starts from the empty queue, not the cleared one
+        queueRef.current = []
         setServiceQueue([])
         projectedRef.current = null
         setProjected(null)
