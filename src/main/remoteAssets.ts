@@ -1555,7 +1555,14 @@ function saveQueueSheet(){
 function doSaveQueue(){
   var name = ($('saveNameInput') || {}).value || '';
   if(!name.trim()){ toast('Type a name first'); return; }
-  cmd('save-queue', { name: name.trim() }).then(function(){
+  // BORN answers once the file is written: { ok: false } when it could not be (a full disk, a folder it may not write to)
+  cmd('save-queue', { name: name.trim() }).then(function(r){
+    return r.status === 200 ? r.json().catch(function(){ return { ok: false }; }) : { ok: true };
+  }).then(function(res){
+    if(res && res.ok === false){
+      toast('Couldn’t save “' + name.trim() + '” on the computer. Its folder may be full or read-only.', true);
+      return;
+    }
     toast('Saved “' + name.trim() + '”');
     closeSheet();
   });

@@ -1578,6 +1578,20 @@ const REMOTE_SAVE_DIR = (): string => {
   return dir
 }
 
+// The phone's Save: the operator window holds the queue, so it does the save and reports back here; the phone is then answered with
+// the real result instead of "Saved" whatever happened. No answer within 15 s counts as a failed save.
+let remoteSaveSeq = 0
+const remoteSaves = new Map<number, (ok: boolean) => void>()
+function saveQueueFromRemote(win: BrowserWindow, name: string): Promise<{ ok: boolean }> {
+  const id = ++remoteSaveSeq
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { remoteSaves.delete(id); resolve({ ok: false }) }, 15_000)
+    remoteSaves.set(id, (ok) => { clearTimeout(timer); remoteSaves.delete(id); resolve({ ok }) })
+    win.webContents.send('webremote:save-queue', name, id)
+  })
+}
+ipcMain.on('webremote:save-queue-result', (_event, id: number, ok: boolean) => remoteSaves.get(id)?.(ok === true))
+
 ipcMain.handle('service:save-named', (_event, name: string, items: unknown) => {
   const safeName = safeServiceFileName(name)
   const path = join(REMOTE_SAVE_DIR(), `${safeName}.born`)
@@ -2119,7 +2133,7 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
-        mainWindow.webContents.send('webremote:save-queue', cmd.name)
+        return saveQueueFromRemote(mainWindow, cmd.name)
       } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
         log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {

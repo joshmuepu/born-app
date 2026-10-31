@@ -1355,8 +1355,15 @@ export default function App() {
   )
   useEffect(
     () =>
-      window.electronAPI.onWebRemoteSaveQueue(async (name) => {
-        await window.electronAPI.saveServiceNamed(name, serviceQueue)
+      window.electronAPI.onWebRemoteSaveQueue(async (name, id) => {
+        // the phone waits for this answer, so it can say when the save failed
+        let ok = false
+        try {
+          ok = (await window.electronAPI.saveServiceNamed(name, serviceQueue)) === true
+        } catch {
+          ok = false
+        }
+        window.electronAPI.reportWebRemoteSaveResult(id, ok)
         refreshRecents()
       }),
     [serviceQueue, refreshRecents]

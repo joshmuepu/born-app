@@ -96,7 +96,7 @@ type CommandCallback = (cmd: {
    *  round trip instead of one command per item. */
   items?: unknown[]
   contributor?: { deviceId: string; label: string }
-}) => void
+}) => void | Promise<{ ok: boolean }>  // a promise (the save) is waited for and its result sent back to the phone
 
 /** Everything the remote's HTTP server needs from the rest of the app, all
  *  injected from index.ts — this module never imports db/bible/songs modules
@@ -438,10 +438,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end()
       return
     }
+    let result: void | Promise<{ ok: boolean }> = undefined
     try {
-      commandCallback?.(JSON.parse(body))
+      result = commandCallback?.(JSON.parse(body))
     } catch {
       /* malformed body — ignore, the remote will just not see an effect */
+    }
+    // A command with a result to report (the phone's Save) is answered once it is done, with whether it worked.
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      const outcome = await (result as Promise<{ ok: boolean }>).catch(() => ({ ok: false }))
+      sendJSON(res, 200, { ok: !!outcome?.ok })
+      return
     }
     res.writeHead(204)
     res.end()

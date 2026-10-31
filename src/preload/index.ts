@@ -526,8 +526,8 @@ const api = {
     ipcRenderer.on('webremote:new-service', handler)
     return () => ipcRenderer.removeListener('webremote:new-service', handler)
   },
-  onWebRemoteSaveQueue: (callback: (name: string) => void): (() => void) => {
-    const handler = (_evt: IpcRendererEvent, name: string): void => callback(name)
+  onWebRemoteSaveQueue: (callback: (name: string, id: number) => void): (() => void) => {
+    const handler = (_evt: IpcRendererEvent, name: string, id: number): void => callback(name, id)
     ipcRenderer.on('webremote:save-queue', handler)
     return () => ipcRenderer.removeListener('webremote:save-queue', handler)
   },
@@ -559,6 +559,7 @@ const api = {
   },
   saveServiceNamed: (name: string, items: unknown): Promise<boolean> =>
     ipcRenderer.invoke('service:save-named', name, items),
+  reportWebRemoteSaveResult: (id: number, ok: boolean): void => ipcRenderer.send('webremote:save-queue-result', id, ok),
   noteSongUsed: (id: number): void => ipcRenderer.send('songs:note-used', id),
   noteSermonUsed: (quote: Quote): void => ipcRenderer.send('sermons:note-used', quote),
   getRecentSermons: (): Promise<Quote[]> => ipcRenderer.invoke('sermons:recent'),

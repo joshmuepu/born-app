@@ -271,7 +271,7 @@ declare global {
       ) => () => void
       onWebRemoteProjectSong: (callback: (songId: number, slide: number) => void) => () => void
       onWebRemoteNewService: (callback: () => void) => () => void
-      onWebRemoteSaveQueue: (callback: (name: string) => void) => () => void
+      onWebRemoteSaveQueue: (callback: (name: string, id: number) => void) => () => void
       onWebRemoteOpenService: (callback: (items: unknown[]) => void) => () => void
       onWebRemoteImportService: (
         callback: (data: { items: unknown[]; label: string }) => void
@@ -283,6 +283,7 @@ declare global {
         }) => void
       ) => () => void
       saveServiceNamed: (name: string, items: unknown) => Promise<boolean>
+      reportWebRemoteSaveResult: (id: number, ok: boolean) => void
       noteSongUsed: (id: number) => void
       noteSermonUsed: (quote: Quote) => void
       getRecentSermons: () => Promise<Quote[]>
