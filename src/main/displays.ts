@@ -50,6 +50,13 @@ function sameFingerprint(a: DisplayFingerprint, b: DisplayFingerprint): boolean 
   return a.label === b.label && a.width === b.width && a.height === b.height && a.internal === b.internal
 }
 
+/** The same model, whatever its size: a projector switched to another resolution, or Windows display scaling changed (which changes
+ *  the size Electron reports), is still the same screen. Only for a display that reports a model name; one without a name is never
+ *  matched on that alone. */
+function sameModel(a: DisplayFingerprint, b: DisplayFingerprint): boolean {
+  return a.label !== '' && a.label === b.label && a.internal === b.internal
+}
+
 /** Every currently-connected display sharing `fingerprint`, left-to-right by
  *  physical position — the ordering both naming and matching rely on to tell
  *  apart identical duplicate monitors. */
@@ -75,7 +82,15 @@ export function fingerprintAndOrdinal(
  *  unplugged, powered off, or — as with a genuine GPU/driver ceiling — will
  *  never be detected at all). */
 export function matchNamedDisplay(displays: DisplayLike[], named: NamedDisplay): DisplayLike | null {
-  return siblingsOf(displays, named.fingerprint)[named.ordinal] ?? null
+  const exact = siblingsOf(displays, named.fingerprint)[named.ordinal]
+  if (exact) return exact
+  // Nothing at the saved size: the same model at another size
+  return sameModelSiblings(displays, named.fingerprint)[named.ordinal] ?? null
+}
+
+/** Connected displays of the same model as `fingerprint` (any size), left-to-right. */
+function sameModelSiblings(displays: DisplayLike[], fingerprint: DisplayFingerprint): DisplayLike[] {
+  return displays.filter((d) => sameModel(fingerprintOf(d), fingerprint)).sort((a, b) => a.bounds.x - b.bounds.x)
 }
 
 /** The exact saved NamedDisplay entry for `d` right now, if any — the
@@ -89,7 +104,16 @@ export function findNamedEntry(
   namedDisplays: NamedDisplay[]
 ): NamedDisplay | undefined {
   const { fingerprint, ordinal } = fingerprintAndOrdinal(displays, d)
-  return namedDisplays.find((n) => sameFingerprint(n.fingerprint, fingerprint) && n.ordinal === ordinal)
+  const exact = namedDisplays.find((n) => sameFingerprint(n.fingerprint, fingerprint) && n.ordinal === ordinal)
+  if (exact) return exact
+  // The same model at another size (a resolution or scaling change), when that saved entry does not already match a screen exactly
+  const modelOrdinal = sameModelSiblings(displays, fingerprint).findIndex((x) => x.id === d.id)
+  return namedDisplays.find(
+    (n) =>
+      sameModel(n.fingerprint, fingerprint) &&
+      n.ordinal === modelOrdinal &&
+      !siblingsOf(displays, n.fingerprint)[n.ordinal]
+  )
 }
 
 /** The operator name attached to `d` right now, if any. */

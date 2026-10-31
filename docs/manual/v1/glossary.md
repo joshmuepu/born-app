@@ -3,9 +3,11 @@
 Plain-language definitions, using the exact words you'll see in BORN itself.
 
 **Display** — Any physical screen your computer can show something on: a TV, a
-projector, a monitor. BORN tells displays apart by model + resolution, plus an
+projector, a monitor. BORN recognises a display by its model, plus an
 operator-given name if you've set one (see
-[Connecting a second screen](setup/displays.md)).
+[Connecting a second screen](setup/displays.md)). Changing its resolution or
+scaling does not make it a different display; the resolution only tells two
+identical screens apart.
 
 **Congregation screen** — The display the congregation looks at; BORN's main
 projected output.
