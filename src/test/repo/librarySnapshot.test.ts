@@ -73,6 +73,12 @@ describe('the refresh workflow', () => {
     expect(refresh).toContain('--notes "Library snapshot used by release builds"')
     expect(refresh).not.toMatch(/gh release delete|git push --force|git push -f/)
   })
+  it('hands the publish job the libraries and the comparison side by side (one folder, so the artifact has no sub-folder)', () => {
+    const upload = refresh.slice(refresh.indexOf('name: checked-libraries'), refresh.indexOf('retention-days: 3'))
+    const paths = upload.split('\n').map((l) => l.trim()).filter((l) => /\.(gz|json)$/.test(l))
+    expect(paths).toEqual(['resources/sermons.db.gz', 'resources/library.db.gz', 'resources/refresh-check.json'])
+    expect(refresh).toContain('write-library-manifest.mjs snapshot "$tag" snapshot/refresh-check.json')
+  })
 })
 
 /* ── the fetch script against a local stand-in for the GitHub API ───────────────────────────────────────────────────────────────── */

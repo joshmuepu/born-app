@@ -92,9 +92,10 @@ jobs:
 
       - name: Compare with them (no sermon missing, text identical, paragraphs not sections, same counts)
         run: |
-          python3 -I scripts/data/check-library-refresh.py base resources check.json "${{ steps.base.outputs.label }}" \
+          python3 -I scripts/data/check-library-refresh.py base resources resources/refresh-check.json "${{ steps.base.outputs.label }}" \
             ${{ inputs.allow_changes && '--allow-changes' || '' }}
 
+      # all three from one folder, so the artifact holds them side by side (no sub-folder)
       - name: Keep the checked libraries for the publish job
         uses: actions/upload-artifact@v4
         with:
@@ -102,7 +103,7 @@ jobs:
           path: |
             resources/sermons.db.gz
             resources/library.db.gz
-            check.json
+            resources/refresh-check.json
           retention-days: 3
 
   publish:
@@ -128,12 +129,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          ls -l snapshot/sermons.db.gz snapshot/library.db.gz snapshot/refresh-check.json
           tag="libraries-v1-$(date -u +%Y%m%d)"
           n=2; base="$tag"
           while gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; do tag="$base-$n"; n=$((n+1)); done
           case "$tag" in v*) echo "::error::a snapshot tag must not start with v"; exit 1 ;; esac
 
-          node scripts/data/write-library-manifest.mjs snapshot "$tag" snapshot/check.json scripts/data/library-snapshot.json
+          node scripts/data/write-library-manifest.mjs snapshot "$tag" snapshot/refresh-check.json scripts/data/library-snapshot.json
           gh release create "$tag" snapshot/sermons.db.gz snapshot/library.db.gz --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --prerelease --latest=false --title "$tag" --notes "Library snapshot used by release builds"
 
