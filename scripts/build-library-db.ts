@@ -78,6 +78,15 @@ async function fetchChapter(
 ): Promise<Array<{ verse: number; text: string }>> {
   try {
     const res = await fetch(`https://bolls.life/get-text/${bollsCode}/${bookNum}/${chapter}/`)
+    // Busy (429 Too Many Requests, or 503): wait as long as the site asks, at least 30 s and doubling each time, and try again. Up to 8
+    // times (over an hour in all); a site that stays busy longer fails the build rather than shipping a part-built Bible.
+    if ((res.status === 429 || res.status === 503) && attempt < 8) {
+      const asked = Number(res.headers.get('retry-after')) || 0
+      const wait = Math.max(asked * 1000, 30_000 * 2 ** attempt)
+      console.log(`\n  bolls.life answered ${res.status} for ${bollsCode} ${bookNum}:${chapter}; waiting ${Math.round(wait / 1000)} s`)
+      await sleep(wait)
+      return fetchChapter(bollsCode, bookNum, chapter, attempt + 1)
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = (await res.json()) as Array<{ verse: number; text: string }>
     const maxVerse = KNOWN_MAX_VERSE[`${bollsCode}:${bookNum}:${chapter}`]
@@ -114,7 +123,9 @@ async function buildBible(db: Database.Database): Promise<void> {
   )
 
   const bookLimit = Number(process.env.BORN_BIBLE_LIMIT) || 66
-  const CONCURRENCY = 8
+  // BORN_BIBLE_CONCURRENCY / BORN_BIBLE_PAUSE_MS: the manual library refresh asks fewer chapters at a time with a pause in between
+  const CONCURRENCY = Number(process.env.BORN_BIBLE_CONCURRENCY) || 8
+  const PAUSE_MS = Number(process.env.BORN_BIBLE_PAUSE_MS) || 0
 
   for (const t of TRANSLATIONS) {
     let verses = 0
@@ -127,6 +138,7 @@ async function buildBible(db: Database.Database): Promise<void> {
           (_, i) => start + i
         )
         const results = await Promise.all(batch.map((c) => fetchChapter(t.bolls, bookNum, c)))
+        if (PAUSE_MS) await sleep(PAUSE_MS)
         batch.forEach((c, i) => {
           insertChapter(t.code, bookNum, c, results[i])
           verses += results[i].length

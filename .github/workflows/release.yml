@@ -46,24 +46,14 @@ jobs:
         with:
           node-version: 22
 
-      # The Bible text is fetched from bolls.life (~8 min). Cache it between runs
-      # so re-releases only pay that cost when the build script changes.
-      - name: Cache bundled Bible text
-        uses: actions/cache@v4
-        with:
-          path: resources/bible-cache.db
-          key: bible-cache-v1-${{ hashFiles('scripts/build-library-db.ts') }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build prebuilt sermon database
-        run: npm run build:db
-
-      - name: Build prebuilt library (Bible + songs)
-        run: |
-          if [ -f resources/bible-cache.db ]; then export BORN_REUSE_BIBLE=1; fi
-          npm run build:library
+      # The libraries come from the library snapshot named in scripts/data/library-snapshot.json (a pre-release of this repo made by the
+      # "refresh libraries (manual)" workflow), never from the outside sites, so a busy source can no longer hold up a release. The script
+      # checks each file's size and SHA-256 and the exact counts against the manifest, and stops the build with the snapshot's name if
+      # anything differs. See docs/notes/library-snapshots.md.
+      - name: Fetch and check the library snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/data/fetch-library-snapshot.mjs scripts/data/library-snapshot.json resources
 
       # Fail here, not after a release: both libraries must exist and be full-size
       # (sermons, paragraphs, Bible verses and translations, songs, song slides).

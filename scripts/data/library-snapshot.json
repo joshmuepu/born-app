@@ -1,0 +1,6 @@
+{
+  "snapshot": null,
+  "note": "Library snapshot used by release builds. Made by the \"refresh libraries (manual)\" workflow; see docs/notes/library-snapshots.md.",
+  "files": [],
+  "counts": {}
+}
