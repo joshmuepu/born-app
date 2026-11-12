@@ -170,7 +170,8 @@ body {
   left: 0;
   right: 0;
   padding: 18px 40px;
-  background: rgba(10, 8, 0, 0.92);
+  /* Opaque: at 92% the reference line under the banner showed through it. */
+  background: #0a0800;
   border-top: 2px solid #E0A855;
   color: #E0A855;
   font-size: clamp(1rem, 2vw, 1.6rem);
