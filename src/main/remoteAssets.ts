@@ -1941,7 +1941,7 @@ function openRecentSermons(){
         html += '<button class="ritem" onclick="selectRecentSermon(' + i + ')">'
           + '<div class="rtitle">' + esc(q.sermonTitle) + '</div>'
           + '<div class="rmeta sermon">' + esc(qmeta(q)) + '</div>'
-          + '<div class="rsnippet">' + esc(q.text).slice(0,160) + '</div>'
+          + '<div class="rsnippet">' + esc(String(q.text || '').replace(/^ *[0-9]+([-–][0-9]+)? +/, '')).slice(0,160) + '</div>'
           + '</button>';
       }
     }

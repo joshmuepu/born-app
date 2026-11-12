@@ -12,6 +12,9 @@ import { extractSearchTerms, type HighlightMode } from './searchHighlight'
 
 const LEAD = /^\s*\d+(?:[-–]\d+)?\s+/
 
+/** A result's text without the leading "146 " / "146-147 " paragraph number (the number is shown on its own, as ¶146). */
+export const hitBody = (text: string): string => text.replace(LEAD, '')
+
 function partsOf<Q extends Pick<Quote, 'text' | 'paragraphRef'>>(q: Q): Array<{ num: number; text: string }> | null {
   const range = parseParagraphRef(q.paragraphRef)
   if (!range || range[1] <= range[0]) return null

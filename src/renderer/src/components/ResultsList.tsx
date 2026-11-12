@@ -3,6 +3,7 @@ import { SearchX, Search, Clock, CalendarDays } from 'lucide-react'
 import type { Quote } from '../types'
 import { highlight, smartSnippet } from '../highlight'
 import { refsOverlap } from '../../../shared/paragraphRef'
+import { hitBody } from '../../../shared/sermonHit'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import './SermonPanel.css'
 import { quoteMeta } from '../../../shared/sermonMeta'
@@ -24,11 +25,6 @@ interface Props {
   /** Open a sermon at a specific paragraph (or the start, with '') without a
    *  search — "On This Day" and "Jump back in" in the empty state. */
   onJumpToSermon: (sermonId: number, anchorRef: string) => void
-}
-
-/** Strip a leading "146 " / "146-147 " paragraph number the API prepends. */
-function bodyOf(text: string): string {
-  return text.replace(/^\s*\d+(?:[-–]\d+)?\s+/, '')
 }
 
 function EmptySearchState({
@@ -184,7 +180,7 @@ export default function ResultsList({
             onScreen.sermonId === quote.sermonId &&
             refsOverlap(onScreen.paragraphRef, quote.paragraphRef)
           const mode = quote.matchType ?? 'all'
-          const { snippet, moreCount } = smartSnippet(bodyOf(quote.text), query, mode)
+          const { snippet, moreCount } = smartSnippet(hitBody(quote.text), query, mode)
           return (
           <div key={index} className={`result-item${live ? ' result-item--on-screen' : ''}`}>
             <div

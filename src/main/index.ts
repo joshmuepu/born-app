@@ -70,7 +70,7 @@ import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
-import { hitParagraphs } from '../shared/sermonHit'
+import { hitBody, hitParagraphs } from '../shared/sermonHit'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -1229,7 +1229,8 @@ async function searchSermonsForRemote(query: string, dateCode?: string): Promise
   // Cut down hard before it ever reaches the wire.
   return rows.slice(0, MAX_REMOTE_RESULTS).map((r) => ({
     ...r,
-    highlightedText: highlightToHtml(r.text, query, r.matchType ?? 'all'),
+    // without the leading paragraph number, as on the desktop: the phone shows it already as ¶75
+    highlightedText: highlightToHtml(hitBody(r.text), query, r.matchType ?? 'all'),
     slides: quoteToItem(r).slides
   }))
 }
