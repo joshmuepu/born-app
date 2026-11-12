@@ -1,7 +1,7 @@
 /* Test-only Electron preload (run with `electron --require scripts/qa/hide-outputs.cjs .`): keeps the projection and stage windows from ever becoming
  * visible or fullscreen, so a real run of the app can "open the screens" without covering the operator's monitors. The windows still exist, load and
  * receive everything (slides, blank, stage updates), so the app behaves as with the screens on. Never ships; scripts only. */
-const { BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require('electron')
 const isOutput = (w) => { try { return /Output|Stage View|Congregation screen|Stage monitor/.test(w.getTitle()) } catch { return false } }
 const P = BrowserWindow.prototype
 for (const m of ['show', 'showInactive', 'focus', 'setSimpleFullScreen', 'setFullScreen', 'moveTop', 'maximize', 'restore']) {
@@ -9,6 +9,8 @@ for (const m of ['show', 'showInactive', 'focus', 'setSimpleFullScreen', 'setFul
   if (typeof orig !== 'function') continue
   P[m] = function (...a) { if (isOutput(this)) return undefined; return orig.apply(this, a) }
 }
+// the floating stage monitor (used when there is no spare screen) is created visible rather than shown later, so hide it as it is made
+app.on('browser-window-created', (_e, w) => { if (isOutput(w)) w.hide() })
 // optional self-report for the harness: HIDE_REPORT=<file> writes whether any projection/stage window is visible
 if (process.env.HIDE_REPORT) {
   const fs = require('fs')
