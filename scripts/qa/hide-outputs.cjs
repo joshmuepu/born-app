@@ -10,7 +10,10 @@ for (const m of ['show', 'showInactive', 'focus', 'setSimpleFullScreen', 'setFul
   P[m] = function (...a) { if (isOutput(this)) return undefined; return orig.apply(this, a) }
 }
 // the floating stage monitor (used when there is no spare screen) is created visible rather than shown later, so hide it as it is made
-app.on('browser-window-created', (_e, w) => { if (isOutput(w)) w.hide() })
+app.on('browser-window-created', (_e, w) => {
+  const hideIfOutput = () => { if (isOutput(w) && w.isVisible()) w.hide() }
+  hideIfOutput(); w.on('show', hideIfOutput); w.webContents.once('did-finish-load', hideIfOutput)
+})
 // optional self-report for the harness: HIDE_REPORT=<file> writes whether any projection/stage window is visible
 if (process.env.HIDE_REPORT) {
   const fs = require('fs')
