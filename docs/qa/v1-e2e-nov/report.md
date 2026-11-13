@@ -59,14 +59,14 @@ Each fix's test fails on the code before it and passes after.
 | Packaged smoke (arm64) | **11/11** (libraries, bundle id / name / version 1.13.5, icon `805174be`, window, remote, frame protection, sermon / song / Bible search, clean start) |
 | Packaged reload guard | **16/16** |
 | Identity and icons | 1.13.5, `com.joshmuepu.born`, "Branham or Nothing", port 4316; icons `a9dd996d` / `805174be` / `4f3e98c7`. No change to `package.json`, `.github`, `build/` or `resources/` |
-| Windows | **Not run in this round.** It needs a temporary branch pushed to GitHub, and that was not asked for. The three fixes are CSS and text only, so the risk on Windows is low |
+| Windows (temporary read-only branch `tmp-win-e2e-nov`, deleted afterwards) | **Passed**, [run 43340306654](https://github.com/joshmuepu/born-app/actions/runs/43340306654). Libraries taken from the snapshot `libraries-v1-20261031` (checksums and counts match; 6/6). Windows unit tests **937 passed, 1 skipped** (the read-only-folder test, as before), 107 files. Packaged smoke **11/11**, including all 7 icon images byte-identical to `icon.ico` and not the Electron default. "faith" gave 200 single-paragraph results. Installer `BORN-1.13.5-Windows-Setup.exe`, 176.8 MB, unsigned; the artifact expires 2026-11-20 (`gh run download 43340306654 -R joshmuepu/born-app -n BORN-v1-e2e-nov-Windows-installer`). **First attempt**, [run 43339916641](https://github.com/joshmuepu/born-app/actions/runs/43339916641), failed before packaging: the check workflow ran the tests on Node 20, and `librarySnapshot.test.ts` uses Node's built-in SQLite, which needs Node 22.5 or later. A setup problem, not a product one: `release.yml` runs no unit tests, and the snapshot tooling already runs on Node 22. The second run used Node 22 |
 
 ## Commits on `v1-e2e-nov`
 
 - `0bb2329` Message banner solid (NOV-02)
 - `7f48226` Service Queue titles use the whole row (NOV-01)
 - `48444e6` Phone results without the leading paragraph number (NOV-03)
-- `b6eb628` and the commit with this report: QA scripts only (visual tour, service tour, compat and hide-outputs fixes)
+- `b6eb628`, `872485f` and the commit with the Windows result: QA scripts and this report only (visual tour, service tour, compat and hide-outputs fixes)
 
 ## For the owner, on real hardware
 
