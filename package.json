@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "npm rebuild better-sqlite3 && vitest run; npm run rebuild:native",
     "test:watch": "npm rebuild better-sqlite3 && vitest; npm run rebuild:native",
+    "test:runtime": "node scripts/runtime-check/run.cjs",
     "_run-build-script": "node -e \"const v=+process.versions.node.split('.')[0];process.exit(v>=23?1:0)\"",
     "build:db": "esbuild scripts/build-sermon-db.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.build-sermon-db.mjs && (npm run -s _run-build-script && node scripts/.build-sermon-db.mjs || ELECTRON_RUN_AS_NODE=1 electron scripts/.build-sermon-db.mjs)",
     "prepare:songs": "mkdir -p resources/songs-source && unzip -o -q Songs.zip -d resources/songs-source",
