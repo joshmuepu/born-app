@@ -137,8 +137,16 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     }
   }, [query, retryTick])
 
+  // The newest song opened wins: a slower answer for a song opened earlier is dropped, and a song that is gone (null) leaves the view alone.
+  const openToken = useRef(0)
   const openSong = useCallback((id: number) => {
-    window.electronAPI.getSong(id).then(setSelected)
+    const token = ++openToken.current
+    window.electronAPI
+      .getSong(id)
+      .then((s) => {
+        if (token === openToken.current && s) setSelected(s)
+      })
+      .catch(() => {})
   }, [])
 
   const clearRecent = useCallback(() => {
@@ -192,7 +200,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     setImportMenuOpen(false)
     setImportMsg('Importing…')
     setImportFailures([])
-    const r = await window.electronAPI.importSongs()
+    let r: Awaited<ReturnType<typeof window.electronAPI.importSongs>>
+    try {
+      r = await window.electronAPI.importSongs()
+    } catch {
+      // a failed import ends "Importing…" and says so, instead of staying on it
+      setImportMsg('Could not import those songs. Nothing was added.')
+      setTimeout(() => setImportMsg(null), 8000)
+      return
+    }
     if (!r) {
       setImportMsg(null)
       return

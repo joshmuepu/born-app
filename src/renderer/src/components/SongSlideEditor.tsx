@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Scissors, Trash2 } from 'lucide-react'
 import type { ParsedSong, ParsedSongSlide } from '../types'
 
@@ -18,7 +19,19 @@ export default function SongSlideEditor({ song, onChange }: Props) {
   const updateSlide = (i: number, patch: Partial<ParsedSongSlide>): void => {
     setSlides(song.slides.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
   }
-  const removeSlide = (i: number): void => setSlides(song.slides.filter((_, idx) => idx !== i))
+  // a removed slide can be put back (one click on the bin lost a whole verse)
+  const [removed, setRemoved] = useState<{ slide: ParsedSongSlide; index: number } | null>(null)
+  const removeSlide = (i: number): void => {
+    setRemoved({ slide: song.slides[i], index: i })
+    setSlides(song.slides.filter((_, idx) => idx !== i))
+  }
+  const undoRemove = (): void => {
+    if (!removed) return
+    const next = [...song.slides]
+    next.splice(Math.min(removed.index, next.length), 0, removed.slide)
+    setSlides(next)
+    setRemoved(null)
+  }
   const addSlide = (): void => setSlides([...song.slides, { label: undefined, text: '' }])
 
   /** Roughly in half by line — good enough for the common case (a verse with
@@ -51,6 +64,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
         value={song.title}
         onChange={(e) => onChange({ ...song, title: e.target.value })}
         placeholder="Song title"
+        aria-label="Song title"
       />
       <div className="song-editor-meta-row">
         <input
@@ -58,12 +72,14 @@ export default function SongSlideEditor({ song, onChange }: Props) {
           value={song.author ?? ''}
           onChange={(e) => onChange({ ...song, author: e.target.value || undefined })}
           placeholder="Author (optional)"
+          aria-label="Author (optional)"
         />
         <input
           className="song-editor-field"
           value={song.ccli ?? ''}
           onChange={(e) => onChange({ ...song, ccli: e.target.value || undefined })}
           placeholder="CCLI Song # (optional)"
+          aria-label="CCLI Song number (optional)"
         />
       </div>
 
@@ -72,6 +88,15 @@ export default function SongSlideEditor({ song, onChange }: Props) {
           <option key={l} value={l} />
         ))}
       </datalist>
+
+      {removed && (
+        <div className="song-editor-removed" role="status">
+          Slide removed.{' '}
+          <button type="button" className="btn-quiet btn-sm" onClick={undoRemove}>
+            Undo
+          </button>
+        </div>
+      )}
 
       <div className="song-editor-slides">
         {song.slides.map((s, i) => (
@@ -83,6 +108,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
                 onChange={(e) => updateSlide(i, { label: e.target.value || undefined })}
                 placeholder="No label"
                 list="song-editor-label-options"
+                aria-label={`Slide ${i + 1} label`}
               />
               <div className="song-editor-slide-actions">
                 <button
@@ -117,6 +143,7 @@ export default function SongSlideEditor({ song, onChange }: Props) {
               className="song-editor-slide-text"
               value={s.text}
               onChange={(e) => updateSlide(i, { text: e.target.value })}
+              aria-label={`Slide ${i + 1} words`}
               rows={Math.max(2, s.text.split('\n').length)}
             />
           </div>

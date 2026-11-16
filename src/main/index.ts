@@ -114,6 +114,7 @@ import {
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
 import { alertPayload, textInput } from './ipcInput'
+import { songImportPickers } from './importPickers'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -2038,9 +2039,19 @@ ipcMain.handle('songs:recent', () => recentSongSummaries())
 ipcMain.handle('songs:clear-recent', () => clearRecentSongs())
 
 ipcMain.handle('songs:import', async () => {
+  // On Windows and Linux one dialog cannot pick files AND folders (it shows a folder chooser only, so a single .pro, .docx or .pdf could not be
+  // chosen). There the operator says which first; macOS keeps the one dialog that does both.
+  const steps = songImportPickers(process.platform)
+  let props = steps[0]
+  if (steps.length > 1) {
+    const opts = { type: 'question' as const, title: 'Import songs', message: 'Import song files, or every song file in a folder?', buttons: ['Choose files…', 'Choose a folder…', 'Cancel'], defaultId: 0, cancelId: 2 }
+    const which = mainWindow && !mainWindow.isDestroyed() ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
+    if (which.response === 2) return null
+    props = steps[which.response]
+  }
   const result = await dialog.showOpenDialog({
     title: 'Import songs',
-    properties: ['openFile', 'multiSelections', 'openDirectory'],
+    properties: props,
     filters: [
       {
         name: 'Song files',

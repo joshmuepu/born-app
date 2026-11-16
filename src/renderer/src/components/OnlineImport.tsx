@@ -86,8 +86,8 @@ export default function OnlineImport({ query, onClose, onImported }: Props) {
       onImported(r.id)
       return
     }
-    setErrorMsg(reasonMessage(r.reason, r.copyright))
-    setStage('error')
+    // stays on the review screen, which shows this message, so the operator's edits are not thrown away
+    throw new Error(reasonMessage(r.reason, r.copyright))
   }
 
   if (stage === 'preview' && preview?.ok) {
