@@ -13,6 +13,7 @@ import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
 import { CrashGuard } from './crashGuard'
+import { appPageTest, guardWebContents, isSafeExternalUrl, ALLOWED_PERMISSIONS } from './windowGuard'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
@@ -100,7 +101,8 @@ import {
   openReleasePage,
   downloadUpdate,
   runInstaller,
-  applyUpdate
+  applyUpdate,
+  downloadedInstallerPath
 } from './updateCheck'
 import {
   getLocalDateGroups,
@@ -110,7 +112,8 @@ import {
   getOnThisDay,
   loadBundledSeries
 } from './browseLocal'
-import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed } from './settings'
+import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
+import { alertPayload, textInput } from './ipcInput'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -170,6 +173,8 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 }
 
 let mainWindow: BrowserWindow | null = null
+/** set when the app is quitting on purpose: the operator window's close does not ask then */
+let quitting = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
 
@@ -319,6 +324,23 @@ function createMainWindow(): void {
   // respect focus / typing state; nothing to relay here.
 
   blockReloadChord(mainWindow)
+
+  // Closing the operator window takes the screens down (the outputs go with it). While something is on the congregation screen and not hidden,
+  // the operator is asked first: one click on the window's close button ended it mid-service.
+  mainWindow.on('close', (e) => {
+    if (quitting || !mainWindow || mainWindow.isDestroyed()) return
+    const live = !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
+    if (!live) return
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Keep it open', 'Close and take the screens down'],
+      defaultId: 0,
+      cancelId: 0,
+      message: 'Something is on the screen.',
+      detail: 'Closing this window takes the congregation screen and the stage monitor down.'
+    })
+    if (choice === 0) e.preventDefault()
+  })
 
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
@@ -866,10 +888,11 @@ ipcMain.on('projection:clear', () => {
 
 ipcMain.on(
   'projection:alert',
-  (_event, payload: string | { message: string; target?: 'congregation' | 'stage' | 'both' }) => {
-    const message = typeof payload === 'string' ? payload : payload.message
-    const target = typeof payload === 'string' ? 'congregation' : payload.target ?? 'congregation'
-    if (!message?.trim()) return
+  (_event, payload: unknown) => {
+    // a malformed Message is dropped, never thrown on
+    const p = alertPayload(payload)
+    if (!p) return
+    const { message, target } = p
     if (target === 'congregation' || target === 'both') sendToProjection('projection:alert', message)
     if (target === 'stage' || target === 'both') sendToStage('stage:alert', message)
   }
@@ -879,7 +902,10 @@ ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
   setProjectionBlank(blank)
 })
 
-ipcMain.on('projection:set-font-size', (_event, size: number) => {
+ipcMain.on('projection:set-font-size', (_event, raw: unknown) => {
+  // the range settings.json accepts (1.5 to 8): nothing else reaches the live screen or the file
+  const size = clampFontSize(raw)
+  if (size === null) return
   projectionState.fontSize = size
   try {
     updateSettings({ fontSize: size })
@@ -921,8 +947,16 @@ ipcMain.handle('app:open-release-page', () => openReleasePage())
 ipcMain.handle('app:download-update', (e) =>
   downloadUpdate(BrowserWindow.fromWebContents(e.sender))
 )
-ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
-ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
+// only the installer this run downloaded is ever opened or run; the path the window passes is not used
+const noInstaller = { ok: false, error: 'Download the update first.' }
+ipcMain.handle('app:run-installer', () => {
+  const p = downloadedInstallerPath()
+  return p ? runInstaller(p) : noInstaller
+})
+ipcMain.handle('app:apply-update', () => {
+  const p = downloadedInstallerPath()
+  return p ? applyUpdate(p) : { ...noInstaller, needsManual: true }
+})
 ipcMain.handle('app:quit', () => app.quit())
 
 /** Whether either local database was found corrupted and auto-recovered at
@@ -955,7 +989,8 @@ ipcMain.handle('app:open-data-folder', () => shell.openPath(app.getPath('userDat
 ipcMain.handle('manual:manifest', () => getManualManifest())
 ipcMain.handle('manual:page', (_e, relPath: string) => readManualPage(relPath))
 ipcMain.handle('manual:image', (_e, relPath: string) => readManualImage(relPath))
-ipcMain.handle('manual:open-external', (_e, url: string) => shell.openExternal(url))
+// only web and mail links go to the operating system (file:, smb: and custom schemes were passed on)
+ipcMain.handle('manual:open-external', (_e, url: string) => (isSafeExternalUrl(url) ? shell.openExternal(url) : undefined))
 
 /** A full page already rendered to self-contained HTML (markdown-it's output
  *  with every image inlined as a data: URL) is handed in from the renderer
@@ -1122,8 +1157,9 @@ ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
   return displayInfoPayload()
 })
 
-ipcMain.handle('displays:rename', (_event, displayId: number, rawName: string) => {
-  const name = rawName.trim()
+ipcMain.handle('displays:rename', (_event, displayId: number, rawName: unknown) => {
+  // a name that is not text is no name (it threw here)
+  const name = textInput(rawName)
   if (!name) return displayInfoPayload()
   const displays = screen.getAllDisplays().map(toDisplayLike)
   const target = displays.find((d) => d.id === displayId)
@@ -2104,8 +2140,18 @@ ipcMain.handle('indexer:stop', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
+// Every page the app makes gets the same guard: no new windows, no leaving the app's own pages
+const isAppPage = appPageTest(join(__dirname, '../renderer'), isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined)
+app.on('web-contents-created', (_e, wc) => guardWebContents(wc as never, isAppPage, (m) => log.warn(m)))
+
 app.whenReady().then(async () => {
   log.boot()
+  // only the browser permissions the app uses are given (every request was granted before)
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    const ok = ALLOWED_PERMISSIONS.has(permission)
+    if (!ok) log.warn(`refused the browser permission "${permission}"`)
+    callback(ok)
+  })
   app.setName('Branham or Nothing')
   // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
   // instance's network traffic at an address nothing listens on, so every
@@ -2305,6 +2351,7 @@ app.on('second-instance', () => {
 })
 
 app.on('before-quit', () => {
+  quitting = true // a quit the operator chose (the menu, Cmd+Q) is not asked again by the window's close
   stopMdns()
   globalShortcut.unregisterAll()
 })
@@ -2319,10 +2366,24 @@ app.on('window-all-closed', () => {
 })
 
 // Catch unhandled promise rejections in the main process
+// A failure the app did not expect is logged and said to the operator (at most once a minute), not only logged. The app keeps running, as before:
+// stopping mid-service would take the screens down.
+let lastFaultNotice = 0
+function sayUnexpectedFault(): void {
+  const t = Date.now()
+  if (t - lastFaultNotice < 60_000) return
+  lastFaultNotice = t
+  try {
+    sendToMain('operator:notice', 'Something went wrong in the background. The screens were not changed. If something does not respond, restart BORN after the service.')
+  } catch { /* nothing more to do */ }
+}
+
 process.on('unhandledRejection', (reason) => {
   log.error('unhandledRejection in main process', reason)
+  sayUnexpectedFault()
 })
 
 process.on('uncaughtException', (err) => {
   log.error('uncaughtException in main process', err)
+  sayUnexpectedFault()
 })

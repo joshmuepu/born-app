@@ -48,11 +48,28 @@ async function waitPastChallenge(win: BrowserWindow, attempts = 15): Promise<boo
  *  shows up, then hands the window (plus the main-frame HTTP status, for
  *  telling a real 404 apart from everything else) to `fn`. Always destroys
  *  the window afterward, success or failure. */
+/** Only Hymnary.org's own pages are ever loaded in the hidden reader, over https: before, any address it was handed was loaded and read back. */
+export function isHymnaryUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && (u.hostname === 'hymnary.org' || u.hostname === 'www.hymnary.org')
+  } catch {
+    return false
+  }
+}
+
 async function withChallengeWindow<T>(
   url: string,
   fn: (win: BrowserWindow, statusCode: number) => Promise<T>
 ): Promise<T> {
-  const win = new BrowserWindow({ show: false, width: 1200, height: 900 })
+  if (!isHymnaryUrl(url)) throw new Error('blocked')
+  const win = new BrowserWindow({ show: false, width: 1200, height: 900, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
+  // no sound, no new windows, and it never leaves the site (the site's own challenge page stays on it)
+  win.webContents.setAudioMuted(true)
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  const stayOnSite = (e: { preventDefault(): void }, to: string): void => { if (!isHymnaryUrl(to)) e.preventDefault() }
+  win.webContents.on('will-navigate', stayOnSite)
+  win.webContents.on('will-redirect', stayOnSite)
   let statusCode = 200
   win.webContents.on('did-navigate', (_e, _navUrl, code) => {
     statusCode = code
@@ -61,7 +78,7 @@ async function withChallengeWindow<T>(
     // A non-2xx response still "loads" a page as far as Electron's concerned
     // (did-navigate above is what tells us the real status) — loadURL only
     // rejects on a network-level failure (offline, DNS, etc.).
-    await win.loadURL(url).catch(() => {})
+    await Promise.race([win.loadURL(url).catch(() => {}), new Promise((r) => setTimeout(r, 30_000))])
     const past = await waitPastChallenge(win)
     if (!past) throw new Error('blocked')
     return await fn(win, statusCode)

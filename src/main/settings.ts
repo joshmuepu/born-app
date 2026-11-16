@@ -135,6 +135,13 @@ export function getSettings(): AppSettings {
   return cache
 }
 
+/** A projection text size the app accepts (rem, 1.5 to 8, the same range settings.json accepts), or null for something that is not a number. */
+export function clampFontSize(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : Number.NaN
+  if (!Number.isFinite(n)) return null
+  return Math.min(8, Math.max(1.5, n))
+}
+
 export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   const next = { ...getSettings(), ...patch }
   cache = next
