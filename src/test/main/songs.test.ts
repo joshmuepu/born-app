@@ -67,7 +67,7 @@ insertSong(
   'bundled:blessed.pro'
 )
 
-vi.mock('../../main/libraryDb', () => ({ getLibraryDb: () => db }))
+vi.mock('../../main/libraryDb', () => ({ getLibraryDb: () => db, backupLibraryBeforeImport: () => null }))
 vi.mock('../../main/logger', () => ({
   log: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }))

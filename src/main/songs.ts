@@ -3,7 +3,7 @@
  */
 import { readFileSync, statSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
-import { getLibraryDb } from './libraryDb'
+import { getLibraryDb, backupLibraryBeforeImport } from './libraryDb'
 import { log } from './logger'
 import { parseSong, needsReview, NO_TEXT_FOUND } from './songParsers'
 import { parsePlainText } from './songParsers/plainText'
@@ -202,6 +202,8 @@ export interface ImportResult {
   failed: Array<{ file: string; error: string }>
   skipped: number
   needsReview: ReviewItem[]
+  /** Where the copy of the song library from before this import is; null if none could be made. */
+  backup?: string | null
 }
 
 function friendlyParseError(error: string): string {
@@ -248,6 +250,8 @@ export async function importSongs(paths: string[]): Promise<ImportResult> {
       }
     }
 
+    // a dated copy of the song library first, so an import is never the only copy of what was there before
+    if (toCommit.length || result.needsReview.length) result.backup = backupLibraryBeforeImport()
     const tx = db.transaction(() => {
       for (const { song, originPath } of toCommit) {
         result.added.push(insertSong(db, song, 'import', originPath))
@@ -287,6 +291,7 @@ export function commitReviewedSong(
       .get(originPath)
     if (existing) return { ...existing, alreadyImported: true }
   }
+  backupLibraryBeforeImport()
   const ins = insertSong(db, song, 'import', originPath)
   return { ...ins, alreadyImported: false }
 }
@@ -407,6 +412,7 @@ export async function onlineSongImport(
 
   const r = source === 'hymnary' ? await fetchHymnaryHymn(url) : await fetchCyberHymnalHymn(url)
   if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
+  backupLibraryBeforeImport()
   const ins = insertSong(db, edited, 'import', originPath)
   return { ok: true, id: ins.id, title: ins.title, alreadyImported: false }
 }

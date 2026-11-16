@@ -202,6 +202,8 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     if (r.skipped) parts.push(`${r.skipped} already present`)
     if (r.failed.length) parts.push(`${r.failed.length} failed`)
     if (r.needsReview.length) parts.push(`${r.needsReview.length} need${r.needsReview.length === 1 ? 's' : ''} a quick review`)
+    // where the copy from before the import is, said only when something was added or is about to be
+    if ((r.added.length || r.needsReview.length) && r.backup) parts.push('a copy of your songs from before is in the data folder, under backups')
     setImportMsg(parts.join(' · ') || 'Nothing imported')
     setImportFailures(r.failed)
     refreshAfterChange()

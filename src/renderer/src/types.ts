@@ -178,6 +178,8 @@ export interface SongImportResult {
   failed: Array<{ file: string; error: string }>
   skipped: number
   needsReview: ReviewItem[]
+  /** Where the copy of the song library from before this import is. */
+  backup?: string | null
 }
 
 export interface IndexerProgress {
