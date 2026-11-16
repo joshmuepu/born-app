@@ -51,6 +51,24 @@ function normalizeForMatch(s: string): string {
     .toLowerCase()
 }
 
+/** The longest page worth reading: the largest index page is about 100 KB and a hymn page far less. */
+const MAX_PAGE_BYTES = 3_000_000
+const SITE_HOST = /(^|\.)hymntime\.com$/i
+
+/** The text of a response, but only when it really came from the site (a redirect to another host is refused: the public-domain check reads this
+ *  text) and is of a sane size. The site does not serve https, so the host of the final address is what can be checked. */
+async function readSitePage(res: Response): Promise<string | null> {
+  try {
+    if (res.url && !SITE_HOST.test(new URL(res.url).hostname)) return null
+  } catch {
+    return null
+  }
+  const len = Number(res.headers.get('content-length'))
+  if (Number.isFinite(len) && len > MAX_PAGE_BYTES) return null
+  const text = await res.text()
+  return text.length > MAX_PAGE_BYTES ? null : text
+}
+
 export async function searchCyberHymnal(query: string): Promise<CyberHymnalCandidate[]> {
   const q = query.trim()
   const letter = /[A-Za-z]/.exec(q)?.[0]?.toLowerCase()
@@ -61,7 +79,9 @@ export async function searchCyberHymnal(query: string): Promise<CyberHymnalCandi
   try {
     const res = await fetch(listUrl, { headers: { 'User-Agent': 'BORN-app (+https://joshmuepu.com/born)' } })
     if (!res.ok) return []
-    html = await res.text()
+    const body = await readSitePage(res)
+    if (body === null) return []
+    html = body
   } catch (e) {
     log.error('searchCyberHymnal failed', e)
     throw e instanceof Error ? e : new Error('Could not reach the Cyber Hymnal.')
@@ -161,7 +181,9 @@ export async function fetchCyberHymnalHymn(url: string): Promise<CyberHymnalFetc
   try {
     const res = await fetch(url, { headers: { 'User-Agent': 'BORN-app (+https://joshmuepu.com/born)' } })
     if (!res.ok) return { ok: false, reason: 'not-found' }
-    html = await res.text()
+    const body = await readSitePage(res)
+    if (body === null) return { ok: false, reason: 'not-found' }
+    html = body
   } catch (e) {
     log.error('fetchCyberHymnalHymn failed', e)
     return { ok: false, reason: 'not-found' }
