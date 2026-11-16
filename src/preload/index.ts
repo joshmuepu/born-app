@@ -226,6 +226,26 @@ const api = {
     return () => ipcRenderer.removeListener('projection:closed', handler)
   },
 
+  /** The congregation screen's page kept stopping and was left off (not live) until it is opened again. */
+  onProjectionFailed: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('projection:failed', handler)
+    return () => ipcRenderer.removeListener('projection:failed', handler)
+  },
+  onStageFailed: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('stage:failed', handler)
+    return () => ipcRenderer.removeListener('stage:failed', handler)
+  },
+  /** Which output windows are open (asked when the operator window loads, so a restarted window shows the truth). */
+  outputsOpen: (): Promise<{ projection: boolean; stage: boolean; blank: boolean }> => ipcRenderer.invoke('projection:is-open'),
+  /** Something the operator should know (a window stopped and was started again). */
+  onOperatorNotice: (callback: (message: string) => void): (() => void) => {
+    const handler = (_e: unknown, message: string): void => callback(message)
+    ipcRenderer.on('operator:notice', handler)
+    return () => ipcRenderer.removeListener('operator:notice', handler)
+  },
+
   // Displays
   listDisplays: (): Promise<DisplayInfo> => ipcRenderer.invoke('displays:list'),
   setProjectionDisplay: (displayId: number | null): Promise<DisplayInfo> =>

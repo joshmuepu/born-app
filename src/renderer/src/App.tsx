@@ -261,12 +261,48 @@ export default function App() {
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
     const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
+    // An output whose page kept stopping is left off: shown as closed here (never as live over a dead screen), with a notice that stays and
+    // opens it again with what is live.
+    const unFailed = window.electronAPI.onProjectionFailed?.(() => {
+      setProjectionOpen(false)
+      setIsScreenBlanked(false)
+      setOperatorNotice({ message: 'The congregation screen stopped several times and is off: nothing shows there.', action: 'projection' })
+    }) ?? (() => {})
+    const unStageFailed = window.electronAPI.onStageFailed?.(() => {
+      setStageOpen(false)
+      setOperatorNotice({ message: 'The stage monitor stopped several times and is off.', action: 'stage' })
+    }) ?? (() => {})
+    const unNotice = window.electronAPI.onOperatorNotice?.((message) => setOperatorNotice({ message })) ?? (() => {})
+    // a window started again after it stopped asks what is open, so its header tells the truth
+    void window.electronAPI.outputsOpen?.().then((o) => {
+      if (!o) return
+      setProjectionOpen(o.projection)
+      setStageOpen(o.stage)
+      if (o.projection) setIsScreenBlanked(o.blank)
+    }).catch(() => {})
     return () => {
       unProj()
       unStage()
       unBlank()
+      unFailed()
+      unStageFailed()
+      unNotice()
     }
   }, [])
+
+  // What the operator is told when a window stopped. A plain notice goes after a while; one with an action stays until it is used or dismissed.
+  const [operatorNotice, setOperatorNotice] = useState<{ message: string; action?: 'projection' | 'stage' } | null>(null)
+  useEffect(() => {
+    if (!operatorNotice || operatorNotice.action) return
+    const t = setTimeout(() => setOperatorNotice(null), 9000)
+    return () => clearTimeout(t)
+  }, [operatorNotice])
+  useEffect(() => {
+    if (projectionOpen) setOperatorNotice((n) => (n?.action === 'projection' ? null : n))
+  }, [projectionOpen])
+  useEffect(() => {
+    if (stageOpen) setOperatorNotice((n) => (n?.action === 'stage' ? null : n))
+  }, [stageOpen])
 
   useEffect(() => {
     window.electronAPI.getIndexerStatus().then(setIndexer)
@@ -1516,6 +1552,27 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {operatorNotice && (
+        <div className="update-banner operator-notice" role="status">
+          <span>{operatorNotice.message}</span>
+          <span className="update-banner-actions">
+            {operatorNotice.action === 'projection' && (
+              <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.openProjection().then(() => setProjectionOpen(true))}>
+                Open projection
+              </button>
+            )}
+            {operatorNotice.action === 'stage' && (
+              <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.openStage().then(() => setStageOpen(true))}>
+                Turn on stage monitor
+              </button>
+            )}
+            <button className="btn-quiet btn-sm" onClick={() => setOperatorNotice(null)}>
+              Dismiss
+            </button>
+          </span>
+        </div>
+      )}
 
       {showFallbackBanner && (
         <div className="fallback-banner">

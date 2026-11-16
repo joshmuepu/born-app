@@ -12,6 +12,7 @@ import {
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
+import { CrashGuard } from './crashGuard'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
@@ -231,6 +232,28 @@ function themeBackground(): string {
 function sendToMain(channel: string, ...args: unknown[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
+
+/** A window whose page stopped (crashed, or was killed) is started again: the page asks for what is live and gets it. A page that keeps stopping
+ *  (more than three times a minute) is left alone and `gaveUp` runs, so it cannot loop. Before, a stopped page was only logged: the congregation
+ *  screen stayed black while the header still showed it open, and nobody was told. */
+const crashGuards = { operator: new CrashGuard(), congregation: new CrashGuard(), stage: new CrashGuard() }
+function restartAfterCrash(w: BrowserWindow, reason: string, guard: CrashGuard, onRestart: () => void, gaveUp: () => void): void {
+  if (reason === 'clean-exit' || w.isDestroyed()) return
+  if (!guard.crashed()) {
+    gaveUp()
+    return
+  }
+  setTimeout(() => {
+    if (w.isDestroyed()) return
+    w.webContents.reload()
+    onRestart()
+  }, 300)
+}
+/** Output windows whose page kept stopping and was left off; Open projection / Turn on replaces them. */
+let projectionFailed: BrowserWindow | null = null
+let stageFailed: BrowserWindow | null = null
+/** Dead output windows replaced by a new one: closing them must not clear what is live. */
+const replacedOutputs = new WeakSet<BrowserWindow>()
 function sendToProjection(channel: string, ...args: unknown[]): void {
   if (projectionWindow && !projectionWindow.isDestroyed()) {
     projectionWindow.webContents.send(channel, ...args)
@@ -278,8 +301,14 @@ function createMainWindow(): void {
     broadcastDisplayInfo()
   })
 
+  const mainWin = mainWindow
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('mainWindow renderer process gone', details)
+    // started again; what is on the screens does not change (this process holds it), and the window says so once it is back
+    restartAfterCrash(mainWin, details.reason, crashGuards.operator, () => {
+      mainWin.webContents.once('did-finish-load', () =>
+        setTimeout(() => sendToMain('operator:notice', 'The operator window stopped and was started again. What is on the screens did not change.'), 1500))
+    }, () => log.error('mainWindow keeps stopping; left as it is'))
   })
 
   mainWindow.webContents.on('unresponsive', () => {
@@ -369,8 +398,17 @@ function createProjectionWindow(): void {
 
   attachOperatorShortcuts(projectionWindow)
 
+  const projWin = projectionWindow
   projectionWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('projectionWindow renderer process gone', details)
+    // started again with what is live (projection:ready replays it); after too many stops it is left off and the operator window shows the
+    // projection as closed, never live over a dead screen, with a notice that offers Open projection
+    restartAfterCrash(projWin, details.reason, crashGuards.congregation,
+      () => sendToMain('operator:notice', 'The congregation screen stopped and was started again with what is live.'),
+      () => {
+        projectionFailed = projWin
+        sendToMain('projection:failed')
+      })
   })
 
   projectionWindow.webContents.on('did-fail-load', (_e, code, desc) => {
@@ -385,6 +423,8 @@ function createProjectionWindow(): void {
 
   projectionWindow.on('closed', () => {
     log.info('projectionWindow closed')
+    if (projectionFailed === projWin) projectionFailed = null
+    if (replacedOutputs.has(projWin)) return // a dead window replaced by a new one: what is live stays live
     projectionWindow = null
     projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
     // Nothing is being projected any more — the stage monitor falls back to the
@@ -452,6 +492,17 @@ function createStageWindow(): void {
 
   attachOperatorShortcuts(stageWindow)
 
+  const stageWin = stageWindow
+  stageWindow.webContents.on('render-process-gone', (_e, details) => {
+    log.error('stageWindow renderer process gone', details)
+    restartAfterCrash(stageWin, details.reason, crashGuards.stage,
+      () => sendToMain('operator:notice', 'The stage monitor stopped and was started again.'),
+      () => {
+        stageFailed = stageWin
+        sendToMain('stage:failed')
+      })
+  })
+
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     stageWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/stage.html`)
   } else {
@@ -460,6 +511,8 @@ function createStageWindow(): void {
 
   stageWindow.on('closed', () => {
     log.info('stageWindow closed')
+    if (stageFailed === stageWin) stageFailed = null
+    if (replacedOutputs.has(stageWin)) return
     stageWindow = null
     sendToMain('stage:closed')
   })
@@ -741,8 +794,24 @@ function setProjectionBlank(blank: boolean): void {
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
 
+/** Is the congregation screen open and working? Asked by the operator window when it (re)loads. */
+ipcMain.handle('projection:is-open', () => ({
+  projection: !!projectionWindow && !projectionWindow.isDestroyed() && projectionFailed !== projectionWindow,
+  stage: !!stageWindow && !stageWindow.isDestroyed() && stageFailed !== stageWindow,
+  blank: projectionState.blank
+}))
+
 ipcMain.handle('projection:open', () => {
   log.info('ipc projection:open')
+  if (projectionWindow && !projectionWindow.isDestroyed() && projectionFailed === projectionWindow) {
+    // its page kept stopping and was left off: the dead window goes and a new one opens with what is live
+    log.info('projection:open replaces the congregation window that kept stopping')
+    replacedOutputs.add(projectionWindow)
+    projectionWindow.destroy()
+    projectionWindow = null
+    projectionFailed = null
+    crashGuards.congregation.reset()
+  }
   if (projectionWindow && !projectionWindow.isDestroyed()) {
     projectionWindow.focus()
     return
@@ -1311,6 +1380,13 @@ ipcMain.on('queue:save', (_event, items: unknown) => {
 
 ipcMain.handle('stage:open', () => {
   log.info('ipc stage:open')
+  if (stageWindow && !stageWindow.isDestroyed() && stageFailed === stageWindow) {
+    replacedOutputs.add(stageWindow)
+    stageWindow.destroy()
+    stageWindow = null
+    stageFailed = null
+    crashGuards.stage.reset()
+  }
   if (stageWindow && !stageWindow.isDestroyed()) {
     stageWindow.focus()
     return
