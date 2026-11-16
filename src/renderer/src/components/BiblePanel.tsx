@@ -12,6 +12,7 @@ import { bookByNum, BIBLE_BOOKS } from '../../../shared/bibleBooks'
 import { resultCountLabel } from '../../../shared/searchLimits'
 import { highlight } from '../highlight'
 import './BiblePanel.css'
+import { blurAfterPointer } from '../focusAfterClick'
 
 interface Props {
   visible: boolean
@@ -54,7 +55,7 @@ export default function BiblePanel({
     !!onScreen && onScreen.bookNum === bookNum && onScreen.chapter === chapter && onScreen.verse === verse
   const [translations, setTranslations] = useState<BibleTranslation[]>([])
   const [translation, setTranslation] = useState(
-    () => localStorage.getItem('born.bibleTranslation') || 'KJV'
+    () => { try { return localStorage.getItem('born.bibleTranslation') || 'KJV' } catch { return 'KJV' } } // blocked storage must not stop the panel
   )
   useEffect(() => {
     onTranslationChange?.(translation)
@@ -392,12 +393,12 @@ export default function BiblePanel({
                 role="button"
                 tabIndex={0}
                 title={`Put verse ${v.verse} on the screen`}
-                onClick={(e) => { project(); e.currentTarget.blur() }}
+                onClick={(e) => { project(); blurAfterPointer(e) }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     project()
-                    e.currentTarget.blur()
+                    blurAfterPointer(e)
                   }
                 }}
               >
@@ -411,7 +412,7 @@ export default function BiblePanel({
                     onClick={(e) => {
                       e.stopPropagation()
                       queueRef(formatVerse(focusVerse.bookNum, focusVerse.chapter, v.verse))
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }}
                   >
                     + Queue
@@ -419,7 +420,7 @@ export default function BiblePanel({
                   <button
                     className="btn-secondary btn-sm"
                     title={`Put verse ${v.verse} on the screen`}
-                    onClick={(e) => { e.stopPropagation(); project(); e.currentTarget.blur() }}
+                    onClick={(e) => { e.stopPropagation(); project(); blurAfterPointer(e) }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>
@@ -485,7 +486,7 @@ export default function BiblePanel({
             {!scoped && <ChevronDown width={11} height={11} strokeWidth={2.5} />}
           </button>
           {scoped && (
-            <button className="bible-scope-clear" title="Search the whole Bible again" onClick={() => setScope('all')}>
+            <button className="bible-scope-clear" title="Search the whole Bible again" aria-label="Search the whole Bible again" onClick={() => setScope('all')}>
               <X width={11} height={11} strokeWidth={2.5} />
             </button>
           )}
@@ -513,14 +514,14 @@ export default function BiblePanel({
 
       {!isReferenceIntent && query.trim().length > 0 && (
         <div className="bible-search-options">
-          <div className="filter-mode" role="tablist" aria-label="Search mode">
-            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'phrase' ? ' active' : ''}`} title="Match the words in this exact order" onClick={() => setSearchMode('phrase')}>
+          <div className="filter-mode" role="group" aria-label="Search mode">
+            <button aria-pressed={searchMode === 'phrase'} className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'phrase' ? ' active' : ''}`} title="Match the words in this exact order" onClick={() => setSearchMode('phrase')}>
               Phrase
             </button>
-            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'all' ? ' active' : ''}`} title="Match verses containing every word, in any order" onClick={() => setSearchMode('all')}>
+            <button aria-pressed={searchMode === 'all'} className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'all' ? ' active' : ''}`} title="Match verses containing every word, in any order" onClick={() => setSearchMode('all')}>
               All words
             </button>
-            <button className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'any' ? ' active' : ''}`} title="Match verses containing any of the words" onClick={() => setSearchMode('any')}>
+            <button aria-pressed={searchMode === 'any'} className={`filter-mode-btn filter-mode-btn--sm${searchMode === 'any' ? ' active' : ''}`} title="Match verses containing any of the words" onClick={() => setSearchMode('any')}>
               Any word
             </button>
           </div>
@@ -559,8 +560,8 @@ export default function BiblePanel({
               <div className="bible-passage-head">
                 <span className="bible-passage-ref">{passage.reference} · {passage.translation}</span>
                 <div className="result-actions">
-                  <button className="btn-secondary btn-sm" onClick={(e) => { addPassage(passage); e.currentTarget.blur() }}>+ Queue</button>
-                  <button className="btn-primary btn-sm" onClick={(e) => { projectPassage(passage, 0); e.currentTarget.blur() }}>Project</button>
+                  <button className="btn-secondary btn-sm" onClick={(e) => { addPassage(passage); blurAfterPointer(e) }}>+ Queue</button>
+                  <button className="btn-primary btn-sm" onClick={(e) => { projectPassage(passage, 0); blurAfterPointer(e) }}>Project</button>
                 </div>
               </div>
               <div className="bible-verses">
@@ -571,12 +572,12 @@ export default function BiblePanel({
                     role="button"
                     tabIndex={0}
                     title={`Open ${bookByNum(passage.bookNum)?.name ?? ''} ${passage.chapter} at verse ${v.verse}`}
-                    onClick={(e) => { openChapterAt(passage.bookNum, passage.chapter, v.verse); e.currentTarget.blur() }}
+                    onClick={(e) => { openChapterAt(passage.bookNum, passage.chapter, v.verse); blurAfterPointer(e) }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         openChapterAt(passage.bookNum, passage.chapter, v.verse)
-                        e.currentTarget.blur()
+                        blurAfterPointer(e)
                       }
                     }}
                   >
@@ -592,7 +593,7 @@ export default function BiblePanel({
                         onClick={(e) => {
                           e.stopPropagation()
                           queueRef(formatVerse(passage.bookNum, passage.chapter, v.verse))
-                          e.currentTarget.blur()
+                          blurAfterPointer(e)
                         }}
                       >
                         + Queue
@@ -603,7 +604,7 @@ export default function BiblePanel({
                         onClick={(e) => {
                           e.stopPropagation()
                           projectPassage(passage, passage.slideStarts[i] ?? 0)
-                          e.currentTarget.blur()
+                          blurAfterPointer(e)
                         }}
                       >
                         Project
@@ -636,12 +637,12 @@ export default function BiblePanel({
                   role="button"
                   tabIndex={0}
                   title="Open the whole chapter at this verse"
-                  onClick={(e) => { openChapterAt(h.bookNum, h.chapter, h.verse); e.currentTarget.blur() }}
+                  onClick={(e) => { openChapterAt(h.bookNum, h.chapter, h.verse); blurAfterPointer(e) }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       openChapterAt(h.bookNum, h.chapter, h.verse)
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }
                   }}
                 >
@@ -649,10 +650,10 @@ export default function BiblePanel({
                   <span className="bible-verse-text">{highlight(h.text, query)}</span>
                 </div>
                 <div className="bible-verse-actions">
-                  <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={(e) => { queueRef(h.reference); e.currentTarget.blur() }}>
+                  <button className="btn-quiet btn-sm" title="Add this verse to the queue" onClick={(e) => { queueRef(h.reference); blurAfterPointer(e) }}>
                     + Queue
                   </button>
-                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={(e) => { projectRef(h.reference); e.currentTarget.blur() }}>
+                  <button className="btn-secondary btn-sm" title="Put this verse on the screen" onClick={(e) => { projectRef(h.reference); blurAfterPointer(e) }}>
                     Project
                   </button>
                 </div>

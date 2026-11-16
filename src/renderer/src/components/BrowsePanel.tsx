@@ -23,6 +23,21 @@ interface Props {
   onSendToProjection: (quote: Quote, slideIndex?: number) => void
 }
 
+/** A Browse row that works from the keyboard too (Tab to it, Enter or Space opens it), not only with the mouse. */
+function activate(fn: () => void): { role: 'button'; tabIndex: number; onClick: () => void; onKeyDown: (e: React.KeyboardEvent) => void } {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick: fn,
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        fn()
+      }
+    }
+  }
+}
+
 type BrowseTab = 'series' | 'location' | 'date' | 'recent'
 
 const MONTHS = [
@@ -50,7 +65,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
 
   // Language for paragraph drill-down (English by default; others fetched + cached).
   const [language, setLanguage] = useState<string>(
-    () => localStorage.getItem('born.browseLanguage') || 'en'
+    () => { try { return localStorage.getItem('born.browseLanguage') || 'en' } catch { return 'en' } } // blocked storage must not stop the panel
   )
   const [languages, setLanguages] = useState<Record<string, string>>({})
 
@@ -284,7 +299,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
           <div
             key={s.i}
             className="browse-item"
-            onClick={() => loadSermonsForIds(s.s, s.n)}
+            {...activate(() => loadSermonsForIds(s.s, s.n))}
           >
             <div className="browse-item-title">{s.n}</div>
             <div className="browse-item-meta">{s.s.length} sermons</div>
@@ -344,7 +359,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
               <div
                 key={m.key}
                 className="browse-item"
-                onClick={() => loadSermonsForIds(m.city.sermonIds, `${m.city.name}, ${m.state.name}`)}
+                {...activate(() => loadSermonsForIds(m.city.sermonIds, `${m.city.name}, ${m.state.name}`))}
               >
                 <div className="browse-item-title">{m.city.name}</div>
                 <div className="browse-item-meta">
@@ -371,7 +386,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
               <div
                 key={c.id}
                 className="browse-item"
-                onClick={() => loadSermonsForIds(c.sermonIds, `${c.name}`)}
+                {...activate(() => loadSermonsForIds(c.sermonIds, `${c.name}`))}
               >
                 <div className="browse-item-title">{c.name}</div>
                 <div className="browse-item-meta">
@@ -392,7 +407,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
             <div className="browse-empty">Location list unavailable.</div>
           )}
           {locationTree.map((s) => (
-            <div key={s.id} className="browse-item" onClick={() => setSelectedState(s)}>
+            <div key={s.id} className="browse-item" {...activate(() => setSelectedState(s))}>
               <div className="browse-item-title">{s.name}</div>
               <div className="browse-item-meta">
                 {s.cities.length} cit{s.cities.length === 1 ? 'y' : 'ies'} ·{' '}
@@ -581,7 +596,7 @@ export default function BrowsePanel({ visible, onScreen, onAddToQueue, onSendToP
           </div>
           <div className="browse-list browse-list--grid">
             {browsedSermons.map((s) => (
-              <div key={s.id} className="browse-item" onClick={() => loadParagraphs(s)}>
+              <div key={s.id} className="browse-item" {...activate(() => loadParagraphs(s))}>
                 <div className="browse-item-code">{s.date_code}</div>
                 <div className="browse-item-title">{s.title}</div>
                 <div className="browse-item-meta">

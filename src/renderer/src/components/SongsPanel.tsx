@@ -8,6 +8,7 @@ import OnlineImport from './OnlineImport'
 import PasteSongScreen from './PasteSongScreen'
 import SongReviewScreen from './SongReviewScreen'
 import './SongsPanel.css'
+import { blurAfterPointer } from '../focusAfterClick'
 
 interface Props {
   visible: boolean
@@ -468,10 +469,10 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
               <SongKeyPicker songKey={selected.songKey} onChange={handleUpdateKey} />
             </div>
             <div className="result-actions">
-              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); e.currentTarget.blur() }}>
+              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); blurAfterPointer(e) }}>
                 + Queue
               </button>
-              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
+              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); blurAfterPointer(e) }}>
                 Project
               </button>
               {selected.source === 'import' && (
@@ -507,7 +508,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                     className={`song-jump-chip${live ? ' is-live' : ''}`}
                     onClick={(e) => {
                       projectSlide(i)
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }}
                     title={live ? `Repeat ${s.label}` : `Jump to ${s.label}`}
                   >
@@ -531,13 +532,13 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   title="Put this slide on the screen"
                   onClick={(e) => {
                     onProjectSong(selected, i)
-                    e.currentTarget.blur()
+                    blurAfterPointer(e)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       onProjectSong(selected, i)
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }
                   }}
                 >
@@ -548,7 +549,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   <div className="song-slide-text">{s.text}</div>
                   <button
                     className="btn-secondary btn-sm song-slide-project"
-                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
+                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); blurAfterPointer(e) }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>

@@ -33,7 +33,7 @@ import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
-import { escBlanksScreens, trackEscOverlay } from './escRule'
+import { escBlanksScreens, trackEscOverlay, useReturnFocus } from './escRule'
 import { newSerialQueue, serialize } from './serialize'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
@@ -899,6 +899,9 @@ export default function App() {
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
   useEffect(() => trackEscOverlay(), [])
+  // closing the Message dialog or the shortcuts list gives the keyboard back to what opened it
+  useReturnFocus(showAlertDialog)
+  useReturnFocus(showShortcuts)
 
   useEffect(() => {
     const isTyping = (el: EventTarget | null): boolean => {

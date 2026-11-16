@@ -23,6 +23,13 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
   useEffect(() => {
     if (open) window.electronAPI.getRecentKeys().then(setRecentKeys)
   }, [open])
+  // the keyboard moves into the picker when it opens: to the chosen key, else the first one
+  useEffect(() => {
+    if (!open) return
+    const el = popoverRef.current
+    const first = el?.querySelector<HTMLElement>('.song-key-grid:not(.song-key-grid--recent) .song-key-chip.active') ?? el?.querySelector<HTMLElement>('.song-key-chip')
+    first?.focus()
+  }, [open])
 
   useEffect(() => {
     const onOutside = (e: MouseEvent): void => {
@@ -51,6 +58,7 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
   const pick = (key: string | null): void => {
     onChange(key)
     setOpen(false)
+    toggleRef.current?.focus()
   }
 
   return (
@@ -61,12 +69,14 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
         className={`song-detail-key${songKey ? '' : ' song-detail-key--empty'}`}
         onClick={() => setOpen((v) => !v)}
         title={songKey ? 'Change the key' : 'Add a key'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
         {songKey ? `Key of ${songKey}` : '+ Add key'}
       </button>
 
       {open && (
-        <div className="filter-popover song-key-popover" ref={popoverRef}>
+        <div className="filter-popover song-key-popover" ref={popoverRef} role="dialog" aria-label="Choose the key">
           {recentKeys.length > 0 && (
             <div className="filter-section">
               <div className="filter-section-label">Recently Used</div>
@@ -75,6 +85,7 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
                   <button
                     key={k}
                     className={`song-key-chip${k === songKey ? ' active' : ''}`}
+                  aria-pressed={k === songKey}
                     onClick={() => pick(k)}
                   >
                     {k}
@@ -91,6 +102,7 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
                 <button
                   key={k}
                   className={`song-key-chip${k === songKey ? ' active' : ''}`}
+                  aria-pressed={k === songKey}
                   onClick={() => pick(k)}
                 >
                   {k}
@@ -106,6 +118,7 @@ export default function SongKeyPicker({ songKey, onChange }: Props): ReactElemen
                 <button
                   key={k}
                   className={`song-key-chip${k === songKey ? ' active' : ''}`}
+                  aria-pressed={k === songKey}
                   onClick={() => pick(k)}
                 >
                   {k}
