@@ -272,6 +272,22 @@ function sendToStage(channel: string, ...args: unknown[]): void {
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
+/** Opening or moving an output window must not take the keyboard from the operator window (typing in a search box went nowhere until the operator
+ *  clicked back). Whatever had the keyboard keeps it; macOS full screen settles a moment later, so it is given back again then. Only taken back from
+ *  our own output windows: if the operator went to another app meanwhile, it is left there. */
+function keepOperatorFocus(fn: () => void): void {
+  const had = mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused() ? mainWindow : null
+  fn()
+  if (!had) return
+  const back = (): void => {
+    const now = BrowserWindow.getFocusedWindow()
+    if (!had.isDestroyed() && now && now !== had && (now === projectionWindow || now === stageWindow)) had.focus()
+  }
+  back()
+  setTimeout(back, 250)
+  setTimeout(back, 900)
+}
+
 /** Ctrl/Cmd+R (and +Shift) reload the window through Electron's default menu and wipe what's on screen mid-service. Swallowed in the packaged
  *  app (preventDefault in before-input-event also stops the menu accelerator); dev builds keep reload. */
 function blockReloadChord(win: BrowserWindow): void {
@@ -420,7 +436,7 @@ function createProjectionWindow(): void {
   })
 
   if (onMac) projectionWindow.setSimpleFullScreen(true)
-  projectionWindow.once('ready-to-show', () => projectionWindow?.show())
+  projectionWindow.once('ready-to-show', () => keepOperatorFocus(() => projectionWindow?.showInactive()))
 
   attachOperatorShortcuts(projectionWindow)
 
@@ -495,7 +511,7 @@ function createStageWindow(): void {
       }
     })
     if (onMac) stageWindow.setSimpleFullScreen(true)
-    stageWindow.once('ready-to-show', () => stageWindow?.show())
+    stageWindow.once('ready-to-show', () => keepOperatorFocus(() => stageWindow?.showInactive()))
   } else {
     // No spare screen: a floating monitor that stays above the operator window
     // so it can't get lost behind it during a service.
@@ -508,12 +524,14 @@ function createStageWindow(): void {
       backgroundColor: '#0a0a0a',
       alwaysOnTop: true,
       skipTaskbar: true,
+      show: false, // shown without taking the keyboard (below)
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         sandbox: false
       }
     })
+    stageWindow.once('ready-to-show', () => keepOperatorFocus(() => stageWindow?.showInactive()))
   }
 
   attachOperatorShortcuts(stageWindow)
@@ -613,7 +631,7 @@ function displayInfoPayload() {
     stageIsOverride: stage.isOverride,
     stageMissingOverrideName: stage.missingOverrideName,
     /** true when the stage would share a screen with the main projection. */
-    stageClashesProjection: stage.display != null && stage.display.id === target.display.id
+    stageClashesProjection: !!stage.clashesProjection || (stage.display != null && stage.display.id === target.display.id)
   }
 }
 
@@ -693,6 +711,9 @@ let projectionDisplaced = false
 
 /** Re-place the projection window on the correct display after a hotplug. */
 function repositionProjectionWindow(force = false): void {
+  keepOperatorFocus(() => repositionProjectionWindowNow(force))
+}
+function repositionProjectionWindowNow(force: boolean): void {
   if (!projectionWindow || projectionWindow.isDestroyed()) return
   const onMac = process.platform === 'darwin'
   const target = resolveProjectionTarget()
@@ -748,6 +769,9 @@ function repositionProjectionWindow(force = false): void {
  *  when there's no spare screen). Shares the `repositioning` guard so the
  *  fullscreen toggle doesn't feed the display-metrics loop. */
 function repositionStageWindow(force = false): void {
+  keepOperatorFocus(() => repositionStageWindowNow(force))
+}
+function repositionStageWindowNow(force: boolean): void {
   if (!stageWindow || stageWindow.isDestroyed()) return
   const onMac = process.platform === 'darwin'
   const target = resolveStageTarget()
@@ -839,7 +863,7 @@ ipcMain.handle('projection:open', () => {
     crashGuards.congregation.reset()
   }
   if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.focus()
+    keepOperatorFocus(() => projectionWindow!.showInactive()) // already open: shown, but the keyboard stays with the operator
     return
   }
   return new Promise<void>((resolve) => {
@@ -1094,7 +1118,7 @@ function showDisplayOverlay(displayId: number, html: string, durationMs: number)
   })
   overlayWindow = win
   win.setAlwaysOnTop(true, 'screen-saver')
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => win.showInactive())
   win.on('closed', () => {
     if (overlayWindow === win) overlayWindow = null
     if (overlayTimer) {
@@ -1442,7 +1466,7 @@ ipcMain.handle('stage:open', () => {
     crashGuards.stage.reset()
   }
   if (stageWindow && !stageWindow.isDestroyed()) {
-    stageWindow.focus()
+    keepOperatorFocus(() => stageWindow!.showInactive())
     return
   }
   return new Promise<void>((resolve) => {
