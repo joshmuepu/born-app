@@ -92,6 +92,15 @@ export default function BiblePanel({
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
+  // Esc closes it (and, being on top, does not also hide the screens: see escRule.ts)
+  useEffect(() => {
+    if (!scopePopoverOpen) return
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) setScopePopoverOpen(false)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [scopePopoverOpen])
   const scoped = scope !== 'all'
   const scopeLabel =
     scope === 'all' ? 'Whole Bible' : scope === 'ot' ? 'Old Testament' : scope === 'nt' ? 'New Testament' : bookByNum(scope)?.abbrev ?? 'Book'

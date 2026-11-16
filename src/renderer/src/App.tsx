@@ -936,7 +936,13 @@ export default function App() {
         return
       }
       if (mod && e.key === 'Enter') {
-        if (searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
+        // "Project the top search result" belongs to the Sermons search. A list that used the key itself, a dialog, or another panel must not
+        // put the last sermon search on the screen.
+        if (e.defaultPrevented) return
+        const tgt = e.target as HTMLElement | null
+        if (tgt && typeof tgt.closest === 'function' && tgt.closest('[role="dialog"], .modal')) return
+        const sermonSearchShown = topTab === 'sermons' && sermonsTab === 'search' && !followSermon
+        if (sermonSearchShown && searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
         return
       }
       if ((e.key === '/' || (mod && e.key.toLowerCase() === 'f')) && !isTyping(e.target)) {
@@ -950,6 +956,9 @@ export default function App() {
         document.getElementById('born-search-input')?.focus()
         return
       }
+
+      // Alt+←/→ is the system's Back/Forward chord, not a stepping key: it never steps the live slide
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
 
       if (isTyping(e.target)) return
       const t = e.target as HTMLElement | null
@@ -971,6 +980,11 @@ export default function App() {
         return
       }
 
+      // The stepping keys and B are plain keys: with Ctrl/⌘ or Alt they do nothing here, Shift only goes with Space (Back), and a held key steps
+      // once, not once per key repeat (a held arrow used to skip several slides on the live screen)
+      const stepKey = ['ArrowRight', 'PageDown', ' ', 'ArrowLeft', 'PageUp', 'b', 'B'].includes(e.key)
+      if (stepKey && (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key !== ' '))) return
+      if (stepKey && e.repeat) { e.preventDefault(); return }
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
@@ -998,6 +1012,9 @@ export default function App() {
     showShortcuts,
     projectionOpen,
     searchResults,
+    topTab,
+    sermonsTab,
+    followSermon,
     activeQueueIndex,
     handleProjectSearchResult,
     handleReorder,
@@ -1436,6 +1453,14 @@ export default function App() {
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
+  useEffect(() => {
+    if (!statusPopoverOpen) return
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) setStatusPopoverOpen(false)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [statusPopoverOpen])
 
   // What's on the projector right now, so the source panels can highlight it.
   const onScreenLoc = useMemo<OnScreenLoc>(() => {
