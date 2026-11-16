@@ -1,5 +1,6 @@
 /* QA helper (scripts only, never shipped), loaded with --require: native message boxes and links handed to the operating system are recorded in
- * <profile>/qa-main-events.json instead of being shown or opened. A message box answers with the number in <profile>/qa-dialog-answer (0 if none). */
+ * <profile>/qa-main-events.json instead of being shown or opened. A message box answers with the number in <profile>/qa-dialog-answer (0 if none);
+ * an open-file dialog answers with the paths in <profile>/qa-open-paths.json (cancelled if none). */
 const { dialog, shell } = require('electron')
 const fs = require('fs'), path = require('path')
 const dir = process.env.BORN_USER_DATA_DIR
@@ -13,3 +14,11 @@ dialog.showMessageBoxSync = (...args) => {
   return answer
 }
 shell.openExternal = async (u) => { rec({ openExternal: String(u) }) }
+dialog.showOpenDialog = async (...args) => {
+  const o = args.find((a) => a && typeof a === 'object' && 'properties' in a)
+  let paths = []
+  try { paths = JSON.parse(fs.readFileSync(path.join(dir, 'qa-open-paths.json'), 'utf8')) } catch { /* none */ }
+  rec({ openDialog: o ? o.properties : null, paths })
+  return { canceled: paths.length === 0, filePaths: paths }
+}
+
