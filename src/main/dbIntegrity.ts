@@ -23,17 +23,28 @@ export interface IntegrityCheckResult {
 /** `PRAGMA integrity_check` passes iff this is the one and only row. */
 const INTEGRITY_OK = 'ok'
 
-function isHealthy(path: string): boolean {
+/** Only these say the FILE is damaged. Busy or locked (a sync client, a virus scanner or another copy of the app holding it) says nothing about
+ *  the file, and a file is never set aside for that. */
+const DAMAGED_CODES = new Set(['SQLITE_CORRUPT', 'SQLITE_NOTADB'])
+
+/** 'ok', 'damaged' (set it aside and copy again), or 'unknown' (could not be checked right now: left as it is and opened normally). */
+export function checkHealth(path: string): 'ok' | 'damaged' | 'unknown' {
   let probe: Database.Database | null = null
   try {
-    probe = new Database(path, { readonly: true, fileMustExist: true })
+    // a short wait for a moment's lock rather than calling a busy file damaged
+    probe = new Database(path, { readonly: true, fileMustExist: true, timeout: 3000 })
     const rows = probe.pragma('integrity_check') as Array<{ integrity_check: string }>
-    return rows.length === 1 && rows[0].integrity_check === INTEGRITY_OK
+    return rows.length === 1 && rows[0].integrity_check === INTEGRITY_OK ? 'ok' : 'damaged'
   } catch (e) {
-    log.warn(`dbIntegrity: ${path} failed to open for checking`, e)
-    return false
+    const code = String((e as { code?: unknown }).code ?? '')
+    if (DAMAGED_CODES.has(code) || /^SQLITE_CORRUPT/.test(code)) {
+      log.warn(`dbIntegrity: ${path} is damaged (${code})`, e)
+      return 'damaged'
+    }
+    log.warn(`dbIntegrity: ${path} could not be checked right now (${code || 'no code'}); leaving it as it is`, e)
+    return 'unknown'
   } finally {
-    probe?.close()
+    try { probe?.close() } catch { /* already closed */ }
   }
 }
 
@@ -79,7 +90,7 @@ export function checkAndRecoverDatabase(
     seed(path)
     return { recovered: false }
   }
-  if (isHealthy(path)) {
+  if (checkHealth(path) !== 'damaged') {
     return { recovered: false }
   }
   log.error(`dbIntegrity: ${label} at ${path} failed its integrity check — quarantining and reseeding`)

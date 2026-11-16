@@ -104,4 +104,22 @@ describe('checkAndRecoverDatabase', () => {
     expect(existsSync(result.quarantinedTo!)).toBe(true)
     expect(seed).toHaveBeenCalledWith(path)
   })
+
+  it('a file another program holds locked is not damage: left alone, never set aside', () => {
+    const path = join(dir, 'library.db')
+    healthyDbAt(path)
+    const holder = new Database(path)
+    holder.exec('BEGIN EXCLUSIVE')
+    const seed = vi.fn()
+    let result
+    try {
+      result = checkAndRecoverDatabase(path, seed, 'library.db')
+    } finally {
+      holder.exec('ROLLBACK')
+      holder.close()
+    }
+    expect(result).toEqual({ recovered: false })
+    expect(seed).not.toHaveBeenCalled()
+    expect(existsSync(path)).toBe(true)
+  })
 })

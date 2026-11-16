@@ -5,7 +5,7 @@
  */
 import Database from 'better-sqlite3'
 import { app } from 'electron'
-import { existsSync, readFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, mkdirSync, rmSync } from 'fs'
 import { writeFileAtomic } from './corruptFile'
 import { gunzipSync } from 'zlib'
 import { join } from 'path'
@@ -53,9 +53,32 @@ function seedFromBundled(target: string): void {
   }
 }
 
+/** A library.db made empty because its first copy failed on an earlier start (a full disk): no Bible and no songs at all. It holds nothing of the
+ *  user's, so it is replaced by the bundled library. Before, it was never copied again and the Bible and songs stayed empty for good. */
+function isEmptyAfterFailedCopy(path: string): boolean {
+  if (!existsSync(path) || !bundledCandidates().some((c) => c && existsSync(c))) return false
+  let probe: Database.Database | null = null
+  try {
+    probe = new Database(path, { readonly: true, fileMustExist: true, timeout: 3000 })
+    const has = (t: string): boolean => !!probe!.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t)
+    const count = (t: string): number => (has(t) ? (probe!.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n : 0)
+    return count('bible_translations') === 0 && count('bible_verses') === 0 && count('songs') === 0
+  } catch {
+    return false // could not be read right now: never removed on a guess
+  } finally {
+    try { probe?.close() } catch { /* already closed */ }
+  }
+}
+
 export function getLibraryDb(): Database.Database {
   if (!db) {
     const p = userDbPath()
+    if (isEmptyAfterFailedCopy(p)) {
+      log.warn('libraryDb: library.db is empty (its first copy failed on an earlier start): copying the bundled library again')
+      for (const f of [p, `${p}-wal`, `${p}-shm`]) {
+        try { rmSync(f, { force: true }) } catch { /* a stray side file is made again */ }
+      }
+    }
     recoveryInfo = checkAndRecoverDatabase(p, seedFromBundled, 'library.db')
     db = new Database(p)
     db.pragma('journal_mode = WAL')
