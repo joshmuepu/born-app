@@ -15,7 +15,8 @@ function readVarint(buf: Buffer, pos: number): [bigint, number] {
   let result = 0n
   let shift = 0n
   let p = pos
-  while (p < buf.length) {
+  // a varint is at most 10 bytes; anything longer is damage, so stop instead of growing a huge number
+  for (let n = 0; p < buf.length && n < 10; n++) {
     const b = buf[p++]
     result |= BigInt(b & 0x7f) << shift
     if ((b & 0x80) === 0) break
@@ -41,14 +42,17 @@ export function decodeMessage(buf: Buffer): PbMessage {
       value = v
       pos = p
     } else if (wire === 1) {
+      if (pos + 8 > buf.length) break // runs past the end: damaged, keep what was read
       value = buf.readBigUInt64LE(pos)
       pos += 8
     } else if (wire === 5) {
+      if (pos + 4 > buf.length) break
       value = buf.readUInt32LE(pos)
       pos += 4
     } else if (wire === 2) {
       const [len, p] = readVarint(buf, pos)
       const l = Number(len)
+      if (l > buf.length - p) break
       value = buf.subarray(p, p + l)
       pos = p + l
     } else {

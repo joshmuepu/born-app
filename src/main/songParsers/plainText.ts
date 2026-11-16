@@ -25,7 +25,10 @@ export function parsePlainText(content: string, fallbackTitle = 'Untitled'): Par
   let title = fallbackTitle
   let start = 0
   const firstLines = blocks[0].split('\n')
-  if (firstLines.length === 1 && !LABEL_RE.test(firstLines[0]) && firstLines[0].length <= 80) {
+  // A single first line is the title only when more follows and the line does not come back as a stanza later (a one-line first stanza such as
+  // "Hallelujah" is words, not a title)
+  const repeatsLater = blocks.slice(1).some((b) => b.trim() === firstLines[0].trim())
+  if (blocks.length > 1 && !repeatsLater && firstLines.length === 1 && !LABEL_RE.test(firstLines[0]) && firstLines[0].length <= 80) {
     title = firstLines[0].trim()
     start = 1
   }

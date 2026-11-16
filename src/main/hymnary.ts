@@ -136,15 +136,24 @@ export type HymnaryFetchResult =
     }
 
 export function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;|&rsquo;|&#8217;/g, '’')
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&hellip;|&#8230;/g, '…')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)))
+  // One pass, so "&amp;#39;" comes out as "&#39;" and is never decoded a second time; numeric entities beyond the basic plane are whole characters.
+  return s.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, body: string) => {
+    if (body[0] === '#') {
+      const cp = body[1] === 'x' || body[1] === 'X' ? parseInt(body.slice(2), 16) : Number(body.slice(1))
+      if (cp === 39) return '’'
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : whole
+    }
+    switch (body) {
+      case 'amp': return '&'
+      case 'rsquo': return '’'
+      case 'quot': return '"'
+      case 'lt': return '<'
+      case 'gt': return '>'
+      case 'hellip': return '…'
+      case 'nbsp': return ' '
+      default: return whole
+    }
+  })
 }
 
 export function extractCopyright(html: string): string | null {
