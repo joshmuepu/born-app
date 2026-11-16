@@ -171,6 +171,10 @@ export interface DbRecoveryStatus {
 export interface DataRecoveryInfo {
   sermons: DbRecoveryStatus
   library: DbRecoveryStatus
+  /** the saved queue could not be read at start (kept in the data folder as keptAs) */
+  queue?: { recovered: boolean; keptAs: string | null }
+  /** settings.json could not be read at start (defaults used; kept as keptAs), or the last save failed */
+  settings?: { recovered: boolean; keptAs: string | null; writeFailed: boolean }
 }
 
 const api = {
@@ -224,6 +228,26 @@ const api = {
     const handler = (): void => callback()
     ipcRenderer.on('projection:closed', handler)
     return () => ipcRenderer.removeListener('projection:closed', handler)
+  },
+
+  /** The congregation screen's page kept stopping and was left off (not live) until it is opened again. */
+  onProjectionFailed: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('projection:failed', handler)
+    return () => ipcRenderer.removeListener('projection:failed', handler)
+  },
+  onStageFailed: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('stage:failed', handler)
+    return () => ipcRenderer.removeListener('stage:failed', handler)
+  },
+  /** Which output windows are open (asked when the operator window loads, so a restarted window shows the truth). */
+  outputsOpen: (): Promise<{ projection: boolean; stage: boolean; blank: boolean }> => ipcRenderer.invoke('projection:is-open'),
+  /** Something the operator should know (a window stopped and was started again). */
+  onOperatorNotice: (callback: (message: string) => void): (() => void) => {
+    const handler = (_e: unknown, message: string): void => callback(message)
+    ipcRenderer.on('operator:notice', handler)
+    return () => ipcRenderer.removeListener('operator:notice', handler)
   },
 
   // Displays

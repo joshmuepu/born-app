@@ -11,8 +11,9 @@
 /** Roughly the most text that reads comfortably on a projector at a sane size. */
 export const MAX_SLIDE_CHARS = 240
 
-const SENTENCE_ENDS = ['. ', '? ', '! ', '." ', '?" ', '!" ', '.” ', '?” ', '!” ', '." ', '?" ']
-const CLAUSE_BREAKS = ['; ', ': ', ', ', '— ', '– ', ' — ']
+// Chinese and Japanese end a sentence or clause with their own full-width marks and no space after them
+const SENTENCE_ENDS = ['. ', '? ', '! ', '." ', '?" ', '!" ', '.” ', '?” ', '!” ', '." ', '?" ', '。', '！', '？', '｡', '。」', '！」', '？」', '。”', '！”', '？”']
+const CLAUSE_BREAKS = ['; ', ': ', ', ', '— ', '– ', ' — ', '，', '、', '；', '：']
 
 /** Position where the next page should start: just after the last of `needles`
  *  that ends at or beyond `min`. Null if there isn't one. */
@@ -31,6 +32,14 @@ function cutAtSpace(win: string, min: number): number | null {
   return i >= min ? i + 1 : null
 }
 
+/** The largest cut at or before `max` that does not fall inside a character (a surrogate pair) or put a combining mark first on the next page.
+ *  Plain string checks, so it does not depend on what the runtime's Intl supports. */
+function characterCut(rest: string, max: number): number {
+  let at = max
+  while (at > 1 && /[\uDC00-\uDFFF\u0300-\u036f\u200d\ufe0f]/.test(rest[at] ?? '')) at--
+  return at
+}
+
 export function paginateText(text: string, maxChars: number = MAX_SLIDE_CHARS): string[] {
   const trimmed = (text ?? '').replace(/\s+/g, ' ').trim()
   if (trimmed.length <= maxChars) return trimmed ? [trimmed] : []
@@ -45,7 +54,7 @@ export function paginateText(text: string, maxChars: number = MAX_SLIDE_CHARS): 
       cutAfter(win, CLAUSE_BREAKS, min) ??
       cutAtSpace(win, min) ??
       cutAtSpace(win, 1) ?? // any space beats splitting a word
-      maxChars // only if a single "word" is longer than a whole page
+      characterCut(rest, maxChars) // only if a single "word" is longer than a whole page
     pages.push(rest.slice(0, at).trim())
     rest = rest.slice(at).trim()
   }
@@ -80,7 +89,10 @@ function balanceLast(pages: string[], maxChars: number): string[] {
   if (pages.length < 2) return pages
   const last = pages[pages.length - 1]
   if (last.length >= ORPHAN_CHARS && last.split(' ').length > ORPHAN_WORDS) return pages
-  const both = `${pages[pages.length - 2]} ${last}`
+  const prev = pages[pages.length - 2]
+  // Chinese and Japanese pages were cut without a space; joining them with one would add a space that was never there
+  const spaceless = /[\u3000-\u9fff\uff00-\uffef]$/.test(prev) && /^[\u3000-\u9fff\uff00-\uffef]/.test(last)
+  const both = spaceless ? `${prev}${last}` : `${prev} ${last}`
   const at = cutNearMiddle(both, maxChars)
   if (at === null) return pages
   return [...pages.slice(0, -2), both.slice(0, at).trim(), both.slice(at).trim()]

@@ -14,7 +14,7 @@ import { spawn } from 'child_process'
 import { once } from 'events'
 import { createWriteStream, writeFileSync, accessSync, constants } from 'fs'
 import { unlink } from 'fs/promises'
-import { join, dirname, resolve } from 'path'
+import { join, dirname, resolve, basename } from 'path'
 import { log } from './logger'
 
 const REPO = 'joshmuepu/born-app'
@@ -230,6 +230,14 @@ async function fetchInstaller(
  * one — the church connection this was reported on resets the transfer partway —
  * the release page is opened in the operator's own browser, which does manage it.
  */
+/** The installer this run downloaded itself: the only file the update step will open or run (before, it ran whatever path the window passed). */
+let downloadedInstaller: string | null = null
+export function downloadedInstallerPath(): string | null {
+  return downloadedInstaller
+}
+/** A value inside single quotes for /bin/bash: nothing in it is expanded. */
+const shq = (v: string): string => `'${v.replace(/'/g, `'\\''`)}'`
+
 export async function downloadUpdate(
   win: BrowserWindow | null,
   opts: DownloadOptions = {}
@@ -240,7 +248,8 @@ export async function downloadUpdate(
   if (!info?.latest || !asset) return { ok: false, error: 'No update available for this platform.' }
 
   const url = info.assetUrl ?? `https://github.com/${REPO}/releases/download/v${info.latest}/${asset}`
-  const dest = join(app.getPath('temp'), asset)
+  // the file name comes from the release listing: only plain characters reach the disk (and the install script)
+  const dest = join(app.getPath('temp'), basename(asset).replace(/[^\w.\- ]/g, '_'))
   const stallMs = opts.stallMs ?? STALL_MS
   const retries = opts.retries ?? RETRIES
   const backoffMs = opts.backoffMs ?? BACKOFF_MS
@@ -252,6 +261,7 @@ export async function downloadUpdate(
       try {
         const received = await fetchInstaller(url, dest, info.assetSize, win, stallMs)
         log.info(`update downloaded: ${dest} (${received} bytes, attempt ${attempt})`)
+        downloadedInstaller = dest
         return { ok: true, path: dest }
       } catch (e) {
         last = e
@@ -388,8 +398,8 @@ export async function applyUpdate(installerPath: string): Promise<ApplyResult> {
         return { ok: false, needsManual: true }
       }
       const script = writeSwapScript(`
-DMG=${JSON.stringify(installerPath)}
-BUNDLE=${JSON.stringify(bundle)}
+DMG=${shq(installerPath)}
+BUNDLE=${shq(bundle)}
 DIR=$(dirname "$BUNDLE")
 MP=$(hdiutil attach "$DMG" -nobrowse -noautoopen | tail -1 | sed 's#.*\\(/Volumes/.*\\)#\\1#')
 SRC=$(ls -d "$MP"/*.app | head -1)

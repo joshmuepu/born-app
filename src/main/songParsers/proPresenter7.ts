@@ -81,12 +81,16 @@ interface StructuredResult {
 }
 
 function parseStructured(buf: Buffer): StructuredResult | null {
-  let pres: ReturnType<typeof decodeMessage>
+  // any damaged nested section falls back to the plain RTF scan below, never fails the import
   try {
-    pres = decodeMessage(buf)
+    return parseStructuredUnsafe(buf)
   } catch {
     return null
   }
+}
+
+function parseStructuredUnsafe(buf: Buffer): StructuredResult | null {
+  const pres = decodeMessage(buf)
 
   // cues: uuid → rtf text
   const cueText = new Map<string, string>()

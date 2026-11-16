@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.13.6
+
+**Updating from 1.13.3 or older?** The first start takes a moment while BORN upgrades its sermon library once. It keeps a dated copy of your old library beside the new one.
+
+**On the projected screen**
+- If the congregation screen, the stage monitor or BORN's main window stops working, BORN starts it again with what was live and tells you. If a screen keeps stopping, the header shows it as off instead of showing it live over a black screen.
+- Keys can no longer change the screen by accident: **Alt+arrows**, a **held arrow key**, **Ctrl+Space**, **Ctrl/Cmd+B** and **Ctrl/Cmd+Enter** no longer move, hide or replace what is live.
+- **Esc** in the Bible search options or the status panel now just closes that panel. It no longer hides the screens.
+- The stage monitor can no longer be set onto the projector's own screen, where it would cover what the room sees. It goes to a spare screen or a window instead.
+- The **Message** banner is solid, so the reference line under it no longer shows through the message.
+
+**In the app**
+- Closing BORN's main window while something is on screen now asks first.
+- A saved queue, settings or song library that cannot be read is now reported, with what to do, instead of showing an empty list or "Loading…" for ever. A settings change that could not be saved is reported too.
+- Opening the projector or the stage monitor no longer takes the keyboard away from the main window, so typing in search works straight away.
+- The main window fits on small displays.
+- Keyboard and screen-reader improvements: closing the Message window puts the keyboard back where it was, **Show** and **+ Queue** keep the keyboard, buttons and fields have names, Browse lists open with **Enter**, and the song key picker can be used from the keyboard.
+- In the Service Queue, an item's title uses the whole row again.
+
+**On the phone and iPad**
+- The phone no longer says "Couldn't reach BORN" when BORN simply refused a request. When the phone is offline it says **Not connected** at once, and a tap gives up after a few seconds instead of waiting.
+- **Remove** has an **Undo**, and sits apart from **Move down**.
+- An item's details follow that item when the list changes, and close with a note if it was taken out of the service.
+- Lists and details that cannot load say so instead of "Loading…" for ever. Messages fit on narrow phones.
+- Sermon results no longer start with the paragraph number, which is already shown beside them.
+
+**Songs**
+- Song files saved by Windows programs (such as Notepad's "ANSI") keep their curly quotes, apostrophes, dashes, euro sign and accents. UTF-16 song files can be read too.
+- A dated copy of your song library is kept before every import (the last three are kept).
+- **Songs > Import** on Windows can pick single files as well as a folder.
+- A song with the same file name as one already imported, but different words, is now imported. An import that failed no longer lists songs as added, or stays on "Importing…".
+- OpenLyrics, ProPresenter and plain-text song files import more reliably, and Chinese and Japanese lyrics break at the end of a sentence.
+- The song editor can undo a removed slide, and the newest song you open is the one shown.
+
+**Under the hood**
+- Saved files are written safely: they reach the disk before they replace the old ones.
+- If the first copy of the Bible and song library fails (a full disk, for example), BORN makes it again on the next start. A library another program is holding is no longer set aside as damaged.
+- Links in Help open only web and email addresses. BORN's windows cannot open other windows or pages, and the update step runs only the installer it downloaded.
+
+Nothing new was added: no new screens or settings. Your saved services open and save exactly as before.
+
 ## 1.13.5
 
 **On the phone and iPad**

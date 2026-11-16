@@ -6,6 +6,7 @@ import { quoteToItem } from '../../../shared/queueItem'
 import { highlight } from '../highlight'
 import './SermonPanel.css'
 import type { HighlightMode } from '../../../shared/searchHighlight'
+import { blurAfterPointer } from '../focusAfterClick'
 
 interface Props {
   /** The sermon being shown. */
@@ -181,12 +182,12 @@ export default function SermonFollowView({
                 role="button"
                 tabIndex={0}
                 title="Put this paragraph on the screen"
-                onClick={(e) => { onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
+                onClick={(e) => { onProject(fs.quote, fs.slideIndex); blurAfterPointer(e) }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     onProject(fs.quote, fs.slideIndex)
-                    e.currentTarget.blur()
+                    blurAfterPointer(e)
                   }
                 }}
               >
@@ -198,13 +199,13 @@ export default function SermonFollowView({
                 <div className="result-actions">
                   <button
                     className="btn-quiet btn-sm"
-                    onClick={(e) => { e.stopPropagation(); onAddToQueue(fs.quote); e.currentTarget.blur() }}
+                    onClick={(e) => { e.stopPropagation(); onAddToQueue(fs.quote); blurAfterPointer(e) }}
                   >
                     + Queue
                   </button>
                   <button
                     className="btn-primary btn-sm"
-                    onClick={(e) => { e.stopPropagation(); onProject(fs.quote, fs.slideIndex); e.currentTarget.blur() }}
+                    onClick={(e) => { e.stopPropagation(); onProject(fs.quote, fs.slideIndex); blurAfterPointer(e) }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>

@@ -8,6 +8,7 @@ import OnlineImport from './OnlineImport'
 import PasteSongScreen from './PasteSongScreen'
 import SongReviewScreen from './SongReviewScreen'
 import './SongsPanel.css'
+import { blurAfterPointer } from '../focusAfterClick'
 
 interface Props {
   visible: boolean
@@ -53,6 +54,9 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const [allLoading, setAllLoading] = useState(false)
   const [recentSongs, setRecentSongs] = useState<SongSummary[]>([])
   const [recentLoaded, setRecentLoaded] = useState(false)
+  /** The song library could not be read: said, with Try again, instead of an empty list or "Loading…" for ever. */
+  const [libraryUnreadable, setLibraryUnreadable] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
 
   const [selected, setSelected] = useState<SongDetail | null>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
@@ -89,13 +93,17 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     window.electronAPI.getRecentSongs().then((r) => {
       setRecentSongs(r)
       setRecentLoaded(true)
-    })
+    }).catch(() => setLibraryUnreadable(true))
   }, [])
   const loadAllSongs = useCallback(() => {
     setAllLoading(true)
     window.electronAPI.searchSongs('').then((r) => {
       setAllSongs(r)
       setAllLoading(false)
+      setLibraryUnreadable(false)
+    }).catch(() => {
+      setAllLoading(false)
+      setLibraryUnreadable(true)
     })
   }, [])
 
@@ -118,15 +126,28 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       window.electronAPI.searchSongs(q).then((r) => {
         setResults(r)
         setSearched(true)
+        setLibraryUnreadable(false)
+      }).catch(() => {
+        setResults([])
+        setSearched(false)
+        setLibraryUnreadable(true)
       })
     }, 200)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [query])
+  }, [query, retryTick])
 
+  // The newest song opened wins: a slower answer for a song opened earlier is dropped, and a song that is gone (null) leaves the view alone.
+  const openToken = useRef(0)
   const openSong = useCallback((id: number) => {
-    window.electronAPI.getSong(id).then(setSelected)
+    const token = ++openToken.current
+    window.electronAPI
+      .getSong(id)
+      .then((s) => {
+        if (token === openToken.current && s) setSelected(s)
+      })
+      .catch(() => {})
   }, [])
 
   const clearRecent = useCallback(() => {
@@ -180,7 +201,15 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     setImportMenuOpen(false)
     setImportMsg('Importing…')
     setImportFailures([])
-    const r = await window.electronAPI.importSongs()
+    let r: Awaited<ReturnType<typeof window.electronAPI.importSongs>>
+    try {
+      r = await window.electronAPI.importSongs()
+    } catch {
+      // a failed import ends "Importing…" and says so, instead of staying on it
+      setImportMsg('Could not import those songs. Nothing was added.')
+      setTimeout(() => setImportMsg(null), 8000)
+      return
+    }
     if (!r) {
       setImportMsg(null)
       return
@@ -190,6 +219,8 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     if (r.skipped) parts.push(`${r.skipped} already present`)
     if (r.failed.length) parts.push(`${r.failed.length} failed`)
     if (r.needsReview.length) parts.push(`${r.needsReview.length} need${r.needsReview.length === 1 ? 's' : ''} a quick review`)
+    // where the copy from before the import is, said only when something was added or is about to be
+    if ((r.added.length || r.needsReview.length) && r.backup) parts.push('a copy of your songs from before is in the data folder, under backups')
     setImportMsg(parts.join(' · ') || 'Nothing imported')
     setImportFailures(r.failed)
     refreshAfterChange()
@@ -344,6 +375,23 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     )
   }
 
+  const libraryUnreadableNote = (
+    <div className="songs-empty" role="alert">
+      The song library could not be read, so no songs can be shown. Try again; if it keeps happening, restart BORN.{' '}
+      <button
+        className="songs-inline-link"
+        onClick={() => {
+          setLibraryUnreadable(false)
+          setAllSongs(null)
+          loadRecent()
+          setRetryTick((n) => n + 1)
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  )
+
   return (
     <div className="songs-panel">
       <div className="panel-subtab-bar">
@@ -421,10 +469,10 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
               <SongKeyPicker songKey={selected.songKey} onChange={handleUpdateKey} />
             </div>
             <div className="result-actions">
-              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); e.currentTarget.blur() }}>
+              <button className="btn-secondary btn-sm" onClick={(e) => { onAddSong(selected); blurAfterPointer(e) }}>
                 + Queue
               </button>
-              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); e.currentTarget.blur() }}>
+              <button className="btn-primary btn-sm" onClick={(e) => { onProjectSong(selected, 0); blurAfterPointer(e) }}>
                 Project
               </button>
               {selected.source === 'import' && (
@@ -460,7 +508,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                     className={`song-jump-chip${live ? ' is-live' : ''}`}
                     onClick={(e) => {
                       projectSlide(i)
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }}
                     title={live ? `Repeat ${s.label}` : `Jump to ${s.label}`}
                   >
@@ -484,13 +532,13 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   title="Put this slide on the screen"
                   onClick={(e) => {
                     onProjectSong(selected, i)
-                    e.currentTarget.blur()
+                    blurAfterPointer(e)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       onProjectSong(selected, i)
-                      e.currentTarget.blur()
+                      blurAfterPointer(e)
                     }
                   }}
                 >
@@ -501,7 +549,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                   <div className="song-slide-text">{s.text}</div>
                   <button
                     className="btn-secondary btn-sm song-slide-project"
-                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); e.currentTarget.blur() }}
+                    onClick={(e) => { e.stopPropagation(); onProjectSong(selected, i); blurAfterPointer(e) }}
                   >
                     {live ? 'Restart here' : 'Project'}
                   </button>
@@ -558,6 +606,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                 )}
               </div>
             )}
+            {libraryUnreadable && libraryUnreadableNote}
             {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
             {searched && results.map((s) => renderSongRow(s))}
             {searched && (
@@ -600,6 +649,8 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
               )}
               {recentSongs.map((s) => renderSongRow(s))}
             </div>
+          ) : libraryUnreadable && !allLoading ? (
+            <div className="songs-list">{libraryUnreadableNote}</div>
           ) : allLoading || allSongs === null ? (
             <div className="songs-empty">Loading…</div>
           ) : (

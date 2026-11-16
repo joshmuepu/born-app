@@ -347,7 +347,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.songs(q))
     } catch {
-      sendJSON(res, 200, [])
+      // the song library could not be read: an error the phone says, not an empty list it would show as "No songs found"
+      sendJSON(res, 500, { error: 'The song library could not be read.' })
     }
     return
   }
@@ -361,7 +362,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
   if (path === '/api/bible/books' && req.method === 'GET') {
-    sendJSON(res, 200, await searchHandlers!.bibleBooks())
+    try {
+      sendJSON(res, 200, await searchHandlers!.bibleBooks())
+    } catch {
+      sendJSON(res, 500, { error: 'The Bible could not be read.' })
+    }
     return
   }
   if (path === '/api/bible/chapter' && req.method === 'GET') {
@@ -375,7 +380,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return
   }
   if (path === '/api/songs/recent' && req.method === 'GET') {
-    sendJSON(res, 200, await searchHandlers!.recentSongs())
+    try {
+      sendJSON(res, 200, await searchHandlers!.recentSongs())
+    } catch {
+      sendJSON(res, 500, { error: 'The song library could not be read.' })
+    }
     return
   }
   if (path === '/api/songs/recent-keys' && req.method === 'GET') {

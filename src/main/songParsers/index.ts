@@ -11,6 +11,7 @@ import { parseChordPro } from './chordPro'
 import { parsePlainText } from './plainText'
 import { extractDocxText } from './docx'
 import { extractPdfText } from './pdf'
+import { decodeSongBytes } from './decodeText'
 
 export { detectFormat, titleFromFilename, type SongFormat }
 
@@ -40,7 +41,10 @@ export async function parseSong(
   filename: string,
   data: Buffer
 ): Promise<ParseResult | { error: string; format?: SongFormat }> {
-  const head = data.toString('utf8', 0, 4000)
+  // text formats are decoded once, by their own encoding (UTF-8, UTF-16 with a byte-order mark, or Windows-1252), not taken as UTF-8 regardless
+  const binary = /\.(docx|pdf)$/i.test(filename)
+  const text = binary ? '' : decodeSongBytes(data)
+  const head = binary ? data.toString('latin1', 0, 4000) : text.slice(0, 4000)
   const format = detectFormat(filename, head)
   const fallback = titleFromFilename(filename)
   const fallbackKey = keyFromFilename(filename)
@@ -52,13 +56,13 @@ export async function parseSong(
         song = parseProPresenter7(data, fallback, fallbackKey)
         break
       case 'openlyrics':
-        song = parseOpenLyrics(data.toString('utf8'), fallback)
+        song = parseOpenLyrics(text, fallback)
         break
       case 'opensong':
-        song = parseOpenSong(data.toString('utf8'), fallback)
+        song = parseOpenSong(text, fallback)
         break
       case 'chordpro':
-        song = parseChordPro(data.toString('utf8'), fallback)
+        song = parseChordPro(text, fallback)
         break
       case 'docx': {
         const text = await extractDocxText(data)
@@ -73,7 +77,7 @@ export async function parseSong(
         break
       }
       default:
-        song = parsePlainText(data.toString('utf8'), fallback)
+        song = parsePlainText(text, fallback)
     }
   } catch (e) {
     return { error: (e as Error).message || 'parse failed', format }

@@ -135,10 +135,20 @@ describe('pickStageDisplay', () => {
   })
 
   it('honours a valid named override', () => {
-    const named = nameIt([internal, projector, stageTv], projector, 'Congregation Screen')
-    const t = pickStageDisplay([internal, projector, stageTv], 1, 2, 'Congregation Screen', [named])
-    expect(t.display?.id).toBe(2)
+    const named = nameIt([internal, projector, stageTv], stageTv, 'Stage TV')
+    const t = pickStageDisplay([internal, projector, stageTv], 1, 2, 'Stage TV', [named])
+    expect(t.display?.id).toBe(3)
     expect(t.isOverride).toBe(true)
+  })
+
+  it('refuses a named display that is the congregation screen\'s: the congregation screen keeps it, the stage monitor goes elsewhere', () => {
+    const named = nameIt([internal, projector, stageTv], projector, 'Congregation Screen')
+    const spare = pickStageDisplay([internal, projector, stageTv], 1, 2, 'Congregation Screen', [named])
+    expect(spare.display?.id).toBe(3)
+    expect(spare.clashesProjection).toBe(true)
+    const windowed = pickStageDisplay([internal, projector], 1, 2, 'Congregation Screen', [nameIt([internal, projector], projector, 'Congregation Screen')])
+    expect(windowed.display).toBeNull()
+    expect(windowed.clashesProjection).toBe(true)
   })
 
   it('falls back to the spare screen and reports the name when the override is unmatched', () => {

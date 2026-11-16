@@ -41,12 +41,13 @@ const post = (port, body) => fetch(`http://127.0.0.1:${port}/command`, { method:
 
 ;(async () => {
   const app = await launch({ profile, cwd: appDir, remotePort: 14318, mdns: 'born-remote-v1compat', port: 9358, settle: 6000 })
-  const fixDir = path.join(profile, 'fixtures'); fs.mkdirSync(fixDir, { recursive: true })
+  // in the saved-services folder: since 1.13.4 the phone's open-service opens only the files it is shown (the ones in that folder)
+  const fixDir = path.join(profile, 'saved-services'); fs.mkdirSync(fixDir, { recursive: true })
   SONGS = librarySongs(profile)
   if (SONGS.length < 2) throw new Error('the seeded library has no songs — is resources/library.db.gz in the app being run?')
   const results = {}
   for (const [name, content] of Object.entries(fixtures())) {
-    const file = path.join(fixDir, name + '.born')
+    const file = path.join(fixDir, 'in-' + name + '.born')
     fs.writeFileSync(file, JSON.stringify(content, null, 2))
     await post(14318, { action: 'new-service' }); await sleep(600)
     await post(14318, { action: 'open-service', path: file }); await sleep(1200)

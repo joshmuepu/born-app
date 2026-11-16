@@ -13,7 +13,7 @@
  *     every insert in one db.transaction() — either all of them land, or
  *     (on any failure) none do; the library is never left half-imported.
  */
-import { getLibraryDb } from './libraryDb'
+import { getLibraryDb, backupLibraryBeforeImport } from './libraryDb'
 import { insertSong } from './songInsert'
 import { log } from './logger'
 import {
@@ -68,6 +68,7 @@ export function commitSongImportDecisions(groups: SongGroupToAdd[]): CommitSongI
   if (groups.length === 0) return { ok: true, added: [] }
   try {
     const db = getLibraryDb()
+    backupLibraryBeforeImport()
     const added: Array<{ groupId: string; songId: number }> = []
     const tx = db.transaction(() => {
       for (const group of groups) {

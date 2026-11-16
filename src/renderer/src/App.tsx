@@ -33,7 +33,7 @@ import { parseReference, isRefError } from '../../shared/bibleRef'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
-import { escBlanksScreens, trackEscOverlay } from './escRule'
+import { escBlanksScreens, trackEscOverlay, useReturnFocus } from './escRule'
 import { newSerialQueue, serialize } from './serialize'
 
 /** Where the projected slide sits in its source — for the "On screen" highlight. */
@@ -159,6 +159,11 @@ export default function App() {
       const next = [...migrated, ...queueRef.current]
       queueRef.current = next
       setServiceQueue(next)
+    }).catch(() => {
+      // the saved queue could not be asked for: say so, and keep saving from now on (before, nothing was saved again for the whole run)
+      queueLoaded.current = true
+      setOperatorNotice({ message: 'Your saved queue could not be read, so the queue started empty. What you add now is saved as usual.', action: 'data-folder' })
+      if (queueRef.current.length) window.electronAPI.saveQueue(queueRef.current)
     })
   }, [])
 
@@ -261,12 +266,48 @@ export default function App() {
     })
     const unStage = window.electronAPI.onStageClosed(() => setStageOpen(false))
     const unBlank = window.electronAPI.onOperatorBlankChanged((blank) => setIsScreenBlanked(blank))
+    // An output whose page kept stopping is left off: shown as closed here (never as live over a dead screen), with a notice that stays and
+    // opens it again with what is live.
+    const unFailed = window.electronAPI.onProjectionFailed?.(() => {
+      setProjectionOpen(false)
+      setIsScreenBlanked(false)
+      setOperatorNotice({ message: 'The congregation screen stopped several times and is off: nothing shows there.', action: 'projection' })
+    }) ?? (() => {})
+    const unStageFailed = window.electronAPI.onStageFailed?.(() => {
+      setStageOpen(false)
+      setOperatorNotice({ message: 'The stage monitor stopped several times and is off.', action: 'stage' })
+    }) ?? (() => {})
+    const unNotice = window.electronAPI.onOperatorNotice?.((message) => setOperatorNotice({ message })) ?? (() => {})
+    // a window started again after it stopped asks what is open, so its header tells the truth
+    void window.electronAPI.outputsOpen?.().then((o) => {
+      if (!o) return
+      setProjectionOpen(o.projection)
+      setStageOpen(o.stage)
+      if (o.projection) setIsScreenBlanked(o.blank)
+    }).catch(() => {})
     return () => {
       unProj()
       unStage()
       unBlank()
+      unFailed()
+      unStageFailed()
+      unNotice()
     }
   }, [])
+
+  // What the operator is told when a window stopped. A plain notice goes after a while; one with an action stays until it is used or dismissed.
+  const [operatorNotice, setOperatorNotice] = useState<{ message: string; action?: 'projection' | 'stage' | 'data-folder' } | null>(null)
+  useEffect(() => {
+    if (!operatorNotice || operatorNotice.action) return
+    const t = setTimeout(() => setOperatorNotice(null), 9000)
+    return () => clearTimeout(t)
+  }, [operatorNotice])
+  useEffect(() => {
+    if (projectionOpen) setOperatorNotice((n) => (n?.action === 'projection' ? null : n))
+  }, [projectionOpen])
+  useEffect(() => {
+    if (stageOpen) setOperatorNotice((n) => (n?.action === 'stage' ? null : n))
+  }, [stageOpen])
 
   useEffect(() => {
     window.electronAPI.getIndexerStatus().then(setIndexer)
@@ -858,6 +899,9 @@ export default function App() {
   // ── Operator keyboard shortcuts ────────────────────────────────────────────
 
   useEffect(() => trackEscOverlay(), [])
+  // closing the Message dialog or the shortcuts list gives the keyboard back to what opened it
+  useReturnFocus(showAlertDialog)
+  useReturnFocus(showShortcuts)
 
   useEffect(() => {
     const isTyping = (el: EventTarget | null): boolean => {
@@ -900,7 +944,13 @@ export default function App() {
         return
       }
       if (mod && e.key === 'Enter') {
-        if (searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
+        // "Project the top search result" belongs to the Sermons search. A list that used the key itself, a dialog, or another panel must not
+        // put the last sermon search on the screen.
+        if (e.defaultPrevented) return
+        const tgt = e.target as HTMLElement | null
+        if (tgt && typeof tgt.closest === 'function' && tgt.closest('[role="dialog"], .modal')) return
+        const sermonSearchShown = topTab === 'sermons' && sermonsTab === 'search' && !followSermon
+        if (sermonSearchShown && searchResults[0]) { e.preventDefault(); handleProjectSearchResult(searchResults[0]) }
         return
       }
       if ((e.key === '/' || (mod && e.key.toLowerCase() === 'f')) && !isTyping(e.target)) {
@@ -914,6 +964,9 @@ export default function App() {
         document.getElementById('born-search-input')?.focus()
         return
       }
+
+      // Alt+←/→ is the system's Back/Forward chord, not a stepping key: it never steps the live slide
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
 
       if (isTyping(e.target)) return
       const t = e.target as HTMLElement | null
@@ -935,6 +988,11 @@ export default function App() {
         return
       }
 
+      // The stepping keys and B are plain keys: with Ctrl/⌘ or Alt they do nothing here, Shift only goes with Space (Back), and a held key steps
+      // once, not once per key repeat (a held arrow used to skip several slides on the live screen)
+      const stepKey = ['ArrowRight', 'PageDown', ' ', 'ArrowLeft', 'PageUp', 'b', 'B'].includes(e.key)
+      if (stepKey && (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key !== ' '))) return
+      if (stepKey && e.repeat) { e.preventDefault(); return }
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
@@ -962,6 +1020,9 @@ export default function App() {
     showShortcuts,
     projectionOpen,
     searchResults,
+    topTab,
+    sermonsTab,
+    followSermon,
     activeQueueIndex,
     handleProjectSearchResult,
     handleReorder,
@@ -994,7 +1055,16 @@ export default function App() {
   useEffect(() => refreshRecents(), [refreshRecents])
 
   useEffect(() => {
-    window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
+    window.electronAPI.getDataRecoveryInfo().then((info) => {
+      setDataRecovery(info)
+      // a saved queue or settings that could not be read is said, with where the old file was kept (never only logged)
+      const said: string[] = []
+      if (info?.queue?.recovered) said.push('Your saved queue could not be read, so the queue started empty.')
+      if (info?.settings?.recovered) said.push('Your settings could not be read, so BORN started with its defaults.')
+      if (said.length) {
+        setOperatorNotice({ message: `${said.join(' ')} The old file was kept in the data folder, in case support needs it.`, action: 'data-folder' })
+      }
+    }).catch(() => {})
   }, [])
 
   const handleNewService = useCallback(() => {
@@ -1400,6 +1470,14 @@ export default function App() {
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
+  useEffect(() => {
+    if (!statusPopoverOpen) return
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.shiftKey) setStatusPopoverOpen(false)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [statusPopoverOpen])
 
   // What's on the projector right now, so the source panels can highlight it.
   const onScreenLoc = useMemo<OnScreenLoc>(() => {
@@ -1516,6 +1594,32 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {operatorNotice && (
+        <div className="update-banner operator-notice" role="status">
+          <span>{operatorNotice.message}</span>
+          <span className="update-banner-actions">
+            {operatorNotice.action === 'projection' && (
+              <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.openProjection().then(() => setProjectionOpen(true))}>
+                Open projection
+              </button>
+            )}
+            {operatorNotice.action === 'data-folder' && (
+              <button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.openDataFolder()}>
+                Open data folder
+              </button>
+            )}
+            {operatorNotice.action === 'stage' && (
+              <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.openStage().then(() => setStageOpen(true))}>
+                Turn on stage monitor
+              </button>
+            )}
+            <button className="btn-quiet btn-sm" onClick={() => setOperatorNotice(null)}>
+              Dismiss
+            </button>
+          </span>
+        </div>
+      )}
 
       {showFallbackBanner && (
         <div className="fallback-banner">

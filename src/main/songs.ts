@@ -3,7 +3,8 @@
  */
 import { readFileSync, statSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
-import { getLibraryDb } from './libraryDb'
+import { createHash } from 'crypto'
+import { getLibraryDb, backupLibraryBeforeImport } from './libraryDb'
 import { log } from './logger'
 import { parseSong, needsReview, NO_TEXT_FOUND } from './songParsers'
 import { parsePlainText } from './songParsers/plainText'
@@ -105,8 +106,9 @@ export function searchSongs(query: string, limit = NO_PRACTICAL_LIMIT): SongSumm
     }
     return [...titleMatches, ...lyricMatches]
   } catch (e) {
+    // the library could not be read: said by the caller, never shown as "no songs"
     log.error('searchSongs error', e)
-    return []
+    throw e
   }
 }
 
@@ -201,6 +203,8 @@ export interface ImportResult {
   failed: Array<{ file: string; error: string }>
   skipped: number
   needsReview: ReviewItem[]
+  /** Where the copy of the song library from before this import is; null if none could be made. */
+  backup?: string | null
 }
 
 function friendlyParseError(error: string): string {
@@ -226,15 +230,25 @@ export async function importSongs(paths: string[]): Promise<ImportResult> {
     const toCommit: Array<{ song: ParsedSong; originPath: string }> = []
 
     for (const file of files) {
-      const originPath = `import:${basename(file)}`
-      if (songExistsByPath(db, originPath)) {
-        result.skipped++
-        continue
-      }
       try {
-        const r = await parseSong(basename(file), readFileSync(file))
+        const data = readFileSync(file)
+        // Already imported is decided by the file's content (its name plus a hash of its bytes), not its name alone: two different songs saved
+        // under the same name in two folders were taken as one, and a corrected file was never imported.
+        const hash = createHash('sha1').update(data).digest('hex').slice(0, 16)
+        const originPath = `import:${basename(file)}#${hash}`
+        if (songExistsByPath(db, originPath)) {
+          result.skipped++
+          continue
+        }
+        const r = await parseSong(basename(file), data)
         if ('error' in r) {
           result.failed.push({ file: basename(file), error: friendlyParseError(r.error) })
+          continue
+        }
+        // a song imported before the key held the content (origin "import:<name>") is the same song when it has the same title: not added again
+        const legacy = db.prepare<[string], { title: string }>('SELECT title FROM songs WHERE origin_path = ?').get(`import:${basename(file)}`)
+        if (legacy && legacy.title.trim().toLowerCase() === r.song.title.trim().toLowerCase()) {
+          result.skipped++
           continue
         }
         if (needsReview(r.format)) {
@@ -247,12 +261,23 @@ export async function importSongs(paths: string[]): Promise<ImportResult> {
       }
     }
 
+    // a dated copy of the song library first, so an import is never the only copy of what was there before
+    if (toCommit.length || result.needsReview.length) result.backup = backupLibraryBeforeImport()
+    // what was added is listed only once the save is done: a failure part way rolls every song back, so none of them was added
+    const inserted: Array<{ id: number; title: string }> = []
     const tx = db.transaction(() => {
       for (const { song, originPath } of toCommit) {
-        result.added.push(insertSong(db, song, 'import', originPath))
+        inserted.push(insertSong(db, song, 'import', originPath))
       }
     })
-    tx()
+    try {
+      tx()
+      result.added.push(...inserted)
+    } catch (e) {
+      log.error('importSongs: the save was rolled back', e)
+      const msg = (e as Error).message || 'could not be saved'
+      for (const { song } of toCommit) result.failed.push({ file: song.title, error: msg })
+    }
   } catch (e) {
     log.error('importSongs error', e)
   }
@@ -286,6 +311,7 @@ export function commitReviewedSong(
       .get(originPath)
     if (existing) return { ...existing, alreadyImported: true }
   }
+  backupLibraryBeforeImport()
   const ins = insertSong(db, song, 'import', originPath)
   return { ...ins, alreadyImported: false }
 }
@@ -406,6 +432,7 @@ export async function onlineSongImport(
 
   const r = source === 'hymnary' ? await fetchHymnaryHymn(url) : await fetchCyberHymnalHymn(url)
   if (!r.ok) return { ok: false, reason: r.reason, copyright: r.copyright }
+  backupLibraryBeforeImport()
   const ins = insertSong(db, edited, 'import', originPath)
   return { ok: true, id: ins.id, title: ins.title, alreadyImported: false }
 }

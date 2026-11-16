@@ -5,7 +5,7 @@
  */
 import { app } from 'electron'
 import { readFileSync } from 'fs'
-import { join } from 'path'
+import { basename, join } from 'path'
 import { log } from './logger'
 import { quarantineCorruptFile, writeFileAtomic } from './corruptFile'
 import type { NamedDisplay } from './displays'
@@ -127,11 +127,19 @@ export function getSettings(): AppSettings {
     }
   } catch {
     // Missing file = first launch (nothing to keep). A file that exists but won't parse is moved aside before the
-    // next save writes a fresh one over it.
-    quarantineCorruptFile(settingsPath())
+    // next save writes a fresh one over it, and the operator is told (getSettingsRecoveryInfo).
+    const kept = quarantineCorruptFile(settingsPath())
+    if (kept) keptAs = kept
     cache = { ...DEFAULTS }
   }
   return cache
+}
+
+/** A projection text size the app accepts (rem, 1.5 to 8, the same range settings.json accepts), or null for something that is not a number. */
+export function clampFontSize(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : Number.NaN
+  if (!Number.isFinite(n)) return null
+  return Math.min(8, Math.max(1.5, n))
 }
 
 export function updateSettings(patch: Partial<AppSettings>): AppSettings {
@@ -139,8 +147,26 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   cache = next
   try {
     writeFileAtomic(settingsPath(), JSON.stringify(next, null, 2))
+    writeFailed = false
   } catch (e) {
     log.error('settings write failed', e)
+    writeFailed = true
+    // said to the operator: a change that was not saved must not look saved
+    try { onSaveFailed?.() } catch { /* nothing more to do */ }
   }
   return next
+}
+
+let keptAs: string | null = null
+let writeFailed = false
+let onSaveFailed: (() => void) | null = null
+
+/** Called whenever a settings save fails (a full or read-only data folder). */
+export function onSettingsSaveFailed(cb: () => void): void {
+  onSaveFailed = cb
+}
+
+/** What the operator should be told about settings.json: it could not be read at start (kept aside, defaults used), or the last save failed. */
+export function getSettingsRecoveryInfo(): { recovered: boolean; keptAs: string | null; writeFailed: boolean } {
+  return { recovered: keptAs !== null, keptAs: keptAs ? basename(keptAs) : null, writeFailed }
 }

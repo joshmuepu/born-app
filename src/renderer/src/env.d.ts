@@ -55,6 +55,8 @@ declare global {
   interface DataRecoveryInfo {
     sermons: DbRecoveryStatus
     library: DbRecoveryStatus
+    queue?: { recovered: boolean; keptAs: string | null }
+    settings?: { recovered: boolean; keptAs: string | null; writeFailed: boolean }
   }
 
   interface RemoteAdapterInfo {
@@ -148,6 +150,10 @@ declare global {
       onClearQuote: (callback: () => void) => () => void
       notifyProjectionReady: () => void
       onProjectionClosed: (callback: () => void) => () => void
+      onProjectionFailed: (callback: () => void) => () => void
+      onStageFailed: (callback: () => void) => () => void
+      outputsOpen: () => Promise<{ projection: boolean; stage: boolean; blank: boolean }>
+      onOperatorNotice: (callback: (message: string) => void) => () => void
       // Displays
       listDisplays: () => Promise<DisplayInfo>
       setProjectionDisplay: (displayId: number | null) => Promise<DisplayInfo>

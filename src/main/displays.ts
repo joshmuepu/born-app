@@ -204,6 +204,8 @@ export interface StageTarget {
   isOverride: boolean
   /** Same meaning as ProjectionTarget.missingOverrideName. */
   missingOverrideName: string | null
+  /** the stage monitor was set to the congregation screen's display, which the congregation screen keeps */
+  clashesProjection?: boolean
 }
 
 /**
@@ -228,11 +230,14 @@ export function pickStageDisplay(
   if (overrideName) {
     const named = namedDisplays.find((n) => n.name === overrideName)
     const forced = named ? matchNamedDisplay(displays, named) : null
-    if (forced) return { display: forced, isFallback: false, isOverride: true, missingOverrideName: null }
+    if (forced && forced.id !== projectionId) return { display: forced, isFallback: false, isOverride: true, missingOverrideName: null }
+    // The named display is the congregation screen's too: the congregation screen keeps it and the stage monitor goes to a spare display or a
+    // window, so it never covers what the room sees. The Screens panel still says the two were set to the same display.
+    const clashes = !!forced
     const spare = spareOf()
     return spare
-      ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: overrideName }
-      : { display: null, isFallback: true, isOverride: false, missingOverrideName: overrideName }
+      ? { display: spare, isFallback: false, isOverride: false, missingOverrideName: clashes ? null : overrideName, clashesProjection: clashes }
+      : { display: null, isFallback: true, isOverride: false, missingOverrideName: clashes ? null : overrideName, clashesProjection: clashes }
   }
 
   const spare = spareOf()

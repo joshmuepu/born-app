@@ -12,6 +12,8 @@ import {
 import { basename, join } from 'path'
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { log } from './logger'
+import { CrashGuard } from './crashGuard'
+import { appPageTest, guardWebContents, isSafeExternalUrl, ALLOWED_PERMISSIONS } from './windowGuard'
 import { getDb, closeDb, getDbRecoveryInfo } from './db'
 import { getLibraryDb, closeLibraryDb, getLibraryDbRecoveryInfo } from './libraryDb'
 import {
@@ -63,14 +65,14 @@ import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
-import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
+import { readJsonReporting, writeFileAtomic } from './corruptFile'
 import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
 import { MAX_REMOTE_RESULTS } from '../shared/searchLimits'
 import { quoteToItem, type Quote } from '../shared/queueItem'
-import { hitParagraphs } from '../shared/sermonHit'
+import { hitBody, hitParagraphs } from '../shared/sermonHit'
 import {
   buildSearchSQL,
   buildPhraseQuery,
@@ -99,7 +101,8 @@ import {
   openReleasePage,
   downloadUpdate,
   runInstaller,
-  applyUpdate
+  applyUpdate,
+  downloadedInstallerPath
 } from './updateCheck'
 import {
   getLocalDateGroups,
@@ -109,7 +112,10 @@ import {
   getOnThisDay,
   loadBundledSeries
 } from './browseLocal'
-import { getSettings, updateSettings, type AppSettings } from './settings'
+import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
+import { alertPayload, textInput } from './ipcInput'
+import { songImportPickers } from './importPickers'
+import { fitOperatorWindow } from './windowFit'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -169,6 +175,8 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 }
 
 let mainWindow: BrowserWindow | null = null
+/** set when the app is quitting on purpose: the operator window's close does not ask then */
+let quitting = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
 
@@ -231,6 +239,28 @@ function themeBackground(): string {
 function sendToMain(channel: string, ...args: unknown[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
+
+/** A window whose page stopped (crashed, or was killed) is started again: the page asks for what is live and gets it. A page that keeps stopping
+ *  (more than three times a minute) is left alone and `gaveUp` runs, so it cannot loop. Before, a stopped page was only logged: the congregation
+ *  screen stayed black while the header still showed it open, and nobody was told. */
+const crashGuards = { operator: new CrashGuard(), congregation: new CrashGuard(), stage: new CrashGuard() }
+function restartAfterCrash(w: BrowserWindow, reason: string, guard: CrashGuard, onRestart: () => void, gaveUp: () => void): void {
+  if (reason === 'clean-exit' || w.isDestroyed()) return
+  if (!guard.crashed()) {
+    gaveUp()
+    return
+  }
+  setTimeout(() => {
+    if (w.isDestroyed()) return
+    w.webContents.reload()
+    onRestart()
+  }, 300)
+}
+/** Output windows whose page kept stopping and was left off; Open projection / Turn on replaces them. */
+let projectionFailed: BrowserWindow | null = null
+let stageFailed: BrowserWindow | null = null
+/** Dead output windows replaced by a new one: closing them must not clear what is live. */
+const replacedOutputs = new WeakSet<BrowserWindow>()
 function sendToProjection(channel: string, ...args: unknown[]): void {
   if (projectionWindow && !projectionWindow.isDestroyed()) {
     projectionWindow.webContents.send(channel, ...args)
@@ -241,6 +271,22 @@ function sendToStage(channel: string, ...args: unknown[]): void {
 }
 
 // ── Windows ───────────────────────────────────────────────────────────────────
+
+/** Opening or moving an output window must not take the keyboard from the operator window (typing in a search box went nowhere until the operator
+ *  clicked back). Whatever had the keyboard keeps it; macOS full screen settles a moment later, so it is given back again then. Only taken back from
+ *  our own output windows: if the operator went to another app meanwhile, it is left there. */
+function keepOperatorFocus(fn: () => void): void {
+  const had = mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused() ? mainWindow : null
+  fn()
+  if (!had) return
+  const back = (): void => {
+    const now = BrowserWindow.getFocusedWindow()
+    if (!had.isDestroyed() && now && now !== had && (now === projectionWindow || now === stageWindow)) had.focus()
+  }
+  back()
+  setTimeout(back, 250)
+  setTimeout(back, 900)
+}
 
 /** Ctrl/Cmd+R (and +Shift) reload the window through Electron's default menu and wipe what's on screen mid-service. Swallowed in the packaged
  *  app (preventDefault in before-input-event also stops the menu accelerator); dev builds keep reload. */
@@ -253,11 +299,13 @@ function blockReloadChord(win: BrowserWindow): void {
 
 function createMainWindow(): void {
   log.info('createMainWindow')
+  // fitted to the display it opens on: a fixed 1040x640 smallest size ran off a 960x600 display
+  const fit = fitOperatorWindow(screen.getPrimaryDisplay().workArea)
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 1040,
-    minHeight: 640,
+    width: fit.size.width,
+    height: fit.size.height,
+    minWidth: fit.min.width,
+    minHeight: fit.min.height,
     title: 'BORN — Branham or Nothing',
     backgroundColor: themeBackground(),
     webPreferences: {
@@ -278,8 +326,14 @@ function createMainWindow(): void {
     broadcastDisplayInfo()
   })
 
+  const mainWin = mainWindow
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('mainWindow renderer process gone', details)
+    // started again; what is on the screens does not change (this process holds it), and the window says so once it is back
+    restartAfterCrash(mainWin, details.reason, crashGuards.operator, () => {
+      mainWin.webContents.once('did-finish-load', () =>
+        setTimeout(() => sendToMain('operator:notice', 'The operator window stopped and was started again. What is on the screens did not change.'), 1500))
+    }, () => log.error('mainWindow keeps stopping; left as it is'))
   })
 
   mainWindow.webContents.on('unresponsive', () => {
@@ -290,6 +344,23 @@ function createMainWindow(): void {
   // respect focus / typing state; nothing to relay here.
 
   blockReloadChord(mainWindow)
+
+  // Closing the operator window takes the screens down (the outputs go with it). While something is on the congregation screen and not hidden,
+  // the operator is asked first: one click on the window's close button ended it mid-service.
+  mainWindow.on('close', (e) => {
+    if (quitting || !mainWindow || mainWindow.isDestroyed()) return
+    const live = !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
+    if (!live) return
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Keep it open', 'Close and take the screens down'],
+      defaultId: 0,
+      cancelId: 0,
+      message: 'Something is on the screen.',
+      detail: 'Closing this window takes the congregation screen and the stage monitor down.'
+    })
+    if (choice === 0) e.preventDefault()
+  })
 
   mainWindow.on('closed', () => {
     log.info('mainWindow closed')
@@ -365,12 +436,21 @@ function createProjectionWindow(): void {
   })
 
   if (onMac) projectionWindow.setSimpleFullScreen(true)
-  projectionWindow.once('ready-to-show', () => projectionWindow?.show())
+  projectionWindow.once('ready-to-show', () => keepOperatorFocus(() => projectionWindow?.showInactive()))
 
   attachOperatorShortcuts(projectionWindow)
 
+  const projWin = projectionWindow
   projectionWindow.webContents.on('render-process-gone', (_e, details) => {
     log.error('projectionWindow renderer process gone', details)
+    // started again with what is live (projection:ready replays it); after too many stops it is left off and the operator window shows the
+    // projection as closed, never live over a dead screen, with a notice that offers Open projection
+    restartAfterCrash(projWin, details.reason, crashGuards.congregation,
+      () => sendToMain('operator:notice', 'The congregation screen stopped and was started again with what is live.'),
+      () => {
+        projectionFailed = projWin
+        sendToMain('projection:failed')
+      })
   })
 
   projectionWindow.webContents.on('did-fail-load', (_e, code, desc) => {
@@ -385,6 +465,8 @@ function createProjectionWindow(): void {
 
   projectionWindow.on('closed', () => {
     log.info('projectionWindow closed')
+    if (projectionFailed === projWin) projectionFailed = null
+    if (replacedOutputs.has(projWin)) return // a dead window replaced by a new one: what is live stays live
     projectionWindow = null
     projectionState = { slide: null, blank: false, fontSize: projectionState.fontSize }
     // Nothing is being projected any more — the stage monitor falls back to the
@@ -429,7 +511,7 @@ function createStageWindow(): void {
       }
     })
     if (onMac) stageWindow.setSimpleFullScreen(true)
-    stageWindow.once('ready-to-show', () => stageWindow?.show())
+    stageWindow.once('ready-to-show', () => keepOperatorFocus(() => stageWindow?.showInactive()))
   } else {
     // No spare screen: a floating monitor that stays above the operator window
     // so it can't get lost behind it during a service.
@@ -442,15 +524,28 @@ function createStageWindow(): void {
       backgroundColor: '#0a0a0a',
       alwaysOnTop: true,
       skipTaskbar: true,
+      show: false, // shown without taking the keyboard (below)
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         sandbox: false
       }
     })
+    stageWindow.once('ready-to-show', () => keepOperatorFocus(() => stageWindow?.showInactive()))
   }
 
   attachOperatorShortcuts(stageWindow)
+
+  const stageWin = stageWindow
+  stageWindow.webContents.on('render-process-gone', (_e, details) => {
+    log.error('stageWindow renderer process gone', details)
+    restartAfterCrash(stageWin, details.reason, crashGuards.stage,
+      () => sendToMain('operator:notice', 'The stage monitor stopped and was started again.'),
+      () => {
+        stageFailed = stageWin
+        sendToMain('stage:failed')
+      })
+  })
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     stageWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/stage.html`)
@@ -460,6 +555,8 @@ function createStageWindow(): void {
 
   stageWindow.on('closed', () => {
     log.info('stageWindow closed')
+    if (stageFailed === stageWin) stageFailed = null
+    if (replacedOutputs.has(stageWin)) return
     stageWindow = null
     sendToMain('stage:closed')
   })
@@ -534,7 +631,7 @@ function displayInfoPayload() {
     stageIsOverride: stage.isOverride,
     stageMissingOverrideName: stage.missingOverrideName,
     /** true when the stage would share a screen with the main projection. */
-    stageClashesProjection: stage.display != null && stage.display.id === target.display.id
+    stageClashesProjection: !!stage.clashesProjection || (stage.display != null && stage.display.id === target.display.id)
   }
 }
 
@@ -614,6 +711,9 @@ let projectionDisplaced = false
 
 /** Re-place the projection window on the correct display after a hotplug. */
 function repositionProjectionWindow(force = false): void {
+  keepOperatorFocus(() => repositionProjectionWindowNow(force))
+}
+function repositionProjectionWindowNow(force: boolean): void {
   if (!projectionWindow || projectionWindow.isDestroyed()) return
   const onMac = process.platform === 'darwin'
   const target = resolveProjectionTarget()
@@ -669,6 +769,9 @@ function repositionProjectionWindow(force = false): void {
  *  when there's no spare screen). Shares the `repositioning` guard so the
  *  fullscreen toggle doesn't feed the display-metrics loop. */
 function repositionStageWindow(force = false): void {
+  keepOperatorFocus(() => repositionStageWindowNow(force))
+}
+function repositionStageWindowNow(force: boolean): void {
   if (!stageWindow || stageWindow.isDestroyed()) return
   const onMac = process.platform === 'darwin'
   const target = resolveStageTarget()
@@ -741,10 +844,26 @@ function setProjectionBlank(blank: boolean): void {
 
 // ── Projection IPC ────────────────────────────────────────────────────────────
 
+/** Is the congregation screen open and working? Asked by the operator window when it (re)loads. */
+ipcMain.handle('projection:is-open', () => ({
+  projection: !!projectionWindow && !projectionWindow.isDestroyed() && projectionFailed !== projectionWindow,
+  stage: !!stageWindow && !stageWindow.isDestroyed() && stageFailed !== stageWindow,
+  blank: projectionState.blank
+}))
+
 ipcMain.handle('projection:open', () => {
   log.info('ipc projection:open')
+  if (projectionWindow && !projectionWindow.isDestroyed() && projectionFailed === projectionWindow) {
+    // its page kept stopping and was left off: the dead window goes and a new one opens with what is live
+    log.info('projection:open replaces the congregation window that kept stopping')
+    replacedOutputs.add(projectionWindow)
+    projectionWindow.destroy()
+    projectionWindow = null
+    projectionFailed = null
+    crashGuards.congregation.reset()
+  }
   if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.focus()
+    keepOperatorFocus(() => projectionWindow!.showInactive()) // already open: shown, but the keyboard stays with the operator
     return
   }
   return new Promise<void>((resolve) => {
@@ -797,10 +916,11 @@ ipcMain.on('projection:clear', () => {
 
 ipcMain.on(
   'projection:alert',
-  (_event, payload: string | { message: string; target?: 'congregation' | 'stage' | 'both' }) => {
-    const message = typeof payload === 'string' ? payload : payload.message
-    const target = typeof payload === 'string' ? 'congregation' : payload.target ?? 'congregation'
-    if (!message?.trim()) return
+  (_event, payload: unknown) => {
+    // a malformed Message is dropped, never thrown on
+    const p = alertPayload(payload)
+    if (!p) return
+    const { message, target } = p
     if (target === 'congregation' || target === 'both') sendToProjection('projection:alert', message)
     if (target === 'stage' || target === 'both') sendToStage('stage:alert', message)
   }
@@ -810,7 +930,10 @@ ipcMain.on('projection:set-blank', (_event, blank: boolean) => {
   setProjectionBlank(blank)
 })
 
-ipcMain.on('projection:set-font-size', (_event, size: number) => {
+ipcMain.on('projection:set-font-size', (_event, raw: unknown) => {
+  // the range settings.json accepts (1.5 to 8): nothing else reaches the live screen or the file
+  const size = clampFontSize(raw)
+  if (size === null) return
   projectionState.fontSize = size
   try {
     updateSettings({ fontSize: size })
@@ -852,8 +975,16 @@ ipcMain.handle('app:open-release-page', () => openReleasePage())
 ipcMain.handle('app:download-update', (e) =>
   downloadUpdate(BrowserWindow.fromWebContents(e.sender))
 )
-ipcMain.handle('app:run-installer', (_e, filePath: string) => runInstaller(filePath))
-ipcMain.handle('app:apply-update', (_e, filePath: string) => applyUpdate(filePath))
+// only the installer this run downloaded is ever opened or run; the path the window passes is not used
+const noInstaller = { ok: false, error: 'Download the update first.' }
+ipcMain.handle('app:run-installer', () => {
+  const p = downloadedInstallerPath()
+  return p ? runInstaller(p) : noInstaller
+})
+ipcMain.handle('app:apply-update', () => {
+  const p = downloadedInstallerPath()
+  return p ? applyUpdate(p) : { ...noInstaller, needsManual: true }
+})
 ipcMain.handle('app:quit', () => app.quit())
 
 /** Whether either local database was found corrupted and auto-recovered at
@@ -861,8 +992,18 @@ ipcMain.handle('app:quit', () => app.quit())
  *  that, never as "needs an internet connection." */
 ipcMain.handle('app:data-recovery-info', () => ({
   sermons: getDbRecoveryInfo(),
-  library: getLibraryDbRecoveryInfo()
+  library: getLibraryDbRecoveryInfo(),
+  queue: queueRecovery,
+  settings: getSettingsRecoveryInfo()
 }))
+
+// A settings change that could not be saved is said once a run, never shown as if it were kept
+let settingsSaveFailureSaid = false
+onSettingsSaveFailed(() => {
+  if (settingsSaveFailureSaid) return
+  settingsSaveFailureSaid = true
+  sendToMain('operator:notice', 'Your settings could not be saved (the data folder may be full or read-only). Changes last only until BORN is closed.')
+})
 
 /** Opens the folder holding the local databases/settings, so a support
  *  conversation ("go to this folder") doesn't require finding it by hand. */
@@ -876,7 +1017,8 @@ ipcMain.handle('app:open-data-folder', () => shell.openPath(app.getPath('userDat
 ipcMain.handle('manual:manifest', () => getManualManifest())
 ipcMain.handle('manual:page', (_e, relPath: string) => readManualPage(relPath))
 ipcMain.handle('manual:image', (_e, relPath: string) => readManualImage(relPath))
-ipcMain.handle('manual:open-external', (_e, url: string) => shell.openExternal(url))
+// only web and mail links go to the operating system (file:, smb: and custom schemes were passed on)
+ipcMain.handle('manual:open-external', (_e, url: string) => (isSafeExternalUrl(url) ? shell.openExternal(url) : undefined))
 
 /** A full page already rendered to self-contained HTML (markdown-it's output
  *  with every image inlined as a data: URL) is handed in from the renderer
@@ -976,7 +1118,7 @@ function showDisplayOverlay(displayId: number, html: string, durationMs: number)
   })
   overlayWindow = win
   win.setAlwaysOnTop(true, 'screen-saver')
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => win.showInactive())
   win.on('closed', () => {
     if (overlayWindow === win) overlayWindow = null
     if (overlayTimer) {
@@ -1043,8 +1185,9 @@ ipcMain.handle('stage:set-display', (_event, displayId: number | null) => {
   return displayInfoPayload()
 })
 
-ipcMain.handle('displays:rename', (_event, displayId: number, rawName: string) => {
-  const name = rawName.trim()
+ipcMain.handle('displays:rename', (_event, displayId: number, rawName: unknown) => {
+  // a name that is not text is no name (it threw here)
+  const name = textInput(rawName)
   if (!name) return displayInfoPayload()
   const displays = screen.getAllDisplays().map(toDisplayLike)
   const target = displays.find((d) => d.id === displayId)
@@ -1229,7 +1372,8 @@ async function searchSermonsForRemote(query: string, dateCode?: string): Promise
   // Cut down hard before it ever reaches the wire.
   return rows.slice(0, MAX_REMOTE_RESULTS).map((r) => ({
     ...r,
-    highlightedText: highlightToHtml(r.text, query, r.matchType ?? 'all'),
+    // without the leading paragraph number, as on the desktop: the phone shows it already as ¶75
+    highlightedText: highlightToHtml(hitBody(r.text), query, r.matchType ?? 'all'),
     slides: quoteToItem(r).slides
   }))
 }
@@ -1292,9 +1436,13 @@ ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
 
 // ── Queue persistence ─────────────────────────────────────────────────────────
 
+/** The saved queue could not be read at start (it was kept aside): the operator is told instead of finding an empty queue. */
+let queueRecovery: { recovered: boolean; keptAs: string | null } = { recovered: false, keptAs: null }
 ipcMain.handle('queue:load', () => {
   // A damaged queue.json is kept aside (queue.corrupt-<time>.json) rather than silently replaced by the next save.
-  return readJsonQuarantining(join(app.getPath('userData'), 'queue.json'), [])
+  const r = readJsonReporting<unknown[]>(join(app.getPath('userData'), 'queue.json'), [])
+  if (r.unreadable) queueRecovery = { recovered: true, keptAs: r.keptAs ? basename(r.keptAs) : null }
+  return r.value
 })
 
 ipcMain.on('queue:save', (_event, items: unknown) => {
@@ -1310,8 +1458,15 @@ ipcMain.on('queue:save', (_event, items: unknown) => {
 
 ipcMain.handle('stage:open', () => {
   log.info('ipc stage:open')
+  if (stageWindow && !stageWindow.isDestroyed() && stageFailed === stageWindow) {
+    replacedOutputs.add(stageWindow)
+    stageWindow.destroy()
+    stageWindow = null
+    stageFailed = null
+    crashGuards.stage.reset()
+  }
   if (stageWindow && !stageWindow.isDestroyed()) {
-    stageWindow.focus()
+    keepOperatorFocus(() => stageWindow!.showInactive())
     return
   }
   return new Promise<void>((resolve) => {
@@ -1911,9 +2066,19 @@ ipcMain.handle('songs:recent', () => recentSongSummaries())
 ipcMain.handle('songs:clear-recent', () => clearRecentSongs())
 
 ipcMain.handle('songs:import', async () => {
+  // On Windows and Linux one dialog cannot pick files AND folders (it shows a folder chooser only, so a single .pro, .docx or .pdf could not be
+  // chosen). There the operator says which first; macOS keeps the one dialog that does both.
+  const steps = songImportPickers(process.platform)
+  let props = steps[0]
+  if (steps.length > 1) {
+    const opts = { type: 'question' as const, title: 'Import songs', message: 'Import song files, or every song file in a folder?', buttons: ['Choose files…', 'Choose a folder…', 'Cancel'], defaultId: 0, cancelId: 2 }
+    const which = mainWindow && !mainWindow.isDestroyed() ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
+    if (which.response === 2) return null
+    props = steps[which.response]
+  }
   const result = await dialog.showOpenDialog({
     title: 'Import songs',
-    properties: ['openFile', 'multiSelections', 'openDirectory'],
+    properties: props,
     filters: [
       {
         name: 'Song files',
@@ -2013,8 +2178,18 @@ ipcMain.handle('indexer:stop', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
+// Every page the app makes gets the same guard: no new windows, no leaving the app's own pages
+const isAppPage = appPageTest(join(__dirname, '../renderer'), isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined)
+app.on('web-contents-created', (_e, wc) => guardWebContents(wc as never, isAppPage, (m) => log.warn(m)))
+
 app.whenReady().then(async () => {
   log.boot()
+  // only the browser permissions the app uses are given (every request was granted before)
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    const ok = ALLOWED_PERMISSIONS.has(permission)
+    if (!ok) log.warn(`refused the browser permission "${permission}"`)
+    callback(ok)
+  })
   app.setName('Branham or Nothing')
   // Dev-only escape hatch, same purpose as BORN_USER_DATA_DIR — routes this
   // instance's network traffic at an address nothing listens on, so every
@@ -2214,6 +2389,7 @@ app.on('second-instance', () => {
 })
 
 app.on('before-quit', () => {
+  quitting = true // a quit the operator chose (the menu, Cmd+Q) is not asked again by the window's close
   stopMdns()
   globalShortcut.unregisterAll()
 })
@@ -2228,10 +2404,24 @@ app.on('window-all-closed', () => {
 })
 
 // Catch unhandled promise rejections in the main process
+// A failure the app did not expect is logged and said to the operator (at most once a minute), not only logged. The app keeps running, as before:
+// stopping mid-service would take the screens down.
+let lastFaultNotice = 0
+function sayUnexpectedFault(): void {
+  const t = Date.now()
+  if (t - lastFaultNotice < 60_000) return
+  lastFaultNotice = t
+  try {
+    sendToMain('operator:notice', 'Something went wrong in the background. The screens were not changed. If something does not respond, restart BORN after the service.')
+  } catch { /* nothing more to do */ }
+}
+
 process.on('unhandledRejection', (reason) => {
   log.error('unhandledRejection in main process', reason)
+  sayUnexpectedFault()
 })
 
 process.on('uncaughtException', (err) => {
   log.error('uncaughtException in main process', err)
+  sayUnexpectedFault()
 })

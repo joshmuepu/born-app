@@ -20,6 +20,7 @@ resources/bible-cache.db*
 resources/*.gz.tmp
 scripts/.build-sermon-db.mjs
 scripts/.build-library-db.mjs
+scripts/runtime-check/.out/
 
 # Song source — unpacked from Songs.zip at build time
 resources/songs-source/

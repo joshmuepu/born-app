@@ -165,3 +165,46 @@ describe('a start cut off in the middle of the swap', () => {
     expect(finishInterruptedUpgrade(profile)).toBe(false)
   })
 })
+
+describe('old rows are copied by column name, never by position', () => {
+  it('a profile whose sermons table has its columns in another order keeps each value in its own column', () => {
+    const odd = join(dir, 'odd.db')
+    const d = new Database(odd)
+    d.exec('CREATE TABLE sermons (id INTEGER PRIMARY KEY, title TEXT NOT NULL, date_code TEXT NOT NULL, total_sections INTEGER NOT NULL DEFAULT 0)')
+    d.exec('CREATE TABLE paragraphs (id INTEGER PRIMARY KEY AUTOINCREMENT, sermon_id INTEGER NOT NULL, paragraph_ref TEXT NOT NULL, paragraph_index INTEGER NOT NULL DEFAULT 0, text TEXT NOT NULL)')
+    d.prepare("INSERT INTO sermons (id, title, date_code) VALUES (2, 'Fetched Later', '99-0202E')").run()
+    d.prepare("INSERT INTO paragraphs (sermon_id, paragraph_ref, paragraph_index, text) VALUES (2, '1', 0, '1 Late.')").run()
+    d.close()
+    const r = upgradeSermonDb(odd, gz)
+    expect(r).toMatchObject({ upgraded: true, keptSermons: 1 })
+    const u = new Database(odd, { readonly: true })
+    expect(u.prepare('SELECT date_code, title FROM sermons WHERE id = 2').get()).toEqual({ date_code: '99-0202E', title: 'Fetched Later' })
+    u.close()
+  })
+  it('a profile with a column the bundled library does not have is still upgraded', () => {
+    const extra = join(dir, 'extra.db')
+    make(extra, 2, [[1, '10', '10 Alpha.']], (d) => {
+      d.exec('ALTER TABLE sermons ADD COLUMN note TEXT')
+      d.prepare("INSERT INTO sermons (id, date_code, title, note) VALUES (2, '99-0202E', 'Fetched Later', 'x')").run()
+    })
+    expect(upgradeSermonDb(extra, gz)).toMatchObject({ upgraded: true, keptSermons: 1 })
+  })
+})
+
+describe('the new library is on the disk before it replaces the old one', () => {
+  it('is flushed (fsync) before the swap', () => {
+    const calls: string[] = []
+    const sync = vi.spyOn(fs, 'fsyncSync').mockImplementation(() => { calls.push('fsync') })
+    const ren = vi.spyOn(fs, 'renameSync')
+    ren.mockImplementation(((a: fs.PathLike, b: fs.PathLike) => { calls.push('rename ' + String(b).split(/[\\/]/).pop()); return (renameSync as (x: fs.PathLike, y: fs.PathLike) => void)(a, b) }) as typeof fs.renameSync)
+    try {
+      expect(upgradeSermonDb(profile, gz).upgraded).toBe(true)
+    } finally {
+      sync.mockRestore(); ren.mockRestore()
+    }
+    const swap = calls.indexOf('rename sermons.db')
+    expect(swap).toBeGreaterThan(0)
+    expect(calls.slice(0, swap)).toContain('fsync')
+  })
+})
+

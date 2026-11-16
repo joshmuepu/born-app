@@ -52,8 +52,8 @@ export default function SongReviewScreen({
     setError(null)
     try {
       await onSave(edited)
-    } catch {
-      setError("Couldn't save — try again.")
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "Couldn't save — try again.")
     } finally {
       setSaving(false)
     }
@@ -75,10 +75,11 @@ export default function SongReviewScreen({
 
       {provenanceLabel && <div className="song-provenance">{provenanceLabel}</div>}
 
-      {confirmationNote && (
+      {/* drawn whenever the save needs it: without a note there was no box to tick, so Save stayed off for good */}
+      {(confirmationNote || needsConfirmation) && (
         <label className="song-review-confirm">
           <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-          <span>{confirmationNote} I've checked and confirm this is public domain.</span>
+          <span>{confirmationNote ? `${confirmationNote} ` : ''}I've checked and confirm this is public domain.</span>
         </label>
       )}
 

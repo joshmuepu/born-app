@@ -47,6 +47,15 @@ function joinStrings(x: unknown): string {
   return ''
 }
 
+/** XML entities in one pass (so "&amp;lt;" stays "&lt;"): the five named ones plus decimal and hex numeric ones. */
+function decodeXmlEntities(t: string): string {
+  return t.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|(amp|lt|gt|quot|apos));/g, (whole, dec?: string, hex?: string, name?: string) => {
+    if (name) return ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[name]
+    const cp = dec !== undefined ? Number(dec) : parseInt(hex as string, 16)
+    return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : whole
+  })
+}
+
 export function parseOpenLyrics(xml: string, fallbackTitle = 'Untitled'): ParsedSong {
   let title = fallbackTitle
   let author: string | undefined
@@ -65,24 +74,23 @@ export function parseOpenLyrics(xml: string, fallbackTitle = 'Untitled'): Parsed
   }
 
   const slides: ParsedSongSlide[] = []
-  const verseRe = /<verse\b[^>]*?\bname="([^"]*)"[^>]*>([\s\S]*?)<\/verse>/gi
+  // the verse name in double or single quotes (both are XML)
+  const verseRe = /<verse\b[^>]*?\bname\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/verse>/gi
   let m: RegExpExecArray | null
   while ((m = verseRe.exec(xml))) {
-    const label = verseLabel(m[1])
+    const label = verseLabel(m[1] ?? m[2])
     const linesRe = /<lines\b[^>]*>([\s\S]*?)<\/lines>/gi
     const parts: string[] = []
     let lm: RegExpExecArray | null
-    while ((lm = linesRe.exec(m[2]))) {
+    while ((lm = linesRe.exec(m[3]))) {
       parts.push(
-        lm[1]
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/?(chord|tag|comment)\b[^>]*>/gi, '')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;|&apos;/g, "'")
+        decodeXmlEntities(
+          lm[1]
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/line\s*>/gi, '\n') // one <line> element per line (OpenLyrics 0.9)
+            .replace(/<\/?(chord|tag|comment)\b[^>]*>/gi, '')
+            .replace(/<[^>]+>/g, '')
+        )
       )
     }
     const text = cleanLyricText(parts.join('\n'))

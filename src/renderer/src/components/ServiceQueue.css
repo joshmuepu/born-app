@@ -110,6 +110,7 @@
 }
 
 .queue-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -198,10 +199,20 @@
   border-radius: var(--r-sm);
   padding: 1px 5px;
 }
+/* Shown on hover / keyboard focus only, so they float over the right end of the row instead of
+ * taking its width: in the flow, the two hidden buttons left a title only three or four letters. */
 .queue-row-actions {
-  flex-shrink: 0;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
   display: flex;
+  align-items: center;
   gap: 2px;
+  padding-right: 6px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding-left: 16px;
+  background: linear-gradient(to right, transparent, var(--bg-secondary) 16px);
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out);
 }

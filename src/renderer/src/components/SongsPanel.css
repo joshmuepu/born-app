@@ -731,6 +731,15 @@
   border-radius: var(--r-md);
   color: var(--text-primary);
 }
+.song-editor-removed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 .song-editor-slides {
   display: flex;
   flex-direction: column;
