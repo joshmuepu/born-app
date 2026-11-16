@@ -10,7 +10,7 @@ export const APP_CSS = `
   --bg:#0d1117; --surface:#161b22; --surface2:#1c2230; --border:#30363d;
   --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
   --accent:#8B6FD1; --accent-hover:#9d82e0; --accent-ink:#0d1117;
-  --live:#2ea043; --warn:#e3b341; --warn-ink:#1a1200;
+  --live:#2ea043; --ok:#238636; --ok-ink:#ffffff; --warn:#e3b341; --warn-ink:#1a1200;
   --sage:#83C08E; --amber:#D9A25C; --stone:#C9C2B4;
 }
 *{box-sizing:border-box}
@@ -237,7 +237,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .qitem-editbtn{width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px; background:var(--surface2); border:1px solid var(--border); color:var(--text)}
 .qitem-editbtn:active{background:var(--surface)}
 .qitem-editbtn:disabled{opacity:0.3}
-.qitem-editbtn--danger{color:var(--warn)}
+.qitem-editbtn--danger{color:var(--warn); margin-left:16px}
 
 /* "Reading ahead" / "Not in your queue" — a stronger flag than the routine
    blanked-badge tint, since these two mean something's genuinely worth a
@@ -455,7 +455,12 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .saved-when{font-size:11px; color:var(--text2)}
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
-.toast{position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:#238636; color:#fff; padding:9px 18px; border-radius:9px; font-size:13px; font-weight:700; z-index:90; display:none; white-space:nowrap}
+.toast{position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:var(--ok); color:var(--ok-ink); padding:9px 18px; border-radius:9px; font-size:13px; font-weight:700; z-index:90; display:none; width:max-content; max-width:calc(100vw - 32px); white-space:normal; overflow-wrap:anywhere; text-align:center}
+.undo-bar{position:fixed; bottom:calc(16px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); z-index:91; display:flex; align-items:center; gap:14px; width:max-content; max-width:calc(100vw - 32px); padding:8px 8px 8px 16px; border-radius:12px; background:var(--surface2); color:var(--text); border:1px solid var(--border); box-shadow:0 6px 24px rgba(0,0,0,.35); font-weight:600}
+.undo-bar[hidden]{display:none}
+.undo-bar span{overflow-wrap:anywhere}
+.undo-bar button{min-height:44px; min-width:72px; border-radius:9px; border:1px solid var(--border); background:var(--accent); color:var(--accent-ink); font-weight:800}
+.qitem.is-removing{opacity:.45; text-decoration:line-through}
 .toast.error{background:var(--warn); color:var(--warn-ink)}
 
 /* ── One-time "Add to Home Screen" sheet ──────────────────────────── */
@@ -751,6 +756,7 @@ export function buildAppBody(): string {
     </div>
   </div>
   <div class="toast" id="toast"></div>
+  <div class="undo-bar" id="undoBar" role="status" aria-live="polite" hidden><span id="undoText"></span><button type="button" id="undoBtn" onclick="undoRemove()">Undo</button></div>
 </div>
 `
 }
@@ -1277,11 +1283,29 @@ function moveQueueItemRemote(i, dir){
   if(to < 0 || to >= q.length) return;
   cmd('reorder', { id: q[i].id, toId: q[to].id });
 }
+/* Remove from the phone has an Undo: the row is marked and the removal is sent after 5 s unless Undo is pressed. A second Remove sends the first at once.
+   Remove also sits apart from Move down, so a thumb aiming for one does not hit the other. */
+var pendingRemove = null;
 function removeQueueItemRemote(i){
   var it = (state.qs.queue || [])[i];
   if(!it) return;
-  cmd('remove', { id: it.id });
+  if(pendingRemove) commitRemove();
+  pendingRemove = { id: it.id, t: setTimeout(commitRemove, 5000) };
+  $('undoText').textContent = 'Removed “' + (it.title || 'item') + '”';
+  $('undoBar').hidden = false;
+  renderCurrentTab();
 }
+function commitRemove(){
+  var p = pendingRemove; if(!p) return;
+  pendingRemove = null; clearTimeout(p.t); $('undoBar').hidden = true;
+  cmd('remove', { id: p.id }).then(function(){ poll(); }, function(){ renderCurrentTab(); });
+}
+function undoRemove(){
+  var p = pendingRemove; if(!p) return;
+  pendingRemove = null; clearTimeout(p.t); $('undoBar').hidden = true;
+  renderCurrentTab();
+}
+function isRemoving(id){ return !!(pendingRemove && pendingRemove.id === id); }
 function nowNextPerfHtml(){
   var on = state.qs.onScreen;
   if(!on){
@@ -1373,7 +1397,7 @@ function queueRowHtml(q, i, editable, richPreview){
   var it = q[i];
   var active = i === state.qs.activeIndex;
   var played = !active && it.played;
-  var rowClass = 'qitem' + (played ? ' qitem--played' : '') + (editable ? ' qitem--editable' : '');
+  var rowClass = 'qitem' + (played ? ' qitem--played' : '') + (editable ? ' qitem--editable' : '') + (isRemoving(it.id) ? ' is-removing' : '');
   var body = '<div class="qkind">' + (played ? ICON_CHECK + ' ' : '') + esc(it.kind).toUpperCase() + (it.slideCount > 1 ? ' \\u00b7 ' + it.slideCount + ' slides' : '') + (active ? ' \\u00b7 ON SCREEN' : '') + '</div>'
     + '<div class="qtitle">' + esc(it.title) + '</div>'
     + (it.subtitle ? '<div class="qsub">' + esc(it.subtitle) + '</div>' : '')
