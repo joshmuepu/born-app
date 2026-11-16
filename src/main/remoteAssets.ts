@@ -219,6 +219,8 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
    extra width goes toward reading the plan, not sitting empty. */
 .qpreview{font-size:12.5px; color:var(--text2); margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .empty{text-align:center; color:var(--text2); padding:40px 24px; font-size:14px; line-height:1.5}
+.retrybtn{min-height:44px; padding:0 18px; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:15px; font-weight:600}
+.retrybtn:active{background:var(--surface2)}
 
 /* Already shown this run — dimmed, not hidden, so a glance up the list still
    confirms "yes we already did that one" instead of it just vanishing. */
@@ -937,22 +939,54 @@ function haptic(action){
  * not after waiting up to 1s for the next /state poll to notice — and still
  * rejects, so a caller's own .then() (e.g. the "Added to queue" toast)
  * correctly never fires for a command that didn't actually reach BORN. */
+/* While the page knows BORN cannot be reached, a tap that changes the screens is not sent at all: the phone would hold it and it would land later, all at
+   once. Hide screen always tries. A tap gives up after 4 s, and a refusal (BORN answered "no") is said as that, not as "Couldn't reach". */
+var OFFLINE_TRIES = { 'blank': 1 };
 function cmd(action, extra){
+  if(state.connOk === false && !OFFLINE_TRIES[action]){
+    toast("Not connected to BORN, so that was not sent. Try again when it says Connected.", true);
+    return Promise.reject(new Error('offline'));
+  }
   haptic(action);
   var body = Object.assign({ action: action }, extra || {});
-  return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+  var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  var t = ctl ? setTimeout(function(){ ctl.abort(); }, 4000) : null;
+  return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
     .then(function(r){
-      if(!r.ok) throw new Error('command failed: ' + r.status);
+      if(t) clearTimeout(t);
       setConn(true);
+      if(!r.ok){
+        toast(r.status === 413 ? "That was too large to send at once. Send it in smaller parts." : "BORN did not accept that. Try again.", true);
+        var refused = new Error('command refused: ' + r.status); refused.refused = true;
+        throw refused;
+      }
       return r;
-    })
-    .catch(function(e){
+    }, function(e){
+      if(t) clearTimeout(t);
       setConn(false);
       toast("Couldn't reach BORN — check the connection and try again", true);
       throw e;
     });
 }
-function getJSON(url){ return fetch(url).then(function(r){ return r.json(); }); }
+/** A read with a time limit, for the polls and lists that say their own failure. */
+function getJSONT(url, ms){
+  var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  var t = ctl ? setTimeout(function(){ ctl.abort(); }, ms) : null;
+  return fetch(url, { signal: ctl ? ctl.signal : undefined }).then(function(r){
+    if(t) clearTimeout(t);
+    if(!r.ok) throw new Error('status ' + r.status);
+    return r.json();
+  }, function(e){ if(t) clearTimeout(t); throw e; });
+}
+/* A one-shot read for a sheet or a tap (On This Day, Series, a sermon's paragraphs, a chapter, a song …). It gives up after 12 s; when it fails a sheet
+   still saying "Loading…" says it could not load, instead of "Loading…" for ever. It still rejects, so a caller's own message runs too. */
+function getJSON(url){
+  return getJSONT(url, 12000).catch(function(e){
+    var body = $('sheetBody');
+    if(body) Array.prototype.forEach.call(body.querySelectorAll('.empty, #savedListBody'), function(el){ if(/^Loading/.test(el.textContent)) el.textContent = "Couldn't load this from BORN. Close it and try again."; });
+    throw e;
+  });
+}
 
 function toast(msg, isError){
   var t = $('toast');
@@ -993,6 +1027,7 @@ function setTab(tab){
   saveTabletScroll(state.tab);
   state.tab = tab;
   if(tab !== 'queue') state.detailIndex = null;
+  refreshLibraryFor(tab);
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
   document.querySelectorAll('.sidebar-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
   document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.getAttribute('data-view') === tab); });
@@ -1067,7 +1102,7 @@ function poll(){
   // Queue tab renders with whatever state.qs was BEFORE this action, up to
   // 1s stale, showing "Nothing on screen yet" right after the operator just
   // projected something.
-  return getJSON('/state').then(function(s){
+  return getJSONT('/state', 4000).then(function(s){
     var sig = nowSignature(s);
     // A brief pulse on the "on screen now" card whenever what's live actually
     // changes (new slide, or blanked/restored) — a second, glanceable signal
@@ -1078,6 +1113,7 @@ function poll(){
     lastNowSig = sig;
     state.qs = s;
     setConn(true);
+    followDetailItem();
     if(state.tab === 'queue') renderQueueTab();
     updateBlankButtons();
     updateLiveBars();
@@ -1108,6 +1144,7 @@ function pollUntilOnScreen(done){
   attempt();
 }
 function setConn(ok){
+  state.connOk = !!ok;
   var p = $('conn-p'); var t = $('conn-t');
   if(p){ p.className = 'conn ' + (ok ? 'ok' : 'bad'); p.querySelector('.connLabel').textContent = ok ? 'Connected' : 'Reconnecting…'; }
   if(t){ t.style.background = ok ? 'var(--live)' : 'var(--text3)'; t.title = ok ? 'Connected' : 'Reconnecting…'; }
@@ -1528,9 +1565,26 @@ function queueDetailInnerHtml(i){
   html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
   return html;
 }
+/** The open item sheet follows its item when items are added, removed or moved above it, and closes with a note when the item is gone (it was bound to a
+ *  position, so it turned into another item under the finger). */
+function followDetailItem(){
+  if(state.detailIndex == null || !state.detailId) return;
+  var q = state.qs.queue || [];
+  var at = -1;
+  for(var k = 0; k < q.length; k++) if(q[k].id === state.detailId){ at = k; break; }
+  if(at === state.detailIndex) return;
+  if(at >= 0){ state.detailIndex = at; return; }
+  var ov = $('sheetOverlay');
+  var showing = (ov && ov.classList.contains('active') && ov.classList.contains('detail-mode')) || isTabletLayout();
+  state.detailIndex = null; state.detailId = null;
+  if(!showing) return;
+  closeSheet();
+  toast('That item was taken out of the service.', true);
+}
 function openQueueItemDetail(i){
   state.selected = null;
   state.detailIndex = i;
+  state.detailId = ((state.qs.queue || [])[i] || {}).id || null;
   if(isTabletLayout()){
     closeSheet();
     renderTabletPreview();
@@ -1966,8 +2020,34 @@ function selectRecentSermon(i){
 }
 
 /* ── Bible tab ─────────────────────────────────────────────────────── */
+/* The lists the tabs browse (Bible books, all songs) are read when the page opens and again when their tab is opened after a failure or after a minute,
+   so a song added on the computer appears; a read that fails says so with Try again, instead of "Loading…" for ever or an untrue "No songs found". */
+var libLoaded = {};
+var LIB_FRESH_MS = 60000;
+function libLoad(name, url, apply){
+  libLoaded[name] = { at: Date.now(), state: 'loading' };
+  return getJSONT(url, 12000).then(function(rows){ libLoaded[name] = { at: Date.now(), state: 'ok' }; apply(rows); }, function(){
+    libLoaded[name] = { at: Date.now(), state: 'error' };
+    renderCurrentTab();
+  });
+}
+function libFailed(name){ return !!(libLoaded[name] && libLoaded[name].state === 'error'); }
+function libErrorHtml(name){
+  return '<div class="empty">The list could not be read from BORN.<div style="margin-top:12px"><button class="retrybtn" onclick="reloadLibrary(&quot;' + name + '&quot;)">Try again</button></div></div>';
+}
+function reloadLibrary(name){
+  if(name === 'bible') loadBibleBooks(); else if(name === 'songs') loadSongs();
+  renderCurrentTab();
+}
+/** Opening a tab reads its list again when it failed or is more than a minute old. */
+function refreshLibraryFor(tab){
+  var name = tab === 'bible' ? 'bible' : tab === 'songs' ? 'songs' : null;
+  if(!name) return;
+  var l = libLoaded[name];
+  if(!l || l.state === 'error' || (l.state === 'ok' && Date.now() - l.at > LIB_FRESH_MS)) reloadLibrary(name);
+}
 function loadBibleBooks(){
-  getJSON('/api/bible/books').then(function(books){ state.bibleBooks = books || []; if(state.tab === 'bible') renderBibleTab(); });
+  libLoad('bible', '/api/bible/books', function(books){ state.bibleBooks = books || []; if(state.tab === 'bible') renderBibleTab(); });
 }
 /** Whatever the desktop app currently has selected — the remote has no
  *  translation picker of its own, it just reflects this. */
@@ -2063,7 +2143,7 @@ function bibleBookGridHtml(){
     }
     return h + '</div>';
   }
-  if(state.bibleBooks.length === 0) return '<div class="empty">Loading books…</div>';
+  if(state.bibleBooks.length === 0) return libFailed('bible') ? libErrorHtml('bible') : '<div class="empty">Loading books…</div>';
   return '<div class="testament-label">OLD TESTAMENT</div>' + grid(ot) + '<div class="testament-label">NEW TESTAMENT</div>' + grid(nt);
 }
 function pickBook(num){
@@ -2206,8 +2286,8 @@ var songsSearchSeq = 0;
 function loadSongs(){
   // The full library, loaded once — Browse and the A-Z strip work off this,
   // no cap, no re-fetch per keystroke.
-  getJSON('/api/search/songs?q=').then(function(rows){ state.songsAll = rows || []; if(state.tab === 'songs') renderSongsBody(); });
-  getJSON('/api/songs/recent').then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsBody(); });
+  libLoad('songs', '/api/search/songs?q=', function(rows){ state.songsAll = rows || []; if(state.tab === 'songs') renderSongsBody(); });
+  getJSONT('/api/songs/recent', 12000).then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsBody(); }, function(){});
 }
 function renderSongsTab(){
   var html = '<div class="sticky-head">'
@@ -2330,7 +2410,7 @@ function songsBodyHtml(){
     html += '</div>';
   }
   html += '<div class="section-label">ALL SONGS' + (all.length ? ' · ' + all.length : '') + '</div>';
-  if(all.length === 0){ html += '<div class="empty">No songs found.</div>'; return html; }
+  if(all.length === 0){ html += libFailed('songs') ? libErrorHtml('songs') : (libLoaded.songs && libLoaded.songs.state === 'loading') ? '<div class="empty">Loading…</div>' : '<div class="empty">No songs found.</div>'; return html; }
   html += azStripHtml(all);
   html += '<div class="songlist">';
   var lastLetter = '';
