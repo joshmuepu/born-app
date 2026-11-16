@@ -28,6 +28,17 @@ const versionOf = (path: string): number => {
   }
 }
 
+/** Write, then flush to the disk before the caller swaps the file in, so a power cut cannot leave a renamed file that is empty. */
+function writeFlushed(path: string, data: Buffer): void {
+  fs.writeFileSync(path, data)
+  const fd = fs.openSync(path, 'r+')
+  try {
+    fs.fsyncSync(fd)
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
 export interface UpgradeResult { upgraded: boolean; backup?: string; keptSermons?: number; keptTranslations?: number; reason?: string }
 
 const nextPath = (dbPath: string): string => `${dbPath}.upgrade`
@@ -58,7 +69,7 @@ export function upgradeSermonDb(dbPath: string, bundledGz: string | undefined, n
     const raw = gunzipSync(fs.readFileSync(bundledGz))
     const free = (() => { try { const s = fs.statfsSync(dirname(dbPath)); return Number(s.bavail) * Number(s.bsize) } catch { return Infinity } })()
     if (free < raw.length + DISK_HEADROOM) return { upgraded: false, reason: 'not enough disk space' }
-    fs.writeFileSync(next, raw)
+    writeFlushed(next, raw)
     if (versionOf(next) < SERMON_DB_FORMAT) { fs.rmSync(next, { force: true }); return { upgraded: false, reason: 'bundled library is not newer' } }
 
     // fold the old file's WAL in first, so what is copied and what is kept as the backup is complete
@@ -71,14 +82,21 @@ export function upgradeSermonDb(dbPath: string, bundledGz: string | undefined, n
     try {
       d.prepare('ATTACH DATABASE ? AS old').run(dbPath)
       const has = (t: string): boolean => !!d.prepare("SELECT 1 FROM old.sqlite_master WHERE type = 'table' AND name = ?").get(t)
+      // columns are matched by name (those both files have), never by position: a profile whose table was made in another order, or has a
+      // column the new one does not, must not swap its values or fail
+      const cols = (t: string): string => {
+        const mine = (d.prepare(`PRAGMA main.table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name)
+        const theirs = new Set((d.prepare(`PRAGMA old.table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name))
+        return mine.filter((c) => theirs.has(c)).map((c) => `"${c}"`).join(', ')
+      }
       d.transaction(() => {
         // sermons fetched after install: not in the bundled library, so carry them over with their rows (as they were stored)
-        keptSermons = d.prepare('INSERT INTO sermons SELECT * FROM old.sermons WHERE id NOT IN (SELECT id FROM main.sermons)').run().changes
+        keptSermons = d.prepare(`INSERT INTO sermons (${cols('sermons')}) SELECT ${cols('sermons')} FROM old.sermons WHERE id NOT IN (SELECT id FROM main.sermons)`).run().changes
         if (keptSermons > 0) {
           d.prepare('INSERT INTO paragraphs (sermon_id, paragraph_ref, paragraph_index, text) SELECT sermon_id, paragraph_ref, paragraph_index, text FROM old.paragraphs WHERE sermon_id NOT IN (SELECT DISTINCT sermon_id FROM main.paragraphs)').run()
         }
-        if (has('sermon_index')) d.prepare('INSERT OR IGNORE INTO sermon_index SELECT * FROM old.sermon_index').run()
-        if (has('translated_sermons')) d.prepare('INSERT OR IGNORE INTO translated_sermons SELECT * FROM old.translated_sermons').run()
+        if (has('sermon_index')) d.prepare(`INSERT OR IGNORE INTO sermon_index (${cols('sermon_index')}) SELECT ${cols('sermon_index')} FROM old.sermon_index`).run()
+        if (has('translated_sermons')) d.prepare(`INSERT OR IGNORE INTO translated_sermons (${cols('translated_sermons')}) SELECT ${cols('translated_sermons')} FROM old.translated_sermons`).run()
         if (has('translated_paragraphs')) keptTranslations = d.prepare('INSERT OR IGNORE INTO translated_paragraphs (sermon_id, language, paragraph_ref, paragraph_index, text) SELECT sermon_id, language, paragraph_ref, paragraph_index, text FROM old.translated_paragraphs').run().changes
       })()
       d.prepare('DETACH DATABASE old').run()

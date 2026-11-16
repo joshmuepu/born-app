@@ -45,6 +45,9 @@ export function writeFileAtomic(path: string, data: string | Buffer): void {
   const tmp = `${path}.tmp`
   try {
     fs.writeFileSync(tmp, data)
+    // flushed to the disk before the swap, so a power cut just after it cannot leave an empty file in place of the old one
+    const fd = fs.openSync(tmp, 'r+')
+    try { fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
     for (let attempt = 0; ; attempt++) {
       try {
         fs.renameSync(tmp, path)

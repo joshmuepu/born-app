@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'fs'
+import fs, { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'fs'
+import { vi } from 'vitest'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { readJsonQuarantining, readJsonReporting } from '../../main/corruptFile'
+import { readJsonQuarantining, readJsonReporting, writeFileAtomic } from '../../main/corruptFile'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'born-corrupt-')) })
@@ -43,3 +44,20 @@ describe('readJsonReporting (so the operator can be told)', () => {
     expect(readJsonReporting(join(dir, 'queue.json'), []).unreadable).toBe(false)
   })
 })
+
+describe('writeFileAtomic', () => {
+  it('flushes the new file to the disk before it replaces the old one', () => {
+    const calls: string[] = []
+    const sync = vi.spyOn(fs, 'fsyncSync').mockImplementation(() => { calls.push('fsync') })
+    const ren = vi.spyOn(fs, 'renameSync')
+    ren.mockImplementation(((a: fs.PathLike, b: fs.PathLike) => { calls.push('rename'); fs.copyFileSync(a, b); fs.rmSync(a) }) as typeof fs.renameSync)
+    try {
+      writeFileAtomic(join(dir, 'queue.json'), '[]')
+    } finally {
+      sync.mockRestore(); ren.mockRestore()
+    }
+    expect(calls).toEqual(['fsync', 'rename'])
+    expect(readFileSync(join(dir, 'queue.json'), 'utf-8')).toBe('[]')
+  })
+})
+
