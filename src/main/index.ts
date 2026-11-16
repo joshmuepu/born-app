@@ -115,6 +115,7 @@ import {
 import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
 import { alertPayload, textInput } from './ipcInput'
 import { songImportPickers } from './importPickers'
+import { fitOperatorWindow } from './windowFit'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -282,11 +283,13 @@ function blockReloadChord(win: BrowserWindow): void {
 
 function createMainWindow(): void {
   log.info('createMainWindow')
+  // fitted to the display it opens on: a fixed 1040x640 smallest size ran off a 960x600 display
+  const fit = fitOperatorWindow(screen.getPrimaryDisplay().workArea)
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 1040,
-    minHeight: 640,
+    width: fit.size.width,
+    height: fit.size.height,
+    minWidth: fit.min.width,
+    minHeight: fit.min.height,
     title: 'BORN — Branham or Nothing',
     backgroundColor: themeBackground(),
     webPreferences: {
