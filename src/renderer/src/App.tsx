@@ -159,6 +159,11 @@ export default function App() {
       const next = [...migrated, ...queueRef.current]
       queueRef.current = next
       setServiceQueue(next)
+    }).catch(() => {
+      // the saved queue could not be asked for: say so, and keep saving from now on (before, nothing was saved again for the whole run)
+      queueLoaded.current = true
+      setOperatorNotice({ message: 'Your saved queue could not be read, so the queue started empty. What you add now is saved as usual.', action: 'data-folder' })
+      if (queueRef.current.length) window.electronAPI.saveQueue(queueRef.current)
     })
   }, [])
 
@@ -291,7 +296,7 @@ export default function App() {
   }, [])
 
   // What the operator is told when a window stopped. A plain notice goes after a while; one with an action stays until it is used or dismissed.
-  const [operatorNotice, setOperatorNotice] = useState<{ message: string; action?: 'projection' | 'stage' } | null>(null)
+  const [operatorNotice, setOperatorNotice] = useState<{ message: string; action?: 'projection' | 'stage' | 'data-folder' } | null>(null)
   useEffect(() => {
     if (!operatorNotice || operatorNotice.action) return
     const t = setTimeout(() => setOperatorNotice(null), 9000)
@@ -1047,7 +1052,16 @@ export default function App() {
   useEffect(() => refreshRecents(), [refreshRecents])
 
   useEffect(() => {
-    window.electronAPI.getDataRecoveryInfo().then(setDataRecovery)
+    window.electronAPI.getDataRecoveryInfo().then((info) => {
+      setDataRecovery(info)
+      // a saved queue or settings that could not be read is said, with where the old file was kept (never only logged)
+      const said: string[] = []
+      if (info?.queue?.recovered) said.push('Your saved queue could not be read, so the queue started empty.')
+      if (info?.settings?.recovered) said.push('Your settings could not be read, so BORN started with its defaults.')
+      if (said.length) {
+        setOperatorNotice({ message: `${said.join(' ')} The old file was kept in the data folder, in case support needs it.`, action: 'data-folder' })
+      }
+    }).catch(() => {})
   }, [])
 
   const handleNewService = useCallback(() => {
@@ -1585,6 +1599,11 @@ export default function App() {
             {operatorNotice.action === 'projection' && (
               <button className="btn-primary btn-sm" onClick={() => void window.electronAPI.openProjection().then(() => setProjectionOpen(true))}>
                 Open projection
+              </button>
+            )}
+            {operatorNotice.action === 'data-folder' && (
+              <button className="btn-secondary btn-sm" onClick={() => void window.electronAPI.openDataFolder()}>
+                Open data folder
               </button>
             )}
             {operatorNotice.action === 'stage' && (

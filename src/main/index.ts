@@ -64,7 +64,7 @@ import { getNetworkMeta } from './networkMeta'
 import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
-import { readJsonQuarantining, writeFileAtomic } from './corruptFile'
+import { readJsonReporting, writeFileAtomic } from './corruptFile'
 import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
@@ -110,7 +110,7 @@ import {
   getOnThisDay,
   loadBundledSeries
 } from './browseLocal'
-import { getSettings, updateSettings, type AppSettings } from './settings'
+import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed } from './settings'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -930,8 +930,18 @@ ipcMain.handle('app:quit', () => app.quit())
  *  that, never as "needs an internet connection." */
 ipcMain.handle('app:data-recovery-info', () => ({
   sermons: getDbRecoveryInfo(),
-  library: getLibraryDbRecoveryInfo()
+  library: getLibraryDbRecoveryInfo(),
+  queue: queueRecovery,
+  settings: getSettingsRecoveryInfo()
 }))
+
+// A settings change that could not be saved is said once a run, never shown as if it were kept
+let settingsSaveFailureSaid = false
+onSettingsSaveFailed(() => {
+  if (settingsSaveFailureSaid) return
+  settingsSaveFailureSaid = true
+  sendToMain('operator:notice', 'Your settings could not be saved (the data folder may be full or read-only). Changes last only until BORN is closed.')
+})
 
 /** Opens the folder holding the local databases/settings, so a support
  *  conversation ("go to this folder") doesn't require finding it by hand. */
@@ -1362,9 +1372,13 @@ ipcMain.on('queue:navigate', (_event, dir: 'prev' | 'next') => {
 
 // ── Queue persistence ─────────────────────────────────────────────────────────
 
+/** The saved queue could not be read at start (it was kept aside): the operator is told instead of finding an empty queue. */
+let queueRecovery: { recovered: boolean; keptAs: string | null } = { recovered: false, keptAs: null }
 ipcMain.handle('queue:load', () => {
   // A damaged queue.json is kept aside (queue.corrupt-<time>.json) rather than silently replaced by the next save.
-  return readJsonQuarantining(join(app.getPath('userData'), 'queue.json'), [])
+  const r = readJsonReporting<unknown[]>(join(app.getPath('userData'), 'queue.json'), [])
+  if (r.unreadable) queueRecovery = { recovered: true, keptAs: r.keptAs ? basename(r.keptAs) : null }
+  return r.value
 })
 
 ipcMain.on('queue:save', (_event, items: unknown) => {

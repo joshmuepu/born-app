@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'fs'
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, chmodSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -150,3 +150,29 @@ describe('getSettings — keys this version does not know', () => {
     expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf-8')).someLaterSetting).toEqual({ on: true })
   })
 })
+
+describe('settings that could not be read or saved are said', () => {
+  it('a damaged settings.json is reported as recovered, with the name it was kept under', async () => {
+    writeFileSync(join(dir, 'settings.json'), '{"theme": "li')
+    const s = await freshSettingsModule()
+    s.getSettings()
+    const info = s.getSettingsRecoveryInfo()
+    expect(info.recovered).toBe(true)
+    expect(info.keptAs).toMatch(/^settings\.corrupt-.*\.json$/)
+  })
+  it.skipIf(process.platform === 'win32')('a save that fails calls the failure hook and is reported, never silently kept', async () => {
+    const s = await freshSettingsModule()
+    s.getSettings()
+    const failed = vi.fn()
+    s.onSettingsSaveFailed(failed)
+    chmodSync(dir, 0o500)
+    try {
+      s.updateSettings({ theme: 'light' })
+    } finally {
+      chmodSync(dir, 0o700)
+    }
+    expect(failed).toHaveBeenCalledTimes(1)
+    expect(s.getSettingsRecoveryInfo().writeFailed).toBe(true)
+  })
+})
+

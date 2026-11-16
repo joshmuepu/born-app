@@ -105,8 +105,9 @@ export function searchSongs(query: string, limit = NO_PRACTICAL_LIMIT): SongSumm
     }
     return [...titleMatches, ...lyricMatches]
   } catch (e) {
+    // the library could not be read: said by the caller, never shown as "no songs"
     log.error('searchSongs error', e)
-    return []
+    throw e
   }
 }
 

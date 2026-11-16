@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { readJsonQuarantining } from '../../main/corruptFile'
+import { readJsonQuarantining, readJsonReporting } from '../../main/corruptFile'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'born-corrupt-')) })
@@ -26,5 +26,20 @@ describe('readJsonQuarantining (the saved queue)', () => {
     expect(files).toHaveLength(1)
     expect(files[0]).toMatch(/^queue\.corrupt-.*\.json$/)
     expect(readFileSync(join(dir, files[0]), 'utf-8')).toBe(damaged)
+  })
+})
+
+describe('readJsonReporting (so the operator can be told)', () => {
+  it('says a damaged file could not be read and where it was kept', () => {
+    writeFileSync(join(dir, 'queue.json'), '[{"id":')
+    const r = readJsonReporting(join(dir, 'queue.json'), [])
+    expect(r.value).toEqual([])
+    expect(r.unreadable).toBe(true)
+    expect(r.keptAs).toMatch(/queue\.corrupt-.*\.json$/)
+  })
+  it('a missing or good file is not a problem', () => {
+    expect(readJsonReporting(join(dir, 'queue.json'), []).unreadable).toBe(false)
+    writeFileSync(join(dir, 'queue.json'), '[]')
+    expect(readJsonReporting(join(dir, 'queue.json'), []).unreadable).toBe(false)
   })
 })

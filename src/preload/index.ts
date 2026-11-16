@@ -171,6 +171,10 @@ export interface DbRecoveryStatus {
 export interface DataRecoveryInfo {
   sermons: DbRecoveryStatus
   library: DbRecoveryStatus
+  /** the saved queue could not be read at start (kept in the data folder as keptAs) */
+  queue?: { recovered: boolean; keptAs: string | null }
+  /** settings.json could not be read at start (defaults used; kept as keptAs), or the last save failed */
+  settings?: { recovered: boolean; keptAs: string | null; writeFailed: boolean }
 }
 
 const api = {

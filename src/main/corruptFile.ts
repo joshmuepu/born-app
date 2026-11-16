@@ -25,12 +25,17 @@ export function quarantineCorruptFile(path: string): string | null {
 /** Reads a JSON file. Missing file → `fallback`. A file that exists but cannot be parsed → `fallback`, with the damaged
  *  file moved aside first (see above). */
 export function readJsonQuarantining<T>(path: string, fallback: T): T {
-  if (!existsSync(path)) return fallback
+  return readJsonReporting(path, fallback).value
+}
+
+/** The same, and says whether a file was there but could not be read (and where it was kept), so the operator can be told
+ *  instead of finding an empty list. */
+export function readJsonReporting<T>(path: string, fallback: T): { value: T; unreadable: boolean; keptAs: string | null } {
+  if (!existsSync(path)) return { value: fallback, unreadable: false, keptAs: null }
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as T
+    return { value: JSON.parse(readFileSync(path, 'utf-8')) as T, unreadable: false, keptAs: null }
   } catch {
-    quarantineCorruptFile(path)
-    return fallback
+    return { value: fallback, unreadable: true, keptAs: quarantineCorruptFile(path) }
   }
 }
 

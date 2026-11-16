@@ -55,6 +55,8 @@ declare global {
   interface DataRecoveryInfo {
     sermons: DbRecoveryStatus
     library: DbRecoveryStatus
+    queue?: { recovered: boolean; keptAs: string | null }
+    settings?: { recovered: boolean; keptAs: string | null; writeFailed: boolean }
   }
 
   interface RemoteAdapterInfo {

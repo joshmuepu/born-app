@@ -53,6 +53,9 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
   const [allLoading, setAllLoading] = useState(false)
   const [recentSongs, setRecentSongs] = useState<SongSummary[]>([])
   const [recentLoaded, setRecentLoaded] = useState(false)
+  /** The song library could not be read: said, with Try again, instead of an empty list or "Loading…" for ever. */
+  const [libraryUnreadable, setLibraryUnreadable] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
 
   const [selected, setSelected] = useState<SongDetail | null>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
@@ -89,13 +92,17 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     window.electronAPI.getRecentSongs().then((r) => {
       setRecentSongs(r)
       setRecentLoaded(true)
-    })
+    }).catch(() => setLibraryUnreadable(true))
   }, [])
   const loadAllSongs = useCallback(() => {
     setAllLoading(true)
     window.electronAPI.searchSongs('').then((r) => {
       setAllSongs(r)
       setAllLoading(false)
+      setLibraryUnreadable(false)
+    }).catch(() => {
+      setAllLoading(false)
+      setLibraryUnreadable(true)
     })
   }, [])
 
@@ -118,12 +125,17 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
       window.electronAPI.searchSongs(q).then((r) => {
         setResults(r)
         setSearched(true)
+        setLibraryUnreadable(false)
+      }).catch(() => {
+        setResults([])
+        setSearched(false)
+        setLibraryUnreadable(true)
       })
     }, 200)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [query])
+  }, [query, retryTick])
 
   const openSong = useCallback((id: number) => {
     window.electronAPI.getSong(id).then(setSelected)
@@ -344,6 +356,23 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
     )
   }
 
+  const libraryUnreadableNote = (
+    <div className="songs-empty" role="alert">
+      The song library could not be read, so no songs can be shown. Try again; if it keeps happening, restart BORN.{' '}
+      <button
+        className="songs-inline-link"
+        onClick={() => {
+          setLibraryUnreadable(false)
+          setAllSongs(null)
+          loadRecent()
+          setRetryTick((n) => n + 1)
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  )
+
   return (
     <div className="songs-panel">
       <div className="panel-subtab-bar">
@@ -558,6 +587,7 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
                 )}
               </div>
             )}
+            {libraryUnreadable && libraryUnreadableNote}
             {searched && results.length === 0 && <div className="songs-empty">No songs found.</div>}
             {searched && results.map((s) => renderSongRow(s))}
             {searched && (
@@ -600,6 +630,8 @@ export default function SongsPanel({ visible, onScreen, focusSongId, onAddSong, 
               )}
               {recentSongs.map((s) => renderSongRow(s))}
             </div>
+          ) : libraryUnreadable && !allLoading ? (
+            <div className="songs-list">{libraryUnreadableNote}</div>
           ) : allLoading || allSongs === null ? (
             <div className="songs-empty">Loading…</div>
           ) : (
