@@ -14,13 +14,10 @@ permissions:
 jobs:
   # The pushed tag is the single source of truth for the version. Reject anything
   # that isn't vMAJOR.MINOR.PATCH so a typo can't ship a bad release — and reject
-  # anything that isn't v1.x.x outright: v1 is the only released product line.
-  # v2 (branch v2-channels) is unreleased, pre-1.0-equivalent internal work (its
-  # package.json version is a 2.0.0-dev.N pre-release) and must never
-  # auto-publish a public GitHub Release through this workflow, no matter what
-  # branch or tag triggers it — that stays a manual, non-publishing build
-  # (workflow_dispatch) until the v2 launch policy changes (see
-  # docs/VERSIONING.md).
+  # anything that isn't v1.x.x outright: this workflow publishes only v1.x.x
+  # releases, whatever branch or tag triggers it. A manual run
+  # (workflow_dispatch) builds and smoke-tests without publishing anything
+  # (see docs/VERSIONING.md).
   guard:
     runs-on: ubuntu-latest
     steps:
