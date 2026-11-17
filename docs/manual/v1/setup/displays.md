@@ -4,6 +4,15 @@ Plug in the Congregation screen (and Stage monitor, if used) **before** opening
 BORN or clicking **Open projection** — BORN picks up connected screens when it
 starts and when you open the Screens panel, not continuously in the background.
 
+## With no projector connected
+
+If BORN finds no second screen when you click **Open projection**, the Congregation
+screen opens as a normal window in the bottom-right corner of your own screen, so
+the main window stays usable (handy for practising at home). It goes full screen
+on the projector as soon as one is connected. To put it full screen on your own
+screen instead, choose your own screen for the Congregation screen under
+**Screens**.
+
 ## Choosing which screen is which
 
 Click **Screens** in the header (it shows how many displays BORN currently sees,

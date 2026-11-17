@@ -72,6 +72,15 @@ file has songs not yet in this computer's library — see
 review always happens on the desktop, since it's the one place a decision
 about your library can be made.
 
+**Save this service** under a name a saved service already has asks first:
+**Cancel** (the default), **Keep both** (saves this one as "Name (2)", the next
+free number) or **Replace it**. The phone says **Saved** only once the computer
+has saved it; if the connection drops, it says the service was not saved.
+
+If a list on the phone can't be read from BORN (a saved service, a series, a
+sermon, a Bible chapter, On This Day, Recently Played), it says
+*"Couldn't load this from BORN."* with a **Try again** button.
+
 ## If a phone can't connect
 
 Click **Remote connection check** in the Remote popover (the stethoscope-icon
