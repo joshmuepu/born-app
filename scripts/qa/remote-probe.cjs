@@ -5,13 +5,13 @@ const { launch, checks, sleep } = require('./lib.cjs')
 const PW = process.env.PW_DIR || '/tmp/born-pw'
 const pw = require(path.join(PW, 'node_modules', 'playwright'))
 const profile = process.argv[2] || path.join(require('os').tmpdir(), 'born-v1-remote-profile')
-const PORT = 14316, BASE = `http://127.0.0.1:${PORT}`
+const PORT = Number(process.env.BORN_REMOTE_PORT || 14316), BASE = `http://127.0.0.1:${PORT}`
 
 const fakeRow = (t) => ({ sermonId: 1, sermonTitle: t, dateCode: '47-0412', paragraphRef: '1', text: 'placeholder text', highlightedText: 'placeholder text', slides: [] })
 
 ;(async () => {
   const c = checks('remote-probe')
-  const app = await launch({ profile, remotePort: PORT, settle: 6000 })
+  const app = await launch({ profile, remotePort: PORT, port: Number(process.env.CDP_PORT || 9356), mdns: process.env.BORN_MDNS_NAME || 'born-remote-v1qa', settle: 6000 })
 
   // ── server-level checks (no browser) ────────────────────────────────────
   const root = await fetch(BASE + '/')

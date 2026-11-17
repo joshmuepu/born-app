@@ -2,7 +2,7 @@
  *  - with no projector (the app is shown only the main display), the congregation screen opens as a normal window in a corner, not full screen
  *    over the operator window; choosing this computer's own screen under Screens still puts it full screen;
  *  - quitting while something is on the screen asks first, the safe answer is the default, "Keep BORN open" keeps every window, and quitting with
- *    nothing on the screen (or the screen hidden) asks nothing;
+ *    nothing on the screen (or the screen hidden) asks nothing; a quit sent by signal (a script, `kill`) quits without asking, as before;
  *  - after the operator window is started again (as it is after it stops), the phone still says what is on the congregation screen.
  * Usage: PW_DIR=/tmp/born-pw node scripts/qa/data-safety-app.cjs <profileDir>   (needs `npm run build`; the profile is made from scratch) */
 const fs = require('fs'), path = require('path')
@@ -19,6 +19,7 @@ const answer = (n) => fs.writeFileSync(path.join(profile, 'qa-dialog-answer'), S
 const quit = () => fs.writeFileSync(path.join(profile, 'qa-quit'), '')
 const hooks = ['--require', path.join(__dirname, 'hide-outputs.cjs'), '--require', path.join(__dirname, 'record-main.cjs'), '--require', path.join(__dirname, 'fault-hooks.cjs')]
 const start = () => launch({ profile, remotePort: PORT, port: CDP, mdns: MDNS, settle: 9000, extraArgs: hooks, env: { QA_ONE_DISPLAY: '1', QA_QUIT_TRIGGER: '1' } })
+const appPid = () => Number(require('child_process').execFileSync('lsof', ['-ti', `tcp:${CDP}`, '-sTCP:LISTEN']).toString().trim().split('\n')[0])
 const alive = (app) => app.proc.exitCode === null && app.proc.signalCode === null
 async function goLive(ref = 'John 3:16-18') {
   await cmd({ action: 'queue-bible', reference: ref, translation: 'KJV' }); await sleep(1200)
@@ -80,6 +81,13 @@ async function goLive(ref = 'John 3:16-18') {
   app = await start(); p = await app.page()
   clearEvents(); answer(0); quit(); await sleep(4000)
   c.ok('quitting with nothing on the screen asks nothing and quits', !alive(app) && events().filter((e) => 'dialog' in e).length === 0, JSON.stringify(events()))
+  await app.kill()
+
+  // a quit sent by signal while live: no question, it quits as it always has
+  app = await start(); p = await app.page()
+  await goLive('Psalm 23:2')
+  clearEvents(); answer(0); process.kill(appPid(), 'SIGTERM'); await sleep(4000)
+  c.ok('a quit sent by signal while something is on the screen quits without asking', !alive(app) && events().filter((e) => 'dialog' in e).length === 0, JSON.stringify(events()))
   await app.kill()
 
   // the screen hidden: no question
