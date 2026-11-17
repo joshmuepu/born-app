@@ -1461,12 +1461,20 @@ ipcMain.handle('queue:load', () => {
   return r.value
 })
 
+// A save that fails (a full disk, a read-only folder) is said to the operator once; the queue stays in the window and every change tries
+// again. Once a save works again, a later failure is said again.
+let queueSaveFailing = false
 ipcMain.on('queue:save', (_event, items: unknown) => {
   try {
     const queuePath = join(app.getPath('userData'), 'queue.json')
     writeFileAtomic(queuePath, JSON.stringify(items))
+    queueSaveFailing = false
   } catch (e) {
     log.error('queue:save error', e)
+    if (!queueSaveFailing) {
+      queueSaveFailing = true
+      sendToMain('operator:notice', 'The Service Queue could not be saved (the data folder may be full or read-only). It stays here in the window, and BORN tries again with your next change.')
+    }
   }
 })
 
