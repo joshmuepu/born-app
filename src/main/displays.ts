@@ -265,7 +265,23 @@ export function describeDisplay(
 /** Where the projection window goes after the screens change. When the projector it was showing on is unplugged mid-service, the
  *  automatic choice falls back to the operator's own screen; taking that screen over full-screen would hide every control (only
  *  Esc and ⌘/Ctrl+Shift+W would still work). So, like the stage monitor, it becomes a normal window there until a projector is back.
- *  A projection opened on the operator's screen on purpose (no projector at all, or that screen chosen by name) stays full-screen. */
+ *  Opened with no projector at all it is already such a window (see projectionOpensWindowed). Opened on the operator's screen because
+ *  that screen was chosen under Screens, it stays full-screen. */
 export function projectionPlacementAfterChange(o: { automaticFallback: boolean; wasOnProjector: boolean; displaced: boolean }): 'fullscreen' | 'windowed' {
   return o.automaticFallback && (o.wasOnProjector || o.displaced) ? 'windowed' : 'fullscreen'
+}
+
+/** Whether the congregation screen opens as a normal window instead of full screen: only when no projector is connected and none was
+ *  chosen, so the automatic choice is the operator's own screen. Full screen there would cover the operator window. Choosing this
+ *  computer's own screen under Screens still opens it full screen. */
+export function projectionOpensWindowed(target: { isFallback: boolean; isOverride: boolean }): boolean {
+  return target.isFallback && !target.isOverride
+}
+
+/** The congregation screen's window when there is no projector: about a third of the screen's width at 16:9, in the bottom-right
+ *  corner of the work area, so the operator window's header and search stay in view. */
+export function cornerWindowBounds(area: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+  const width = Math.max(320, Math.min(area.width, Math.round(area.width * 0.36)))
+  const height = Math.min(area.height, Math.round((width * 9) / 16))
+  return { x: area.x + area.width - width, y: area.y + area.height - height, width, height }
 }

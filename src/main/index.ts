@@ -92,6 +92,8 @@ import {
   findNamedEntry,
   nameForDisplay,
   projectionPlacementAfterChange,
+  projectionOpensWindowed,
+  cornerWindowBounds,
   type DisplayLike,
   type NamedDisplay
 } from './displays'
@@ -413,21 +415,25 @@ function createProjectionWindow(): void {
       `fallback=${target.isFallback} override=${target.isOverride}`
   )
   if (target.isFallback) log.warn('projection: no external display — using operator screen')
-  projectionOnProjector = !(target.isFallback && !target.isOverride)
-  projectionDisplaced = false
+  // With no projector it opens as a normal window in a corner of the operator's screen; full screen there covered the operator window.
+  // It goes full screen on a projector as soon as one is connected (repositionProjectionWindow).
+  const windowed = projectionOpensWindowed(target)
+  projectionOnProjector = !windowed
+  projectionDisplaced = windowed
+  const place = windowed ? cornerWindowBounds(area) : area
 
   const onMac = process.platform === 'darwin'
   projectionWindow = new BrowserWindow({
-    x: area.x,
-    y: area.y,
-    width: area.width,
-    height: area.height,
+    x: place.x,
+    y: place.y,
+    width: place.width,
+    height: place.height,
     backgroundColor: '#000000',
     title: 'BORN — Congregation screen',
     show: false,
     skipTaskbar: true,
-    fullscreen: !onMac,
-    simpleFullscreen: onMac,
+    fullscreen: !onMac && !windowed,
+    simpleFullscreen: onMac && !windowed,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -435,7 +441,7 @@ function createProjectionWindow(): void {
     }
   })
 
-  if (onMac) projectionWindow.setSimpleFullScreen(true)
+  if (onMac && !windowed) projectionWindow.setSimpleFullScreen(true)
   projectionWindow.once('ready-to-show', () => keepOperatorFocus(() => projectionWindow?.showInactive()))
 
   attachOperatorShortcuts(projectionWindow)
