@@ -66,7 +66,8 @@ import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonReporting, writeFileAtomic } from './corruptFile'
-import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
+import { isOpenableFromRemote, safeServiceFileName, freeServiceName } from './remoteServicePath'
+import { withLiveScreen } from './remoteOnScreen'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -1528,7 +1529,8 @@ ipcMain.on('stage:update', (_event, data: StageState) => {
 // ── Web Remote IPC ────────────────────────────────────────────────────────────
 
 ipcMain.on('webremote:sync', (_event, state) => {
-  updateWebRemoteState(state)
+  const open = !!projectionWindow && !projectionWindow.isDestroyed()
+  updateWebRemoteState(withLiveScreen(state, open ? { slide: projectionState.slide, blank: projectionState.blank } : null))
 })
 
 function currentNetworks(): RemoteNetwork[] {
