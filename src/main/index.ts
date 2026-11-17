@@ -2326,7 +2326,11 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
-        return saveQueueFromRemote(mainWindow, cmd.name)
+        // the phone asks before replacing a saved service of that name (onExisting 'ask'); a call that does not say keeps replacing it
+        const taken = (fileName: string): boolean => existsSync(join(REMOTE_SAVE_DIR(), `${fileName}.born`))
+        if (cmd.onExisting === 'ask' && taken(safeServiceFileName(cmd.name))) return Promise.resolve({ ok: false, exists: true })
+        const name = cmd.onExisting === 'keep-both' && taken(safeServiceFileName(cmd.name)) ? freeServiceName(cmd.name, taken) : cmd.name
+        return saveQueueFromRemote(mainWindow, name).then((r) => ({ ...r, name }))
       } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
         log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {

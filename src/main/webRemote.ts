@@ -96,7 +96,13 @@ type CommandCallback = (cmd: {
    *  round trip instead of one command per item. */
   items?: unknown[]
   contributor?: { deviceId: string; label: string }
-}) => void | Promise<{ ok: boolean }>  // a promise (the save) is waited for and its result sent back to the phone
+  /** 'save-queue' only, when a saved service already has that name: 'ask' answers { ok: false, exists: true } and saves nothing,
+   *  'keep-both' saves as "Name (2)" (the next free number), anything else (or nothing) replaces it, as before. */
+  onExisting?: string
+}) => void | Promise<SaveResult>  // a promise (the save) is waited for and its result sent back to the phone
+
+/** The phone's Save: whether it was saved, whether it was not because the name is taken, and the name it was saved under. */
+export interface SaveResult { ok: boolean; exists?: boolean; name?: string }
 
 /** Everything the remote's HTTP server needs from the rest of the app, all
  *  injected from index.ts — this module never imports db/bible/songs modules
@@ -447,7 +453,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.end()
       return
     }
-    let result: void | Promise<{ ok: boolean }> = undefined
+    let result: void | Promise<SaveResult> = undefined
     try {
       result = commandCallback?.(JSON.parse(body))
     } catch {
@@ -455,8 +461,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
     // A command with a result to report (the phone's Save) is answered once it is done, with whether it worked.
     if (result && typeof (result as Promise<unknown>).then === 'function') {
-      const outcome = await (result as Promise<{ ok: boolean }>).catch(() => ({ ok: false }))
-      sendJSON(res, 200, { ok: !!outcome?.ok })
+      const outcome: SaveResult = await (result as Promise<SaveResult>).catch(() => ({ ok: false }))
+      sendJSON(res, 200, { ok: !!outcome?.ok, ...(outcome?.exists ? { exists: true } : {}), ...(outcome?.name ? { name: outcome.name } : {}) })
       return
     }
     res.writeHead(204)
