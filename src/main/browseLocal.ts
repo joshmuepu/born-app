@@ -272,6 +272,13 @@ export function getLocalLocationTree(db: Database): LocationState[] {
 export interface BundledSeries { i: number; n: string; s: number[] }
 
 let seriesCache: BundledSeries[] | undefined
+let seriesUnreadable = false
+
+/** True when no copy of series.json could be read at all (as opposed to one that lists no series). */
+export function bundledSeriesUnreadable(): boolean {
+  loadBundledSeries()
+  return seriesUnreadable
+}
 
 export function loadBundledSeries(): BundledSeries[] {
   if (seriesCache !== undefined) return seriesCache
@@ -281,13 +288,16 @@ export function loadBundledSeries(): BundledSeries[] {
     join(app.getAppPath(), '..', 'resources', 'series.json'),
     join(app.getAppPath(), '..', '..', 'resources', 'series.json')
   ]
+  let readOne = false
   for (const p of candidates) {
     try {
       const f = JSON.parse(readFileSync(p, 'utf8')) as { series?: BundledSeries[] }
+      readOne = true
       if (Array.isArray(f.series) && f.series.length > 0) return (seriesCache = f.series)
     } catch {
       /* try the next place */
     }
   }
+  seriesUnreadable = !readOne
   return (seriesCache = [])
 }

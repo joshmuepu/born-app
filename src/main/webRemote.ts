@@ -363,7 +363,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.song(Number(songMatch[1])))
     } catch {
-      sendJSON(res, 200, null)
+      // the song library could not be read: an error the phone says (null stays the answer for a song that is not there)
+      sendJSON(res, 500, { error: 'The song library could not be read.' })
     }
     return
   }
@@ -381,7 +382,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.bibleChapter(book, chapter))
     } catch {
-      sendJSON(res, 200, { error: 'Lookup failed.' })
+      sendJSON(res, 500, { error: 'The Bible could not be read.' })
     }
     return
   }
@@ -405,7 +406,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.sermonSeries())
     } catch {
-      sendJSON(res, 200, [])
+      // could not be read: an error the phone says, not an empty list (a list that really is empty is still answered as one)
+      sendJSON(res, 500, { error: 'The sermon series could not be read.' })
     }
     return
   }
@@ -417,7 +419,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.sermonsByIds(ids))
     } catch {
-      sendJSON(res, 200, [])
+      sendJSON(res, 500, { error: 'The sermons could not be read.' })
     }
     return
   }
@@ -426,7 +428,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       sendJSON(res, 200, await searchHandlers!.sermonParagraphs(Number(sermonParasMatch[1])))
     } catch {
-      sendJSON(res, 200, [])
+      sendJSON(res, 500, { error: 'The sermon could not be read.' })
     }
     return
   }

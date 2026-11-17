@@ -113,7 +113,8 @@ import {
   getLocalDurationGroups,
   getLocalLocationTree,
   getOnThisDay,
-  loadBundledSeries
+  loadBundledSeries,
+  bundledSeriesUnreadable
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
 import { alertPayload, textInput } from './ipcInput'
@@ -2366,7 +2367,14 @@ app.whenReady().then(async () => {
             .filter((p) => existsSync(p))
             .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
         ),
-      sermonSeries: async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() },
+      // neither the online list nor the bundled one could be read: an error the phone says, not an empty list
+      sermonSeries: async () => {
+        const online = await fetchAllSeries()
+        if (online.length > 0) return online
+        const bundled = loadBundledSeries()
+        if (bundled.length === 0 && bundledSeriesUnreadable()) throw new Error('The sermon series could not be read.')
+        return bundled
+      },
       sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
       // Same one-paragraph-per-slide split as the search results above — a
       // browsed or recently-used quote can span several numbered paragraphs
