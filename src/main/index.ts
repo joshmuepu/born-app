@@ -181,7 +181,7 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 let mainWindow: BrowserWindow | null = null
 /** set when the app is quitting on purpose: the operator window's close does not ask then */
 let quitting = false
-/** set by the app's own Quit buttons (after an update): the quit is not asked about */
+/** set by the app's own Quit buttons (after an update) and by a quit sent by signal: the quit is not asked about */
 let quitWithoutAsking = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
@@ -1004,6 +1004,16 @@ ipcMain.handle('app:quit', () => {
   quitWithoutAsking = true
   app.quit()
 })
+// A quit sent by signal (a script, a service manager, `kill`) is not the operator at the window: it quits as it always has, without asking.
+// Set up once the app is ready, after Electron's own signal handling, which would otherwise quit first and ask.
+function quitBySignalWithoutAsking(): void {
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) {
+    process.on(signal, () => {
+      quitWithoutAsking = true
+      app.quit()
+    })
+  }
+}
 
 /** Whether either local database was found corrupted and auto-recovered at
  *  startup — drives the status message so a damaged file reads as exactly
@@ -2210,6 +2220,7 @@ const isAppPage = appPageTest(join(__dirname, '../renderer'), isDev ? process.en
 app.on('web-contents-created', (_e, wc) => guardWebContents(wc as never, isAppPage, (m) => log.warn(m)))
 
 app.whenReady().then(async () => {
+  quitBySignalWithoutAsking()
   log.boot()
   // only the browser permissions the app uses are given (every request was granted before)
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
