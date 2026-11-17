@@ -179,6 +179,8 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 let mainWindow: BrowserWindow | null = null
 /** set when the app is quitting on purpose: the operator window's close does not ask then */
 let quitting = false
+/** set by the app's own Quit buttons (after an update): the quit is not asked about */
+let quitWithoutAsking = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
 
@@ -351,8 +353,7 @@ function createMainWindow(): void {
   // the operator is asked first: one click on the window's close button ended it mid-service.
   mainWindow.on('close', (e) => {
     if (quitting || !mainWindow || mainWindow.isDestroyed()) return
-    const live = !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
-    if (!live) return
+    if (!projectionIsLive()) return
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'question',
       buttons: ['Keep it open', 'Close and take the screens down'],
@@ -371,6 +372,11 @@ function createMainWindow(): void {
     // bring the operator window back while they were open; on Windows they have no taskbar button and the app never quit). They go too.
     for (const w of [projectionWindow, stageWindow]) if (w && !w.isDestroyed()) w.close()
   })
+}
+
+/** Something is on the congregation screen and it is not hidden. */
+function projectionIsLive(): boolean {
+  return !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
 }
 
 /** Esc/B (blank the congregation screen) and ⌘/Ctrl+Shift+W (close the
@@ -991,7 +997,11 @@ ipcMain.handle('app:apply-update', () => {
   const p = downloadedInstallerPath()
   return p ? applyUpdate(p) : { ...noInstaller, needsManual: true }
 })
-ipcMain.handle('app:quit', () => app.quit())
+// The update's Restart and the Quit BORN button after a manual update: the operator chose to quit there, so it is not asked again.
+ipcMain.handle('app:quit', () => {
+  quitWithoutAsking = true
+  app.quit()
+})
 
 /** Whether either local database was found corrupted and auto-recovered at
  *  startup — drives the status message so a damaged file reads as exactly
@@ -2394,7 +2404,23 @@ app.on('second-instance', () => {
   }
 })
 
-app.on('before-quit', () => {
+// Quit (the menu, Cmd+Q, the Dock's or the taskbar's Quit) while something is on the screen asks first, as closing the operator window does.
+// "Keep BORN open" is the default and the Esc answer, so Enter alone never takes the screens down.
+app.on('before-quit', (e) => {
+  if (!quitting && !quitWithoutAsking && projectionIsLive() && mainWindow && !mainWindow.isDestroyed()) {
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Keep BORN open', 'Quit and take the screens down'],
+      defaultId: 0,
+      cancelId: 0,
+      message: 'Something is on the screen.',
+      detail: 'Quitting BORN takes the congregation screen and the stage monitor down.'
+    })
+    if (choice === 0) {
+      e.preventDefault()
+      return
+    }
+  }
   quitting = true // a quit the operator chose (the menu, Cmd+Q) is not asked again by the window's close
   stopMdns()
   globalShortcut.unregisterAll()

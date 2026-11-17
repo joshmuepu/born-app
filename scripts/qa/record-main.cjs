@@ -10,7 +10,7 @@ dialog.showMessageBoxSync = (...args) => {
   const o = args.find((a) => a && typeof a === 'object' && 'message' in a)
   let answer = 0
   try { answer = Number(fs.readFileSync(path.join(dir, 'qa-dialog-answer'), 'utf8')) || 0 } catch { /* default */ }
-  rec({ dialog: o ? o.message : '' , answer })
+  rec({ dialog: o ? o.message : '', answer, buttons: o ? o.buttons : null, defaultId: o ? o.defaultId : null, cancelId: o ? o.cancelId : null })
   return answer
 }
 shell.openExternal = async (u) => { rec({ openExternal: String(u) }) }
