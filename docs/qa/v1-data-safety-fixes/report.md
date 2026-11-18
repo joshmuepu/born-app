@@ -193,7 +193,8 @@ On a real phone and an iPad:
 
 - **Windows:** the Quit question was checked on macOS. On Windows the same `before-quit` question applies, but closing the window from
   the taskbar goes through the existing close question first; both were not run on Windows in this round.
-- **Logging off or shutting down** the computer while something is live now meets the question too, and waits for an answer.
+- **Logging off or shutting down** the computer while something is live: fixed before release so it does not ask (see the 1.13.7
+  release report).
 - **The corner window** can end up behind the operator window when the operator clicks the operator window; it is a normal window and
   can be brought forward or moved. The stage monitor already behaves this way with no spare screen.
 - **Bug 9** stays: a very long page is still cut off without a sign.
