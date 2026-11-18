@@ -345,8 +345,9 @@ rm -f "$0"
   return script
 }
 
+// windowsHide: on Windows a detached cmd.exe otherwise opens its own console window, which flashed black while BORN updated
 function spawnDetached(cmd: string, args: string[]): void {
-  spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref()
+  spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref()
 }
 
 /**
