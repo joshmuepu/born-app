@@ -3,6 +3,8 @@
  *    over the operator window; choosing this computer's own screen under Screens still puts it full screen;
  *  - quitting while something is on the screen asks first, the safe answer is the default, "Keep BORN open" keeps every window, and quitting with
  *    nothing on the screen (or the screen hidden) asks nothing; a quit sent by signal (a script, `kill`) quits without asking, as before;
+ *    the update's own quit (the call the Restart and Quit BORN buttons make) and the computer ending the session (logout, restart, shutdown;
+ *    on Windows the session ending) never wait on the question;
  *  - after the operator window is started again (as it is after it stops), the phone still says what is on the congregation screen.
  * Usage: PW_DIR=/tmp/born-pw node scripts/qa/data-safety-app.cjs <profileDir>   (needs `npm run build`; the profile is made from scratch) */
 const fs = require('fs'), path = require('path')
@@ -16,7 +18,7 @@ const evFile = path.join(profile, 'qa-main-events.json')
 const events = () => { try { return JSON.parse(fs.readFileSync(evFile, 'utf8')) } catch { return [] } }
 const clearEvents = () => fs.rmSync(evFile, { force: true })
 const answer = (n) => fs.writeFileSync(path.join(profile, 'qa-dialog-answer'), String(n))
-const quit = () => fs.writeFileSync(path.join(profile, 'qa-quit'), '')
+const quit = (how = '') => fs.writeFileSync(path.join(profile, 'qa-quit'), how)
 const hooks = ['--require', path.join(__dirname, 'hide-outputs.cjs'), '--require', path.join(__dirname, 'record-main.cjs'), '--require', path.join(__dirname, 'fault-hooks.cjs')]
 const start = () => launch({ profile, remotePort: PORT, port: CDP, mdns: MDNS, settle: 9000, extraArgs: hooks, env: { QA_ONE_DISPLAY: '1', QA_QUIT_TRIGGER: '1' } })
 const appPid = () => Number(require('child_process').execFileSync('lsof', ['-ti', `tcp:${CDP}`, '-sTCP:LISTEN']).toString().trim().split('\n')[0])
@@ -89,6 +91,18 @@ async function goLive(ref = 'John 3:16-18') {
   clearEvents(); answer(0); process.kill(appPid(), 'SIGTERM'); await sleep(4000)
   c.ok('a quit sent by signal while something is on the screen quits without asking', !alive(app) && events().filter((e) => 'dialog' in e).length === 0, JSON.stringify(events()))
   await app.kill()
+
+  // the update's own quit and the computer ending the session, while live: no question
+  const noQuestion = async (label, doQuit) => {
+    app = await start(); p = await app.page()
+    await goLive('Psalm 23:3')
+    clearEvents(); answer(0); await doQuit(); await sleep(4000)
+    c.ok(label, !alive(app) && events().filter((e) => 'dialog' in e).length === 0, JSON.stringify(events()))
+    await app.kill()
+  }
+  await noQuestion('the update\'s quit (Restart, Quit BORN) while something is on the screen quits without asking', () => p.ev('window.electronAPI.quitApp(), 1').catch(() => 1))
+  await noQuestion('logout, restart or shutdown (macOS, Linux) while something is on the screen quits without asking', () => quit('shutdown'))
+  await noQuestion('Windows ending the session while something is on the screen quits without asking', () => quit('session-end'))
 
   // the screen hidden: no question
   app = await start(); p = await app.page()

@@ -4,8 +4,11 @@
  *                     <profile>/qa-main-events.json as { output, fullscreen } and { output, bounds, workArea }.
  *  QA_QUIT_TRIGGER=1  a file <profile>/qa-quit makes the app quit with app.quit(), the call the Quit menu item, Cmd+Q and the Dock's Quit make.
  *                     It is removed first; the outcome is { quitAsked: true } before the quit and the app either exits or stays.
+ *                     If the file says "shutdown", the computer's logout, restart or shutdown notice (powerMonitor 'shutdown', macOS and
+ *                     Linux) comes first, as the system sends it before it quits the app; if it says "session-end", Windows ending the
+ *                     session (each window's 'session-end') comes first.
  *  QA_FAULT_SERIES=1  the sermon series cannot be read: the bundled series.json read fails and the online series request fails. */
-const { app, screen, BrowserWindow } = require('electron')
+const { app, screen, BrowserWindow, powerMonitor } = require('electron')
 const fs = require('fs'), path = require('path')
 const dir = process.env.BORN_USER_DATA_DIR
 const file = path.join(dir, 'qa-main-events.json')
@@ -35,8 +38,11 @@ if (process.env.QA_QUIT_TRIGGER === '1') {
   try { fs.rmSync(trigger, { force: true }) } catch { /* none */ }
   setInterval(() => {
     if (!fs.existsSync(trigger)) return
+    const how = fs.readFileSync(trigger, 'utf8').trim()
     fs.rmSync(trigger, { force: true })
-    rec({ quitAsked: true })
+    rec({ quitAsked: true, how: how || 'quit' })
+    if (how === 'shutdown') powerMonitor.emit('shutdown', { preventDefault() {} })
+    if (how === 'session-end') for (const w of BrowserWindow.getAllWindows()) w.emit('session-end')
     app.quit()
   }, 300)
 }
