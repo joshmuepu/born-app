@@ -35,6 +35,8 @@ monitor down. While something is on the screen and not hidden, BORN asks first:
 **Keep BORN open** (or **Keep it open**, when closing the window) is the default,
 so pressing <kbd>Enter</kbd> or <kbd>Esc</kbd> keeps everything as it is. With
 nothing on the screen, or the screen hidden, BORN closes without asking.
+Restarting BORN to install an update, or logging out, restarting or shutting down
+the computer, does not ask either.
 
 ## Showing a message instead
 
