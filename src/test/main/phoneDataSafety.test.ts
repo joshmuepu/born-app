@@ -19,6 +19,12 @@ type Api = {
   state: Record<string, unknown>
   saveQueueAs: (onExisting: string) => void
   retrySheet: () => void
+  loadSongs: () => void
+  renderSongsTab: () => void
+  openKeyPickerSheet: () => void
+  filterSongs: (v: string) => void
+  openChapterContext: (book: number, chapter: number, focus: number[]) => void
+  retryRecentSongs: () => void
 }
 function load(): Api {
   Object.assign(window, { matchMedia: () => ({ matches: false, addEventListener: () => {}, addListener: () => {} }) })
@@ -26,7 +32,7 @@ function load(): Api {
     + '<div class="sheet-overlay" id="sheetOverlay"><div class="sheet" id="sheetBody"></div></div><div id="view-songs"></div><div id="view-bible"></div>'
   // (the buttons' own clicks are checked in a real browser by scripts/qa/phone-data-safety.cjs; here their functions are called)
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  const api = new Function(`${APP_JS}\nreturn { doSaveQueue: doSaveQueue, saveQueueSheet: saveQueueSheet, openSavedSheet: openSavedSheet, openOnThisDay: openOnThisDay, openSeriesList: openSeriesList, openSermonDetailSheet: openSermonDetailSheet, openRecentSermons: openRecentSermons, pickChapter: pickChapter, selectSongById: selectSongById, state: state, saveQueueAs: saveQueueAs, retrySheet: retrySheet };`)() as Api
+  const api = new Function(`${APP_JS}\nreturn { doSaveQueue: doSaveQueue, saveQueueSheet: saveQueueSheet, openSavedSheet: openSavedSheet, openOnThisDay: openOnThisDay, openSeriesList: openSeriesList, openSermonDetailSheet: openSermonDetailSheet, openRecentSermons: openRecentSermons, pickChapter: pickChapter, selectSongById: selectSongById, state: state, saveQueueAs: saveQueueAs, retrySheet: retrySheet, loadSongs: loadSongs, renderSongsTab: renderSongsTab, openKeyPickerSheet: openKeyPickerSheet, filterSongs: filterSongs, openChapterContext: openChapterContext, retryRecentSongs: retryRecentSongs };`)() as Api
   Object.assign(window, api)
   return api
 }
@@ -147,6 +153,80 @@ describe('lists and sheets that cannot load say so, with Try again', () => {
     api.selectSongById(7)
     await flush(6)
     expect(toastText()).toMatch(/Couldn.t open that song/)
+    expect(unhandled).toEqual([])
+  })
+})
+
+/* Requests the phone makes when it opens (or on a tap) that used to fail with nothing on the screen. */
+describe('requests that used to fail without a word', () => {
+  const songsView = (): string => document.getElementById('view-songs')!.textContent ?? ''
+  it('the recent songs: says it could not load, with Try again, which loads them', async () => {
+    let up = false
+    global.fetch = vi.fn((u: unknown) => {
+      const url = String(u)
+      if (url.startsWith('/api/songs/recent')) return Promise.resolve(up ? json([{ id: 7, title: 'Placeholder Hymn' }]) : json({ error: 'x' }, 500))
+      return Promise.resolve(json([{ id: 1, title: 'Another Placeholder', author: '' }]))
+    }) as unknown as typeof fetch
+    const api = load()
+    api.state.tab = 'songs'
+    api.loadSongs(); api.renderSongsTab()
+    await flush(6)
+    expect(songsView()).toMatch(/RECENTLY PLAYED/)
+    expect(songsView()).toMatch(/Couldn.t load this from BORN\./)
+    const retry = [...document.querySelectorAll('#view-songs button')].find((b) => b.textContent === 'Try again')!
+    expect(retry).toBeTruthy()
+    expect(retry.getAttribute('onclick')).toBe('retryRecentSongs()')
+    up = true
+    api.retryRecentSongs()
+    await flush(6)
+    expect(songsView()).not.toMatch(/Couldn.t load/)
+    expect(songsView()).toMatch(/Placeholder Hymn/)
+    expect(unhandled).toEqual([])
+  })
+  it('the recent songs: an empty list still shows nothing extra', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(json([]))) as unknown as typeof fetch
+    const api = load()
+    api.state.tab = 'songs'
+    api.loadSongs(); api.renderSongsTab()
+    await flush(6)
+    expect(songsView()).not.toMatch(/RECENTLY PLAYED|Couldn.t load/)
+  })
+  it('Set key: the sheet says it could not load, with Try again', async () => {
+    let up = false
+    global.fetch = vi.fn(() => Promise.resolve(up ? json(['G']) : json({ error: 'x' }, 500))) as unknown as typeof fetch
+    const api = load()
+    api.state.selected = { kind: 'song', title: 'Placeholder Hymn', payload: { songId: 7 }, slides: [] }
+    api.openKeyPickerSheet()
+    await flush(6)
+    expect(sheet()).toMatch(/Couldn.t load this from BORN\./)
+    expect(buttons()).toContain('Try again')
+    up = true
+    api.retrySheet()
+    await flush(6)
+    expect(sheet()).not.toMatch(/Couldn.t load/)
+    expect(buttons()).toContain('No key')
+    expect(unhandled).toEqual([])
+  })
+  it('a song search whose request fails says so, not "Searching…" for ever', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    global.fetch = vi.fn(() => Promise.resolve(json({ error: 'x' }, 500))) as unknown as typeof fetch
+    const api = load()
+    api.state.tab = 'songs'
+    api.renderSongsTab()
+    api.filterSongs('placeholder')
+    vi.advanceTimersByTime(250)
+    vi.useRealTimers()
+    await flush(6)
+    expect(songsView()).not.toMatch(/SEARCHING/)
+    expect(songsView()).toMatch(/Couldn.t reach BORN/)
+    expect(unhandled).toEqual([])
+  })
+  it('a Bible passage that cannot be opened says so', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(json({ error: 'x' }, 500))) as unknown as typeof fetch
+    const api = load()
+    api.openChapterContext(43, 3, [16])
+    await flush(6)
+    expect(toastText()).toMatch(/Couldn.t load this from BORN/)
     expect(unhandled).toEqual([])
   })
 })
