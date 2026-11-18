@@ -29,9 +29,36 @@ describe('stage monitor text fits its box', () => {
       const box = await show(view)
       const rem = parseFloat(box.style.fontSize)
       expect(rem).toBeGreaterThan(0)
-      // the start size is the old fixed one (4.2vw / 6vw of the window width); a slide this tall ends far below it
-      const start = Math.min(Math.max((window.innerWidth * (view === 'stage' ? 0.042 : 0.06)) / 16, 2), view === 'stage' ? 5 : 7)
+      // the start size is 4.2vw / 6vw of the window width, in the stage's own rem (the screen height / 67.5, at least 12 px); a slide
+      // this tall ends far below it
+      const start = Math.min(Math.max((window.innerWidth * (view === 'stage' ? 0.042 : 0.06)) / rootPx(), 2), view === 'stage' ? 5 : 7)
       expect(rem).toBeLessThanOrEqual(start * 0.6)
     })
   }
+  it('stage view: the current text goes no smaller than 55% of its start size (it went down to 30%, below the Next text)', async () => {
+    const box = await show('stage')
+    const start = Math.min(Math.max((window.innerWidth * 0.042) / rootPx(), 2), 5)
+    expect(parseFloat(box.style.fontSize)).toBeCloseTo(start * 0.55, 2)
+  })
+})
+
+const rootPx = (): number => Math.max(12, window.innerHeight / 67.5)
+
+describe('the stage Next text', () => {
+  it('is fitted to its band and never starts larger than the current text', async () => {
+    localStorage.setItem('born.stageView', 'stage')
+    let push: (d: { current: unknown; next: unknown }) => void = () => {}
+    Object.assign(window.electronAPI, {
+      onStageUpdate: vi.fn((cb) => { push = cb; return () => {} }), onStageSetBlank: vi.fn(() => () => {}), onStageAlert: vi.fn(() => () => {}), notifyStageReady: vi.fn()
+    })
+    render(<StageApp />)
+    const lines = (n: number): string => Array.from({ length: n }, (_, i) => `Placeholder line ${i + 1}`).join('\n')
+    await act(async () => { push({ current: { kind: 'song', label: 'Verse 1', text: lines(20) }, next: { kind: 'song', label: 'Verse 2', text: lines(4), reference: 'Invented Song' } }) })
+    const current = parseFloat((document.querySelector('.stage-current') as HTMLElement).style.fontSize)
+    const fit = document.querySelector('.stage-next-fit') as HTMLElement
+    expect(fit).not.toBeNull()
+    expect(fit.querySelector('.stage-next-text')).not.toBeNull()
+    expect(fit.querySelector('.stage-next-ref')?.textContent).toBe('Invented Song')
+    expect(parseFloat(fit.style.fontSize)).toBeLessThanOrEqual(current)
+  })
 })

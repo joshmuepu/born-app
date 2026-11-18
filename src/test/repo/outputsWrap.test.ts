@@ -15,9 +15,9 @@ describe('the projector and stage monitor keep long text on screen', () => {
   it('a line with no spaces wraps on the stage monitor (current, next and congregation view)', () => {
     expect(read('StageApp.css')).toMatch(/\.stage-current-text, \.stage-next-text, \.stage-cg-text \{ overflow-wrap: anywhere; \}/)
   })
-  it('the stage Next band is not height-capped (a cap cut its reference line in half; the text is line-clamped already)', () => {
-    const b = block(read('StageApp.css'), '.stage-next')
-    expect(b).not.toMatch(/max-height/)
-    expect(b).not.toMatch(/overflow:\s*hidden/)
+  it('the stage Next band is a fifth of the screen height, with its text fitted in a box of its own so the reference line stays whole', () => {
+    expect(block(read('StageApp.css'), '.stage-next')).toMatch(/height:\s*20vh/)
+    expect(block(read('StageApp.css'), '.stage-next-fit')).toMatch(/min-height:\s*0/)
+    expect(read('StageApp.tsx')).toMatch(/<div className="stage-next-fit" ref=\{nextRef\}/)
   })
 })

@@ -62,20 +62,25 @@ export default function StageApp() {
   }
 
   // The text is fitted to its box like the projector's (it was a fixed size, so a long slide lost lines at both ends). It starts at
-  // the size it always had: 4.2% of the screen width in the Stage view, 6% in the Congregation view. It may go a little smaller than
-  // the projector's (the Next box takes a third of the Stage view's height).
-  const [vw, setVw] = useState(() => window.innerWidth)
+  // 4.2% of the screen width in the Stage view, 6% in the Congregation view, at most 5 and 7 rem; the rem grows with the screen
+  // height (StageApp.css), so on a 4K screen the text keeps the share of the screen it has on a 1080-line one. The current text goes
+  // no smaller than 55% of its start size. The Next text is fitted to its band (a fifth of the screen height) and never
+  // starts larger than the current text.
+  const [screen, setScreen] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
   useEffect(() => {
-    const onResize = (): void => setVw(window.innerWidth)
+    const onResize = (): void => setScreen({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const clampRem = (pct: number, max: number): number => Math.min(Math.max((vw * pct) / 16, 2), max)
+  const rootPx = Math.max(12, screen.h / 67.5)
+  const clampRem = (pct: number, min: number, max: number): number => Math.min(Math.max((screen.w * pct) / rootPx, min), max)
   const currentRef = useRef<HTMLDivElement>(null)
+  const nextRef = useRef<HTMLDivElement>(null)
   const congregationRef = useRef<HTMLDivElement>(null)
   const showing = !current || blanked ? null : current
-  const currentRem = useAutoFitFontSize(currentRef, view === 'stage' ? showing : null, clampRem(0.042, 5), 0.9, 0.3)
-  const congregationRem = useAutoFitFontSize(congregationRef, view === 'congregation' ? showing : null, clampRem(0.06, 7), 0.9, 0.3)
+  const currentRem = useAutoFitFontSize(currentRef, view === 'stage' ? showing : null, clampRem(0.042, 2, 5), 0.9, 0.55)
+  const nextRem = useAutoFitFontSize(nextRef, view === 'stage' && showing ? next : null, Math.min(clampRem(0.024, 1.1, 2.6), currentRem), 0.9, 0.3)
+  const congregationRem = useAutoFitFontSize(congregationRef, view === 'congregation' ? showing : null, clampRem(0.06, 2, 7), 0.9, 0.3)
 
   const nothingUp = !current || blanked
   const alertBanner = alert && <div className="stage-alert">{alert}</div>
@@ -147,8 +152,12 @@ export default function StageApp() {
           {next && (
             <div className="stage-next">
               <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
-              <div className={`stage-next-text${preClass(next)}`}>{cleanSourceText(next.text)}</div>
-              {next.reference && <div className="stage-next-ref">{next.reference}</div>}
+              <div className="stage-next-fit" ref={nextRef} style={{ fontSize: `${nextRem}rem` }}>
+                <div>
+                  <div className={`stage-next-text${preClass(next)}`}>{cleanSourceText(next.text)}</div>
+                  {next.reference && <div className="stage-next-ref">{next.reference}</div>}
+                </div>
+              </div>
             </div>
           )}
         </>
