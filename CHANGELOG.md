@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.8
+
+**On Windows**
+- Installing an update no longer flashes a black window while the new version installs; BORN reopens by itself as before. This applies to updates installed from 1.13.8 onwards: the update to 1.13.8 itself still runs 1.13.7's own updater.
+
+**On the phone and iPad**
+- When BORN can't be reached, Recently Played on the Songs tab now says "Couldn't load this from BORN." with **Try again**, instead of showing nothing. **Change key** used to do nothing in that case; it now says the same, with **Try again**.
+- A song search that can't reach BORN now says so, instead of "Searching…" for ever, and a Bible passage that can't be opened says so instead of doing nothing.
+
+Nothing new was added beyond these messages and Try again buttons.
+
 ## 1.13.7
 
 **On the projected screen**
