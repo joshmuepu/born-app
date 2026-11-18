@@ -6,6 +6,7 @@ import {
   screen,
   dialog,
   nativeTheme,
+  powerMonitor,
   session,
   shell
 } from 'electron'
@@ -181,7 +182,7 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 let mainWindow: BrowserWindow | null = null
 /** set when the app is quitting on purpose: the operator window's close does not ask then */
 let quitting = false
-/** set by the app's own Quit buttons (after an update) and by a quit sent by signal: the quit is not asked about */
+/** set by the app's own Quit buttons (after an update), by a quit sent by signal and by the computer ending the session: the quit is not asked about */
 let quitWithoutAsking = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
@@ -353,6 +354,7 @@ function createMainWindow(): void {
 
   // Closing the operator window takes the screens down (the outputs go with it). While something is on the congregation screen and not hidden,
   // the operator is asked first: one click on the window's close button ended it mid-service.
+  mainWindow.on('session-end', sessionEndingWithoutAsking)
   mainWindow.on('close', (e) => {
     if (quitting || !mainWindow || mainWindow.isDestroyed()) return
     if (!projectionIsLive()) return
@@ -1013,6 +1015,12 @@ function quitBySignalWithoutAsking(): void {
       app.quit()
     })
   }
+}
+// Logging out, restarting or shutting down the computer is not the operator at the window either: the system would wait on the question.
+// macOS and Linux say so before they quit the app; on Windows each window is told the session is ending (see createMainWindow).
+function sessionEndingWithoutAsking(): void {
+  quitWithoutAsking = true
+  quitting = true // nor the operator window's close question
 }
 
 /** Whether either local database was found corrupted and auto-recovered at
@@ -2221,6 +2229,7 @@ app.on('web-contents-created', (_e, wc) => guardWebContents(wc as never, isAppPa
 
 app.whenReady().then(async () => {
   quitBySignalWithoutAsking()
+  powerMonitor.on('shutdown', sessionEndingWithoutAsking)
   log.boot()
   // only the browser permissions the app uses are given (every request was granted before)
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
