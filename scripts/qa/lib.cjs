@@ -4,7 +4,7 @@
  * Needs Node 22+ (built-in WebSocket) and `npm run build` first (it runs `electron .` against out/).
  * Usage: const { launch } = require('./lib.cjs'); const app = await launch({ profile: '/tmp/x' }); const p = await app.page(); ... await app.kill()
  */
-const { spawn } = require('child_process')
+const { spawn, spawnSync, execFileSync } = require('child_process')
 const fs = require('fs'), path = require('path'), http = require('http')
 const ROOT = path.join(__dirname, '..', '..')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -57,11 +57,56 @@ class Page {
   close() { try { this.ws.close() } catch { /* closed */ } }
 }
 
+/* Every app this run starts is stopped when the run ends, also on a failure, an uncaught error or Ctrl+C: signal first, then force-stop after a short
+   wait. At exit the run reports any process still holding one of its own profile folders open. */
+const running = new Set()
+const profilesUsed = new Set()
+const alive = (pid) => { if (!pid) return false; try { process.kill(pid, 0); return true } catch { return false } }
+const signal = (pid, sig) => { try { process.kill(pid, sig) } catch { /* gone */ } }
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+/** the real Electron process (the launcher is a node wrapper): the one listening on the debugging port */
+function listenerPid(port) {
+  if (process.platform === 'win32') return 0
+  try { return Number(execFileSync('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n')[0]) || 0 } catch { return 0 }
+}
+/** processes holding files in a profile folder open (the app keeps its databases there open while it runs) */
+function holders(dir) {
+  if (process.platform === 'win32' || !fs.existsSync(dir)) return []
+  // lsof exits 1 over a folder even when it lists processes, so its output is read whatever the exit code
+  const r = spawnSync('lsof', ['-t', '+D', dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  return String(r.stdout || '').trim().split('\n').filter(Boolean).map(Number)
+}
+async function stopApp(app, waitMs = 4000) {
+  const pids = [app.proc.pid, app.pid].filter(Boolean)
+  for (const pid of pids) signal(pid, 'SIGTERM')
+  const t0 = Date.now()
+  while (pids.some(alive) && Date.now() - t0 < waitMs) await sleep(200)
+  for (const pid of pids) if (alive(pid)) signal(pid, 'SIGKILL')
+  running.delete(app)
+}
+function stopAllSync() {
+  const pids = [...running].flatMap((a) => [a.proc.pid, a.pid]).filter(alive)
+  running.clear()
+  for (const pid of pids) signal(pid, 'SIGTERM')
+  const t0 = Date.now()
+  while (pids.some(alive) && Date.now() - t0 < 3000) sleepSync(100)
+  for (const pid of pids) if (alive(pid)) signal(pid, 'SIGKILL')
+}
+function reportLeftovers() {
+  const left = [...profilesUsed].flatMap((dir) => holders(dir).filter((pid) => pid !== process.pid).map((pid) => `${pid} (${dir})`))
+  if (left.length) console.error(`QA harness: still running from this run's profile folders: ${left.join(', ')}`)
+}
+process.on('exit', () => { stopAllSync(); reportLeftovers() })
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => process.exit(130))
+process.on('uncaughtException', (e) => { console.error(e); process.exit(2) })
+process.on('unhandledRejection', (e) => { console.error(e); process.exit(2) })
+
 /** Launch on an isolated profile. o: { profile, port=9356, remotePort=14316, mdns='born-remote-v1qa', exe?, env?, settle? }
  *  `exe` runs a packaged app binary instead of `electron .` (the packaged smoke). */
 async function launch(o) {
   const port = o.port || 9356
   fs.mkdirSync(o.profile, { recursive: true })
+  profilesUsed.add(path.resolve(o.profile))
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) try { fs.rmSync(path.join(o.profile, f), { force: true }) } catch { /* none */ }
   const env = { ...process.env, BORN_USER_DATA_DIR: o.profile, BORN_REMOTE_PORT: String(o.remotePort || 14316), BORN_MDNS_NAME: o.mdns || 'born-remote-v1qa', ...(o.env || {}) }
   delete env.ELECTRON_RUN_AS_NODE
@@ -75,12 +120,22 @@ async function launch(o) {
     await sleep(500)
   }
   const app = {
-    proc, port, profile: o.profile, remotePort: o.remotePort || 14316,
+    proc, pid: listenerPid(port), port, profile: o.profile, remotePort: o.remotePort || 14316,
     targets: () => getJson(`http://127.0.0.1:${port}/json`),
     async page(match = (t) => t.type === 'page' && MAIN_TITLE.test(t.title)) { const ts = await this.targets(); const t = ts.find(match); if (!t) throw new Error('no such window'); return new Page(t).connect() },
-    async kill() { try { proc.kill('SIGTERM') } catch { /* gone */ } await sleep(1500); try { proc.kill('SIGKILL') } catch { /* gone */ } }
+    /** signal, then force-stop after a short wait (the launcher and the real app both) */
+    async kill() { await stopApp(app) }
   }
+  running.add(app)
   await sleep(o.settle ?? 4000)
+  return app
+}
+
+/** For a script that starts the app itself: stopped like the others at the end of the run. `port` is one the app listens on, to find the real app. */
+function adopt(proc, port, profile) {
+  if (profile) profilesUsed.add(path.resolve(profile))
+  const app = { proc, pid: 0, findPid() { app.pid = listenerPid(port) || app.pid; return app.pid }, async kill() { app.findPid(); await stopApp(app) } }
+  running.add(app)
   return app
 }
 
@@ -92,4 +147,4 @@ function checks(name) {
     done() { const failed = rows.filter((r) => !r.pass).length; console.log(`\n${name}: ${rows.length} checks, ${failed} failed`); return { rows, failed } }
   }
 }
-module.exports = { launch, Page, sleep, getJson, checks, ROOT }
+module.exports = { launch, adopt, Page, sleep, getJson, checks, ROOT }

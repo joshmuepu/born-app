@@ -3,7 +3,7 @@
  * reload chords must be blocked (preventDefault), every other key must not be. In a packaged app the handler must exist; unpackaged it must not.
  * Usage: node scripts/qa/reload-guard.cjs <profileDir> [<packaged app executable>]   (no executable = `electron .` from this checkout, i.e. development) */
 const path = require('path'), fs = require('fs'), http = require('http'), { spawn } = require('child_process')
-const { checks, sleep } = require('./lib.cjs')
+const { checks, sleep, adopt } = require('./lib.cjs')
 const [profile, exe] = process.argv.slice(2)
 const ROOT = path.join(__dirname, '..', '..')
 const getJson = (u) => new Promise((res, rej) => http.get(u, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => { try { res(JSON.parse(d)) } catch (e) { rej(e) } }) }).on('error', rej))
@@ -14,9 +14,11 @@ const getJson = (u) => new Promise((res, rej) => http.get(u, (r) => { let d = ''
   try { await getJson('http://127.0.0.1:9331/json'); console.error('port 9331 is already in use (a leftover app?) — stop it first'); process.exit(2) } catch { /* free */ }
   const bin = exe || path.join(ROOT, 'node_modules', '.bin', 'electron')
   const proc = spawn(bin, [...(exe ? [] : ['.']), '--inspect=9331'], { cwd: exe ? path.dirname(exe) : ROOT, env, stdio: 'ignore' })
+  const app = adopt(proc, 9331, profile) // stopped at the end of the run, also on a failure
   let target
   for (let i = 0; i < 60 && !target; i++) { await sleep(500); try { target = (await getJson('http://127.0.0.1:9331/json'))[0] } catch { /* not up */ } }
-  if (!target) { c.ok('inspector attached', false); proc.kill(); process.exit(1) }
+  if (!target) { c.ok('inspector attached', false); process.exit(1) }
+  app.findPid()
   await sleep(5000)
   const ws = new WebSocket(target.webSocketDebuggerUrl); await new Promise((r) => ws.addEventListener('open', r))
   let id = 0; const pend = new Map(); ws.addEventListener('message', (m) => { const j = JSON.parse(m.data); if (pend.has(j.id)) { pend.get(j.id)(j); pend.delete(j.id) } })
@@ -32,5 +34,5 @@ const getJson = (u) => new Promise((res, rej) => http.get(u, (r) => { let d = ''
   const passes = [['R alone', kd('r')], ['Ctrl+F', kd('f', { control: true })], ['Ctrl+C', kd('c', { control: true })], ['Cmd+V', kd('v', { meta: true })], ['Esc', kd('Escape')], ['Space', kd(' ')], ['ArrowRight', kd('ArrowRight')], ['Ctrl+ArrowRight', kd('ArrowRight', { control: true })], ['Ctrl+Shift+W', kd('W', { control: true, shift: true })], ['Ctrl+Alt+R', kd('r', { control: true, alt: true })], ['Ctrl+R key-up', { type: 'keyUp', key: 'r', control: true, meta: false, alt: false, shift: false }]]
   for (const [n, i] of blocks) { const prevented = await press(i); c.ok(`${n} is ${packaged ? 'blocked' : 'left alone (development)'}`, packaged ? prevented === true : prevented === false, 'defaultPrevented=' + prevented) }
   for (const [n, i] of passes) { const prevented = await press(i); c.ok(`${n} is never blocked`, prevented === false, 'defaultPrevented=' + prevented) }
-  const res = c.done(); ws.close(); proc.kill('SIGTERM'); await sleep(1500); try { proc.kill('SIGKILL') } catch {} ; process.exit(res.failed ? 1 : 0)
-})().catch((e) => { console.error(e); try { require('child_process').execSync('pkill -f inspect=9331') } catch {} process.exit(2) })
+  const res = c.done(); ws.close(); await app.kill(); process.exit(res.failed ? 1 : 0)
+})().catch((e) => { console.error(e); process.exit(2) })
