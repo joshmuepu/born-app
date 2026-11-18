@@ -54,13 +54,12 @@ export function cmpVersion(a: string, b: string): number {
   return 0
 }
 
-/** A release from a different major version is a different product line
- *  (v1 "released" vs. v2 "unreleased, rebranding in 2027"), not an update —
- *  GitHub's /releases/latest returns whichever release is newest *by publish
- *  date*, not by semver, so this stays correct even if a v2 preview build
- *  ever gets manually published to this same repo ahead of a v1 release, or
- *  vice versa. Without this, cmpVersion() alone would happily call a
- *  different major version "newer" and offer it as an upgrade. */
+/** Only a release with the same major version as this install is offered as
+ *  an update. GitHub's /releases/latest returns whichever release is newest
+ *  *by publish date*, not by version number, so a release with another major
+ *  version published to this repo is never offered here. Without this,
+ *  cmpVersion() alone would call any higher major version "newer" and offer
+ *  it as an upgrade. */
 export function sameMajor(a: string, b: string): boolean {
   const majorOf = (v: string): number => parseInt(v.replace(/^v/, '').split('.')[0], 10) || 0
   return majorOf(a) === majorOf(b)

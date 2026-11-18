@@ -5,11 +5,11 @@ const path = require('path')
 const { launch, checks, sleep } = require('./lib.cjs')
 const pw = require(path.join(process.env.PW_DIR || '/tmp/born-pw', 'node_modules', 'playwright'))
 const profile = process.argv[2] || path.join(require('os').tmpdir(), 'born-v1-reconnect-profile')
-const PORT = 14320
+const PORT = Number(process.env.BORN_REMOTE_PORT || 14320), CDP = Number(process.env.CDP_PORT || 9360), MDNS = process.env.BORN_MDNS_NAME || 'born-remote-v1rc'
 const label = (page) => page.evaluate(() => [...document.querySelectorAll('.connLabel')].map((e) => e.textContent.trim()).filter(Boolean).join('|'))
 ;(async () => {
   const c = checks('remote-reconnect')
-  let app = await launch({ profile, remotePort: PORT, mdns: 'born-remote-v1rc', port: 9360, settle: 5000 })
+  let app = await launch({ profile, remotePort: PORT, mdns: MDNS, port: CDP, settle: 5000 })
   for (const [name, type] of [['chromium', pw.chromium], ['webkit', pw.webkit]]) {
     const browser = await type.launch(name === 'chromium' && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' })
@@ -27,7 +27,7 @@ const label = (page) => page.evaluate(() => [...document.querySelectorAll('.conn
     const toast = await page.evaluate(() => { const t = document.getElementById('toast'); return t && t.style.display !== 'none' ? t.textContent : '' })
     // the page already knows BORN is gone, so the tap is not sent at all and says so (a tap it does send and loses says "Couldn't reach")
     c.ok(`${name}: a tap while offline fails visibly (toast)`, /not connected to born|couldn.t reach born/i.test(toast), toast)
-    app = await launch({ profile, remotePort: PORT, mdns: 'born-remote-v1rc', port: 9360, settle: 4000 })
+    app = await launch({ profile, remotePort: PORT, mdns: MDNS, port: CDP, settle: 4000 })
     await page.waitForTimeout(6000)
     const back = await label(page)
     c.ok(`${name}: heals on its own when BORN is back`, /connected/i.test(back) && !/reconnect/i.test(back), back)

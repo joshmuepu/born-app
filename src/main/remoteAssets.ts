@@ -986,6 +986,15 @@ function getJSONT(url, ms){
 }
 /* A one-shot read for a sheet or a tap (On This Day, Series, a sermon's paragraphs, a chapter, a song …). It gives up after 12 s; when it fails a sheet
    still saying "Loading…" says it could not load, instead of "Loading…" for ever. It still rejects, so a caller's own message runs too. */
+/* A sheet whose list could not be read says so with Try again, which opens it again. */
+var sheetRetry = null;
+function sheetLoadFailed(id, retry){
+  var el = $(id);
+  if(!el) return;
+  sheetRetry = retry;
+  el.outerHTML = '<div id="' + id + '" class="empty">Couldn’t load this from BORN.<div style="margin-top:12px"><button class="retrybtn" onclick="retrySheet()">Try again</button></div></div>';
+}
+function retrySheet(){ var r = sheetRetry; sheetRetry = null; if(r) r(); }
 function getJSON(url){
   return getJSONT(url, 12000).catch(function(e){
     var body = $('sheetBody');
@@ -1633,18 +1642,40 @@ function saveQueueSheet(){
 function doSaveQueue(){
   var name = ($('saveNameInput') || {}).value || '';
   if(!name.trim()){ toast('Type a name first'); return; }
-  // BORN answers once the file is written: { ok: false } when it could not be (a full disk, a folder it may not write to)
-  cmd('save-queue', { name: name.trim() }).then(function(r){
+  sendSaveQueue(name.trim(), 'ask');
+}
+/* BORN answers once the file is written: { ok: false } when it could not be (a full disk, a folder it may not write to), and
+   { exists: true } (nothing saved) when a saved service already has that name, so the phone asks before replacing it.
+   "Saved" is said only when BORN said so; a dropped connection or a refusal says it was not saved. */
+function sendSaveQueue(name, onExisting){
+  cmd('save-queue', { name: name, onExisting: onExisting }).then(function(r){
     return r.status === 200 ? r.json().catch(function(){ return { ok: false }; }) : { ok: true };
   }).then(function(res){
-    if(res && res.ok === false){
-      toast('Couldn’t save “' + name.trim() + '” on the computer. Its folder may be full or read-only.', true);
+    if(res && res.exists){ askReplaceSaved(name); return; }
+    if(!res || res.ok === false){
+      toast('Couldn’t save “' + name + '” on the computer. Its folder may be full or read-only.', true);
       return;
     }
-    toast('Saved “' + name.trim() + '”');
+    toast('Saved “' + (res.name || name) + '”');
     closeSheet();
+  }).catch(function(e){
+    toast('“' + name + '” was not saved. ' + (e && e.message === 'offline' ? 'Not connected to BORN.' : 'Check the connection and try again.'), true);
   });
 }
+/* A saved service already has this name: Cancel (the default), Keep both (saved as "Name (2)"), or Replace it. */
+var pendingSaveName = '';
+function askReplaceSaved(name){
+  pendingSaveName = name;
+  openGenericSheet('Save this service', ''
+    + '<div class="empty" style="text-align:left;padding:4px 2px 14px">A saved service called “' + esc(name) + '” already exists.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + '<button class="btn-project" id="saveAskCancel" style="padding:15px;border-radius:13px" onclick="closeSheet()">Cancel</button>'
+    + '<button class="retrybtn" onclick="saveQueueAs(&quot;keep-both&quot;)">Keep both</button>'
+    + '<button class="retrybtn" onclick="saveQueueAs(&quot;replace&quot;)">Replace it</button>'
+    + '</div>');
+  setTimeout(function(){ var b = $('saveAskCancel'); if(b) b.focus(); }, 0);
+}
+function saveQueueAs(onExisting){ sendSaveQueue(pendingSaveName, onExisting); }
 function openSavedSheet(){
   openGenericSheet('Open a saved service', '<div id="savedListBody">Loading…</div>');
   getJSON('/api/services/recent').then(function(list){
@@ -1664,7 +1695,7 @@ function openSavedSheet(){
     html += '</div>';
     body.innerHTML = html;
     window._savedList = list;
-  });
+  }).catch(function(){ sheetLoadFailed('savedListBody', openSavedSheet); });
 }
 function doOpenSaved(i){
   var item = (window._savedList || [])[i];
@@ -1930,7 +1961,7 @@ function openOnThisDay(){
     window._onThisDay = rows || [];
     var body = $('onThisDayBody');
     if(body) body.outerHTML = '<div id="onThisDayBody">' + sermonListSheetHtml(window._onThisDay, 'pickOnThisDay') + '</div>';
-  });
+  }).catch(function(){ sheetLoadFailed('onThisDayBody', openOnThisDay); });
 }
 function pickOnThisDay(i){
   var s = window._onThisDay[i];
@@ -1952,7 +1983,7 @@ function openSeriesList(){
     html += '</div>';
     var body = $('seriesListBody');
     if(body) body.outerHTML = '<div id="seriesListBody">' + html + '</div>';
-  });
+  }).catch(function(){ sheetLoadFailed('seriesListBody', openSeriesList); });
 }
 function pickSeries(i){
   var series = window._series[i];
@@ -1962,7 +1993,7 @@ function pickSeries(i){
     window._seriesSermons = rows || [];
     var body = $('seriesSermonsBody');
     if(body) body.outerHTML = '<div id="seriesSermonsBody">' + sermonListSheetHtml(window._seriesSermons, 'pickSeriesSermon') + '</div>';
-  });
+  }).catch(function(){ sheetLoadFailed('seriesSermonsBody', function(){ pickSeries(i); }); });
 }
 function pickSeriesSermon(i){
   var s = window._seriesSermons[i];
@@ -1996,7 +2027,7 @@ function openSermonDetailSheet(sermonId, title, dateCode){
     html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
     var body = $('sermonDetailBody');
     if(body) body.outerHTML = '<div id="sermonDetailBody">' + html + '</div>';
-  });
+  }).catch(function(){ sheetLoadFailed('sermonDetailBody', function(){ openSermonDetailSheet(sermonId, title, dateCode); }); });
 }
 function projectSermonParagraph(flatIdx){
   var ref = (window._sermonDetailSlides || [])[flatIdx];
@@ -2025,7 +2056,7 @@ function openRecentSermons(){
     }
     var body = $('recentSermonsBody');
     if(body) body.outerHTML = '<div id="recentSermonsBody">' + html + '</div>';
-  });
+  }).catch(function(){ sheetLoadFailed('recentSermonsBody', openRecentSermons); });
 }
 function selectRecentSermon(i){
   var q = window._recentSermons[i];
@@ -2188,11 +2219,18 @@ function bibleChapterGridHtml(){
 function backToBooks(){ state.bibleView = 'grid'; state.bibleBook = null; renderBibleTab(); }
 function pickChapter(c){
   state.bibleChapterNum = c;
+  state.bibleChapter = null;
   state.bibleView = 'verses';
   renderBibleTab();
   var b = state.bibleBook;
   getJSON('/api/bible/chapter?book=' + b.num + '&chapter=' + c).then(function(data){
+    if(state.bibleChapterNum !== c) return;
     state.bibleChapter = data;
+    if(state.bibleView === 'verses') renderBibleTab();
+  }).catch(function(){
+    // said with Try again, not "Loading…" for ever
+    if(state.bibleChapterNum !== c || state.bibleBook !== b) return;
+    state.bibleChapter = { failed: true };
     if(state.bibleView === 'verses') renderBibleTab();
   });
 }
@@ -2200,7 +2238,8 @@ function bibleVerseListHtml(){
   var b = state.bibleBook;
   var h = '<div class="chapter-header"><button class="backbtn" onclick="backToChapters()">' + ICON_CHEVRON_LEFT + '</button><span class="chapter-title">' + esc(b.name) + ' ' + state.bibleChapterNum + '</span></div>';
   var ch = state.bibleChapter;
-  if(!ch || ch.error) return h + '<div class="empty">Loading…</div>';
+  if(ch && (ch.failed || ch.error)) return h + '<div class="empty">Couldn’t load this from BORN.<div style="margin-top:12px"><button class="retrybtn" onclick="pickChapter(' + state.bibleChapterNum + ')">Try again</button></div></div>';
+  if(!ch) return h + '<div class="empty">Loading…</div>';
   h += '<div class="verse-list">';
   for(var i=0;i<ch.verses.length;i++){
     var v = ch.verses[i];
@@ -2489,7 +2528,7 @@ function selectSongById(id){
       payload: { songId: s.id }
     };
     openPreview();
-  });
+  }).catch(function(){ toast('Couldn’t open that song from BORN. Try again.', true); });
 }
 
 /* ── Key picker (song leader can fix a key from the remote, live or ahead

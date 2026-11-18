@@ -116,6 +116,34 @@ let app
         await ctx.close()
       }
     }
+    // every phone role (Song Leader, Preacher, Operator, and a name of its own), phone and iPad, portrait and landscape, at 100% and 150%:
+    // each tab, the Save question ("already exists") and a sheet that could not load (with Try again)
+    for (const role of ['Song Leader', 'Preacher', 'Operator', 'Invented Role']) {
+      for (const [dev, w, h, dpr] of DEVICES.filter((d) => d[0] === 'iphone' || d[0] === 'ipad')) {
+        for (const orient of ['portrait', 'landscape']) for (const zoom of [1, 1.5]) {
+          const vw = Math.round((orient === 'portrait' ? w : h) / zoom), vh = Math.round((orient === 'portrait' ? h : w) / zoom)
+          const ua = eng === 'webkit' ? (w >= 744 ? UA.tablet : UA.phone) : UA.android
+          const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: dpr, isMobile: eng === 'chromium', hasTouch: true, userAgent: ua, serviceWorkers: 'block' })
+          const page = await ctx.newPage(); const errs = []
+          page.on('pageerror', (e) => errs.push(String(e).slice(0, 160)))
+          await page.goto(BASE + '/'); await page.waitForFunction(() => typeof setTab === 'function', null, { timeout: 20000 }); await sleep(1000)
+          await page.evaluate((r) => { try { dismissA2HS() } catch (_) {} chooseRole(r) }, role); await sleep(400)
+          const tag = `role-${eng}-${role.replace(/ /g, '')}-${dev}-${orient}-${zoom * 100}`
+          for (const tab of TABS) {
+            await page.evaluate((t) => setTab(t), tab); await sleep(500)
+            results.push({ tag, screen: tab, ...(await page.evaluate(MEASURE)) })
+          }
+          await page.evaluate(() => askReplaceSaved('Invented Service')); await sleep(500)
+          results.push({ tag, screen: 'save-question', ...(await page.evaluate(MEASURE)) })
+          if (zoom === 1.5 && orient === 'portrait') await page.screenshot({ path: path.join(out, tag + '-save-question.png') })
+          await page.evaluate(() => { closeSheet(); openGenericSheet('Open a saved service', '<div id="savedListBody">Loading…</div>'); sheetLoadFailed('savedListBody', openSavedSheet) }); await sleep(500)
+          results.push({ tag, screen: 'try-again', ...(await page.evaluate(MEASURE)) })
+          if (zoom === 1.5 && orient === 'portrait') await page.screenshot({ path: path.join(out, tag + '-try-again.png') })
+          results.push({ tag, screen: 'errors', errs })
+          await ctx.close()
+        }
+      }
+    }
     await browser.close()
   }
   fs.writeFileSync(path.join(out, 'viewports.json'), JSON.stringify(results, null, 1))
@@ -128,5 +156,10 @@ let app
   console.log('keyboard covers the focused field:', kbBad.length, kbBad.slice(0, 6).join(' '))
   console.log('page errors:', results.filter((r) => r.errs && r.errs.length).length)
   console.log('screens measured:', results.filter((r) => r.screen !== 'errors').length)
+  const roleRows = results.filter((r) => /^role-/.test(r.tag) && r.screen !== 'errors')
+  const roleSum = {}
+  for (const r of roleRows) for (const k of kinds) { const v = r[k]; const n = Array.isArray(v) ? v.length : v ? 1 : 0; if (n) { roleSum[k] = roleSum[k] || new Set(); (Array.isArray(v) ? v : ['hscroll']).forEach((x) => roleSum[k].add(r.screen + ': ' + x)) } }
+  console.log('role pass: screens measured:', roleRows.length, '| page errors:', results.filter((r) => /^role-/.test(r.tag) && r.errs && r.errs.length).length)
+  for (const k of Object.keys(roleSum)) console.log(`role pass ${k}: ${[...roleSum[k]].slice(0, 8).join(' | ')}`)
   await app.kill()
 })().catch(async (e) => { console.error(e); if (app) await app.kill(); process.exit(2) })

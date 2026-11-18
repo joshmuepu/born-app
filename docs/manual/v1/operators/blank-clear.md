@@ -27,6 +27,17 @@ While hidden, the preview in the bottom-right of the Service
 Queue panel is marked **HIDDEN FROM SCREEN** — it still shows you what *would* be
 on screen, so you can keep working the queue without losing your place.
 
+## Closing BORN while something is on screen
+
+Closing the main window or quitting BORN (the menu, <kbd>Cmd</kbd>+<kbd>Q</kbd>,
+or Quit from the Dock or the taskbar) takes the Congregation screen and the Stage
+monitor down. While something is on the screen and not hidden, BORN asks first:
+**Keep BORN open** (or **Keep it open**, when closing the window) is the default,
+so pressing <kbd>Enter</kbd> or <kbd>Esc</kbd> keeps everything as it is. With
+nothing on the screen, or the screen hidden, BORN closes without asking.
+Restarting BORN to install an update, or logging out, restarting or shutting down
+the computer, does not ask either.
+
 ## Showing a message instead
 
 Click **Message** to open a dialog with a text box and a **Show on** choice

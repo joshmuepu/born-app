@@ -17,6 +17,16 @@ export function isOpenableFromRemote(path: unknown, recentServices: string[], re
 
 /** The file name a service saved from the phone gets (in the phone's save folder): no path characters, and never one of the names
  *  Windows keeps for devices (CON, NUL, COM1…: a file saved as "CON.born" there goes nowhere) or one ending in a dot or a space. */
+/** "Name (2)", "Name (3)" … the first name whose file is not taken yet, for the phone's "Keep both". */
+export function freeServiceName(name: string, taken: (fileName: string) => boolean): string {
+  const base = String(name ?? '').trim()
+  for (let n = 2; n < 1000; n++) {
+    const candidate = `${base} (${n})`
+    if (!taken(safeServiceFileName(candidate))) return candidate
+  }
+  return `${base} (${Date.now()})`
+}
+
 export function safeServiceFileName(name: unknown): string {
   let n = String(name ?? '').trim().replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80).replace(/[. ]+$/, '')
   if (/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(n)) n += ' service'

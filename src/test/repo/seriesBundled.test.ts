@@ -18,6 +18,7 @@ describe('the series list is bundled, so Browse > Series works offline', () => {
   })
   it('the app falls back to it when The Table does not answer (desktop and phone remote)', () => {
     const src = readFileSync(join(ROOT, 'src', 'main', 'index.ts'), 'utf8')
-    expect(src.match(/online\.length > 0 \? online : loadBundledSeries\(\)/g)?.length).toBe(2)
+    expect(src.match(/online\.length > 0 \? online : loadBundledSeries\(\)/g)?.length).toBe(1) // desktop
+    expect(src).toMatch(/sermonSeries: async \(\) => \{\s*const online = await fetchAllSeries\(\)\s*if \(online\.length > 0\) return online\s*const bundled = loadBundledSeries\(\)/) // phone remote
   })
 })

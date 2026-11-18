@@ -44,7 +44,7 @@ describe('the phone hears whether its save worked', () => {
   })
   it('the phone page says the save failed instead of "Saved"', () => {
     const js = APP_JS.replace(/\r\n/g, '\n')
-    const fn = js.slice(js.indexOf('function doSaveQueue'), js.indexOf('\nfunction ', js.indexOf('function doSaveQueue') + 10))
+    const fn = js.slice(js.indexOf('function sendSaveQueue'), js.indexOf('\nfunction ', js.indexOf('function sendSaveQueue') + 10))
     expect(fn).toMatch(/ok === false/)
     expect(fn).toMatch(/Couldn.t save/)
   })

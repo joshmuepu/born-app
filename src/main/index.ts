@@ -6,6 +6,7 @@ import {
   screen,
   dialog,
   nativeTheme,
+  powerMonitor,
   session,
   shell
 } from 'electron'
@@ -66,7 +67,8 @@ import { startMdns, stopMdns, refreshMdns, getMdnsHostname } from './mdns'
 import { BIBLE_BOOKS, bookByNum } from '../shared/bibleBooks'
 import { isReloadChord } from '../shared/reloadChord'
 import { readJsonReporting, writeFileAtomic } from './corruptFile'
-import { isOpenableFromRemote, safeServiceFileName } from './remoteServicePath'
+import { isOpenableFromRemote, safeServiceFileName, freeServiceName } from './remoteServicePath'
+import { withLiveScreen } from './remoteOnScreen'
 import { dataFolderIsWritable } from './dataFolder'
 import { cleanSourceText } from '../shared/sourceText'
 import { highlightToHtml } from '../shared/searchHighlight'
@@ -92,6 +94,8 @@ import {
   findNamedEntry,
   nameForDisplay,
   projectionPlacementAfterChange,
+  projectionOpensWindowed,
+  cornerWindowBounds,
   type DisplayLike,
   type NamedDisplay
 } from './displays'
@@ -110,7 +114,8 @@ import {
   getLocalDurationGroups,
   getLocalLocationTree,
   getOnThisDay,
-  loadBundledSeries
+  loadBundledSeries,
+  bundledSeriesUnreadable
 } from './browseLocal'
 import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo, onSettingsSaveFailed, clampFontSize } from './settings'
 import { alertPayload, textInput } from './ipcInput'
@@ -177,6 +182,8 @@ if (!gotSingleInstanceLock && dataFolderOk) {
 let mainWindow: BrowserWindow | null = null
 /** set when the app is quitting on purpose: the operator window's close does not ask then */
 let quitting = false
+/** set by the app's own Quit buttons (after an update), by a quit sent by signal and by the computer ending the session: the quit is not asked about */
+let quitWithoutAsking = false
 let projectionWindow: BrowserWindow | null = null
 let stageWindow: BrowserWindow | null = null
 
@@ -347,10 +354,10 @@ function createMainWindow(): void {
 
   // Closing the operator window takes the screens down (the outputs go with it). While something is on the congregation screen and not hidden,
   // the operator is asked first: one click on the window's close button ended it mid-service.
+  mainWindow.on('session-end', sessionEndingWithoutAsking)
   mainWindow.on('close', (e) => {
     if (quitting || !mainWindow || mainWindow.isDestroyed()) return
-    const live = !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
-    if (!live) return
+    if (!projectionIsLive()) return
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'question',
       buttons: ['Keep it open', 'Close and take the screens down'],
@@ -369,6 +376,11 @@ function createMainWindow(): void {
     // bring the operator window back while they were open; on Windows they have no taskbar button and the app never quit). They go too.
     for (const w of [projectionWindow, stageWindow]) if (w && !w.isDestroyed()) w.close()
   })
+}
+
+/** Something is on the congregation screen and it is not hidden. */
+function projectionIsLive(): boolean {
+  return !!projectionWindow && !projectionWindow.isDestroyed() && !!projectionState.slide && !projectionState.blank
 }
 
 /** Esc/B (blank the congregation screen) and ⌘/Ctrl+Shift+W (close the
@@ -413,21 +425,25 @@ function createProjectionWindow(): void {
       `fallback=${target.isFallback} override=${target.isOverride}`
   )
   if (target.isFallback) log.warn('projection: no external display — using operator screen')
-  projectionOnProjector = !(target.isFallback && !target.isOverride)
-  projectionDisplaced = false
+  // With no projector it opens as a normal window in a corner of the operator's screen; full screen there covered the operator window.
+  // It goes full screen on a projector as soon as one is connected (repositionProjectionWindow).
+  const windowed = projectionOpensWindowed(target)
+  projectionOnProjector = !windowed
+  projectionDisplaced = windowed
+  const place = windowed ? cornerWindowBounds(area) : area
 
   const onMac = process.platform === 'darwin'
   projectionWindow = new BrowserWindow({
-    x: area.x,
-    y: area.y,
-    width: area.width,
-    height: area.height,
+    x: place.x,
+    y: place.y,
+    width: place.width,
+    height: place.height,
     backgroundColor: '#000000',
     title: 'BORN — Congregation screen',
     show: false,
     skipTaskbar: true,
-    fullscreen: !onMac,
-    simpleFullscreen: onMac,
+    fullscreen: !onMac && !windowed,
+    simpleFullscreen: onMac && !windowed,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -435,7 +451,7 @@ function createProjectionWindow(): void {
     }
   })
 
-  if (onMac) projectionWindow.setSimpleFullScreen(true)
+  if (onMac && !windowed) projectionWindow.setSimpleFullScreen(true)
   projectionWindow.once('ready-to-show', () => keepOperatorFocus(() => projectionWindow?.showInactive()))
 
   attachOperatorShortcuts(projectionWindow)
@@ -985,7 +1001,27 @@ ipcMain.handle('app:apply-update', () => {
   const p = downloadedInstallerPath()
   return p ? applyUpdate(p) : { ...noInstaller, needsManual: true }
 })
-ipcMain.handle('app:quit', () => app.quit())
+// The update's Restart and the Quit BORN button after a manual update: the operator chose to quit there, so it is not asked again.
+ipcMain.handle('app:quit', () => {
+  quitWithoutAsking = true
+  app.quit()
+})
+// A quit sent by signal (a script, a service manager, `kill`) is not the operator at the window: it quits as it always has, without asking.
+// Set up once the app is ready, after Electron's own signal handling, which would otherwise quit first and ask.
+function quitBySignalWithoutAsking(): void {
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) {
+    process.on(signal, () => {
+      quitWithoutAsking = true
+      app.quit()
+    })
+  }
+}
+// Logging out, restarting or shutting down the computer is not the operator at the window either: the system would wait on the question.
+// macOS and Linux say so before they quit the app; on Windows each window is told the session is ending (see createMainWindow).
+function sessionEndingWithoutAsking(): void {
+  quitWithoutAsking = true
+  quitting = true // nor the operator window's close question
+}
 
 /** Whether either local database was found corrupted and auto-recovered at
  *  startup — drives the status message so a damaged file reads as exactly
@@ -1445,12 +1481,20 @@ ipcMain.handle('queue:load', () => {
   return r.value
 })
 
+// A save that fails (a full disk, a read-only folder) is said to the operator once; the queue stays in the window and every change tries
+// again. Once a save works again, a later failure is said again.
+let queueSaveFailing = false
 ipcMain.on('queue:save', (_event, items: unknown) => {
   try {
     const queuePath = join(app.getPath('userData'), 'queue.json')
     writeFileAtomic(queuePath, JSON.stringify(items))
+    queueSaveFailing = false
   } catch (e) {
     log.error('queue:save error', e)
+    if (!queueSaveFailing) {
+      queueSaveFailing = true
+      sendToMain('operator:notice', 'The Service Queue could not be saved (the data folder may be full or read-only). It stays here in the window, and BORN tries again with your next change.')
+    }
   }
 })
 
@@ -1504,7 +1548,8 @@ ipcMain.on('stage:update', (_event, data: StageState) => {
 // ── Web Remote IPC ────────────────────────────────────────────────────────────
 
 ipcMain.on('webremote:sync', (_event, state) => {
-  updateWebRemoteState(state)
+  const open = !!projectionWindow && !projectionWindow.isDestroyed()
+  updateWebRemoteState(withLiveScreen(state, open ? { slide: projectionState.slide, blank: projectionState.blank } : null))
 })
 
 function currentNetworks(): RemoteNetwork[] {
@@ -2183,6 +2228,8 @@ const isAppPage = appPageTest(join(__dirname, '../renderer'), isDev ? process.en
 app.on('web-contents-created', (_e, wc) => guardWebContents(wc as never, isAppPage, (m) => log.warn(m)))
 
 app.whenReady().then(async () => {
+  quitBySignalWithoutAsking()
+  powerMonitor.on('shutdown', sessionEndingWithoutAsking)
   log.boot()
   // only the browser permissions the app uses are given (every request was granted before)
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
@@ -2300,7 +2347,11 @@ app.whenReady().then(async () => {
       } else if (cmd.action === 'new-service') {
         mainWindow.webContents.send('webremote:new-service')
       } else if (cmd.action === 'save-queue' && cmd.name) {
-        return saveQueueFromRemote(mainWindow, cmd.name)
+        // the phone asks before replacing a saved service of that name (onExisting 'ask'); a call that does not say keeps replacing it
+        const taken = (fileName: string): boolean => existsSync(join(REMOTE_SAVE_DIR(), `${fileName}.born`))
+        if (cmd.onExisting === 'ask' && taken(safeServiceFileName(cmd.name))) return Promise.resolve({ ok: false, exists: true })
+        const name = cmd.onExisting === 'keep-both' && taken(safeServiceFileName(cmd.name)) ? freeServiceName(cmd.name, taken) : cmd.name
+        return saveQueueFromRemote(mainWindow, name).then((r) => ({ ...r, name }))
       } else if ((cmd.action === 'open-service' || cmd.action === 'import-service') && !isOpenableFromRemote(cmd.path, getSettings().recentServices, REMOTE_SAVE_DIR())) {
         log.warn('remote: refused to open a service file that is not in the recent list or the remote save folder')
       } else if (cmd.action === 'open-service' && cmd.path) {
@@ -2336,7 +2387,14 @@ app.whenReady().then(async () => {
             .filter((p) => existsSync(p))
             .map((p) => ({ path: p, name: basename(p).replace(/\.(born|bpservice)$/, ''), mtimeMs: statSync(p).mtimeMs }))
         ),
-      sermonSeries: async () => { const online = await fetchAllSeries(); return online.length > 0 ? online : loadBundledSeries() },
+      // neither the online list nor the bundled one could be read: an error the phone says, not an empty list
+      sermonSeries: async () => {
+        const online = await fetchAllSeries()
+        if (online.length > 0) return online
+        const bundled = loadBundledSeries()
+        if (bundled.length === 0 && bundledSeriesUnreadable()) throw new Error('The sermon series could not be read.')
+        return bundled
+      },
       sermonsByIds: (ids) => Promise.resolve(getSermonsByIdsFor(ids)),
       // Same one-paragraph-per-slide split as the search results above — a
       // browsed or recently-used quote can span several numbered paragraphs
@@ -2388,7 +2446,23 @@ app.on('second-instance', () => {
   }
 })
 
-app.on('before-quit', () => {
+// Quit (the menu, Cmd+Q, the Dock's or the taskbar's Quit) while something is on the screen asks first, as closing the operator window does.
+// "Keep BORN open" is the default and the Esc answer, so Enter alone never takes the screens down.
+app.on('before-quit', (e) => {
+  if (!quitting && !quitWithoutAsking && projectionIsLive() && mainWindow && !mainWindow.isDestroyed()) {
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Keep BORN open', 'Quit and take the screens down'],
+      defaultId: 0,
+      cancelId: 0,
+      message: 'Something is on the screen.',
+      detail: 'Quitting BORN takes the congregation screen and the stage monitor down.'
+    })
+    if (choice === 0) {
+      e.preventDefault()
+      return
+    }
+  }
   quitting = true // a quit the operator chose (the menu, Cmd+Q) is not asked again by the window's close
   stopMdns()
   globalShortcut.unregisterAll()
