@@ -2259,7 +2259,7 @@ function bookNameFor(num){
 function openChapterContext(bookNum, chapterNum, focusVerses){
   var trans = currentTranslation();
   getJSON('/api/bible/chapter?book=' + bookNum + '&chapter=' + chapterNum).then(function(ch){
-    if(!ch || ch.error || !ch.verses) return;
+    if(!ch || ch.error || !ch.verses) throw new Error('no chapter');
     var bookName = bookNameFor(bookNum);
     var slides = ch.verses.map(function(v){ return { label: 'Verse ' + v.verse, text: v.text, verseNum: v.verse }; });
     var verseRefs = ch.verses.map(function(v){ return bookName + ' ' + chapterNum + ':' + v.verse; });
@@ -2275,7 +2275,7 @@ function openChapterContext(bookNum, chapterNum, focusVerses){
       payload: { reference: verseRefs[primary], translation: trans, verseRefs: verseRefs }
     };
     openPreview();
-  });
+  }).catch(function(){ toast('Couldn’t load this from BORN. Try again.', true); });
 }
 function selectVerse(v){
   var b = state.bibleBook;
@@ -2350,8 +2350,17 @@ function loadSongs(){
   // The full library, loaded once — Browse and the A-Z strip work off this,
   // no cap, no re-fetch per keystroke.
   libLoad('songs', '/api/search/songs?q=', function(rows){ state.songsAll = rows || []; if(state.tab === 'songs') renderSongsBody(); });
-  getJSONT('/api/songs/recent', 12000).then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsBody(); }, function(){});
+  loadRecentSongs();
 }
+/* The recent songs: a read that fails says so with Try again, instead of leaving the list out without a word. */
+function loadRecentSongs(){
+  state.songsRecentFailed = false;
+  getJSONT('/api/songs/recent', 12000).then(function(rows){ state.songsRecent = rows || []; if(state.tab === 'songs') renderSongsBody(); }, function(){
+    state.songsRecentFailed = true;
+    if(state.tab === 'songs') renderSongsBody();
+  });
+}
+function retryRecentSongs(){ loadRecentSongs(); renderSongsBody(); }
 function renderSongsTab(){
   var html = '<div class="sticky-head">'
     + '<div class="searchbar">'
@@ -2398,6 +2407,10 @@ function filterSongs(v){
       if(seq !== songsSearchSeq) return; // a newer keystroke already won
       state.songsResults = rows || [];
       renderSongsBody();
+    }).catch(function(){
+      // said, as the sermon and Bible searches do, not "Searching…" for ever
+      if(seq !== songsSearchSeq) return;
+      ['songsBody','songsBodyT'].forEach(function(id){ var el = $(id); if(el) el.innerHTML = '<div class="empty">' + esc(SEARCH_LOST) + '</div>'; });
     });
   }, 200);
   renderSongsBody(); // show the "keep typing" / stale state immediately
@@ -2471,6 +2484,9 @@ function songsBodyHtml(){
       html += '<button class="recent-item" onclick="selectSongById(' + recent[r].id + ')"><span>' + esc(recent[r].title) + '</span></button>';
     }
     html += '</div>';
+  } else if(state.songsRecentFailed){
+    html += '<div class="recent-head">' + ICON_CLOCK + '<span>RECENTLY PLAYED</span></div>'
+      + '<div class="empty">Couldn’t load this from BORN.<div style="margin-top:12px"><button class="retrybtn" onclick="retryRecentSongs()">Try again</button></div></div>';
   }
   html += '<div class="section-label">ALL SONGS' + (all.length ? ' · ' + all.length : '') + '</div>';
   if(all.length === 0){ html += libFailed('songs') ? libErrorHtml('songs') : (libLoaded.songs && libLoaded.songs.state === 'loading') ? '<div class="empty">Loading…</div>' : '<div class="empty">No songs found.</div>'; return html; }
@@ -2567,6 +2583,9 @@ function openKeyPickerSheet(){
   getJSON('/api/songs/recent-keys').then(function(k){
     state.recentKeys = k || [];
     renderKeyPickerSheet();
+  }).catch(function(){
+    openGenericSheet('Set key', '<div id="keyPickerBody">Loading…</div>');
+    sheetLoadFailed('keyPickerBody', openKeyPickerSheet);
   });
 }
 function setSongKey(key){

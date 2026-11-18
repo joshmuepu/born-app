@@ -78,8 +78,10 @@ free number) or **Replace it**. The phone says **Saved** only once the computer
 has saved it; if the connection drops, it says the service was not saved.
 
 If a list on the phone can't be read from BORN (a saved service, a series, a
-sermon, a Bible chapter, On This Day, Recently Played), it says
-*"Couldn't load this from BORN."* with a **Try again** button.
+sermon, a Bible chapter, On This Day, Recently Played sermons or songs, the
+keys under **Change key**), it says *"Couldn't load this from BORN."* with a
+**Try again** button. A song or Bible passage that can't be opened, and a
+search that can't reach BORN, say so too.
 
 ## If a phone can't connect
 
