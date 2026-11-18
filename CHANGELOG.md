@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.13.7
+
+**On the projected screen**
+- With no projector connected, the congregation screen opens as a window in the corner of your screen instead of covering BORN's main window. It goes full screen on the projector as soon as one is connected. To put it full screen on your own screen, choose your own screen under **Screens**.
+- Quitting BORN (the menu, Cmd+Q, the Dock or the taskbar) while something is on the screen now asks first, as closing the main window already does. **Keep BORN open** is the default, so Enter alone never takes the screens down. Installing an update, or logging out, restarting or shutting down the computer, does not ask.
+
+**In the app**
+- If the Service Queue cannot be saved (a full disk or a read-only folder), BORN now says so once. The queue stays in the window and BORN tries again with your next change.
+
+**On the phone and iPad**
+- **Save this service** under a name that already exists asks first: **Cancel**, **Keep both** (saved as "Name (2)") or **Replace it**.
+- If the connection drops during a Save, the phone says the service was not saved. It says **Saved** only once the computer has saved it.
+- Lists that can't be read from BORN (a saved service, a series, a sermon, a Bible chapter, On This Day, Recently Played) say so, with **Try again**. A Bible chapter no longer shows "Loading…" for ever, and a song that can't be opened says so.
+- After BORN's main window is restarted, the phone still shows what is on the screen instead of "Nothing on screen yet".
+
+Nothing new was added beyond these questions and Try again buttons. Your saved services open and save exactly as before.
+
 ## 1.13.6
 
 **Updating from 1.13.3 or older?** The first start takes a moment while BORN upgrades its sermon library once. It keeps a dated copy of your old library beside the new one.
