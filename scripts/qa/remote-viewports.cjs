@@ -37,7 +37,7 @@ const MEASURE = () => {
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const el = n.parentElement; if (!el || seen.has(el) || !n.textContent.trim() || !vis(el)) continue; seen.add(el)
     const b = el.getBoundingClientRect(); if (b.bottom <= 0 || b.top >= H) continue
-    const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < 11) r.tinyText.push(name(el) + ' ' + fs + 'px')
+    const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < 12) r.tinyText.push(name(el) + ' ' + fs + 'px')
   }
   for (const k of ['offscreen', 'covered', 'cutLabel', 'small', 'tinyText']) r[k] = [...new Set(r[k])]
   return r
