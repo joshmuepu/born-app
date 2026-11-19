@@ -24,7 +24,8 @@ const QUOTE = { kind: 'quote', label: 'Placeholder Sermon Title', reference: '00
 const SONG = { kind: 'song', text: SONG8, label: 'Verse 1', reference: 'Morning Song' }
 const NEXT_SONG = { kind: 'song', text: SONG4, label: 'Verse 2', reference: 'Morning Song' }
 const STAGE_CASES = [['song-8-lines', SONG, NEXT_SONG], ['short-verse', SHORT, { ...LONG }], ['long-passage', LONG, SHORT], ['sermon-quote', QUOTE, { ...QUOTE, marker: '13' }], ['last-slide', SHORT, null]]
-const CONG_CASES = [['verse', SHORT], ['long-passage', LONG], ['song', SONG], ['quote', QUOTE]]
+const LONG_REF = { ...QUOTE, reference: 'Placeholder Sermon Title That Runs Long Enough To Wrap On A Small Projector · 00-0000 ¶12' }
+const CONG_CASES = [['verse', SHORT], ['long-passage', LONG], ['song', SONG], ['quote', QUOTE], ['long-reference', LONG_REF]]
 
 const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b) }
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
