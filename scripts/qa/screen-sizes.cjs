@@ -4,7 +4,7 @@
  * size as a share of the screen height, the current text against the Next text, what is cut, the side margins, and the contrast of
  * every stage colour from sampled screenshot pixels. Prints the numbers as JSON lines and a check per rule.
  * Usage: PW_DIR=/tmp/born-pw node scripts/qa/screen-sizes.cjs <profileDir> [outJson]   (needs `npm run build`)
- * ONLY=stage|congregation-ref|congregation-margins limits the checks (the numbers are always measured). */
+ * ONLY=stage|congregation-size|congregation-ref|congregation-margins limits the checks (the numbers are always measured). */
 const fs = require('fs'), path = require('path')
 const { launch, sleep, checks, Page } = require('./lib.cjs')
 const { PNG } = require(path.join(process.env.PW_DIR || '/tmp/born-pw', 'node_modules', 'playwright-core', 'lib', 'utilsBundle'))
@@ -26,6 +26,8 @@ const NEXT_SONG = { kind: 'song', text: SONG4, label: 'Verse 2', reference: 'Mor
 const STAGE_CASES = [['song-8-lines', SONG, NEXT_SONG], ['short-verse', SHORT, { ...LONG }], ['long-passage', LONG, SHORT], ['sermon-quote', QUOTE, { ...QUOTE, marker: '13' }], ['last-slide', SHORT, null]]
 const LONG_REF = { ...QUOTE, reference: 'Placeholder Sermon Title That Runs Long Enough To Wrap On A Small Projector · 00-0000 ¶12' }
 const CONG_CASES = [['verse', SHORT], ['long-passage', LONG], ['song', SONG], ['quote', QUOTE], ['long-reference', LONG_REF]]
+// the stage case showing the same slide as the current text, to compare sizes
+const SAME_ON_STAGE = { verse: 'short-verse', 'long-passage': 'long-passage', song: 'song-8-lines', quote: 'sermon-quote' }
 
 const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b) }
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
@@ -69,7 +71,7 @@ const STAGE_MEASURE = `(()=>{
 const CONG_MEASURE = `(()=>{
   const H = innerHeight, W = innerWidth, q = (s) => document.querySelector(s), fs = (e) => e ? parseFloat(getComputedStyle(e).fontSize) : null
   const t = q('.projection-text'), inner = q('.projection-text-inner'), ref = q('.projection-reference'), lab = q('.projection-label')
-  const r = inner && inner.getBoundingClientRect(), rr = ref && ref.getBoundingClientRect(), tr = t && t.getBoundingClientRect()
+  const r = inner && inner.getBoundingClientRect(), rr = ref && ref.getBoundingClientRect(), tr = t && t.getBoundingClientRect(), lr = lab && lab.getBoundingClientRect()
   return {
     vw: W, vh: H, textPx: fs(t), referencePx: fs(ref), labelPx: fs(lab),
     leftMargin: r ? r.left : null, rightMargin: r ? W - r.right : null,
@@ -77,7 +79,9 @@ const CONG_MEASURE = `(()=>{
     sideways: inner ? inner.scrollWidth > inner.clientWidth + 1 || document.documentElement.scrollWidth > W + 1 : null,
     referenceOnScreen: rr ? rr.left >= -1 && rr.right <= W + 1 && rr.bottom <= H + 1 && rr.top >= 0 : null,
     referenceOneLine: rr ? rr.height < fs(ref) * 2 : null,
-    referenceClearOfText: rr && tr ? rr.top >= tr.bottom - 1 : null
+    referenceClearOfText: rr && tr ? rr.top >= tr.bottom - 1 : null,
+    labelClearOfText: lr && tr ? lr.bottom <= tr.top + 1 : null,
+    textCentreShare: r ? (r.top + r.height / 2) / H : null
   }
 })()`
 
@@ -129,10 +133,13 @@ const CONG_MEASURE = `(()=>{
         const row = { screen: 'congregation', case: name, res: resName(res), ...m, textShare: m.textPx / m.vh, referenceShare: m.referencePx / m.vh, labelShare: m.labelPx / m.vh, marginShare: m.leftMargin / m.vw }
         rows.push(row)
         console.log(JSON.stringify(row))
-        c.ok(`congregation ${name} ${row.res}: nothing is cut or runs off the side`, !m.textCut && !m.sideways && m.referenceOnScreen && m.referenceClearOfText, JSON.stringify({ textCut: m.textCut, sideways: m.sideways, referenceOnScreen: m.referenceOnScreen, referenceClearOfText: m.referenceClearOfText }))
+        c.ok(`congregation ${name} ${row.res}: nothing is cut or runs off the side`, !m.textCut && !m.sideways && m.referenceOnScreen && m.referenceClearOfText && m.labelClearOfText, JSON.stringify({ textCut: m.textCut, sideways: m.sideways, referenceOnScreen: m.referenceOnScreen, referenceClearOfText: m.referenceClearOfText, labelClearOfText: m.labelClearOfText }))
+        const onStage = rows.find((x) => x.screen === 'stage' && x.case === SAME_ON_STAGE[name] && x.res === row.res)
+        if (onStage) row.stagePx = onStage.currentPx
+        if (want('congregation-size') && onStage) c.ok(`congregation ${name} ${row.res}: the text is at least the size of the stage monitor's current text`, m.textPx >= onStage.currentPx - 0.5, `${m.textPx.toFixed(1)} px vs stage ${onStage.currentPx.toFixed(1)} px`)
         if (want('congregation-ref')) {
-          c.ok(`congregation ${name} ${row.res}: the reference line is about 3.2% of the screen height`, row.referenceShare >= 0.031, (row.referenceShare * 100).toFixed(2) + '%')
-          c.ok(`congregation ${name} ${row.res}: the label keeps its share of the screen height`, row.labelShare >= 0.023, (row.labelShare * 100).toFixed(2) + '%')
+          c.ok(`congregation ${name} ${row.res}: the reference line is 5% of the screen height`, row.referenceShare >= 0.049, (row.referenceShare * 100).toFixed(2) + '%')
+          c.ok(`congregation ${name} ${row.res}: the label is 3.2% of the screen height`, row.labelShare >= 0.031, (row.labelShare * 100).toFixed(2) + '%')
         }
         if (want('congregation-margins')) c.ok(`congregation ${name} ${row.res}: side margins are 5% of the width`, Math.abs(row.marginShare - 0.05) < 0.003 && Math.abs(m.rightMargin / m.vw - 0.05) < 0.003, `${m.leftMargin.toFixed(0)} / ${m.rightMargin.toFixed(0)} px of ${m.vw}`)
       }

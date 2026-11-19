@@ -10,17 +10,19 @@ export default function ProjectionApp() {
   // actually drawn at a size that scales with the screen (see `baseRem`), with
   // the operator setting acting as a multiplier around it.
   const [fontSize, setFontSize] = useState(4.5)
-  const [viewportH, setViewportH] = useState(() =>
-    typeof window === 'undefined' ? 900 : window.innerHeight
+  const [viewport, setViewport] = useState(() =>
+    typeof window === 'undefined' ? { w: 1600, h: 900 } : { w: window.innerWidth, h: window.innerHeight }
   )
   const [alertText, setAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
-  // A slide should fill a 65" church screen the same way it fills a laptop —
-  // tie the base text size to the screen height (in CSS pixels, which already
-  // tracks the projector's resolution), clamped so it never gets silly.
-  const baseRem = (Math.min(Math.max(viewportH * 0.062, 30), 132) / 16) * (fontSize / 4.5)
+  // The text starts at the same size as the stage monitor's current text (StageApp.tsx): 4.2% of the screen width, at least 2 and at
+  // most 5 times a root that is 1/67.5 of the screen height (16 px on a 1080-line screen, never under 12 px), with no pixel cap, so
+  // it keeps its share of the screen on a 4K one. It was 6.2% of the height capped at 132 px, smaller than the stage on most screens.
+  const rootPx = Math.max(12, viewport.h / 67.5)
+  const basePx = Math.min(Math.max(viewport.w * 0.042, 2 * rootPx), 5 * rootPx)
+  const baseRem = (basePx / 16) * (fontSize / 4.5)
 
   // IPC: receive slides + clear
   useEffect(() => {
@@ -68,14 +70,15 @@ export default function ProjectionApp() {
 
   // The screen (and so the projector's resolution) can change mid-service.
   useEffect(() => {
-    const onResize = (): void => setViewportH(window.innerHeight)
+    const onResize = (): void => setViewport({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
   // Auto-fit: start from the screen-scaled base size, then shrink only if a
   // long verse / quote would be clipped or overlap the reference line.
-  const fitFontSize = useAutoFitFontSize(textRef, slide, baseRem, 0.9)
+  // It shrinks as far as a long passage needs (about the smallest size it reached before), so nothing is ever cut.
+  const fitFontSize = useAutoFitFontSize(textRef, slide, baseRem, 0.9, 0.33)
 
   useEffect(() => {
     // Esc (blackout toggle) is owned by the main process so both windows agree;
@@ -106,14 +109,15 @@ export default function ProjectionApp() {
 
   return (
     <div className={`projection-active projection-${slide.kind}`}>
-      {slide.label && <div className="projection-label">{slide.label}</div>}
+      {/* The label and reference rows are always there (empty when the slide has none), so the text stays centred on the screen. */}
+      <div className="projection-label">{slide.label}</div>
       <div ref={textRef} className="projection-text" style={{ fontSize: `${fitFontSize}rem` }}>
         <div className="projection-text-inner">
           {slide.marker && <span className="projection-marker">{slide.marker}</span>}
           {cleanSourceText(slide.text)}
         </div>
       </div>
-      {slide.reference && <div className="projection-reference">{slide.reference}</div>}
+      <div className="projection-reference">{slide.reference}</div>
       {alertBanner}
     </div>
   )
