@@ -37,7 +37,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 }
 .brand{font-size:14px; font-weight:800; letter-spacing:0.02em; color:var(--accent); display:flex; align-items:center; gap:2px}
 .brand .dot{color:var(--sage)}
-.conn{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700}
+.conn{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700}
 .conn.ok{color:var(--live)}
 .conn.bad{color:var(--text2)}
 .conn .led{width:6px; height:6px; border-radius:50%; background:currentColor}
@@ -92,7 +92,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .livebar-dot{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
 .livebar-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
 .livebar-body{flex:1; min-width:0}
-.livebar-ref{font-size:10px; font-weight:800; letter-spacing:0.05em; color:var(--live)}
+.livebar-ref{font-size:12px; font-weight:800; letter-spacing:0.05em; color:var(--live)}
 .livebar--blanked .livebar-ref{color:var(--warn)}
 .livebar-text{font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; transition:opacity .2s}
 .livebar--blanked .livebar-text{opacity:0.6}
@@ -109,7 +109,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
  * never see a file-actions row at all; this is the fallback for Operator's
  * own 3-button row on a narrow or zoomed screen. */
 .queue-header-row{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 0; flex-wrap:wrap}
-.queue-header-row .qh-label{margin:0; white-space:nowrap; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
+.queue-header-row .qh-label{margin:0; white-space:nowrap; font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
 .queue-file-actions{display:flex; gap:6px; flex-shrink:0}
 .filebtn{
   display:flex; align-items:center; gap:5px; padding:0 12px; height:36px;
@@ -127,7 +127,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .draft-pill:active{background:rgba(139,111,209,0.22)}
 .draft-pill-count{
   display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
-  padding:0 5px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font-size:11px;
+  padding:0 5px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font-size:12px;
 }
 .btn-draft{
   width:100%; padding:13px; border-radius:12px; background:var(--surface);
@@ -154,9 +154,9 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .now-head{display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin:14px 18px 8px}
 .now-dot{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(46,160,67,0.22); flex-shrink:0}
 .now-dot--blanked{background:var(--warn); box-shadow:0 0 0 3px rgba(227,179,65,0.22)}
-.now-label{font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:var(--live); flex-shrink:0}
+.now-label{font-size:12px; font-weight:800; letter-spacing:0.06em; color:var(--live); flex-shrink:0}
 .now-label--blanked{color:var(--warn)}
-.now-ref{margin-left:auto; font-size:11px; font-family:ui-monospace,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+.now-ref{margin-left:auto; font-size:12px; font-family:ui-monospace,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
 /* font-size: inherit, not a fixed px, is load-bearing — fitLiveText() sets
    the size on this element's ancestor (.now-card-body or .preview-now) and
    expects the text to scale with it. A fixed value here silently pinned the
@@ -187,7 +187,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 @keyframes nowFlashWarn{0%{box-shadow:inset 3px 0 0 var(--warn), 0 0 0 3px rgba(227,179,65,0.35)}100%{box-shadow:inset 3px 0 0 var(--warn), 0 0 0 0 rgba(227,179,65,0)}}
 
 .next-card{margin:12px 18px 0; min-height:21vh; display:flex; flex-direction:column; padding:16px 18px; border-radius:14px; border:1.5px dashed var(--border); background:rgba(255,255,255,0.02); opacity:0.72}
-.next-card .next-label-lg{font-size:10px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75; flex-shrink:0}
+.next-card .next-label-lg{font-size:12px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75; flex-shrink:0}
 .next-card .next-text-lg{flex:1; display:flex; align-items:center; font-size:18px; line-height:1.45; color:var(--text2); margin-top:6px}
 
 .qstrip-row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 8px}
@@ -198,18 +198,18 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .qstrip-card[data-kind="song"]{border-left-color:var(--amber)}
 .qstrip-card[data-kind="quote"]{border-left-color:var(--stone)}
 .qstrip-card[data-kind="bible"]{border-left-color:var(--sage)}
-.qstrip-kind{font-size:9px; font-weight:700; font-family:ui-monospace,monospace; color:var(--text2)}
+.qstrip-kind{font-size:12px; font-weight:700; font-family:ui-monospace,monospace; color:var(--text2)}
 .qstrip-title{font-size:12.5px; font-weight:700; color:var(--text); margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 
-.section-label{padding:18px 18px 8px; font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
-.qgroup-header{display:flex; align-items:baseline; gap:6px; padding:14px 18px 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text2)}
+.section-label{padding:18px 18px 8px; font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
+.qgroup-header{display:flex; align-items:baseline; gap:6px; padding:14px 18px 6px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text2)}
 .qgroup-count{margin-left:auto; font-family:ui-monospace,monospace; font-weight:400; opacity:0.75}
 .qlist{padding:0 18px; display:flex; flex-direction:column; gap:8px}
 .qitem{padding:14px; border-radius:12px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border)}
 .qitem[data-kind="song"]{border-left-color:var(--amber)}
 .qitem[data-kind="quote"]{border-left-color:var(--stone)}
 .qitem[data-kind="bible"]{border-left-color:var(--sage)}
-.qkind{font-size:10.5px; font-weight:700; font-family:ui-monospace,monospace}
+.qkind{font-size:12px; font-weight:700; font-family:ui-monospace,monospace}
 .qitem[data-kind="song"] .qkind{color:var(--amber)}
 .qitem[data-kind="quote"] .qkind{color:var(--stone)}
 .qitem[data-kind="bible"] .qkind{color:var(--sage)}
@@ -242,7 +242,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 /* "Reading ahead" / "Not in your queue" — a stronger flag than the routine
    blanked-badge tint, since these two mean something's genuinely worth a
    second look, not just an expected state. */
-.now-flag{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:var(--surface2); color:var(--text2); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em}
+.now-flag{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:var(--surface2); color:var(--text2); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em}
 .now-flag--warn{background:color-mix(in srgb, var(--warn) 25%, var(--bg)); color:var(--warn); border:1px solid color-mix(in srgb, var(--warn) 55%, transparent)}
 .preview-now-flags{display:flex; gap:8px; margin-bottom:10px}
 
@@ -262,9 +262,9 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .jumpchips button{flex-shrink:0; padding:7px 13px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text)}
 .jumpchips button:active{background:var(--surface)}
 .jumpchips button.is-focus{background:rgba(139,111,209,0.22); border-color:var(--accent); color:#fff}
-.slide-label{font-size:11px; font-weight:800; letter-spacing:0.05em; color:var(--accent); margin-bottom:5px}
+.slide-label{font-size:12px; font-weight:800; letter-spacing:0.05em; color:var(--accent); margin-bottom:5px}
 .slide-row.live .slide-label{color:var(--live)}
-.live-tag{font-size:10px; font-weight:800; color:var(--live)}
+.live-tag{font-size:12px; font-weight:800; color:var(--live)}
 .slide-text{font-size:16px; line-height:1.5; color:var(--text); white-space:pre-wrap}
 
 /* ── Bottom tab bar (phone) ────────────────────────────────────────── */
@@ -272,7 +272,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   flex-shrink:0; display:flex; border-top:1px solid var(--border); background:var(--surface);
   padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));
 }
-.tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:10px; color:var(--text2); font-size:10.5px; font-weight:700; background:none; border:none}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:10px; color:var(--text2); font-size:12px; font-weight:700; background:none; border:none}
 .tab.active{color:var(--accent); background:rgba(139,111,209,0.14)}
 .tab[data-tab="sermons"].active{color:var(--stone); background:rgba(201,194,180,0.14)}
 .tab[data-tab="bible"].active{color:var(--sage); background:rgba(131,192,142,0.14)}
@@ -300,7 +300,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .ritem{padding:14px; border-radius:13px; background:var(--surface); border:1px solid var(--border); text-align:left; width:100%}
 .ritem:active{background:var(--surface2)}
 .rtitle{font-size:15px; font-weight:700; color:var(--text)}
-.rmeta{font-size:11px; font-family:ui-monospace,monospace; margin:3px 0 5px}
+.rmeta{font-size:12px; font-family:ui-monospace,monospace; margin:3px 0 5px}
 .rmeta.sermon{color:var(--stone)}
 .rmeta.bible{color:var(--sage)}
 .rsnippet{font-size:12.5px; color:var(--text2); line-height:1.4}
@@ -308,12 +308,12 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .browse-chip-row{display:flex; gap:8px; padding-bottom:14px}
 .browse-chip{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border-radius:12px; background:var(--surface); border:1px solid var(--border); color:var(--stone)}
 .browse-chip:active{background:var(--surface2)}
-.browse-chip span{font-size:11px; font-weight:700; color:var(--text)}
+.browse-chip span{font-size:12px; font-weight:700; color:var(--text)}
 
 /* ── Songs tab ─────────────────────────────────────────────────────── */
 .recent-head{padding:20px 18px 0; display:flex; align-items:center; gap:7px}
 .recent-head svg{color:var(--text2)}
-.recent-head span{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
+.recent-head span{font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--text2)}
 .recent-clear{margin-left:auto; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:2px 2px; min-height:44px; min-width:44px}
 /* A horizontal, single-row strip — not a vertical stack. Vertical cards here
    used to grow with the recent count (5 items ≈ 200px+) and, on a short
@@ -346,14 +346,14 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .azstrip button:disabled{color:var(--text3); opacity:0.4}
 .azstrip button.current{background:var(--accent); color:#fff}
 .songlist{flex:1; min-height:0; display:flex; flex-direction:column; gap:1px; padding:0 2px; overflow-y:auto}
-.song-letter{position:sticky; top:0; z-index:1; background:var(--bg); font-size:11px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
+.song-letter{position:sticky; top:0; z-index:1; background:var(--bg); font-size:12px; font-weight:800; color:var(--accent); padding:10px 8px 3px}
 .song-row{padding:11px 8px; border-radius:10px; font-size:14.5px; color:var(--text); text-align:left; width:100%; background:none; border:none; min-height:44px}
 .song-row:active{background:var(--surface)}
 .song-row mark{background:rgba(139,111,209,0.35); color:var(--text); font-weight:800; border-radius:2px}
 
 /* ── Bible book / chapter grid ─────────────────────────────────────── */
 .bible-groups{padding:16px 18px 0; flex:1; overflow-y:auto}
-.testament-label{font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--text2); margin:0 0 8px}
+.testament-label{font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--text2); margin:0 0 8px}
 .book-grid{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin-bottom:18px}
 .book-chip{padding:11px 4px; text-align:center; border-radius:9px; background:var(--surface); border:1px solid var(--border); font-size:12px; font-weight:700; color:var(--text); min-height:44px}
 .book-chip:active{background:var(--surface2); border-color:var(--sage)}
@@ -372,7 +372,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .scope-pill{padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700; min-height:44px}
 .scope-pill.active{color:var(--sage); border-color:var(--sage); background:rgba(131,192,142,0.14); font-family:ui-monospace,monospace}
 .scope-clear{padding:6px 9px; border-radius:999px; background:rgba(131,192,142,0.14); border:1px solid var(--sage); color:var(--sage); font-size:14px; line-height:1; font-weight:700}
-.scope-translation{font-size:11px; color:var(--text3); margin-left:auto}
+.scope-translation{font-size:12px; color:var(--text3); margin-left:auto}
 .scope-options{display:flex; flex-direction:column; gap:2px}
 .scope-opt{padding:10px 12px; border-radius:10px; background:none; border:none; color:var(--text); font-size:14px; font-weight:600; text-align:left}
 .scope-opt:active{background:var(--surface)}
@@ -435,11 +435,11 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .sheet-actions{display:flex; gap:10px}
 .sheet-actions .btn-queue{flex:1; padding:16px; border-radius:14px; background:transparent; border:1.5px solid var(--border); color:var(--text2); font-size:14.5px; font-weight:700}
 .sheet-actions .btn-project{flex:1.3; padding:16px; border-radius:14px; background:var(--accent); border:none; color:var(--accent-ink); font-size:15.5px; font-weight:800; box-shadow:0 6px 18px rgba(139,111,209,0.4)}
-.sheet-hint{text-align:center; font-size:11px; color:var(--text2)}
+.sheet-hint{text-align:center; font-size:12px; color:var(--text2)}
 
 /* ── Song key picker ──────────────────────────────────────────────── */
 .key-edit-btn{align-self:flex-start; margin-top:6px; padding:5px 11px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--text2); font-size:12px; font-weight:700}
-.key-picker-label{margin-top:14px; margin-bottom:8px; font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--text2)}
+.key-picker-label{margin-top:14px; margin-bottom:8px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--text2)}
 .key-picker-label:first-child{margin-top:0}
 .key-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
 .key-chip{padding:12px 0; border-radius:10px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:15px; font-weight:700; text-align:center}
@@ -452,7 +452,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
 .saved-item{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; border-radius:12px; background:var(--bg); border:1px solid var(--border); width:100%; text-align:left}
 .saved-item:active{background:var(--surface2)}
 .saved-name{font-size:14.5px; font-weight:700; color:var(--text)}
-.saved-when{font-size:11px; color:var(--text2)}
+.saved-when{font-size:12px; color:var(--text2)}
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 .toast{position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:var(--ok); color:var(--ok-ink); padding:9px 18px; border-radius:9px; font-size:13px; font-weight:700; z-index:90; display:none; width:max-content; max-width:calc(100vw - 32px); white-space:normal; overflow-wrap:anywhere; text-align:center}
@@ -519,7 +519,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
     display:flex; flex-direction:column; align-items:center; padding:calc(22px + env(safe-area-inset-top,0px)) 0 22px;
   }
   .sidebar .brand{margin-bottom:26px}
-  .sidebar-tab{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0; width:72px; border-radius:12px; color:var(--text2); margin-bottom:10px; background:none; border:none; font-size:10px; font-weight:700}
+  .sidebar-tab{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0; width:72px; border-radius:12px; color:var(--text2); margin-bottom:10px; background:none; border:none; font-size:12px; font-weight:700}
   .sidebar-tab.active{background:rgba(139,111,209,0.14); color:var(--accent)}
   .sidebar-tab[data-tab="sermons"].active{background:rgba(201,194,180,0.14); color:var(--stone)}
   .sidebar-tab[data-tab="bible"].active{background:rgba(131,192,142,0.14); color:var(--sage)}
@@ -576,7 +576,7 @@ mark.hl{background:rgba(139,111,209,0.38); color:inherit; border-radius:3px; pad
   .preview-next-box svg{flex-shrink:0; margin-top:3px}
   /* Previously unstyled — "NEXT" inherited plain body text size/weight, so it
      read as almost the same line as the next-content text below it. */
-  .preview-next-box .next-label{font-size:11px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75}
+  .preview-next-box .next-label{font-size:12px; font-weight:800; letter-spacing:0.07em; color:var(--text2); opacity:0.75}
   .preview-next-box .next-text{white-space:normal; font-size:16px; line-height:1.45; color:var(--text2)}
   .preview-sheet-inline{flex:1; display:flex; flex-direction:column; min-height:0}
   .preview-sheet-inline .sheet-title{font-size:20px}
@@ -1669,7 +1669,7 @@ function askReplaceSaved(name){
   openGenericSheet('Save this service', ''
     + '<div class="empty" style="text-align:left;padding:4px 2px 14px">A saved service called “' + esc(name) + '” already exists.</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
-    + '<button class="btn-project" id="saveAskCancel" style="padding:15px;border-radius:13px" onclick="closeSheet()">Cancel</button>'
+    + '<button class="btn-project" id="saveAskCancel" style="padding:15px;border-radius:13px;font-size:15.5px;font-weight:800" onclick="closeSheet()">Cancel</button>'
     + '<button class="retrybtn" onclick="saveQueueAs(&quot;keep-both&quot;)">Keep both</button>'
     + '<button class="retrybtn" onclick="saveQueueAs(&quot;replace&quot;)">Replace it</button>'
     + '</div>');
@@ -2431,10 +2431,10 @@ function hlText(text, q){
 }
 function songRowHtml(s, q){
   var html = '<button class="song-row" onclick="selectSongById(' + s.id + ')">' + (q ? hlText(s.title, q) : esc(s.title));
-  if(s.source === 'import') html += ' <span style="opacity:.6;font-size:10.5px;font-weight:700;letter-spacing:.03em">IMPORTED</span>';
+  if(s.source === 'import') html += ' <span style="opacity:.6;font-size:12px;font-weight:700;letter-spacing:.03em">IMPORTED</span>';
   if(q && s.matchedInTitle === false && s.matchSlide){
     html += '<div style="margin-top:4px;font-size:12.5px;color:var(--text2);font-style:italic">“' + hlText(s.matchSlide.text, q) + '”</div>'
-      + '<div style="margin-top:2px;font-size:10.5px;color:var(--text3)">Matched in lyrics' + (s.matchSlide.label ? ' — ' + esc(s.matchSlide.label) : '') + '</div>';
+      + '<div style="margin-top:2px;font-size:12px;color:var(--text3)">Matched in lyrics' + (s.matchSlide.label ? ' — ' + esc(s.matchSlide.label) : '') + '</div>';
   }
   html += '</button>';
   return html;

@@ -123,8 +123,8 @@
      values that had drifted across the app into six deliberate tiers.
      Reading content (Bible verse text, projected slides) is its own
      separately-tuned scale, not this one. */
-  --text-2xs: 0.62rem;
-  --text-xs: 0.72rem;
+  --text-2xs: 0.75rem; /* 12 px: nothing the operator reads is smaller */
+  --text-xs: 0.75rem;
   --text-sm: 0.78rem;
   --text-base: 0.85rem;
   --text-md: 0.92rem;
@@ -774,7 +774,7 @@ mark.hl {
 /* ── Status Bar ──────────────────────────────────────────── */
 
 .status-bar {
-  height: 30px;
+  height: 34px; /* room for its 32 px button and the top border */
   padding: 0 14px;
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border);
@@ -1312,10 +1312,10 @@ mark.hl {
  * header. Pulses briefly on a hotplug/disconnect so a change registers even
  * with the popover closed. */
 .screens-count {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  min-width: 15px;
-  height: 15px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 999px;
   background: var(--bg-hover);
@@ -1392,7 +1392,7 @@ button.display-row:hover {
   white-space: nowrap;
 }
 .display-row-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2161,4 +2161,30 @@ kbd {
 .help-lightbox-hint {
   color: rgba(255, 255, 255, 0.7);
   font-size: var(--text-sm);
+}
+
+/* Size floors for the operator window: every button, tab and field is at least 32 px high (and an icon button 32 px wide), so none
+   is a 22 px target to hit during a service. */
+button[class*="btn-"],
+.app-logo-born,
+.panel-subtab,
+.monitor-switch-tab,
+.display-row-select,
+.status-trigger,
+.language-select,
+.songs-inline-link {
+  min-height: 32px;
+}
+.btn-icon,
+.display-row-btn,
+.search-clear,
+.remote-copy,
+.screens-refresh {
+  min-width: 32px;
+  min-height: 32px;
+}
+.songs-inline-link {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }

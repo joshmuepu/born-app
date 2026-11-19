@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.13.9
+
+**On the stage monitor**
+- On a 4K or other large screen the stage text now fills the same share of the screen as on a 1080p one. It used to stay at its 1080p size, in a small band in the middle. The labels and the clock grow with it.
+- The current verse is never smaller than the next one. The Next band along the bottom used to take up to a third of the screen; it now takes a fifth, with its text fitted inside it. A long current verse goes no smaller than about half its size.
+- The labels ("Verse 1", "Next"), references and verse numbers were dim grey; they are now bright enough to read from the platform.
+
+**On the congregation screen**
+- The verse, song or quote now starts at the same size as on the stage monitor, so it is bigger than before on most screens. A long passage still shrinks to fit, and **Projected text size** still makes it larger or smaller.
+- The reference line is much bigger (5% of the screen height, up from about 3%), so it can be copied into notes from the back of the room. The label above the text is bigger too. On a 4K screen both used to stay at their 1080p size; they now grow with the screen.
+- The side margins are 5% of the screen width instead of a fixed 100 pixels, so a 4:3 projector loses less of its width.
+
+**In the app**
+- No text in BORN's window is smaller than 12 pixels; some was under 10. Every button, tab and field is at least 32 pixels high; many were 15 to 25.
+
+**On the phone and iPad**
+- No text is smaller than 12 pixels. The tab labels at the bottom and the queue's SONG and BIBLE labels were 9 to 10.5 pixels.
+
+Nothing new was added; only sizes, colours and margins changed.
+
 ## 1.13.8
 
 **On Windows**

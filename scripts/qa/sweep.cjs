@@ -5,7 +5,7 @@ const path = require('path'), fs = require('fs')
 const { launch, sleep } = require('./lib.cjs')
 const profile = process.argv[2] || path.join(require('os').tmpdir(), 'born-v1-sweep-profile')
 const outDir = process.argv[3] || path.join(profile, 'sweep')
-const SIZES = [[1040, 640], [1366, 768], [1920, 1080]]
+const SIZES = [[1040, 640], [1366, 768], [1440, 900], [1920, 1080]]
 const SCALES = [1, 1.25, 1.5]
 
 const SCAN = `(()=>{
@@ -24,7 +24,7 @@ const SCAN = `(()=>{
 
 ;(async () => {
   fs.mkdirSync(outDir, { recursive: true })
-  const app = await launch({ profile, settle: 6000 })
+  const app = await launch({ profile, settle: 6000, port: Number(process.env.CDP_PORT || 9356), mdns: process.env.BORN_MDNS_NAME })
   const p = await app.page()
   const findings = []
   const surfaces = [

@@ -34,22 +34,26 @@ body {
   background-color: #000;
 }
 
-/* The slide text is absolutely centred on the physical screen; the label and
-   reference float above/below it so they never shift the text off-centre. */
+/* Three rows: the label, the text and the reference line. The label and reference rows are always there and the same height when
+   they hold one line, so the text stays centred on the physical screen; a reference that wraps to a second line takes its room from
+   the text row (which then fits itself to what is left) instead of running over the text. 5% of the width is kept clear each side. */
 .projection-active {
   position: relative;
   height: 100vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 5vh 5vw;
+  gap: 2.5vh;
 }
 
 .projection-label {
-  position: absolute;
-  top: 6vh;
-  left: 100px;
-  right: 100px;
+  flex: 0 0 auto;
+  min-height: 6vh;
   text-align: center;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  /* 3.2% of the screen height, with no cap (it was 2.4%) */
+  font-size: max(1rem, 3.2vh);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -57,15 +61,9 @@ body {
 }
 
 .projection-text {
-  /* font-size is controlled via inline style from the main window.
-     Sits in a fixed band between the label and the reference so a big block of
-     text can never grow over either of them. */
-  position: absolute;
-  top: 12vh;
-  bottom: 13vh;
-  left: 0;
-  right: 0;
-  padding: 0 100px;
+  /* font-size is set inline, fitted to this row (ProjectionApp.tsx) */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   line-height: 1.5;
   color: #ffffff;
@@ -79,20 +77,18 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Was capped by *width* (1.5vw, maxing out around 23px on any screen no
-   matter how big) while the slide text above it scales with the screen's
-   actual height — so on a real church projector the reference stayed
-   phone-sized next to text several times its height. Scaling by vh instead
-   keeps it proportionate to the text at any resolution, legible for the
-   preacher and congregation from across the room, without the label ever
-   competing with the verse/lyric itself for attention. */
+/* The reference is what people copy into their notes from the back of the room: 5% of the screen height (54 px on a 1080-line
+   screen, 108 px on a 4K one), with no cap. It was 3.2%. */
 .projection-reference {
-  position: absolute;
-  bottom: 5vh;
-  left: 100px;
-  right: 100px;
+  flex: 0 0 auto;
+  min-height: 6vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   text-align: center;
-  font-size: clamp(1.5rem, 3.2vh, 3rem);
+  font-size: max(1.5rem, 5vh);
+  line-height: 1.2;
+  font-weight: 600;
   color: #c8c8c8;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.02em;

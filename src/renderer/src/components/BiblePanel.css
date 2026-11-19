@@ -43,7 +43,7 @@
   align-items: center;
   gap: 5px;
   padding: 0 16px 10px 50px;
-  font-size: var(--text-xs, 0.72rem);
+  font-size: var(--text-xs, 0.75rem);
   color: var(--bible);
   flex-shrink: 0;
 }
@@ -249,10 +249,10 @@
 }
 .filter-mode-btn--sm {
   padding: 3px 8px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 .bible-scope-hint {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
@@ -352,7 +352,7 @@
   border-radius: var(--r-sm);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-align: center;
   cursor: pointer;
@@ -477,7 +477,7 @@
   color: var(--text-primary);
 }
 .bible-browse-book-count {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 .bible-browse-chapter {
