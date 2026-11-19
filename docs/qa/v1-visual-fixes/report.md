@@ -19,8 +19,9 @@ are no new features, settings or screens.
 | `6461af5` | **Congregation screen: side margins are 5% of the width** | **optional (item 5)** |
 | `7b31bdb` | Help pictures retaken (taller operator buttons, larger phone captions) | – |
 | `c7f2322` | Stage monitor: the Next band's reference line as bright as the current one's | – |
+| `805f6f2` | **Congregation screen: the text starts at the stage monitor's size; reference line 5% and label 3.2% of the height** | **asked by the owner while testing; builds on item 5** |
 
-**Leaving item 5 out of a release:** run `git revert 6461af5 78a71bf`. The two commits touch only `ProjectionApp.css` and their own
+**Leaving item 5 out of a release:** run `git revert 805f6f2 6461af5 78a71bf` (`805f6f2` rewrites the same rules, so it goes with them). The two commits touch only `ProjectionApp.css` and their own
 tests (`congregationReference.test.ts`, `congregationMargins.test.ts`), and no other commit depends on them. After the revert, run
 the screen-size check with `ONLY=stage`, because its congregation-reference and margin rules would then fail by design.
 
@@ -250,6 +251,38 @@ All of these are above the 32 px floor.
 - **Help:** Help never describes stage sizes, and "the Stage monitor keeps its own size" is still true, so no Help text changed. The Help pictures were retaken because the operator window's buttons and the phone's captions look different. They use placeholders only and are each under 300 KB.
 - **Measurement setup:** the measurements use the real app with its output windows hidden and sized by the DevTools protocol. Real displays, real TVs and real Windows scaling were not used.
 
+## Congregation text matched to the stage (`805f6f2`, asked by the owner while testing)
+
+While testing the branch, the owner saw that the stage monitor's current text was bigger than the same text on the congregation
+screen, and that the congregation reference line was too small for someone taking notes from the back. They asked for the
+congregation text to match the stage while keeping the label and reference, and for bigger references.
+
+- **Text:** it started at 6.2% of the screen height, capped at 132 px. It now starts from the stage's current-text size (4.2% of
+  the width, between 2 and 5 times a root of 1/67.5 of the height, no pixel cap) and fits itself to its row. The Projected text size
+  control still scales it, and it can still shrink to about the smallest size it reached before (a third of its start), so a long
+  passage is never cut.
+- **Reference line:** 5% of the screen height (was 3.2%), now semi-bold. **Label:** 3.2% (was 2.4%).
+- **Layout:** the label, text and reference are now three rows of one column inside a 5% margin, instead of three boxes placed at
+  fixed heights. A reference that wraps to two lines takes its room from the text row, which fits itself to what is left, so it can
+  never run over the text. The label and reference rows are always there, so the text stays centred.
+
+Measured in the real app (`screen-sizes.cjs`, 613 checks, 0 failed), congregation text against the stage's current text for the same slide:
+
+| Slide | 1080p before | 1080p after | stage 1080p | 4K before | 4K after | stage 4K |
+|---|---|---|---|---|---|---|
+| Short verse | 67 px | 80 px | 80 px | 132 px | 160 px | 160 px |
+| Long passage | – | 74 px | 64 px | – | 147 px | 122 px |
+| 8-line song | – | 64 px | 48 px | – | 128 px | 90 px |
+| Sermon quote | – | 74 px | 70 px | – | 147 px | 141 px |
+
+- At every resolution and scaling the congregation text is at least the stage's size for the same slide; for long slides it is
+  bigger, because the congregation screen has more room (no clock and no Next band).
+- The reference line is 54 px at 1080p (was 35) and 108 px on 4K; the label 35 px at 1080p (was 26).
+- Nothing is cut, nothing runs off the side, and the label and reference stay clear of the text everywhere, including the
+  long reference that wraps. With the long reference the text centre moves up to 44–47% of the height.
+- `output-probe.cjs` 6/6; unit tests 133 files, 1083/1083.
+- Help: unchanged. The Projected text size control works as its page says.
+
 ## Not verifiable here: the owner's checklist
 
 1. **Stage monitor at the church, with a real song of 6 to 8 lines, from the pulpit:**
@@ -262,7 +295,8 @@ All of these are above the 32 px floor.
 2. **If the church has a 4K TV for the stage:** the text should fill the same share of the screen as on a 1080p one, not sit in a small band in the middle.
 3. **On the stage monitor, Shift+Esc or Hide screen:** the big clock fills the screen as before.
 4. **Projector, from the back row** (only if item 5 is in the release):
-   - the reference line under a verse is readable;
+   - the reference line under a verse can be copied into notes;
+   - the verse is as big as on the stage monitor, and a long passage is not cut;
    - the text has a margin of about a twentieth of the screen width each side;
    - on a 4:3 projector the margins are narrower than before and the text a little wider.
 5. **Operator window:**
@@ -280,7 +314,7 @@ All of these are above the 32 px floor.
 ## Not done
 
 - No real TV, projector or Windows computer was used (see the checklist).
-- The congregation screen's slide text itself was not changed: its 132 px cap still gives 6.1% on 4K instead of 6.2%. Item 4 said not to touch it.
+- Item 4 said not to touch the congregation screen's slide text; the owner then asked for it to match the stage (`805f6f2`).
 - The changelog was not edited; the proposed entry is below.
 
 ## Proposed changelog entry
@@ -297,7 +331,9 @@ All of these are above the 32 px floor.
 - No text in BORN's window or on the phone is smaller than 12 px, and every button and tab in BORN's window is at least 32 px high.
 
 **On the congregation screen** (optional changes)
-- On a 4K or other tall screen the reference line and label keep their size relative to the screen, instead of staying at their
-  1080p size.
+- The verse, song or quote starts at the same size as on the stage monitor, so it is bigger than before on most screens; a long
+  passage still shrinks to fit.
+- The reference line is much bigger (5% of the screen height), so it can be copied into notes from the back, and the label is
+  bigger too. On a 4K screen both keep their size relative to the screen.
 - The side margins are 5% of the screen width instead of a fixed 100 px, so a 4:3 projector loses less of its width.
 ```
