@@ -49,7 +49,8 @@ body {
   right: 100px;
   text-align: center;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  /* at least 2.4% of the screen height (its share on a 1080-line screen), with no cap, so it keeps that share on a 4K screen */
+  font-size: max(clamp(1rem, 1.8vw, 1.6rem), 2.4vh);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -85,14 +86,15 @@ body {
    phone-sized next to text several times its height. Scaling by vh instead
    keeps it proportionate to the text at any resolution, legible for the
    preacher and congregation from across the room, without the label ever
-   competing with the verse/lyric itself for attention. */
+   competing with the verse/lyric itself for attention. It has no cap: a 48 px cap made it 2.2% of the screen height on a 4K screen,
+   so it keeps its 3.2% at every resolution. */
 .projection-reference {
   position: absolute;
   bottom: 5vh;
   left: 100px;
   right: 100px;
   text-align: center;
-  font-size: clamp(1.5rem, 3.2vh, 3rem);
+  font-size: max(1.5rem, 3.2vh);
   color: #c8c8c8;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.02em;
