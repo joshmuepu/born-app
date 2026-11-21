@@ -13,7 +13,7 @@ describe('congregation screen text size', () => {
   it('starts from the stage monitor current-text size', () => {
     expect(proj).toMatch(/const rootPx = Math\.max\(12, viewport\.h \/ 67\.5\)/)
     expect(proj).toMatch(/const basePx = Math\.min\(Math\.max\(viewport\.w \* 0\.042, 2 \* rootPx\), 5 \* rootPx\)/)
-    expect(src('StageApp.tsx')).toMatch(/useAutoFitFontSize\(currentRef, [^\n]*clampRem\(0\.042, 2, 5\)/)
+    expect(src('StageApp.tsx')).toMatch(/const currentBase = clampRem\(0\.042, 2, 5\)/)
   })
   it('the operator text size still scales it', () => {
     expect(proj).toMatch(/const baseRem = \(basePx \/ 16\) \* \(fontSize \/ 4\.5\)/)

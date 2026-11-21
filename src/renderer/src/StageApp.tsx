@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useAutoFitFontSize } from './useAutoFitFontSize'
 import { cleanSourceText } from '../../shared/sourceText'
 import type { SlidePayload } from './types'
+import { NEXT_BAND_VH, HIDE_NEXT_STEP, nextRoomStep, currentFitLimits } from './stageRoom'
 
 type View = 'stage' | 'congregation'
 
@@ -64,8 +65,8 @@ export default function StageApp() {
   // The text is fitted to its box like the projector's (it was a fixed size, so a long slide lost lines at both ends). It starts at
   // 4.2% of the screen width in the Stage view, 6% in the Congregation view, at most 5 and 7 rem; the rem grows with the screen
   // height (StageApp.css), so on a 4K screen the text keeps the share of the screen it has on a 1080-line one. The current text goes
-  // no smaller than 55% of its start size. The Next text is fitted to its band (a fifth of the screen height) and never
-  // starts larger than the current text.
+  // no smaller than 55% of its start size, unless the page needs more room (see below). The Next text is fitted to its band (a fifth of
+  // the screen height) and never starts larger than the current text.
   const [screen, setScreen] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
   useEffect(() => {
     const onResize = (): void => setScreen({ w: window.innerWidth, h: window.innerHeight })
@@ -78,8 +79,30 @@ export default function StageApp() {
   const nextRef = useRef<HTMLDivElement>(null)
   const congregationRef = useRef<HTMLDivElement>(null)
   const showing = !current || blanked ? null : current
-  const currentRem = useAutoFitFontSize(currentRef, view === 'stage' ? showing : null, clampRem(0.042, 2, 5), 0.9, 0.55)
-  const nextRem = useAutoFitFontSize(nextRef, view === 'stage' && showing ? next : null, Math.min(clampRem(0.024, 1.1, 2.6), currentRem), 0.9, 0.3)
+
+  // The current text is never cut: a page that does not fit gets room one step at a time (stageRoom.ts), and the step starts again at 0 for
+  // every new page, screen size or view. Each step is part of what the texts are fitted for, so they fit again at each one.
+  const [room, setRoom] = useState<{ key: unknown[]; step: number }>({ key: [], step: 0 })
+  const roomKey = [showing, next, screen.w, screen.h, view]
+  const sameKey = room.key.length === roomKey.length && room.key.every((k, i) => k === roomKey[i])
+  const step = sameKey ? room.step : 0
+  const nextShown = !!next && step < HIDE_NEXT_STEP
+  const currentFit = useMemo(() => (view === 'stage' && showing ? { showing, step } : null), [view, showing, step])
+  const nextFit = useMemo(() => (view === 'stage' && showing && nextShown ? { next, step } : null), [view, showing, nextShown, next, step])
+  const currentBase = clampRem(0.042, 2, 5)
+  const limits = currentFitLimits(step, currentBase, rootPx)
+  const currentRem = useAutoFitFontSize(currentRef, currentFit, currentBase, limits.minRem, limits.floorRatio)
+  const nextRem = useAutoFitFontSize(nextRef, nextFit, Math.min(clampRem(0.024, 1.1, 2.6), currentRem), 0.9, 0.3)
+  // after the fits above: is anything still cut at this step?
+  useLayoutEffect(() => {
+    if (!currentFit) return
+    // as the fit measures it: the box's content against the box
+    const over = (el: HTMLElement | null): boolean => !!el?.firstElementChild && (el.firstElementChild as HTMLElement).scrollHeight > el.clientHeight + 1
+    const band = nextRef.current?.parentElement ?? null
+    const bandOver = !!band && band.scrollHeight > band.clientHeight + 1
+    const following = nextRoomStep(step, !!next, over(currentRef.current), over(nextRef.current) || bandOver)
+    if (following != null) setRoom({ key: roomKey, step: following })
+  })
   const congregationRem = useAutoFitFontSize(congregationRef, view === 'congregation' ? showing : null, clampRem(0.06, 2, 7), 0.9, 0.3)
 
   const nothingUp = !current || blanked
@@ -149,13 +172,13 @@ export default function StageApp() {
           </div>
 
           {/* No "Next" at all on the last slide — an empty band, like before. */}
-          {next && (
-            <div className="stage-next">
-              <div className="stage-next-label">Next{next.label ? ` · ${next.label}` : ''}</div>
+          {nextShown && (
+            <div className="stage-next" style={step > 0 ? { flexBasis: `${NEXT_BAND_VH[step]}vh`, height: `${NEXT_BAND_VH[step]}vh` } : undefined}>
+              <div className="stage-next-label">Next{next!.label ? ` · ${next!.label}` : ''}</div>
               <div className="stage-next-fit" ref={nextRef} style={{ fontSize: `${nextRem}rem` }}>
                 <div>
-                  <div className={`stage-next-text${preClass(next)}`}>{cleanSourceText(next.text)}</div>
-                  {next.reference && <div className="stage-next-ref">{next.reference}</div>}
+                  <div className={`stage-next-text${preClass(next)}`}>{cleanSourceText(next!.text)}</div>
+                  {next!.reference && <div className="stage-next-ref">{next!.reference}</div>}
                 </div>
               </div>
             </div>
