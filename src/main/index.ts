@@ -121,6 +121,7 @@ import { getSettings, updateSettings, type AppSettings, getSettingsRecoveryInfo,
 import { alertPayload, textInput } from './ipcInput'
 import { songImportPickers } from './importPickers'
 import { fitOperatorWindow } from './windowFit'
+import { keepOperatorZoomFitted } from './operatorZoom'
 import { getManualManifest, readManualPage, readManualImage } from './manual'
 import {
   serverSearch,
@@ -243,6 +244,10 @@ function themeBackground(): string {
   return getSettingsSafe().theme === 'light' ? '#ffffff' : '#0d1117'
 }
 
+/** the operator window's zoom, fitted to the window (operatorZoom.ts) */
+let operatorZoom: { reduced: () => boolean } | null = null
+ipcMain.handle('operator:zoom-reduced', () => operatorZoom?.reduced() ?? false)
+
 function sendToMain(channel: string, ...args: unknown[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
@@ -351,6 +356,7 @@ function createMainWindow(): void {
   // respect focus / typing state; nothing to relay here.
 
   blockReloadChord(mainWindow)
+  operatorZoom = keepOperatorZoomFitted(mainWindow, (reduced) => sendToMain('operator:zoom-reduced', reduced))
 
   // Closing the operator window takes the screens down (the outputs go with it). While something is on the congregation screen and not hidden,
   // the operator is asked first: one click on the window's close button ended it mid-service.

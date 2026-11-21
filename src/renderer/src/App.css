@@ -798,6 +798,13 @@ mark.hl {
   color: var(--warn);
 }
 
+/* the "zoom reduced to fit" line gives way to the rest of the bar on a narrow window */
+.status-zoom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .status-progress {
   flex: 1;
   height: 3px;

@@ -95,6 +95,8 @@ export default function App() {
   const [alertMessage, setAlertMessage] = useState('')
   const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
   const [appVersion, setAppVersion] = useState('')
+  // the View menu zoom was reduced to fit this window (operatorZoom.ts in the main process)
+  const [zoomReduced, setZoomReduced] = useState(false)
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateMsg, setUpdateMsg] = useState('')
   const [updateDismissed, setUpdateDismissed] = useState(false)
@@ -176,6 +178,19 @@ export default function App() {
     window.electronAPI.getFontSize().then((s) => {
       if (typeof s === 'number' && s > 0) setFontSize(s)
     })
+  }, [])
+
+  // A zoom step or a resize changes the page's size: the main process fits the zoom to the window again and says whether it was reduced.
+  useEffect(() => {
+    const api = window.electronAPI
+    api.getZoomReduced?.().then(setZoomReduced)
+    const off = api.onZoomReduced?.(setZoomReduced)
+    const onResize = (): void => api.operatorViewportChanged?.()
+    window.addEventListener('resize', onResize)
+    return () => {
+      off?.()
+      window.removeEventListener('resize', onResize)
+    }
   }, [])
 
   // App version + "is there a newer build?" check.
@@ -1976,6 +1991,12 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {zoomReduced && (
+          <span className="status-text status-warn status-zoom" title="The zoom you chose (View menu) is reduced to fit this window. A larger window shows the zoom you chose.">
+            Zoom reduced to fit this window. A larger window shows the zoom you chose.
+          </span>
+        )}
 
         {indexer === null ? (
           <span className="status-text">Starting…</span>

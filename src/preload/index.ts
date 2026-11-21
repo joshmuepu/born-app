@@ -215,6 +215,15 @@ const api = {
     return () => ipcRenderer.removeListener('app:download-progress', handler)
   },
 
+  // The operator window's zoom: reduced to fit the window, and told when the page's size changes
+  operatorViewportChanged: (): void => ipcRenderer.send('operator:viewport-changed'),
+  getZoomReduced: (): Promise<boolean> => ipcRenderer.invoke('operator:zoom-reduced'),
+  onZoomReduced: (callback: (reduced: boolean) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, reduced: boolean): void => callback(reduced)
+    ipcRenderer.on('operator:zoom-reduced', handler)
+    return () => ipcRenderer.removeListener('operator:zoom-reduced', handler)
+  },
+
   // Projection
   openProjection: (): Promise<void> => ipcRenderer.invoke('projection:open'),
   closeProjection: (): Promise<void> => ipcRenderer.invoke('projection:close'),

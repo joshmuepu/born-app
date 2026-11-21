@@ -119,6 +119,9 @@ declare global {
     electronAPI: {
       // App / updates
       getAppVersion: () => Promise<string>
+      operatorViewportChanged: () => void
+      getZoomReduced: () => Promise<boolean>
+      onZoomReduced: (callback: (reduced: boolean) => void) => () => void
       checkForUpdate: () => Promise<UpdateInfo>
       getUpdateInfo: () => Promise<UpdateInfo | null>
       openReleasePage: () => Promise<void>
