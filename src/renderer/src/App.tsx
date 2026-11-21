@@ -30,6 +30,7 @@ import type {
 import { quoteToItem, makeId, migrateQueue, itemTitle, liveParagraphRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
+import type { SlideFitNotice } from '../../shared/slideFit'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
@@ -179,6 +180,32 @@ export default function App() {
       if (typeof s === 'number' && s > 0) setFontSize(s)
     })
   }, [])
+
+  // How each queued slide fits the congregation screen, measured by the screen itself while it is open: again whenever the queue, the screen's size
+  // or the text size changes (shared/slideFit.ts).
+  const [fitNotices, setFitNotices] = useState<Record<string, SlideFitNotice[]>>({})
+  const [fitEpoch, setFitEpoch] = useState(0)
+  useEffect(() => window.electronAPI.onProjectionFitChanged?.(() => setFitEpoch((n) => n + 1)), [])
+  useEffect(() => {
+    if (!projectionOpen) {
+      setFitNotices({})
+      return
+    }
+    let stale = false
+    const timer = setTimeout(async () => {
+      const slides = serviceQueue.flatMap((it) => it.slides.map((s) => ({ kind: it.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker })))
+      const notices = await window.electronAPI.measureSlides?.(slides)
+      if (stale || !notices) return
+      const byItem: Record<string, SlideFitNotice[]> = {}
+      let k = 0
+      for (const it of serviceQueue) byItem[it.id] = it.slides.map(() => notices[k++] ?? null)
+      setFitNotices(byItem)
+    }, 250)
+    return () => {
+      stale = true
+      clearTimeout(timer)
+    }
+  }, [serviceQueue, projectionOpen, fitEpoch])
 
   // A zoom step or a resize changes the page's size: the main process fits the zoom to the window again and says whether it was reduced.
   useEffect(() => {
@@ -1817,6 +1844,7 @@ export default function App() {
         <div className="queue-panel">
           <ServiceQueue
             queue={serviceQueue}
+            fitNotices={fitNotices}
             playedIds={playedIds}
             readingAhead={readingAhead}
             activeIndex={activeQueueIndex}

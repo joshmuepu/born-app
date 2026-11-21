@@ -120,6 +120,11 @@ declare global {
       // App / updates
       getAppVersion: () => Promise<string>
       operatorViewportChanged: () => void
+      measureSlides: (slides: SlidePayload[]) => Promise<('cut' | 'small' | null)[] | null>
+      onMeasureSlides: (callback: (id: number, slides: SlidePayload[]) => void) => () => void
+      replyMeasuredSlides: (id: number, notices: ('cut' | 'small' | null)[]) => void
+      notifyProjectionFitChanged: () => void
+      onProjectionFitChanged: (callback: () => void) => () => void
       getZoomReduced: () => Promise<boolean>
       onZoomReduced: (callback: (reduced: boolean) => void) => () => void
       checkForUpdate: () => Promise<UpdateInfo>

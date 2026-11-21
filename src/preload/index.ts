@@ -230,6 +230,22 @@ const api = {
   showSlide: (slide: SlidePayload): void => ipcRenderer.send('projection:show-slide', slide),
   clearProjection: (): void => ipcRenderer.send('projection:clear'),
 
+  /** The operator window asks how slides fit the congregation screen (null when it is not open); the screen measures them and answers. */
+  measureSlides: (slides: SlidePayload[]): Promise<('cut' | 'small' | null)[] | null> => ipcRenderer.invoke('projection:measure-slides', slides),
+  onMeasureSlides: (callback: (id: number, slides: SlidePayload[]) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, id: number, slides: SlidePayload[]): void => callback(id, slides)
+    ipcRenderer.on('projection:measure-slides', handler)
+    return () => ipcRenderer.removeListener('projection:measure-slides', handler)
+  },
+  replyMeasuredSlides: (id: number, notices: ('cut' | 'small' | null)[]): void => ipcRenderer.send('projection:measured', id, notices),
+  /** The congregation screen's size or text size changed, so slides fit differently: told to the operator window. */
+  notifyProjectionFitChanged: (): void => ipcRenderer.send('projection:fit-changed'),
+  onProjectionFitChanged: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('projection:fit-changed', handler)
+    return () => ipcRenderer.removeListener('projection:fit-changed', handler)
+  },
+
   /** Called by the projection renderer once its IPC listeners are attached. */
   notifyProjectionReady: (): void => ipcRenderer.send('projection:ready'),
 

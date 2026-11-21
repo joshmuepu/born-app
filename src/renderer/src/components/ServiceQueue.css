@@ -391,6 +391,12 @@
  * "something's genuinely inconsistent" states (orphaned from the queue,
  * reading past it) — these deserve to stand out more than a routine
  * "hidden from screen while blanked" badge, which is expected/intentional. */
+/* a slide that is very small or cut on the congregation screen */
+.queue-row-tag--warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+}
+
 .live-now-hidden-badge--warn {
   background: color-mix(in srgb, var(--warn) 22%, var(--bg-primary));
   border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);

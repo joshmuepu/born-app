@@ -907,6 +907,29 @@ ipcMain.handle('projection:open', () => {
   })
 })
 
+// The operator window asks how slides fit the congregation screen; the screen measures them off screen at its real size and answers
+// (projection:measured). Null when the screen is not open or does not answer.
+let measureSeq = 0
+const measureWaits = new Map<number, (notices: unknown) => void>()
+ipcMain.on('projection:measured', (_e, id: number, notices: unknown) => {
+  measureWaits.get(id)?.(notices)
+  measureWaits.delete(id)
+})
+ipcMain.handle('projection:measure-slides', (_e, slides: unknown) => new Promise((resolve) => {
+  if (!projectionWindow || projectionWindow.isDestroyed()) return resolve(null)
+  const id = ++measureSeq
+  const timer = setTimeout(() => {
+    measureWaits.delete(id)
+    resolve(null)
+  }, 5000)
+  measureWaits.set(id, (notices) => {
+    clearTimeout(timer)
+    resolve(notices)
+  })
+  projectionWindow.webContents.send('projection:measure-slides', id, slides)
+}))
+ipcMain.on('projection:fit-changed', () => sendToMain('projection:fit-changed'))
+
 ipcMain.on('projection:ready', () => {
   log.info('ipc projection:ready — replaying state')
   broadcastDisplayInfo()
