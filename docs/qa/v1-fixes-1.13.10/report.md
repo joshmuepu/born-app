@@ -9,8 +9,10 @@ changelog and the website were not touched.
 | 2. Congregation text that shrinks a lot says so | **Code changed (warning only).** "Text is very small" / "Text is cut" marks for the operator; the congregation screen is unchanged | `c566f02` (fix), `03e4279` (check script) |
 | 3. Stage monitor text floor | **No change.** The 12 px floor is never what limits stage text; a test pins it | `c9d14ae` (test) |
 | Items 2 and 3 | Measurement script for real content | `8d57c3e` |
+| 4. The stage's current text is never cut (asked for after the first report) | **Code changed.** A long page gets room for itself only; 0 of 231 pages cut | `9bdd048` (fix), `224740f` (scripts) |
 
 Each item's commits stand alone: any one can be dropped with `git revert` without the others. Items 2 and 3 both use `8d57c3e`, a script only.
+`9bdd048` also updates the item 3 test (`stageTextFloor.test.ts`) for the new 16 px minimum; reverting it restores that test as it was.
 
 ## How it was measured
 
@@ -129,36 +131,92 @@ fits down to 55% of that; the Next text fits its band (a fifth of the screen) do
 **Decision.** The 12 px floor applies only below 810 lines, and there it makes the root *larger* (12 px instead of 10.7 px at 720 lines). No
 stage text comes near 12 px: the smallest current text is 23.7 px and the smallest Next text 13.5 px, and the current text cannot be fitted
 under 22.2 px on any stage from 720 to 2160 lines, 4:3 to 21:9. The floor is not a practical problem, so nothing changed;
-`src/test/repo/stageTextFloor.test.ts` pins that arithmetic. The current text *is* cut on long song pages, but by its 55% limit, not the
-12 px floor; see "Noticed, not changed".
+`src/test/repo/stageTextFloor.test.ts` pins that arithmetic. The current text was cut on long song pages, by its 55% limit, not the
+12 px floor; that is item 4.
+
+## Item 4: the stage's current text is never cut
+
+**Before.** With a Next verse showing, the stage cut the end off the current text of long song pages. The current text stopped at 55% of its
+size and the Next band kept a fifth of the screen. 231 of the 5,219 bundled song pages (on 124 songs) were cut on every 16:9 stage; up to 10 were
+cut even as the last page. This came from 1.13.9.
+
+**The rule now** (`src/renderer/src/stageRoom.ts`, `StageApp.tsx`): a page whose current text does not fit gets room one step at a time, for
+that page only, and only as far as it needs:
+1. A smaller Next band (15%, then 11% of the screen height instead of 20%), with its text fitted to it. A step whose Next text would be cut is skipped.
+2. No Next band for that page.
+3. Smaller current text than the usual 55%, down to the size that fits, never under 16 px at any screen height.
+
+The step starts again at 0 for every new page, screen size or view, so the next page is drawn as usual. A page whose current text fits at step 0
+is drawn exactly as before (step 0 only moves on for cut current text). v1 has no way to split a song page across stage pages, so a page that
+could not fit at 16 px would stay at 16 px; no bundled page comes near that.
+
+**Reading taken for the Next text.** The Next text shows at most its first 4 lines, ending in an ellipsis, by design: it is a preview of what
+comes next. That was left as it is, because changing it would change pages that fit today. "Never cut" was checked as: nothing in the Next band
+is clipped beyond that preview.
+
+**Before and after, real slides** (`scripts/qa/stage-pages.cjs`): every bundled song page (5,219) and the 3,000 longest Bible pages were sent
+to the real stage monitor of each build, with the following page as Next and with no Next. The table counts current text that was cut:
+
+| Stage | Songs, with Next: before → after | Songs, last page: before → after | Bible pages, either | Next text cut (after) |
+|---|---|---|---|---|
+| 1280x720 | 231 → 0 | 10 → 0 | 0 → 0 | 0 |
+| 1024x768 | 28 → 0 | 0 → 0 | 0 → 0 | 0 |
+| 1600x900 | 231 → 0 | 10 → 0 | 0 → 0 | 0 |
+| 1920x1080 | 231 → 0 | 10 → 0 | 0 → 0 | 0 |
+| 1920x1200 | 112 → 0 | 1 → 0 | 0 → 0 | 0 |
+| 2560x1440 | 231 → 0 | 10 → 0 | 0 → 0 | 0 |
+| 3840x2160 | 231 → 0 | 10 → 0 | 0 → 0 | 0 |
+
+**What the 231 pages needed** (each 16:9 size alike):
+- **A smaller Next band:** 1 page (Midnight Cry, page 3, 9 lines).
+- **No Next band, current text at no less than 55%:** 220 pages.
+- **No Next band and smaller current text:** 10 pages, all of 13 lines or more:
+  - Israel Anthem p1;
+  - Jehovah God p4;
+  - Jesus Dropped The Charges p1–4;
+  - Privileged To Serve Him p3;
+  - This Is How It Feels To Be Free Choir Edition p7;
+  - We Are The People p6;
+  - More Than Anything p10 (15 lines).
+
+  At 1080 lines these are drawn at 41.6 px, and More Than Anything at 35.2 px.
+- **Smallest current text on any page:** 23.6 px at 720 lines (3.28% of the height); 35.2 px at 1080; 70.4 px at 2160. No page reached the 16 px
+  minimum and **no page is left that cannot fit**.
+- **Unchanged pages:** compared field by field (current text size, cut or not, Next band height, Next text size, Next cut or not), every page
+  that was not cut is drawn **exactly as before** in all 28 groups (7 sizes × with/without Next × songs/Bible). That is 4,988 of 5,219 song
+  pages with Next at 16:9, and all 3,000 Bible pages.
+
+**Tests.**
+- `src/test/renderer/stageRoom.test.tsx` uses a model of the stage's layout, since jsdom has none. A 15-line page and a 20-line page with a
+  Next verse are cut on the old code and fit now. A page that fits keeps the full band and the usual fit, a last page shrinks only if it
+  must, and a 40-line page stops at 16 px. Four of its page tests fail on the old code.
+- The steps and the 16 px limit are tested directly.
+- Real app: `scripts/qa/stage-room.cjs` (43 checks, 0 failed) runs a stage window at 1280x720, 1920x1080 and 3840x2160. Four long bundled
+  pages are not cut, with Next and as the last page, and their Next text is not cut. A page that fits keeps the full band with no change, and
+  so does the short page after a long one.
 
 ## Gates
 
 | Gate | Result |
 |---|---|
 | `npm run typecheck` | passed |
-| `npm test` (full unit suite) | 137 files, 1103/1103 passed |
+| `npm test` (full unit suite) | 138 files, 1110/1110 passed (after item 4) |
 | `operator-zoom.cjs` (new) | 46 checks, 0 failed |
 | `slide-fit.cjs` (new) | 15 checks, 0 failed |
 | `operator-sizes.cjs` (the queue rows changed) | 72 checks, 0 failed |
 | `output-probe.cjs` (the congregation screen changed) | 6 checks, 0 failed |
 | `content-sizes.cjs` (new, a measurement) | ran; numbers above |
+| `stage-pages.cjs` (new): both builds, then `compare` | 0 pages cut after (231 before); every page that was not cut drawn exactly as before |
+| `stage-room.cjs` (new) | 43 checks, 0 failed |
+| `screen-sizes.cjs` `ONLY=stage` (the stage changed) | 437 checks, 0 failed |
+| `output-probe.cjs`, after item 4 | 6 checks, 0 failed |
 
-Not run (nothing they cover changed): the stage and congregation screen-size check, the phone checks, the layout sweep. No release workflow
+Not run (nothing they cover changed): the congregation part of the screen-size check, the phone checks, the layout sweep. No release workflow
 was started. No gate failed for a reason outside this round.
 
 ## Noticed, not changed
 
-1. **The stage monitor cuts the current text of long song pages.**
-   - With a Next verse showing, 231 of the 5,219 bundled song pages (4.4%) do not fit the current-text box at its 55% limit and lose their end.
-     That is on every 16:9 stage, at 720 lines up to 4K; 112 are cut on 1920x1200 and 28 on 1024x768.
-   - Confirmed with real slides: "Be Still And Know" (9 lines), "Changing Dimensions" (11), "Chua Song Special" (12) and "More Than Anything"
-     (15) are each cut at 44 px on a 1080p stage. On a last page (no Next) most fit.
-   - This comes from 1.13.9: the current text's limit went from 30% to 55% of its size, and the Next band became a fixed fifth of the screen.
-   - Allowed to shrink further, every bundled page fits: the smallest needed is 25.6 px at 1080 lines (32% of the start) and 15.1 px at 720 lines
-     (28%). Lowering the limit to about 28% would stop all bundled cutting; the current text would still never be smaller than the Next text.
-   - Recommended as the first fix of the next round. It was left alone because this round's item 3 is the 12 px floor and the round changes
-     nothing else.
+1. (Fixed as item 4: the stage cut the current text of long song pages.)
 2. **Zooming out below 100%** (View → Zoom Out) still makes operator text smaller than 12 px and controls shorter than 32 px. The item's rule
    is about reducing a chosen size; zoom-out is the operator's own choice and was left as it was.
 3. **The stage's Next text is under 3% of the screen height for almost every page** (5,008 of 5,219 song pages at 1080 lines). That is by design (a
@@ -179,4 +237,5 @@ was started. No gate failed for a reason outside this round.
    - With the projector at its real size, any other songs your church uses that show the mark are worth splitting into shorter pages in the
      song editor.
 3. **The stage monitor with a real 6 to 8 line song**, from the pulpit: the current verse is large and whole.
-   - Also try a long one, such as the 9-line page of "Be Still And Know", with the next verse showing: today its last line is cut on the stage (see "Noticed, not changed" 1).
+   - Also try a long one, such as the 9-line page of "Be Still And Know", with the next verse showing: the whole verse shows, and the Next
+     band is left out for that page only; the page after it has the Next band again.
