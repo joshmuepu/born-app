@@ -99,7 +99,7 @@ as for 1.13.9: `born.html`, `changelog.html`, `index.html`, `netlify.toml` and `
   "In the live preview".
 - **Installer sizes:** larger than "about 8 KB", for the reasons above. It is not a packaging problem, so the release went ahead.
 - **`npm run test:runtime`:** added to the gates because 1.13.8 and 1.13.9 ran it.
-- **Existing Help pictures over 300 KB:** three remote pictures (`remote-connection-check.png` 475 KB, `remote-network-show-all.png` 323 KB)
+- **Existing Help pictures over 300 KB:** two remote pictures (`remote-connection-check.png` 475 KB, `remote-network-show-all.png` 323 KB)
   were already over 300 KB before this round. They were not retaken or changed.
 
 ## Taking the release out later
