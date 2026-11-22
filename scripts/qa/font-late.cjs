@@ -2,7 +2,7 @@
  * system font and, once the wider screen font arrived, was cut at both ends. In the real app on an isolated profile, with the text size
  * raised (6.5) and the congregation screen (kept hidden) at 1728x1117, the screen font's download is held back while the first page of
  * "All That Thrills My Soul" goes live, then let through: the page must still fit, on the congregation screen and on the stage monitor.
- * Usage: node scripts/qa/font-late.cjs <profileDir>   (needs `npm run build`; SHOW=1 leaves the screens visible and slows down to watch) */
+ * Usage: node scripts/qa/font-late.cjs <profileDir>   (needs `npm run build`; SHOW=1 leaves the screens visible at their real size and slows down to watch) */
 const SHOW = process.env.SHOW === '1'
 const fs = require('fs'), path = require('path')
 const { launch, sleep, checks, Page } = require('./lib.cjs')
@@ -39,7 +39,8 @@ const fitOf = (sel) => `(()=>{const t=document.querySelector(${JSON.stringify(se
     await p.ev('window.electronAPI.openStage()'); await sleep(2500)
     const find = async (re) => new Page((await app.targets()).find((x) => x.type === 'page' && re.test(x.title))).connect()
     const cong = await find(/Congregation screen/), stage = await find(/Stage monitor|Stage View/)
-    for (const s of [cong, stage]) await s.viewport(1728, 1117, 2)
+    // hidden runs pretend to be a 1728x1117 laptop screen; a visible run keeps each window's real size, so what is seen is what is measured
+    if (!SHOW) for (const s of [cong, stage]) await s.viewport(1728, 1117, 2)
     const holds = [await holdFont(cong), await holdFont(stage)]
     const status = async (s) => s.ev(`[...document.fonts].filter(f=>f.family.includes('Inter')).map(f=>f.status).join(',')`)
     c.ok('the screen font is not loaded yet on either screen', !/(^|,)loaded/.test((await status(cong)) + ',' + (await status(stage))), (await status(cong)) + ' / ' + (await status(stage)))
