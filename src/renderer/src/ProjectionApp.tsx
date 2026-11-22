@@ -117,6 +117,14 @@ export default function ProjectionApp() {
   useEffect(() => {
     window.electronAPI.notifyProjectionFitChanged?.()
   }, [baseRem])
+  // and so does the screen's font once it has loaded (slides measured before then were measured with the system font)
+  useEffect(() => {
+    const fonts = document.fonts
+    if (!fonts?.addEventListener) return
+    const onLoaded = (): void => window.electronAPI.notifyProjectionFitChanged?.()
+    fonts.addEventListener('loadingdone', onLoaded)
+    return () => fonts.removeEventListener('loadingdone', onLoaded)
+  }, [])
 
   useEffect(() => {
     // Esc (blackout toggle) is owned by the main process so both windows agree;

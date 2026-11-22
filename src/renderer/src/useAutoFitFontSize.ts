@@ -8,7 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
  * on the page (the projector's text is not on the page while the screen is
  * hidden, so a size change made then is applied on Show screen), and on
  * window resize (a projector's resolution — or this window's — can change
- * mid-service).
+ * mid-service), and when a font finishes loading.
  *
  * The fit runs before the browser draws, so a new slide is never shown for a
  * frame at the previous slide's size first.
@@ -74,6 +74,21 @@ export function useAutoFitFontSize(
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
     }
+  }, [fit])
+
+  // The screen's font is only loaded once text first uses it, so the first slide shown is fitted with the system font; the screen's own
+  // font is wider, its lines wrap more, and the slide was cut at both ends. When a font finishes loading the text is fitted again, and the
+  // component draws again (a caller may check the fitted text, as the stage monitor does) even when the size comes out the same.
+  const [, setFontsLoaded] = useState(0)
+  useEffect(() => {
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined
+    if (!fonts?.addEventListener) return
+    const onLoaded = (): void => {
+      fit()
+      setFontsLoaded((n) => n + 1)
+    }
+    fonts.addEventListener('loadingdone', onLoaded)
+    return () => fonts.removeEventListener('loadingdone', onLoaded)
   }, [fit])
 
   return fitRem
