@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.11
+
+**On the congregation screen and the stage monitor**
+- The first slide shown after a screen opens is no longer cut off at the top and bottom. BORN fitted that slide before the screen's own font had finished loading; that font is a little wider, so long lines wrapped onto an extra line and the slide no longer fitted. BORN now fits the text again as soon as the font has loaded.
+
+Nothing else changed.
+
 ## 1.13.10
 
 **In the operator window**
