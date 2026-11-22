@@ -2,7 +2,8 @@
  * system font and, once the wider screen font arrived, was cut at both ends. In the real app on an isolated profile, with the text size
  * raised (6.5) and the congregation screen (kept hidden) at 1728x1117, the screen font's download is held back while the first page of
  * "All That Thrills My Soul" goes live, then let through: the page must still fit, on the congregation screen and on the stage monitor.
- * Usage: node scripts/qa/font-late.cjs <profileDir>   (needs `npm run build`) */
+ * Usage: node scripts/qa/font-late.cjs <profileDir>   (needs `npm run build`; SHOW=1 leaves the screens visible and slows down to watch) */
+const SHOW = process.env.SHOW === '1'
 const fs = require('fs'), path = require('path')
 const { launch, sleep, checks, Page } = require('./lib.cjs')
 const [profile] = process.argv.slice(2)
@@ -30,7 +31,7 @@ const fitOf = (sel) => `(()=>{const t=document.querySelector(${JSON.stringify(se
   fs.rmSync(profile, { recursive: true, force: true }); fs.mkdirSync(profile, { recursive: true })
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ theme: 'dark', fontSize: 6.5 }))
   const c = checks('font-late')
-  const app = await launch({ profile, remotePort: 14316, port: Number(process.env.CDP_PORT || 9376), mdns: process.env.BORN_MDNS_NAME || 'born-remote-v1-font', settle: 8000, extraArgs: ['--require', path.join(__dirname, 'hide-outputs.cjs')] })
+  const app = await launch({ profile, remotePort: 14316, port: Number(process.env.CDP_PORT || 9376), mdns: process.env.BORN_MDNS_NAME || 'born-remote-v1-font', settle: 8000, extraArgs: SHOW ? [] : ['--require', path.join(__dirname, 'hide-outputs.cjs')] })
   try {
     const p = await app.page()
     const clickIn = (sel, text) => p.ev(`(()=>{const b=[...document.querySelectorAll(${JSON.stringify(sel)})].find(x=>x.offsetParent&&x.textContent.trim().startsWith(${JSON.stringify(text)}));if(b){b.click();return true}return false})()`)
@@ -53,12 +54,14 @@ const fitOf = (sel) => `(()=>{const t=document.querySelector(${JSON.stringify(se
     c.ok('the first page is live, sized with the system font', before.cong && !before.cong.inter && before.stage && !before.stage.inter, JSON.stringify(before))
     c.ok('the font download was held back', holds.every((h) => h.held() > 0), holds.map((h) => h.held()).join(','))
 
+    if (SHOW) await sleep(5000)
     for (const h of holds) await h.release()
     await cong.waitFor(`document.fonts.check('16px Inter')`); await stage.waitFor(`document.fonts.check('16px Inter')`); await sleep(1200)
     const after = { cong: await cong.ev(fitOf('.projection-text')), stage: await stage.ev(fitOf('.stage-current')) }
     c.ok('the screen font has loaded', after.cong.inter && after.stage.inter)
     c.ok('congregation screen: the page still fits with the screen font', after.cong.text <= after.cong.box + 1, `text ${after.cong.text} px in a ${after.cong.box} px box at ${after.cong.px.toFixed(1)} px (was ${before.cong.px.toFixed(1)} px)`)
     c.ok('stage monitor: the page still fits with the screen font', after.stage.text <= after.stage.box + 1, `text ${after.stage.text} px in a ${after.stage.box} px box at ${after.stage.px.toFixed(1)} px (was ${before.stage.px.toFixed(1)} px)`)
+    if (SHOW) await sleep(6000)
     const mark = await p.ev(`[...document.querySelectorAll('.queue-row-tag--warn, .live-now-hidden-badge--warn')].map(e=>e.textContent).filter(t=>/^Text is/.test(t)).join('; ')`)
     c.ok('no "Text is cut" mark in the operator window', !/cut/.test(mark), mark)
     const errs = [...p.takeLogs(), ...cong.takeLogs(), ...stage.takeLogs()].filter((l) => l.kind === 'exception')
