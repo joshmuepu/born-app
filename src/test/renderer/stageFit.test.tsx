@@ -35,30 +35,8 @@ describe('stage monitor text fits its box', () => {
       expect(rem).toBeLessThanOrEqual(start * 0.6)
     })
   }
-  it('stage view: the current text goes no smaller than 55% of its start size (it went down to 30%, below the Next text)', async () => {
-    const box = await show('stage')
-    const start = Math.min(Math.max((window.innerWidth * 0.042) / rootPx(), 2), 5)
-    expect(parseFloat(box.style.fontSize)).toBeCloseTo(start * 0.55, 2)
-  })
 })
 
 const rootPx = (): number => Math.max(12, window.innerHeight / 67.5)
 
-describe('the stage Next text', () => {
-  it('is fitted to its band and never starts larger than the current text', async () => {
-    localStorage.setItem('born.stageView', 'stage')
-    let push: (d: { current: unknown; next: unknown }) => void = () => {}
-    Object.assign(window.electronAPI, {
-      onStageUpdate: vi.fn((cb) => { push = cb; return () => {} }), onStageSetBlank: vi.fn(() => () => {}), onStageAlert: vi.fn(() => () => {}), notifyStageReady: vi.fn()
-    })
-    render(<StageApp />)
-    const lines = (n: number): string => Array.from({ length: n }, (_, i) => `Placeholder line ${i + 1}`).join('\n')
-    await act(async () => { push({ current: { kind: 'song', label: 'Verse 1', text: lines(20) }, next: { kind: 'song', label: 'Verse 2', text: lines(4), reference: 'Invented Song' } }) })
-    const current = parseFloat((document.querySelector('.stage-current') as HTMLElement).style.fontSize)
-    const fit = document.querySelector('.stage-next-fit') as HTMLElement
-    expect(fit).not.toBeNull()
-    expect(fit.querySelector('.stage-next-text')).not.toBeNull()
-    expect(fit.querySelector('.stage-next-ref')?.textContent).toBe('Invented Song')
-    expect(parseFloat(fit.style.fontSize)).toBeLessThanOrEqual(current)
-  })
-})
+// The 55% limit and the Next text's fit are tested with a model of the stage's layout in stageRoom.test.tsx.

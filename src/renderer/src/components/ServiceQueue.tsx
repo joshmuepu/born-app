@@ -3,6 +3,7 @@ import { cleanSourceText } from '../../../shared/sourceText'
 import { Monitor, MonitorPlay, MonitorOff, EyeOff, Mic, BookOpen, Music, Check } from 'lucide-react'
 import type { QueueItem, RecentService } from '../types'
 import { itemTitle } from '../../../shared/queueItem'
+import { worstNotice, SLIDE_FIT_WORDS, type SlideFitNotice } from '../../../shared/slideFit'
 import StartScreen from './StartScreen'
 import { useAutoFitFontSize } from '../useAutoFitFontSize'
 import './ServiceQueue.css'
@@ -70,6 +71,16 @@ interface Props {
    *  library." Null/absent when nothing to report (no songs in the file,
    *  or the operator cancelled). */
   importNotice?: string | null
+  /** How each item's slides fit the congregation screen, by item id and slide (measured by the screen while it is open): a slide shrunk under 3%
+   *  of the screen height, or cut, is marked before and while it is live. */
+  fitNotices?: Record<string, SlideFitNotice[]>
+}
+
+/** "Text is very small" / "Text is cut", in the warning style of the other live badges. */
+function FitBadge({ notice, className }: { notice: SlideFitNotice; className: string }): JSX.Element | null {
+  if (!notice) return null
+  const w = SLIDE_FIT_WORDS[notice]
+  return <span className={className} title={w.title}>{w.badge}</span>
 }
 
 const KIND_BADGE: Record<QueueItem['kind'], string> = {
@@ -135,7 +146,8 @@ export default function ServiceQueue({
   recents,
   onOpenRecent,
   openError,
-  importNotice
+  importNotice,
+  fitNotices
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -290,6 +302,7 @@ export default function ServiceQueue({
               <span className="queue-row-title">{itemTitle(item)}</span>
               {item.slides.length > 1 && <span className="queue-row-count">{item.slides.length}</span>}
               {isNext && <span className="queue-row-tag">Up next</span>}
+              <FitBadge notice={worstNotice(fitNotices?.[item.id])} className="queue-row-tag queue-row-tag--warn" />
             </div>
             {detail && <div className="queue-row-detail">{detail}</div>}
           </div>
@@ -433,6 +446,9 @@ export default function ServiceQueue({
                   <EyeOff width={12} height={12} strokeWidth={2} aria-hidden="true" />
                   Hidden from screen
                 </span>
+              )}
+              {!status && !readingAhead && activeItem && (
+                <FitBadge notice={fitNotices?.[activeItem.id]?.[activeSlide] ?? null} className="live-now-hidden-badge live-now-hidden-badge--warn" />
               )}
               {orphaned && (
                 <span className="live-now-hidden-badge live-now-hidden-badge--warn" title="This isn't tracked by any row in your queue — it was either removed while live, or projected without being queued">

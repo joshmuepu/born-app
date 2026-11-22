@@ -215,11 +215,36 @@ const api = {
     return () => ipcRenderer.removeListener('app:download-progress', handler)
   },
 
+  // The operator window's zoom: reduced to fit the window, and told when the page's size changes
+  operatorViewportChanged: (): void => ipcRenderer.send('operator:viewport-changed'),
+  getZoomReduced: (): Promise<boolean> => ipcRenderer.invoke('operator:zoom-reduced'),
+  onZoomReduced: (callback: (reduced: boolean) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, reduced: boolean): void => callback(reduced)
+    ipcRenderer.on('operator:zoom-reduced', handler)
+    return () => ipcRenderer.removeListener('operator:zoom-reduced', handler)
+  },
+
   // Projection
   openProjection: (): Promise<void> => ipcRenderer.invoke('projection:open'),
   closeProjection: (): Promise<void> => ipcRenderer.invoke('projection:close'),
   showSlide: (slide: SlidePayload): void => ipcRenderer.send('projection:show-slide', slide),
   clearProjection: (): void => ipcRenderer.send('projection:clear'),
+
+  /** The operator window asks how slides fit the congregation screen (null when it is not open); the screen measures them and answers. */
+  measureSlides: (slides: SlidePayload[]): Promise<('cut' | 'small' | null)[] | null> => ipcRenderer.invoke('projection:measure-slides', slides),
+  onMeasureSlides: (callback: (id: number, slides: SlidePayload[]) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, id: number, slides: SlidePayload[]): void => callback(id, slides)
+    ipcRenderer.on('projection:measure-slides', handler)
+    return () => ipcRenderer.removeListener('projection:measure-slides', handler)
+  },
+  replyMeasuredSlides: (id: number, notices: ('cut' | 'small' | null)[]): void => ipcRenderer.send('projection:measured', id, notices),
+  /** The congregation screen's size or text size changed, so slides fit differently: told to the operator window. */
+  notifyProjectionFitChanged: (): void => ipcRenderer.send('projection:fit-changed'),
+  onProjectionFitChanged: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('projection:fit-changed', handler)
+    return () => ipcRenderer.removeListener('projection:fit-changed', handler)
+  },
 
   /** Called by the projection renderer once its IPC listeners are attached. */
   notifyProjectionReady: (): void => ipcRenderer.send('projection:ready'),

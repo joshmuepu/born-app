@@ -30,6 +30,7 @@ import type {
 import { quoteToItem, makeId, migrateQueue, itemTitle, liveParagraphRef } from '../../shared/queueItem'
 import { findMatchingSlideIndex } from './highlight'
 import { parseReference, isRefError } from '../../shared/bibleRef'
+import type { SlideFitNotice } from '../../shared/slideFit'
 import { reorder, replaceContributorItems, nextFollowSermon, type FollowSermon } from './queueUtils'
 import { cursorsFor, fetchAdjacentSlide, type FlowCursors } from './liveNav'
 import { useTheme } from './useTheme'
@@ -95,6 +96,8 @@ export default function App() {
   const [alertMessage, setAlertMessage] = useState('')
   const [alertTarget, setAlertTarget] = useState<'stage' | 'congregation' | 'both'>('stage')
   const [appVersion, setAppVersion] = useState('')
+  // the View menu zoom was reduced to fit this window (operatorZoom.ts in the main process)
+  const [zoomReduced, setZoomReduced] = useState(false)
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateMsg, setUpdateMsg] = useState('')
   const [updateDismissed, setUpdateDismissed] = useState(false)
@@ -176,6 +179,45 @@ export default function App() {
     window.electronAPI.getFontSize().then((s) => {
       if (typeof s === 'number' && s > 0) setFontSize(s)
     })
+  }, [])
+
+  // How each queued slide fits the congregation screen, measured by the screen itself while it is open: again whenever the queue, the screen's size
+  // or the text size changes (shared/slideFit.ts).
+  const [fitNotices, setFitNotices] = useState<Record<string, SlideFitNotice[]>>({})
+  const [fitEpoch, setFitEpoch] = useState(0)
+  useEffect(() => window.electronAPI.onProjectionFitChanged?.(() => setFitEpoch((n) => n + 1)), [])
+  useEffect(() => {
+    if (!projectionOpen) {
+      setFitNotices({})
+      return
+    }
+    let stale = false
+    const timer = setTimeout(async () => {
+      const slides = serviceQueue.flatMap((it) => it.slides.map((s) => ({ kind: it.kind, text: s.text, label: s.label, reference: s.reference, marker: s.marker })))
+      const notices = await window.electronAPI.measureSlides?.(slides)
+      if (stale || !notices) return
+      const byItem: Record<string, SlideFitNotice[]> = {}
+      let k = 0
+      for (const it of serviceQueue) byItem[it.id] = it.slides.map(() => notices[k++] ?? null)
+      setFitNotices(byItem)
+    }, 250)
+    return () => {
+      stale = true
+      clearTimeout(timer)
+    }
+  }, [serviceQueue, projectionOpen, fitEpoch])
+
+  // A zoom step or a resize changes the page's size: the main process fits the zoom to the window again and says whether it was reduced.
+  useEffect(() => {
+    const api = window.electronAPI
+    api.getZoomReduced?.().then(setZoomReduced)
+    const off = api.onZoomReduced?.(setZoomReduced)
+    const onResize = (): void => api.operatorViewportChanged?.()
+    window.addEventListener('resize', onResize)
+    return () => {
+      off?.()
+      window.removeEventListener('resize', onResize)
+    }
   }, [])
 
   // App version + "is there a newer build?" check.
@@ -1802,6 +1844,7 @@ export default function App() {
         <div className="queue-panel">
           <ServiceQueue
             queue={serviceQueue}
+            fitNotices={fitNotices}
             playedIds={playedIds}
             readingAhead={readingAhead}
             activeIndex={activeQueueIndex}
@@ -1976,6 +2019,12 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {zoomReduced && (
+          <span className="status-text status-warn status-zoom" title="The zoom you chose (View menu) is reduced to fit this window. A larger window shows the zoom you chose.">
+            Zoom reduced to fit this window. A larger window shows the zoom you chose.
+          </span>
+        )}
 
         {indexer === null ? (
           <span className="status-text">Starting…</span>

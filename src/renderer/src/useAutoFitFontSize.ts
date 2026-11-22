@@ -17,6 +17,23 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
  * preview, so both auto-fit the same way at whatever size their own
  * container allows.
  */
+/** The fit itself: sets `el`'s font size (in rem) from `baseRem` down, in steps of 4% of it, until its single child fits its height or the floor
+ *  is reached, and returns that size (null when `el` has no child). Also used to measure a slide off screen (ProjectionApp.tsx). */
+export function fitFontToBox(el: HTMLElement, baseRem: number, minRem = 0.9, floorRatio = 0.4): number | null {
+  const inner = el.firstElementChild as HTMLElement | null
+  if (!inner) return null
+  let size = baseRem
+  const floor = Math.max(minRem, baseRem * floorRatio)
+  el.style.fontSize = `${size}rem`
+  let guard = 0
+  while (inner.scrollHeight > el.clientHeight + 1 && size > floor && guard < 120) {
+    size = Math.max(floor, size - baseRem * 0.04)
+    el.style.fontSize = `${size}rem`
+    guard++
+  }
+  return size
+}
+
 export function useAutoFitFontSize(
   containerRef: React.RefObject<HTMLElement | null>,
   content: unknown,
@@ -32,18 +49,8 @@ export function useAutoFitFontSize(
     const el = containerRef.current
     const { content: c, baseRem: base, minRem: min, floorRatio: ratio } = params.current
     if (!el || !c) return
-    const inner = el.firstElementChild as HTMLElement | null
-    if (!inner) return
-    let size = base
-    const floor = Math.max(min, base * ratio)
-    el.style.fontSize = `${size}rem`
-    let guard = 0
-    while (inner.scrollHeight > el.clientHeight + 1 && size > floor && guard < 120) {
-      size = Math.max(floor, size - base * 0.04)
-      el.style.fontSize = `${size}rem`
-      guard++
-    }
-    setFitRem(size)
+    const size = fitFontToBox(el, base, min, ratio)
+    if (size != null) setFitRem(size)
   }, [containerRef])
 
   // after every render: fit again when the slide, the size or the container element itself has changed

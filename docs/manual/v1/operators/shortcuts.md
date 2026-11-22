@@ -20,5 +20,7 @@ in the main window (when you are not typing in a box).
 <kbd>⌘/Ctrl</kbd>+<kbd>R</kbd> does nothing in the installed app, on purpose: it used to
 reload BORN and wipe what was on screen.
 
+If you zoom the main window in (**View → Zoom In**) further than the window has room for, BORN shows the largest zoom that fits and says so at the bottom of the window; a larger window shows the zoom you chose.
+
 <kbd>/</kbd> only jumps to the search box when you're not already typing somewhere
 else (it won't interrupt you mid-sentence in the Message dialog, for example).

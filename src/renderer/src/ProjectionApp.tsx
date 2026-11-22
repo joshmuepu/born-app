@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { cleanSourceText } from '../../shared/sourceText'
 import type { SlidePayload } from './types'
-import { useAutoFitFontSize } from './useAutoFitFontSize'
+import { useAutoFitFontSize, fitFontToBox } from './useAutoFitFontSize'
+import { slideFitNotice } from '../../shared/slideFit'
 
 export default function ProjectionApp() {
   const [slide, setSlide] = useState<SlidePayload | null>(null)
@@ -79,6 +80,43 @@ export default function ProjectionApp() {
   // long verse / quote would be clipped or overlap the reference line.
   // It shrinks as far as a long passage needs (about the smallest size it reached before), so nothing is ever cut.
   const fitFontSize = useAutoFitFontSize(textRef, slide, baseRem, 0.9, 0.33)
+
+  // The operator window asks how slides would fit here before they go live: each is laid out in a hidden copy of this screen's layout, at this
+  // screen's size and text size, and fitted exactly as above. A slide under 3% of the screen height, or cut, is reported (shared/slideFit.ts).
+  const baseRemRef = useRef(baseRem)
+  baseRemRef.current = baseRem
+  useEffect(() => {
+    return window.electronAPI.onMeasureSlides?.((id, slides) => {
+      const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const box = document.createElement('div')
+      box.style.cssText = 'position:fixed;inset:0;visibility:hidden;pointer-events:none;z-index:-1'
+      document.body.appendChild(box)
+      const notices = slides.map((s) => {
+        box.className = `projection-active projection-${s.kind}`
+        box.replaceChildren()
+        const row = (cls: string, text?: string): HTMLDivElement => {
+          const d = document.createElement('div')
+          d.className = cls
+          if (text) d.textContent = text
+          return d
+        }
+        const text = row('projection-text'), inner = row('projection-text-inner')
+        if (s.marker) inner.appendChild(Object.assign(document.createElement('span'), { className: 'projection-marker', textContent: s.marker }))
+        inner.appendChild(document.createTextNode(cleanSourceText(s.text)))
+        text.appendChild(inner)
+        box.append(row('projection-label', s.label), text, row('projection-reference', s.reference))
+        const rem = fitFontToBox(text, baseRemRef.current, 0.9, 0.33) ?? baseRemRef.current
+        return slideFitNotice(rem * rootPx, window.innerHeight, inner.scrollHeight > text.clientHeight + 1)
+      })
+      box.remove()
+      window.electronAPI.replyMeasuredSlides(id, notices)
+    })
+  }, [])
+
+  // a new screen size or text size fits slides differently
+  useEffect(() => {
+    window.electronAPI.notifyProjectionFitChanged?.()
+  }, [baseRem])
 
   useEffect(() => {
     // Esc (blackout toggle) is owned by the main process so both windows agree;

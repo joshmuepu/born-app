@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.13.10
+
+**In the operator window**
+- Zooming in (**View → Zoom In**) no longer pushes buttons off a small window. BORN shows the largest zoom the window has room for, never smaller than normal size, and says so at the bottom of the window. A larger window shows the zoom you chose.
+
+**In the live preview**
+- When a slide has to be shrunk very small to fit the congregation screen, or does not fit and its end is cut off, BORN now says **Text is very small** or **Text is cut**. It says so on the live preview while that slide is on screen, and on its row in the Service Queue before it goes live, while the congregation screen is open. What the congregation sees does not change.
+
+**On the stage monitor**
+- A long song page is no longer cut off at the bottom. When a page does not fit, the Next preview is made smaller or left out for that page, and only if that is not enough is the text made smaller. The next page shows the Next preview again, and every other page looks exactly as before.
+
+Nothing else changed.
+
 ## 1.13.9
 
 **On the stage monitor**
