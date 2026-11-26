@@ -1,0 +1,102 @@
+{
+ "engine": "webkit",
+ "failed": 3,
+ "checks": [
+  {
+   "label": "wifi: a tap in the first second of a drop says it did not reach the computer",
+   "pass": true,
+   "detail": "says \"Couldn't reach BORN — check the connection and try again\""
+  },
+  {
+   "label": "wifi: the phone says Reconnecting within 5 s of the drop",
+   "pass": true,
+   "detail": "3 ms"
+  },
+  {
+   "label": "wifi: while it cannot reach the computer, the phone does not go on presenting the last page as ON SCREEN",
+   "pass": false,
+   "detail": "top says \"Reconnecting…\", the live card still reads \"ON SCREEN The Long Road Song\" at full strength (class \"now-card perf\")"
+  },
+  {
+   "label": "wifi: once it knows it is disconnected, Next is not sent and says so",
+   "pass": true,
+   "detail": "says \"Not connected to BORN, so that was not sent. Try again when it says Connected.\""
+  },
+  {
+   "label": "wifi: back on the network, the phone reconnects and catches up within 2 s, with no reload",
+   "pass": true,
+   "detail": "1026 ms; the screen moved two pages while the phone was away"
+  },
+  {
+   "label": "wifi: nothing the phone tried while away arrives late",
+   "pass": true,
+   "detail": "screen \"The Long Road Song verse 3 line one of our own\", hidden false"
+  },
+  {
+   "label": "slow: with answers arriving out of order the phone never steps back to an older page",
+   "pass": true,
+   "detail": "the screen went 1 to 11 in order; the phone showed verses 1 3 5 6 8 9 11 (0 step(s) backwards)"
+  },
+  {
+   "label": "slow: it ends on the page that is really on the screen",
+   "pass": true,
+   "detail": "ends on verse 11"
+  },
+  {
+   "label": "slow: at 3 s an answer, Next still moves the screen once",
+   "pass": true,
+   "detail": "\"The Long Road Song verse 11 line one of our own\" → \"The Long Road Song verse 12 line one of our own\""
+  },
+  {
+   "label": "slow: at 3 s an answer, the phone stays Connected",
+   "pass": true,
+   "detail": "Connected in 24 of 24 looks"
+  },
+  {
+   "label": "late: a Next the computer acted on is not reported as not reaching it",
+   "pass": true,
+   "detail": "the screen moved \"The Long Road Song verse 12 line one of our own\" → \"The Long Road Song verse 13 line one of our own\"; the phone says \"null\" and shows Connected"
+  },
+  {
+   "label": "back: the phone's back button closes an open full page",
+   "pass": false,
+   "detail": "history entries 2 before and 2 after opening the page (opening adds none); after Back: about:blank"
+  },
+  {
+   "label": "rotate: after turning the phone on its side the live controls can be reached",
+   "pass": false,
+   "detail": "Next covered by the full page, which is shown both over the screen and in the right pane"
+  },
+  {
+   "label": "closed: with BORN closed the phone says Reconnecting within 5 s",
+   "pass": true,
+   "detail": "4 ms"
+  },
+  {
+   "label": "closed: a tap while BORN is closed says it was not sent",
+   "pass": true,
+   "detail": "says \"Not connected to BORN, so that was not sent. Try again when it says Connected.\""
+  },
+  {
+   "label": "restart: the phone reconnects on its own once BORN is back",
+   "pass": true,
+   "detail": "4 ms after BORN's window was ready"
+  },
+  {
+   "label": "restart: the phone shows what the restarted computer reports",
+   "pass": true,
+   "detail": "phone \"Nothing on screen yet.\nProject something\""
+  },
+  {
+   "label": "restart: a full page left open on the other phone is still for an item in the queue, or has closed",
+   "pass": true,
+   "detail": "tab queue, full page open \"Evening Song\", Next covered; that item is still in the queue the computer restored"
+  }
+ ],
+ "notes": [
+  "Hide screen while disconnected still tries: says \"Couldn't reach BORN — check the connection and try again\"",
+  "rotated to 844x390 with a queue item's full page open: layout tablet, the page over the screen is still open (359 of 390 px high), its close button in view, right pane full-item, Next covered",
+  "with BORN closed the phone's live card still reads \"ON SCREEN The Long Road Song\" over \"The Long Road Song verse 13 line one of \"",
+  "after the restart the computer reports: queue [\"Morning Song\",\"Evening Song\",\"The Long Road Song\"], on screen null (before: \"The Long Road Song verse 13 line one of our own\")"
+ ]
+}

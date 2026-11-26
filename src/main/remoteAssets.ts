@@ -948,19 +948,30 @@ function haptic(action){
 /* While the page knows BORN cannot be reached, a tap that changes the screens is not sent at all: the phone would hold it and it would land later, all at
    once. Hide screen always tries. A tap gives up after 4 s, and a refusal (BORN answered "no") is said as that, not as "Couldn't reach". */
 var OFFLINE_TRIES = { 'blank': 1 };
+/* Each tap carries an id of its own; a Next or Back also carries the place on screen this phone shows (state.qs.pos), so BORN acts on it
+   only from there and a tap never moves the screen more than one page from what the person saw. When the answer is late or lost, the
+   page asks BORN whether it acted on the tap (/state lists the latest ones) before it says the tap did not get through. Save is left
+   out of that: its answer carries the result. */
+var tapSeq = 0;
+var MOVES = { 'next': 1, 'prev': 1 };
 function cmd(action, extra){
   if(state.connOk === false && !OFFLINE_TRIES[action]){
     toast("Not connected to BORN, so that was not sent. Try again when it says Connected.", true);
     return Promise.reject(new Error('offline'));
   }
   haptic(action);
-  var body = Object.assign({ action: action }, extra || {});
+  var tapId = ensureDeviceId() + '.' + Date.now().toString(36) + '.' + (++tapSeq);
+  var body = Object.assign({ action: action, tap: tapId }, MOVES[action] && state.qs && state.qs.pos ? { at: state.qs.pos } : null, extra || {});
   var ctl = typeof AbortController === 'function' ? new AbortController() : null;
   var t = ctl ? setTimeout(function(){ ctl.abort(); }, 4000) : null;
   return fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
     .then(function(r){
       if(t) clearTimeout(t);
       setConn(true);
+      // the screen had already moved on from what this phone showed: nothing was done; show where it really is
+      if(r.status === 409 && MOVES[action]) return poll().then(function(){ return r; });
+      // a step to the next or previous page: read the new place soon, so the next tap starts from it
+      if(r.ok && MOVES[action]) setTimeout(poll, 150);
       if(!r.ok){
         toast(r.status === 413 ? "That was too large to send at once. Send it in smaller parts." : "BORN did not accept that. Try again.", true);
         var refused = new Error('command refused: ' + r.status); refused.refused = true;
@@ -969,9 +980,13 @@ function cmd(action, extra){
       return r;
     }, function(e){
       if(t) clearTimeout(t);
-      setConn(false);
-      toast("Couldn't reach BORN — check the connection and try again", true);
-      throw e;
+      function lost(){ toast("Couldn't reach BORN — check the connection and try again", true); throw e; }
+      if(action === 'save-queue'){ setConn(false); return lost(); }
+      // the answer may only have been late or lost: ask BORN what it did (poll() also shows what is live) before saying it failed
+      return poll(2500).then(function(){
+        if(state.connOk && state.qs && state.qs.taps && state.qs.taps.indexOf(tapId) !== -1) return new Response(null, { status: 204 });
+        return lost();
+      });
     });
 }
 /** A read with a time limit, for the polls and lists that say their own failure. */
@@ -1111,13 +1126,13 @@ function nowSignature(qs){
   if(!qs || !qs.onScreen) return '';
   return (qs.blanked ? 'B' : 'L') + '|' + (qs.onScreen.reference || '') + '|' + qs.onScreen.text;
 }
-function poll(){
+function poll(ms){
   // Returns the fetch promise so a just-fired project/queue command can wait
   // for one fresh /state before switching the view to it — otherwise the
   // Queue tab renders with whatever state.qs was BEFORE this action, up to
   // 1s stale, showing "Nothing on screen yet" right after the operator just
   // projected something.
-  return getJSONT('/state', 4000).then(function(s){
+  return getJSONT('/state', ms || 4000).then(function(s){
     var sig = nowSignature(s);
     // A brief pulse on the "on screen now" card whenever what's live actually
     // changes (new slide, or blanked/restored) — a second, glanceable signal
@@ -1582,14 +1597,14 @@ function queueDetailInnerHtml(i){
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
     html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:' + esc(JSON.stringify(String(it.id))) + '})">Project ▸</button></div>';
+      + '<div class="sheet-actions"><button class="btn-project" onclick="projectQueueItem(' + esc(JSON.stringify(String(it.id))) + ')">Project ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
   for(var s=0;s<slides.length;s++){
     var sl = slides[s];
     var isLive = (s === activeSlide);
-    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:' + esc(JSON.stringify(String(it.id))) + ',slide:' + s + '})">';
+    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="projectQueueItem(' + esc(JSON.stringify(String(it.id))) + ',' + s + ')">';
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
@@ -1597,6 +1612,11 @@ function queueDetailInnerHtml(i){
   }
   html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
   return html;
+}
+/** Project a queue item (or one of its pages) from its full page, then show the live view like every other way of projecting.
+ *  A tap that did not go through leaves the page open (cmd has already said why). */
+function projectQueueItem(id, slide){
+  return (slide == null ? cmd('project', { id: id }) : cmd('project-at', { id: id, slide: slide })).then(afterProjectFromSheet, function(){});
 }
 /** The open item sheet follows its item when items are added, removed or moved above it, and closes with a note when the item is gone (it was bound to a
  *  position, so it turned into another item under the finger). */
@@ -2034,7 +2054,8 @@ function projectSermonParagraph(flatIdx){
   if(!ref) return;
   var p = (window._sermonDetailParas || [])[ref.paraIndex];
   if(!p) return;
-  cmd('project-sermon', { quote: p, query: '', slide: ref.slideIndex });
+  // ends on the live view like every other way of projecting; a tap that did not go through leaves the page open
+  cmd('project-sermon', { quote: p, query: '', slide: ref.slideIndex }).then(afterProjectFromSheet, function(){});
 }
 function openRecentSermons(){
   openGenericSheet('Recently Played', '<div id="recentSermonsBody" class="empty">Loading…</div>');
@@ -2515,6 +2536,8 @@ function afterProjectFromSheet(){
   toast('Projecting…');
   closeSheet();
   state.selected = null;
+  state.detailIndex = null;
+  state.detailId = null;
   // Fetch the just-updated on-screen state before switching to the Queue
   // tab, so it never briefly renders "Nothing on screen yet" right after
   // the operator's own tap projected something.
@@ -2722,17 +2745,10 @@ function sheetAction(which){
     if(contributor) payload = Object.assign({}, payload, { contributor: contributor });
   }
   cmd(action, payload).then(function(){
-    toast(which === 'queue' ? 'Added to queue' : 'Projecting…');
+    if(which === 'project'){ afterProjectFromSheet(); return; }
+    toast('Added to queue');
     closeSheet();
-    if(which === 'project'){
-      state.selected = null;
-      // Same fix as afterProjectFromSheet: wait for a fresh /state before
-      // switching to the Queue tab, so it doesn't render a stale "nothing
-      // on screen" for up to a second right after this project tap.
-      pollUntilOnScreen(function(){ setTab('queue'); });
-    } else {
-      renderTabletPreview();
-    }
+    renderTabletPreview();
   });
 }
 

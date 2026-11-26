@@ -1,0 +1,3175 @@
+{
+ "failed": 0,
+ "checks": [
+  {
+   "label": "chromium phone Operator search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Operator search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Operator search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Operator search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Operator search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Operator search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "chromium phone Operator recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Operator recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Operator recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Operator queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium phone Operator queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Operator queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "chromium phone Song Leader search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Song Leader search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Song Leader search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Song Leader search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Song Leader search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Song Leader search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "chromium phone Song Leader recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Song Leader recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Song Leader recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Song Leader queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium phone Song Leader queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Song Leader queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "chromium phone Preacher search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Preacher search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Preacher search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Preacher search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Preacher search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Preacher search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "chromium phone Preacher recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium phone Preacher recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Preacher recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "chromium phone Preacher queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium phone Preacher queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "chromium phone Preacher queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "chromium tablet Operator search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Operator search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Operator search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Operator recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium tablet Operator queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Operator queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Song Leader search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Song Leader search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Song Leader recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium tablet Song Leader queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Song Leader queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Preacher search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Preacher search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "chromium tablet Preacher recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "chromium tablet Preacher queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "chromium tablet Preacher queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit phone Operator search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Operator search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Operator search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Operator search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Operator search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Operator search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "webkit phone Operator recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Operator recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Operator recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Operator queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit phone Operator queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Operator queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "webkit phone Song Leader search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Song Leader search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Song Leader search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Song Leader search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Song Leader search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Song Leader search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "webkit phone Song Leader recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Song Leader recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Song Leader recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Song Leader queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit phone Song Leader queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Song Leader queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "webkit phone Preacher search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Preacher search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Preacher search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Preacher search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Preacher search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Preacher search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 2 line one of our own A"
+  },
+  {
+   "label": "webkit phone Preacher recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit phone Preacher recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Preacher recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: River Song verse 1 line one of our own A"
+  },
+  {
+   "label": "webkit phone Preacher queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit phone Preacher queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, sheet closed, Next reachable true"
+  },
+  {
+   "label": "webkit phone Preacher queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "now: Morning Song verse 1 line one of our own"
+  },
+  {
+   "label": "webkit tablet Operator search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Operator search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Operator search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Operator recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit tablet Operator queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Operator queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Song Leader search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Song Leader search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Song Leader recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit tablet Song Leader queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Song Leader queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher search: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Preacher search: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher search: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher search-verse: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 2 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Preacher search-verse: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher search-verse: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher recent: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: River Song verse 1 line one of our own; queue row live: null"
+  },
+  {
+   "label": "webkit tablet Preacher recent: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher recent: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher queue-row: the computer went live with the song",
+   "pass": true,
+   "detail": "on screen: Morning Song verse 1 line one of our own; queue row live: Morning Song"
+  },
+  {
+   "label": "webkit tablet Preacher queue-row: the phone shows the live view after the tap",
+   "pass": true,
+   "detail": "tab queue, right pane now-next"
+  },
+  {
+   "label": "webkit tablet Preacher queue-row: the live view shows after leaving the Queue and coming back",
+   "pass": true,
+   "detail": "right pane now-next"
+  }
+ ],
+ "rows": [
+  {
+   "tag": "chromium phone Operator search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Operator search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Operator recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Operator queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Song Leader search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Song Leader search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Song Leader recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Song Leader queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Preacher search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Preacher search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Preacher recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium phone Preacher queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Operator search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Operator search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Operator recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Operator queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Song Leader search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Song Leader search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Song Leader recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Song Leader queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Preacher search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Preacher search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Preacher recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "chromium tablet Preacher queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Operator search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Operator search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Operator recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Operator queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Song Leader search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Song Leader search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Song Leader recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Song Leader queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Preacher search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Preacher search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Preacher recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit phone Preacher queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": null,
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Operator search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Operator search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Operator recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Operator queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Song Leader search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Song Leader search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Song Leader recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Song Leader queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Preacher search",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Preacher search-verse",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 2 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 1,
+    "onScreen": "River Song verse 2 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 2 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 1,
+     "onScreen": "River Song verse 2 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Preacher recent",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "River Song verse 1 line one of our own A",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": null,
+    "activeSlide": 0,
+    "onScreen": "River Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "River Song verse 1 line one of our own A",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": "River Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  },
+  {
+   "tag": "webkit tablet Preacher queue-row",
+   "before": {
+    "activeTitle": null
+   },
+   "after": {
+    "layout": "tablet",
+    "tab": "queue",
+    "sheetOpen": false,
+    "sheetDetail": false,
+    "sheetTitle": null,
+    "sheetRows": 0,
+    "sheetLive": null,
+    "paneKind": "now-next",
+    "paneTitle": "",
+    "paneLive": "",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "nextReachable": true,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "server": {
+    "activeTitle": "Morning Song",
+    "activeSlide": 0,
+    "onScreen": "Morning Song verse 1 line one of our own"
+   },
+   "back": {
+    "tab": "queue",
+    "sheetOpen": false,
+    "paneKind": "now-next",
+    "nowText": "Morning Song verse 1 line one of our own",
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": null,
+     "activeIndex": 0,
+     "activeSlide": 0,
+     "onScreen": "Morning Song verse 1 line one of our own"
+    }
+   },
+   "shot": null,
+   "errs": []
+  }
+ ]
+}

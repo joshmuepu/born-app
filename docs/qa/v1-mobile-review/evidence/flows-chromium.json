@@ -1,0 +1,354 @@
+{
+ "engine": "chromium",
+ "failed": 10,
+ "checks": [
+  {
+   "label": "queue: opens showing what is live",
+   "pass": true,
+   "detail": "phone \"Morning Song verse 1 line one of our own\" / computer \"Morning Song verse 1 line one of our own\""
+  },
+  {
+   "label": "queue: the live item in the strip is marked by more than a coloured outline",
+   "pass": false,
+   "detail": "live card reads \"SONG Morning Song\"; the others read \"SONG Evening Song\""
+  },
+  {
+   "label": "queue: Move down reorders on the computer",
+   "pass": true,
+   "detail": "Morning Song | Evening Song | River Song | John 3:16–17 · KJV → Morning Song | River Song | Evening Song | John 3:16–17 · KJV"
+  },
+  {
+   "label": "queue: the live row is still the same item after a reorder",
+   "pass": true,
+   "detail": "live: Morning Song"
+  },
+  {
+   "label": "queue: Remove offers Undo, and Undo keeps the item",
+   "pass": true,
+   "detail": "undo bar true, queue 4"
+  },
+  {
+   "label": "queue: Remove without Undo removes it on the computer after 5 s",
+   "pass": true,
+   "detail": "queue Morning Song | River Song | Evening Song"
+  },
+  {
+   "label": "queue: removing the live item leaves the phone saying what is still on the screen",
+   "pass": true,
+   "detail": "computer on screen \"Morning Song verse 1 line one of our own\", live row null; phone \"Morning Song verse 1 line one of our own\" head \"ON SCREEN NOT IN YOUR QUEUE Morning Song\""
+  },
+  {
+   "label": "queue: + Queue from a phone adds the song, tagged with the role",
+   "pass": true,
+   "detail": "row {\"label\":\"Song Leader\"}"
+  },
+  {
+   "label": "queue: a double tap on + Queue adds the song once",
+   "pass": true,
+   "detail": "\"Evening Song\" is in the queue 1 time(s)"
+  },
+  {
+   "label": "queue: the open \"Full Queue\" list follows a change of the live item",
+   "pass": false,
+   "detail": "list marks [\"Morning Song\"] as ON SCREEN; the computer has Evening Song live"
+  },
+  {
+   "label": "queue: a full page whose item another phone removed closes with a note",
+   "pass": true,
+   "detail": "tab queue, no page over it, Next reachable; says \"That item was taken out of the service.\""
+  },
+  {
+   "label": "project: opening a verse puts nothing on the screen yet",
+   "pass": true,
+   "detail": "still live: Morning Song"
+  },
+  {
+   "label": "project: a Bible verse from Browse goes live and the phone moves to the live view",
+   "pass": true,
+   "detail": "tab queue, no page over it, Next reachable; phone \"For God so loved the world, that he gave\" / computer \"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.\""
+  },
+  {
+   "label": "project: the second phone shows the new live item within a second or two",
+   "pass": true,
+   "detail": "second phone \"For God so loved the world, that he gave\""
+  },
+  {
+   "label": "project: a sermon paragraph from the search goes live and the phone moves to the live view",
+   "pass": true,
+   "detail": "tab queue, no page over it, Next reachable; matches the computer: true"
+  },
+  {
+   "label": "project: tapping a paragraph on a sermon's full page goes live",
+   "pass": true,
+   "detail": "screen changed: true"
+  },
+  {
+   "label": "project: after that tap the phone moves to the live view",
+   "pass": false,
+   "detail": "tab sermons, full page open \"(a sermon)\", Next covered"
+  },
+  {
+   "label": "project: if it stays, the sermon's full page marks the paragraph that is live",
+   "pass": false,
+   "detail": "rows marked LIVE on the page: 0"
+  },
+  {
+   "label": "project: switching from one live item to a song ends on the live view with the song",
+   "pass": true,
+   "detail": "phone \"River Song verse 1 line one of our own A\""
+  },
+  {
+   "label": "project: the Queue tab never shows the old item as ON SCREEN after the switch",
+   "pass": true,
+   "detail": "first moment on the Queue tab: \"River Song verse 1 line one of our own A\" (before the tap the screen had \"(sermon paragraph ixqlq8)\")"
+  },
+  {
+   "label": "project: the live song can be opened from the live view to jump to a verse",
+   "pass": false,
+   "detail": "the live card does not open the song when it was projected from Songs"
+  },
+  {
+   "label": "project: Next moves the screen one page and the phone shows it",
+   "pass": true,
+   "detail": "\"River Song verse 1 line one of our own\" → \"River Song verse 2 line one of our own\"; phone \"River Song verse 2 line one of our own A\""
+  },
+  {
+   "label": "project: Back moves the screen one page back and the phone shows it",
+   "pass": true,
+   "detail": "\"River Song verse 1 line one of our own\"; phone \"River Song verse 1 line one of our own A\""
+  },
+  {
+   "label": "project: Hide screen hides it on the computer and both phones say so",
+   "pass": true,
+   "detail": "computer hidden true; button \"Show screen\"; phone \"HIDDEN FROM SCREEN NOT IN YOUR QUEUE River Song\"; second phone \"HIDDEN FROM SCREEN NOT IN YOUR QUEUE River Song\""
+  },
+  {
+   "label": "project: Show screen brings it back",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "project: with the congregation screen closed on the computer, projecting from the phone opens it and goes live",
+   "pass": true,
+   "detail": "before: on screen \"null\"; after: computer \"Evening Song verse 1 line one of our own\", phone \"Evening Song verse 1 line one of our own\" "
+  },
+  {
+   "label": "search: typing in the song search is not disturbed by the live updates",
+   "pass": true,
+   "detail": "focus songInput, text \"Riv\""
+  },
+  {
+   "label": "search: the live item stays visible and Next stays reachable while searching",
+   "pass": true,
+   "detail": "live bar \"Morning Song Morning Song verse 1 line one of our \", Next reachable"
+  },
+  {
+   "label": "search: typing puts nothing on the screen",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "search: Next from the search view moves the screen and the live bar follows",
+   "pass": true,
+   "detail": "live bar \"Morning Song Morning Song verse 2 line one of our \""
+  },
+  {
+   "label": "search: fast typing ends on the results for the whole word",
+   "pass": true,
+   "detail": "20 result(s), first \"Evening Song IMPORTED\""
+  },
+  {
+   "label": "search: no song found says so",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "search: a song search that cannot reach the computer says so",
+   "pass": true,
+   "detail": "\"Couldn't reach BORN — check the connection and search again.\""
+  },
+  {
+   "label": "search: tapping a result opens the song without projecting it",
+   "pass": true,
+   "detail": "tab songs, full page open \"River Song\", Next covered"
+  },
+  {
+   "label": "search: half-typed Bible text is not disturbed by the live updates",
+   "pass": true,
+   "detail": "focus bibleInput, text \"John 3\""
+  },
+  {
+   "label": "search: half-typed Bible text is still there after a look at the Queue",
+   "pass": false,
+   "detail": "text after coming back: \"\""
+  },
+  {
+   "label": "search: a Bible reference finds the passage",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "search: no Bible match says so",
+   "pass": true,
+   "detail": "\"No matches for \"qqzzxv\".\""
+  },
+  {
+   "label": "search: no sermon match says so",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "songs: a song just projected is in Recently played when Songs is opened next",
+   "pass": true,
+   "detail": "Recently played: [\"River Song\",\"Evening Song\",\"Morning Song\"]"
+  },
+  {
+   "label": "songs: Change key opens \"Set key\", and the key chosen shows on the song",
+   "pass": true,
+   "detail": "sheet \"Set key\", song line \"Key of D\""
+  },
+  {
+   "label": "songs: the same song already in the queue shows the new key",
+   "pass": false,
+   "detail": "queue row subtitle: \"River Song\""
+  },
+  {
+   "label": "songs: a 30-verse song lists every verse and keeps Project in view",
+   "pass": true,
+   "detail": "{\"rows\":30,\"chips\":30,\"projectInView\":true,\"scrolls\":true}"
+  },
+  {
+   "label": "songs: tapping verse 25 of the long song puts verse 25 on the screen and the phone on the live view",
+   "pass": true,
+   "detail": "computer \"The Long Road Song verse 25 line one of our own\"; tab queue, no page over it, Next reachable"
+  },
+  {
+   "label": "songs: Next past the last verse leaves the screen and the phone agreeing",
+   "pass": true,
+   "detail": "computer \"The Long Road Song verse 30 line one of our own\", phone \"The Long Road Song verse 30 line one of \", next card \"NEXT End of this item — pick the next one below\""
+  },
+  {
+   "label": "bible: all 66 books are listed",
+   "pass": true,
+   "detail": "66 books"
+  },
+  {
+   "label": "bible: Psalms lists 150 chapters",
+   "pass": true,
+   "detail": "150"
+  },
+  {
+   "label": "bible: a chapter that cannot load says so with Try again",
+   "pass": true,
+   "detail": "\"Psalms 23 Couldn’t load this from BORN. Try again\""
+  },
+  {
+   "label": "bible: Try again loads the chapter",
+   "pass": true,
+   "detail": "6 verses in Psalm 23"
+  },
+  {
+   "label": "bible: the back arrow returns to the chapters",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "file: Save says Saved once the computer has saved it",
+   "pass": true,
+   "detail": "says \"Saved “Review service”\""
+  },
+  {
+   "label": "file: saving under a name already used asks first",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "file: New service empties the queue and hides the screen",
+   "pass": true,
+   "detail": "queue 0, hidden true; the phone reads \"Nothing on screen yet. Project something\" and its button \"Show screen\""
+  },
+  {
+   "label": "file: after New service, Show screen does not put the old service's last page back up",
+   "pass": false,
+   "detail": "after one tap on \"Show screen\" the computer reports on screen: \"Morning Song verse 1 line one of our own\"; the phone reads \"ON SCREEN NOT IN YOUR QUEUE Morning Song\""
+  },
+  {
+   "label": "file: Open lists the saved service",
+   "pass": true,
+   "detail": "1 saved"
+  },
+  {
+   "label": "file: opening a saved service that cannot be opened does not say Loaded",
+   "pass": false,
+   "detail": "the phone says \"Loaded “Review service”\"; the queue on the computer has 0 items"
+  },
+  {
+   "label": "file: opening the saved service brings its items back",
+   "pass": true,
+   "detail": "queue: Morning Song | Evening Song | River Song | John 3:16–17 · KJV"
+  },
+  {
+   "label": "roles: only the Operator sees File, Save and Edit on the queue",
+   "pass": true,
+   "detail": "{\"Operator\":[\"File\",\"Save\",\"Edit\"],\"Song Leader\":[],\"Preacher\":[],\"skipped\":[]}"
+  },
+  {
+   "label": "roles: every role has Back, Next, Hide screen and all four tabs",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "roles: a first visit asks \"Who's this?\" with the three roles and Other",
+   "pass": true,
+   "detail": "{\"role\":true,\"chips\":[\"Song Leader\",\"Preacher\",\"Operator\",\"Other…\"]}"
+  },
+  {
+   "label": "roles: choosing a role is confirmed",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "label": "roles: a tap the computer cannot act on is answered as a failure",
+   "pass": false,
+   "detail": "answered 204"
+  }
+ ],
+ "notes": [
+  {
+   "flow": "queue",
+   "what": "Next after the live item was removed: screen went from \"Morning Song verse 1 line one of our own\" to \"Morning Song verse 2 line one of our own\" (live row none)"
+  },
+  {
+   "flow": "project",
+   "what": "a song projected from Songs is live but not a queue row: the phone's head line reads \"ON SCREEN NOT IN YOUR QUEUE River Song\"; computer live row: null"
+  },
+  {
+   "flow": "project",
+   "what": "a double tap on Next from verse 1 lands on \"River Song verse 3 line one of our own\""
+  },
+  {
+   "flow": "songs",
+   "what": "the computer's recent list: [\"River Song\",\"Evening Song\",\"Morning Song\"]"
+  },
+  {
+   "flow": "songs",
+   "what": "the same song queued again after the change: its two rows read [\"River Song\",\"River Song · Key of D\"]"
+  },
+  {
+   "flow": "bible",
+   "what": "controls named Read: 0; Text size controls: 0 (the phone page has neither)"
+  },
+  {
+   "flow": "file",
+   "what": "Remove, then the phone's page closed inside its 5 s Undo time: the queue on the computer still has 4 items (the removal was never sent)"
+  },
+  {
+   "flow": "roles",
+   "what": "a remove sent as \"Preacher\" was answered 204 and the row is gone: roles change what a phone shows, the computer does not check them"
+  },
+  {
+   "flow": "roles",
+   "what": "a Project for a row that is not in the queue was answered 204: the phone cannot tell it from a tap that worked"
+  }
+ ]
+}

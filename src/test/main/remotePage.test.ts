@@ -57,7 +57,7 @@ describe('remote queue buttons', () => {
     const handler = host.querySelector('button.btn-project')!.getAttribute('onclick')!
     const calls: unknown[][] = []
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('cmd', handler)((...a: unknown[]) => calls.push(a))
+    new Function('cmd', 'projectQueueItem', handler)((...a: unknown[]) => calls.push(['cmd', ...a]), (...a: unknown[]) => calls.push(['project', { id: a[0] }]))
     return calls
   }
   it('an item id from a shared service file cannot break out of the button and run script', () => {

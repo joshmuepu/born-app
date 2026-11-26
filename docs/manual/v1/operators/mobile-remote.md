@@ -61,6 +61,8 @@ The remote has the same three content tabs as the desktop app — **Sermons**,
 **Bible**, **Songs** — plus a **Queue** tab, along the bottom (or down the left
 side, on a wider tablet). **Back**, **Next**, and **Hide screen** (**Show screen** while it is hidden) sit
 at the top of every tab, so you never have to switch tabs just to advance a slide.
+**Next** and **Back** move one page from the page your phone shows, so a quick second tap, or tapping again
+on a slow connection, never skips a page.
 
 Anything added to the queue from a phone shows up on the desktop's Service Queue
 immediately, and vice versa — it's the same live queue, shared.

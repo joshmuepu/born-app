@@ -32,7 +32,7 @@ const MANUAL_VERSION = 'v1'
 let baseDirCache: string | null | undefined
 
 /** The directory containing manifest.json and this version's .md/images —
- *  e.g. .../manual/v2 in a packaged build, .../docs/manual/v2 in dev. */
+ *  e.g. .../manual/v1 in a packaged build, .../docs/manual/v1 in dev. */
 function manualBaseDir(): string | null {
   if (baseDirCache !== undefined) return baseDirCache
   const candidates = [

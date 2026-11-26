@@ -26,18 +26,18 @@ All **n/a** (no Graphics output in v1). B8's two items: the favicon request exis
 |---|---|---|---|
 | C1 | n/a | no toast component on the desktop | n/a |
 | C2 | n/a | no `SlideThumb`; measured instead: with a 600-item queue v1 switches sections in 16–23 ms (`flows.cjs`) | **not reproduced** |
-| C3, C4, C5 | n/a | v2's header / interface scale / rail do not exist in v1 | n/a |
+| C3, C4, C5 | n/a | that header, interface scale and rail do not exist in v1 | n/a |
 | C6 | yes | Probe at 1040×640 with 150% scale: the Keyboard shortcuts dialog is 469 px tall in a 427 px window (top −22, bottom cut) | **fixed** `5659b24` |
 | C7 | partly | Probe at 1040×640 @150%: the start screen's first element is at y=164, not cut off | **not reproduced** |
 | C8 | yes | v1's app-info popover opens from the left of the status bar; stays inside the window at every size tested | **not reproduced** |
 | C9 | yes | Probe (`output-probe.cjs`, real layout in Chromium): a 160-character unbroken line is 5–6× wider than the projector and stage screens; the stage "Next" band's reference line is cut (scrollHeight 279 > clientHeight 228) | **fixed** `10ccee3` (wrapping and the height cap only; contrast colours → decision) |
 | C10 | partly | Stage text fit: covered by the same probe; no further cut-off found in v1's layout | **not reproduced** beyond C9 |
 | C11, C12 | n/a | no Now dock / rail in v1 | n/a |
-| C13 | n/a | the dialog squeeze was v2's own layout | n/a |
+| C13 | n/a | that dialog layout does not exist in v1 | n/a |
 | C14 | yes | v1's `<select>`s are themed (computed background/colour/border are the dark theme's) | **not reproduced** |
 | C15 | yes | The paste-song textarea shows the browser's default amber focus outline. It is visible; the colour just is not the app's | **decision** (design) |
 | C16 | yes | `.song-row-title` has no `nowrap`: a long title wraps inside its row, nothing is clipped | **not reproduced** (clamping is a design choice) |
-| C17, C18, C19 | n/a | v2 tokens / layouts not in v1 | n/a |
+| C17, C18, C19 | n/a | those tokens and layouts are not in v1 | n/a |
 | C20 | yes | Probe: Screens popover (a row per connected screen) runs below the window with no scrolling; 56 findings at 1040×640 @125/150% and 1366×768 @150%, "Smaller/Larger" text buttons unreachable | **fixed** `561cb42` |
 | C21 | yes | already in v1 (`e9671b7`) | already in v1 |
 | C22 | yes | already in v1 (tests "shows a plain-language error with a Retry button…") | already in v1 |
@@ -74,7 +74,7 @@ Probe `remote-probe.cjs`: the real remote page in headless Chromium **and** WebK
 | F3 | yes | Real app with a read-only data folder: exits with code 0, no window, no message (Chromium cannot take its lock). After: a plain-language dialog | **fixed** `9325e1e` |
 | F4 | yes | The bundled database has U+F6E1 in 2,410 of 104,644 paragraphs (1,208 at the start). Tests prove display-only; see `02-fixes.md` | **fixed** `a0a4b0a`, `23ffb31` |
 | F5 | yes | `navigator.clipboard?.writeText(x); setCopied(true)` unconditional (4 places) | **fixed** `bb6da84` |
-| F6–F8 | n/a | v2-only | n/a |
+| F6–F8 | n/a | not in v1 | n/a |
 | F9 | yes | v1 uses native HTML5 drag; the harness cannot drive a real drag. Reorder logic is unit-tested (`queueUtils`) | **not reproduced** (not driven end to end; listed in the fresh hunt) |
 | (note) | yes | A queue item with an unknown `kind` and a `slides` array threw "Element type is invalid" in `ServiceQueue` (test), and it is autosaved into `queue.json`, so the crash would repeat every launch | **fixed** `e8cec0b` |
 

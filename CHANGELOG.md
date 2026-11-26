@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.12
+
+**On the phone and iPad**
+- Starting a song or a verse from a queue item's page now closes that page and shows the live view, so **Back**, **Next** and **Hide screen** are no longer covered. This works the same on a phone and on a wider screen.
+- On a slow connection, a tap that worked is no longer reported as "Couldn't reach BORN". Before saying a tap failed, the phone now checks what BORN is really showing.
+- **Next** and **Back** move at most one page from the page the phone was showing, so tapping again on a slow connection never skips a page. Two very quick taps on **Next** now move one page, not two.
+- Tapping a paragraph on a sermon's full page (opened from **Series** or **Date**) now closes that page and shows the live view.
+
+Nothing else changed.
+
 ## 1.13.11
 
 **On the congregation screen and the stage monitor**

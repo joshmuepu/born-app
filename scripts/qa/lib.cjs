@@ -1,5 +1,5 @@
 /* QA harness (scripts only, never shipped): launches BORN v1 on an isolated profile and drives it over the
- * Chrome debugging port. Adapted from v2's scripts/qa/lib.cjs. Never touches the real v1 data folder or ports:
+ * Chrome debugging port. Never touches the real v1 data folder or ports:
  * every run gets BORN_USER_DATA_DIR, BORN_REMOTE_PORT and BORN_MDNS_NAME of its own.
  * Needs Node 22+ (built-in WebSocket) and `npm run build` first (it runs `electron .` against out/).
  * Usage: const { launch } = require('./lib.cjs'); const app = await launch({ profile: '/tmp/x' }); const p = await app.page(); ... await app.kill()

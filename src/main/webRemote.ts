@@ -134,6 +134,41 @@ let currentState: WebRemoteState = {
   onScreen: null
 }
 let commandCallback: CommandCallback | null = null
+
+/* The phone page and this server both ship in the same app, so these two fields are private to them. A tap carries `tap`, an id of its
+ * own: /state lists the ids of the latest taps acted on, so a phone whose answer was late or lost can ask whether its tap worked
+ * before it says it failed, and a tap sent twice is acted on once. A Next or Back also carries `at`, the place on screen the phone was
+ * showing (`pos` in /state): it is acted on only from that place, so a tap made on an out-of-date view, a retry after a lost answer or a
+ * quick second tap never moves the screen more than one page from what the person saw. Calls without them work as before. */
+const MAX_TAPS = 20
+let tapsActedOn: string[] = []
+/** A Next or Back just sent from this place: a second one from the same place before the screen has moved is the same tap again. */
+let lastMove: { from: string; action: string; at: number } | null = null
+const MOVE_SETTLE_MS = 1500
+
+/** Where the screen is: changes whenever the live page changes. */
+export function livePosition(st: WebRemoteState): string {
+  const o = st.onScreen
+  const key = `${st.activeIndex ?? '-'}|${st.activeSlide}|${o ? `${o.kind}|${o.reference ?? ''}|${o.text}` : ''}`
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0
+  return `${key.length.toString(36)}.${h.toString(36)}`
+}
+
+/** What /state answers: the live state, where the screen is, and the latest taps acted on. */
+export function stateForPhone(): WebRemoteState & { pos: string; taps: string[] } {
+  return { ...currentState, pos: livePosition(currentState), taps: tapsActedOn }
+}
+
+/** For a Next or Back that says where it was tapped: null to act on it, or where the screen really is, to tell the phone. */
+function staleMove(cmd: { action?: unknown; at?: unknown }): string | null {
+  if ((cmd.action !== 'next' && cmd.action !== 'prev') || typeof cmd.at !== 'string') return null
+  const now = livePosition(currentState)
+  const t = Date.now()
+  if (cmd.at !== now || (lastMove && lastMove.from === now && lastMove.action === cmd.action && t - lastMove.at < MOVE_SETTLE_MS)) return now
+  lastMove = { from: now, action: cmd.action, at: t }
+  return null
+}
 let searchHandlers: WebRemoteSearchHandlers | null = null
 
 /** The address the remote advertises by default. Delegates to networks.ts —
@@ -317,7 +352,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // phones are actually connected right now" signal for diagnostics,
     // without adding a second mechanism.
     noteClient(req)
-    sendJSON(res, 200, currentState)
+    sendJSON(res, 200, stateForPhone())
     return
   }
 
@@ -457,7 +492,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
     let result: void | Promise<SaveResult> = undefined
     try {
-      result = commandCallback?.(JSON.parse(body))
+      const cmd = JSON.parse(body)
+      const tap = cmd && typeof cmd.tap === 'string' ? cmd.tap.slice(0, 80) : null
+      if (tap && tapsActedOn.includes(tap)) {
+        // the same tap again: already acted on
+        res.writeHead(204)
+        res.end()
+        return
+      }
+      const realPos = staleMove(cmd ?? {})
+      if (realPos !== null) {
+        sendJSON(res, 409, { pos: realPos })
+        return
+      }
+      if (tap) tapsActedOn = [...tapsActedOn, tap].slice(-MAX_TAPS)
+      result = commandCallback?.(cmd)
     } catch {
       /* malformed body — ignore, the remote will just not see an effect */
     }
@@ -628,6 +677,8 @@ export function stopWebRemote(): void {
   server = null
   remoteAvailable = false
   lastSeenByClient.clear()
+  tapsActedOn = []
+  lastMove = null
   lastNotifiedVia = null
 }
 

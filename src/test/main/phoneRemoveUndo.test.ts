@@ -30,7 +30,7 @@ describe('phone Remove', () => {
     expect(sent.filter((x) => (x as { action: string }).action === 'remove')).toEqual([])
     api.removeQueueItemRemote(1)
     await vi.advanceTimersByTimeAsync(5100)
-    expect(sent.filter((x) => (x as { action: string }).action === 'remove')).toEqual([{ action: 'remove', id: 'b' }])
+    expect(sent.filter((x) => (x as { action: string }).action === 'remove')).toEqual([expect.objectContaining({ action: 'remove', id: 'b' })])
   })
   it('sits apart from Move down', () => {
     expect(rule('.qitem-editbtn--danger')).toMatch(/margin-left:16px/)

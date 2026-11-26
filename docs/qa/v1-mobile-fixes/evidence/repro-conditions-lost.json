@@ -1,0 +1,265 @@
+{
+ "failed": 0,
+ "checks": [
+  {
+   "label": "chromium lost search: a tap made with no network does not go live later",
+   "pass": true,
+   "detail": "on screen before \"null\", after \"null\""
+  },
+  {
+   "label": "chromium lost search: a tap that never arrived says so, and the phone stays Connected",
+   "pass": true,
+   "detail": "said \"Couldn't reach BORN — check the connection and try again\", Connected"
+  },
+  {
+   "label": "chromium lost queue: a tap made with no network does not go live later",
+   "pass": true,
+   "detail": "on screen before \"null\", after \"null\""
+  },
+  {
+   "label": "chromium lost queue: a tap that never arrived says so, and the phone stays Connected",
+   "pass": true,
+   "detail": "said \"Couldn't reach BORN — check the connection and try again\", Connected"
+  },
+  {
+   "label": "webkit lost search: a tap made with no network does not go live later",
+   "pass": true,
+   "detail": "on screen before \"null\", after \"null\""
+  },
+  {
+   "label": "webkit lost search: a tap that never arrived says so, and the phone stays Connected",
+   "pass": true,
+   "detail": "said \"Couldn't reach BORN — check the connection and try again\", Connected"
+  },
+  {
+   "label": "webkit lost queue: a tap made with no network does not go live later",
+   "pass": true,
+   "detail": "on screen before \"null\", after \"null\""
+  },
+  {
+   "label": "webkit lost queue: a tap that never arrived says so, and the phone stays Connected",
+   "pass": true,
+   "detail": "said \"Couldn't reach BORN — check the connection and try again\", Connected"
+  },
+  {
+   "label": "chromium slow Next: the screen moved one page and the phone shows it, with no false failure",
+   "pass": true,
+   "detail": "verse 1 → 2; phone shows verse 2; said \"\""
+  },
+  {
+   "label": "chromium slow Next: Next again moves exactly one page from the true place",
+   "pass": true,
+   "detail": "now verse 3"
+  },
+  {
+   "label": "chromium slow Next: two quick taps move one page",
+   "pass": true,
+   "detail": "verse 3 → 4; phone shows 4"
+  },
+  {
+   "label": "chromium normal network: two quick taps move one page",
+   "pass": true,
+   "detail": "verse 4 → 5"
+  },
+  {
+   "label": "chromium normal network: a tap a second later moves one more",
+   "pass": true,
+   "detail": "now verse 6"
+  },
+  {
+   "label": "webkit slow Next: the screen moved one page and the phone shows it, with no false failure",
+   "pass": true,
+   "detail": "verse 1 → 2; phone shows verse 2; said \"\""
+  },
+  {
+   "label": "webkit slow Next: Next again moves exactly one page from the true place",
+   "pass": true,
+   "detail": "now verse 3"
+  },
+  {
+   "label": "webkit slow Next: two quick taps move one page",
+   "pass": true,
+   "detail": "verse 3 → 4; phone shows 4"
+  },
+  {
+   "label": "webkit normal network: two quick taps move one page",
+   "pass": true,
+   "detail": "verse 4 → 5"
+  },
+  {
+   "label": "webkit normal network: a tap a second later moves one more",
+   "pass": true,
+   "detail": "now verse 6"
+  }
+ ],
+ "rows": [
+  {
+   "tag": "chromium lost search",
+   "phone": {
+    "layout": "phone",
+    "tab": "songs",
+    "sheetOpen": true,
+    "sheetDetail": false,
+    "sheetTitle": "River Song",
+    "sheetRows": 3,
+    "sheetLive": "",
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": null,
+    "nextReachable": false,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": "River Song",
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": null
+    },
+    "toastSeen": "Couldn't reach BORN — check the connection and try again"
+   },
+   "second": null,
+   "server": {
+    "onScreen": null,
+    "activeTitle": null,
+    "activeSlide": 0,
+    "queue": [
+     "Morning Song",
+     "Evening Song",
+     "The Long Road Song",
+     "John 3:16 · KJV"
+    ]
+   },
+   "errs": [
+    "AbortError: signal is aborted without reason"
+   ]
+  },
+  {
+   "tag": "chromium lost queue",
+   "phone": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": true,
+    "sheetDetail": true,
+    "sheetTitle": "Morning Song",
+    "sheetRows": 3,
+    "sheetLive": "",
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": null,
+    "nextReachable": false,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": 0,
+     "detailId": "s-mwwtfyy3-5",
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": null
+    },
+    "toastSeen": "Couldn't reach BORN — check the connection and try again"
+   },
+   "second": null,
+   "server": {
+    "onScreen": null,
+    "activeTitle": null,
+    "activeSlide": 0,
+    "queue": [
+     "Morning Song",
+     "Evening Song",
+     "The Long Road Song",
+     "John 3:16 · KJV"
+    ]
+   },
+   "errs": []
+  },
+  {
+   "tag": "webkit lost search",
+   "phone": {
+    "layout": "phone",
+    "tab": "songs",
+    "sheetOpen": true,
+    "sheetDetail": false,
+    "sheetTitle": "River Song",
+    "sheetRows": 3,
+    "sheetLive": "",
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": null,
+    "nextReachable": false,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": null,
+     "detailId": null,
+     "selected": "River Song",
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": null
+    },
+    "toastSeen": "Couldn't reach BORN — check the connection and try again"
+   },
+   "second": null,
+   "server": {
+    "onScreen": null,
+    "activeTitle": null,
+    "activeSlide": 0,
+    "queue": [
+     "Morning Song",
+     "Evening Song",
+     "The Long Road Song",
+     "John 3:16 · KJV"
+    ]
+   },
+   "errs": [
+    "Unhandled Promise Rejection: AbortError: Fetch is aborted"
+   ]
+  },
+  {
+   "tag": "webkit lost queue",
+   "phone": {
+    "layout": "phone",
+    "tab": "queue",
+    "sheetOpen": true,
+    "sheetDetail": true,
+    "sheetTitle": "Morning Song",
+    "sheetRows": 3,
+    "sheetLive": "",
+    "paneKind": null,
+    "paneTitle": null,
+    "paneLive": null,
+    "nowText": null,
+    "nextReachable": false,
+    "toast": null,
+    "conn": true,
+    "own": {
+     "detailIndex": 0,
+     "detailId": "s-mwwtgic9-13",
+     "selected": null,
+     "activeIndex": null,
+     "activeSlide": 0,
+     "onScreen": null
+    },
+    "toastSeen": "Couldn't reach BORN — check the connection and try again"
+   },
+   "second": null,
+   "server": {
+    "onScreen": null,
+    "activeTitle": null,
+    "activeSlide": 0,
+    "queue": [
+     "Morning Song",
+     "Evening Song",
+     "The Long Road Song",
+     "John 3:16 · KJV"
+    ]
+   },
+   "errs": []
+  }
+ ]
+}

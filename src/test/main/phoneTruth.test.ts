@@ -34,7 +34,7 @@ beforeEach(() => vi.restoreAllMocks())
 afterEach(() => vi.useRealTimers())
 
 describe('taps', () => {
-  it('a tap that gets no answer gives up after about 4 seconds and says so', async () => {
+  it('a tap that gets no answer gives up after about 4 seconds, asks BORN whether it acted, and says so when it cannot tell', async () => {
     vi.useFakeTimers()
     global.fetch = vi.fn((_u: unknown, init?: { signal?: AbortSignal }) => new Promise((_res, rej) => {
       init?.signal?.addEventListener('abort', () => rej(new Error('aborted')))
@@ -43,6 +43,8 @@ describe('taps', () => {
     let settled = false
     cmd('next').catch(() => { settled = true })
     await vi.advanceTimersByTimeAsync(4100)
+    expect(settled).toBe(false) // it is asking BORN (2.5 s at most)
+    await vi.advanceTimersByTimeAsync(2600)
     expect(settled).toBe(true)
     expect(toastText()).toMatch(/couldn.t reach born/i)
   })
