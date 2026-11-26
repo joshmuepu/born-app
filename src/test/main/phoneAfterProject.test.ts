@@ -62,3 +62,32 @@ describe('a verse tapped on a queue item’s full page', () => {
     expect(sheetOpen()).toBe(true)
   })
 })
+
+describe('a paragraph tapped on a sermon’s full page (Series, Date)', () => {
+  // invented words stand in for a sermon
+  const paras = [
+    { id: 1, sermonTitle: 'Placeholder Sermon', paragraphRef: '1', text: 'Placeholder paragraph one', slides: [{ text: 'Placeholder paragraph one', marker: '1' }] },
+    { id: 2, sermonTitle: 'Placeholder Sermon', paragraphRef: '2', text: 'Placeholder paragraph two', slides: [{ text: 'Placeholder paragraph two', marker: '2' }] }
+  ]
+  for (const wide of [false, true]) {
+    it(`${wide ? 'wide screen' : 'phone'}: projects it, closes the page and shows the live view with it`, async () => {
+      const { page, computer } = loadPhonePage({ wide, state: live(1, 0) })
+      await page.poll()
+      page.setTab('sermons')
+      const realFetch = global.fetch
+      global.fetch = ((url: string, init?: RequestInit) =>
+        String(url).includes('/paragraphs') ? Promise.resolve(new Response(JSON.stringify(paras))) : realFetch(url, init)) as typeof fetch
+      page.openSermonDetailSheet(9, 'Placeholder Sermon', '00-0000')
+      await settle(100)
+      expect(sheetOpen()).toBe(true)
+      computer.state = { ...live(1, 0), activeIndex: null, onScreen: { kind: 'quote', text: 'Placeholder paragraph two' } }
+      tap(document.querySelectorAll('#sermonDetailBody .slide-row')[1])
+      await settle()
+      expect(computer.commands.at(-1)).toMatchObject({ action: 'project-sermon', slide: 0 })
+      expect(sheetOpen()).toBe(false)
+      expect(page.state.tab).toBe('queue')
+      const now = wide ? '#tabletPreview .preview-now' : '#queuePerfNow .now-text'
+      expect(document.querySelector(now)?.textContent).toContain('Placeholder paragraph two')
+    })
+  }
+})

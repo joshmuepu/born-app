@@ -2039,7 +2039,8 @@ function projectSermonParagraph(flatIdx){
   if(!ref) return;
   var p = (window._sermonDetailParas || [])[ref.paraIndex];
   if(!p) return;
-  cmd('project-sermon', { quote: p, query: '', slide: ref.slideIndex });
+  // ends on the live view like every other way of projecting; a tap that did not go through leaves the page open
+  cmd('project-sermon', { quote: p, query: '', slide: ref.slideIndex }).then(afterProjectFromSheet, function(){});
 }
 function openRecentSermons(){
   openGenericSheet('Recently Played', '<div id="recentSermonsBody" class="empty">Loading…</div>');
