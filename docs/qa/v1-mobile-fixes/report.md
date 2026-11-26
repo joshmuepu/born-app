@@ -31,8 +31,8 @@ in code comments, two test names, a script header and several QA notes.
   long-lived branch.
 - **`docs/VERSIONING.md`.** Rewritten to describe this line only. It keeps the version numbers, the app identity, the same-major update
   check and the `v1.x.x` tag guard. The release workflow still links to it.
-- **QA notes removed.** `docs/qa/v1-hardening/00-candidates.md` and `08-v2-parity.md` were only about the other line. They stay in git
-  history.
+- **QA notes removed.** `docs/qa/v1-hardening/00-candidates.md` and the hardening round's parity note were only about the other line.
+  They stay in git history.
 - **QA notes reworded.** Single lines or sections in:
   - `docs/qa/v1-hardening/README.md`, `01-classification.md`, `02-fixes.md`, `03-fresh-hunt.md`, `05-needs-owner-decision.md`,
     `06-verification.md`;
@@ -45,7 +45,8 @@ in code comments, two test names, a script header and several QA notes.
 **Readings taken.**
 - `README.md`'s "License: MIT" line is the code's own open-source notice, not licensing in the sense of the rule, so it stays.
 - So does `--agree-to-license` in the release workflow, a command-line flag of Apple's installer.
-- Song fixtures that name verses "v2", and the `@v2` version pin of a GitHub action, are not mentions; the test allows them.
+- Song fixtures that name verses by letter and number, and the major-version pin of a GitHub action, are not mentions; the test allows
+  them.
 - "BORN again" in a message ("open BORN again") is not the name; the test matches that name in its own capitals only.
 - **Not changeable:** 19 old commit messages on `main` mention the other line. Rewriting published history would need a force push, which
   is never done.
