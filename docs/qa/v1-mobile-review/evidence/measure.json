@@ -1,0 +1,453 @@
+{
+ "screensMeasured": 192,
+ "summary": [
+  {
+   "problem": "small | bible: .backbtn \"\" in .chapter-header",
+   "drawnAt": "30x20 30x23",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 26
+  },
+  {
+   "problem": "small | bible: .chapter-chip \"n\" in .chapter-grid",
+   "drawnAt": "49x42 54x42 32x42 74x42",
+   "seenAt": "360x640@100 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 444
+  },
+  {
+   "problem": "small | bible: .is-focus \"…\" in .jumpchips",
+   "drawnAt": "71x31",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | bible: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@150",
+   "times": 10
+  },
+  {
+   "problem": "small | bible: button \"…\" in .jumpchips",
+   "drawnAt": "73x31 74x31",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 24
+  },
+  {
+   "problem": "small | long: .key-edit-btn \"+ Add key\" in .preview-sheet-inline",
+   "drawnAt": "83x27",
+   "seenAt": "768x1024@100",
+   "times": 2
+  },
+  {
+   "problem": "small | long: .key-edit-btn \"+ Add key\" in .sheet",
+   "drawnAt": "83x27",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@150",
+   "times": 10
+  },
+  {
+   "problem": "small | long: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@150",
+   "times": 10
+  },
+  {
+   "problem": "small | long: button \"…\" in .jumpchips",
+   "drawnAt": "71x31 73x31 74x31 80x31 78x31 79x31",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 96
+  },
+  {
+   "problem": "small | my: .link-btn \"change\" in .sheet-meta",
+   "drawnAt": "43x14 45x15",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | my: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | queue: .filebtn \"Done\" in .queue-file-actions",
+   "drawnAt": "77x36",
+   "seenAt": "768x1024@100",
+   "times": 2
+  },
+  {
+   "problem": "small | queue: .filebtn \"Edit\" in .queue-file-actions",
+   "drawnAt": "70x36",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 14
+  },
+  {
+   "problem": "small | queue: .filebtn \"File\" in .queue-file-actions",
+   "drawnAt": "90x36",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 14
+  },
+  {
+   "problem": "small | queue: .filebtn \"Save\" in .queue-file-actions",
+   "drawnAt": "77x36",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 14
+  },
+  {
+   "problem": "small | queue: .qitem-editbtn \"Move down\" in .qitem-editbar",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | queue: .qitem-editbtn \"Move up\" in .qitem-editbar",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | queue: .qitem-editbtn \"Remove\" in .qitem-editbar",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | queue: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 32
+  },
+  {
+   "problem": "small | set: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 12
+  },
+  {
+   "problem": "small | song: .key-edit-btn \"+ Add key\" in .preview-sheet-inline",
+   "drawnAt": "83x27",
+   "seenAt": "768x1024@100",
+   "times": 2
+  },
+  {
+   "problem": "small | song: .key-edit-btn \"+ Add key\" in .sheet",
+   "drawnAt": "83x27",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@150",
+   "times": 10
+  },
+  {
+   "problem": "small | song: .sheet-close \"Close\" in .sheet-overlay",
+   "drawnAt": "34x34",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@150",
+   "times": 10
+  },
+  {
+   "problem": "small | song: button \"…\" in .jumpchips",
+   "drawnAt": "71x31 73x31",
+   "seenAt": "360x640@100 360x640@150 390x844@100 390x844@150 768x1024@100 768x1024@150",
+   "times": 24
+  },
+  {
+   "problem": "small | songs: .is-focus \"…\" in .jumpchips",
+   "drawnAt": "71x31",
+   "seenAt": "768x1024@100",
+   "times": 2
+  },
+  {
+   "problem": "small | songs: button \"…\" in .jumpchips",
+   "drawnAt": "73x31 74x31",
+   "seenAt": "768x1024@100",
+   "times": 4
+  }
+ ],
+ "reach": [
+  {
+   "size": "360x640",
+   "screen": "queue-live",
+   "back": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.12,
+    "size": "86x66",
+    "onTop": true
+   }
+  },
+  {
+   "size": "360x640",
+   "screen": "queue-full-page",
+   "back": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": false
+   },
+   "next": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": false
+   },
+   "hide": {
+    "y": 0.12,
+    "size": "86x66",
+    "onTop": false
+   }
+  },
+  {
+   "size": "360x640",
+   "screen": "songs",
+   "back": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.12,
+    "size": "86x66",
+    "onTop": true
+   }
+  },
+  {
+   "size": "360x640",
+   "screen": "song-page",
+   "back": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": false
+   },
+   "next": {
+    "y": 0.12,
+    "size": "99x66",
+    "onTop": false
+   },
+   "hide": {
+    "y": 0.12,
+    "size": "86x66",
+    "onTop": false
+   },
+   "project": {
+    "y": 0.79,
+    "size": "170x53",
+    "onTop": true
+   }
+  },
+  {
+   "size": "390x844",
+   "screen": "queue-live",
+   "back": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.09,
+    "size": "86x66",
+    "onTop": true
+   }
+  },
+  {
+   "size": "390x844",
+   "screen": "queue-full-page",
+   "back": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": false
+   },
+   "next": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": false
+   },
+   "hide": {
+    "y": 0.09,
+    "size": "86x66",
+    "onTop": false
+   }
+  },
+  {
+   "size": "390x844",
+   "screen": "songs",
+   "back": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.09,
+    "size": "86x66",
+    "onTop": true
+   }
+  },
+  {
+   "size": "390x844",
+   "screen": "song-page",
+   "back": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": false
+   },
+   "next": {
+    "y": 0.09,
+    "size": "114x66",
+    "onTop": false
+   },
+   "hide": {
+    "y": 0.09,
+    "size": "86x66",
+    "onTop": false
+   },
+   "project": {
+    "y": 0.84,
+    "size": "187x53",
+    "onTop": true
+   }
+  },
+  {
+   "size": "768x1024",
+   "screen": "queue-live",
+   "back": {
+    "y": 0.05,
+    "size": "168x60",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.05,
+    "size": "168x60",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.93,
+    "size": "84x60",
+    "onTop": true
+   }
+  },
+  {
+   "size": "768x1024",
+   "screen": "queue-full-page",
+   "back": {
+    "y": 0.05,
+    "size": "168x60",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.05,
+    "size": "168x60",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.93,
+    "size": "84x60",
+    "onTop": true
+   }
+  },
+  {
+   "size": "768x1024",
+   "screen": "songs",
+   "back": {
+    "y": 0.09,
+    "size": "168x60",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.09,
+    "size": "168x60",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.93,
+    "size": "84x60",
+    "onTop": true
+   },
+   "project": {
+    "y": 0.83,
+    "size": "104x75",
+    "onTop": true
+   }
+  },
+  {
+   "size": "768x1024",
+   "screen": "song-page",
+   "back": {
+    "y": 0.09,
+    "size": "168x60",
+    "onTop": true
+   },
+   "next": {
+    "y": 0.09,
+    "size": "168x60",
+    "onTop": true
+   },
+   "hide": {
+    "y": 0.93,
+    "size": "84x60",
+    "onTop": true
+   },
+   "project": {
+    "y": 0.83,
+    "size": "104x75",
+    "onTop": true
+   }
+  }
+ ],
+ "contrast": {
+  ".now-label \"ON SCREEN\"": {
+   "ratio": 5.61,
+   "size": 12
+  },
+  ".conn .connLabel \"Connected\"": {
+   "ratio": 5.61,
+   "size": 12
+  },
+  ".next-label-lg \"NEXT — NOT ON SCREEN\"": {
+   "ratio": 5.9,
+   "size": 12
+  },
+  ".live-tag \"● LIVE\"": {
+   "ratio": 4.4,
+   "size": 12
+  },
+  ".slide-label \"Verse n ● LIVE\"": {
+   "ratio": 4.4,
+   "size": 12
+  },
+  ".qkind \"SONG · n slides · ON\"": {
+   "ratio": 7.64,
+   "size": 12
+  },
+  ".qkind \"SONG · n slides\"": {
+   "ratio": 7.64,
+   "size": 12
+  },
+  ".livebar-ref \"Morning Song\"": {
+   "ratio": 5.13,
+   "size": 12
+  },
+  ".slide-label \"Verse n\"": {
+   "ratio": 3.69,
+   "size": 12
+  },
+  ".qstrip-kind \"SONG\"": {
+   "ratio": 5.62,
+   "size": 12
+  }
+ }
+}
