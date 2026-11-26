@@ -1582,14 +1582,14 @@ function queueDetailInnerHtml(i){
     + (it.subtitle ? '<div class="sheet-meta ' + kindClass(it.kind) + '">' + esc(it.subtitle) + '</div>' : '');
   if(slides.length === 0){
     html += '<div class="empty">No detail text available — Project will still show the title slide.</div>'
-      + '<div class="sheet-actions"><button class="btn-project" onclick="cmd(\\'project\\',{id:' + esc(JSON.stringify(String(it.id))) + '})">Project ▸</button></div>';
+      + '<div class="sheet-actions"><button class="btn-project" onclick="projectQueueItem(' + esc(JSON.stringify(String(it.id))) + ')">Project ▸</button></div>';
     return html;
   }
   html += '<div class="slide-list">';
   for(var s=0;s<slides.length;s++){
     var sl = slides[s];
     var isLive = (s === activeSlide);
-    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="cmd(\\'project-at\\',{id:' + esc(JSON.stringify(String(it.id))) + ',slide:' + s + '})">';
+    html += '<button class="slide-row' + (isLive ? ' live' : '') + '" onclick="projectQueueItem(' + esc(JSON.stringify(String(it.id))) + ',' + s + ')">';
     if(sl.label || isLive){
       html += '<div class="slide-label">' + (sl.label ? esc(sl.label) : '') + (isLive ? ' <span class="live-tag">\\u25cf LIVE</span>' : '') + '</div>';
     }
@@ -1597,6 +1597,11 @@ function queueDetailInnerHtml(i){
   }
   html += '</div><div class="sheet-hint">Tap any part to project it now</div>';
   return html;
+}
+/** Project a queue item (or one of its pages) from its full page, then show the live view like every other way of projecting.
+ *  A tap that did not go through leaves the page open (cmd has already said why). */
+function projectQueueItem(id, slide){
+  return (slide == null ? cmd('project', { id: id }) : cmd('project-at', { id: id, slide: slide })).then(afterProjectFromSheet, function(){});
 }
 /** The open item sheet follows its item when items are added, removed or moved above it, and closes with a note when the item is gone (it was bound to a
  *  position, so it turned into another item under the finger). */
@@ -2515,6 +2520,8 @@ function afterProjectFromSheet(){
   toast('Projecting…');
   closeSheet();
   state.selected = null;
+  state.detailIndex = null;
+  state.detailId = null;
   // Fetch the just-updated on-screen state before switching to the Queue
   // tab, so it never briefly renders "Nothing on screen yet" right after
   // the operator's own tap projected something.
@@ -2722,17 +2729,10 @@ function sheetAction(which){
     if(contributor) payload = Object.assign({}, payload, { contributor: contributor });
   }
   cmd(action, payload).then(function(){
-    toast(which === 'queue' ? 'Added to queue' : 'Projecting…');
+    if(which === 'project'){ afterProjectFromSheet(); return; }
+    toast('Added to queue');
     closeSheet();
-    if(which === 'project'){
-      state.selected = null;
-      // Same fix as afterProjectFromSheet: wait for a fresh /state before
-      // switching to the Queue tab, so it doesn't render a stale "nothing
-      // on screen" for up to a second right after this project tap.
-      pollUntilOnScreen(function(){ setTab('queue'); });
-    } else {
-      renderTabletPreview();
-    }
+    renderTabletPreview();
   });
 }
 
