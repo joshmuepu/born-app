@@ -1,6 +1,6 @@
 # 06 · Verification
 
-All on isolated profiles (own data folder, remote port, mDNS name, debugging port). The owner's running v2 dev instance (debugging port 9346, `born-remote-v2.local`) and real v1 data were never touched.
+All on isolated profiles (own data folder, remote port, mDNS name, debugging port). The owner's running instances (debugging port 9346, remote port 4316) and real data were never touched.
 Repeat everything with `bash scripts/qa/run-all.sh` (needs Playwright in `/tmp/born-pw` for the remote probes).
 
 ## Final pass on the last commit

@@ -52,17 +52,9 @@ Honest list of what this pass did not cover, and why:
 - **The desktop app going to a real second display.** This machine has 3 real displays attached (verified in the log: Built-in Retina, 2× PA278QV) and the Screens popover correctly listed and let me pick between them, but I did not physically move the projection window to a second display and eyeball it there — I verified its content via the "BORN — Output" window's own CDP target instead, which renders identically regardless of which physical screen it's on.
 - **Windows and high-DPI scaling (125%/150%).** This audit ran on macOS. The app's layout is standard CSS/flexbox with no OS-specific sizing I found reason to suspect, but it is genuinely unverified on Windows.
 - **Reconnect-after-desktop-restart on the remote, and "left open overnight."** Both require either killing and restarting the desktop app's remote server mid-session while a phone stays connected, or literally waiting; out of scope for a single live-driven pass. The remote's `Connected`/service-worker setup (above) is consistent with handling this, but it wasn't exercised end-to-end.
-- **Drag-and-drop queue reordering, rapid double-clicks/rapid-fire Next presses, and OBS/Graphics-output flows** — v1 has no Graphics output (that's v2-only), and queue reordering here is keyboard-driven (`Alt+↑/↓`, verified present in the Shortcuts modal) rather than drag — not separately stress-tested for race conditions under rapid input.
+- **Drag-and-drop queue reordering, rapid double-clicks/rapid-fire Next presses, and OBS/Graphics-output flows** — v1 has no Graphics output, and queue reordering here is keyboard-driven (`Alt+↑/↓`, verified present in the Shortcuts modal) rather than drag — not separately stress-tested for race conditions under rapid input.
 - **Printing** — v1 has no manual/PDF-printing feature yet (that's part of what Part 2 of this task adds); nothing to test here until then.
 
-## Which fixes should port to v2-channels
-
-- **U1 (Songs A–Z jump overlap)**: v2 has its own Songs panel descended from the same code, so check whether `jumpToLetter` in v2's `SongsPanel.tsx` has the same `scrollIntoView` call — if so, port this exact fix (compute the offset against the scroll container instead of using `scrollIntoView` on a `position: sticky` element).
-- **U2 (Message dialog Esc)**: v2 has the same "Show a message on screen" dialog (confirmed in the earlier remote-connectivity work's screenshots) and almost certainly the same app-wide shortcut-handler early-return — port the same `onKeyDown` addition.
-
-Neither fix touches anything v1-specific (song data, Bible data); both are safe, mechanical ports.
-
----
 
 # Pass 2 — the remote under real-world failure, and everything Pass 1 didn't cover
 
@@ -270,26 +262,3 @@ A short list for the owner, things this pass genuinely could not verify from her
    import and the phone remote both work.
 5. **Unplug and replug the projector during a service** (or between services) and
    confirm BORN notices and the Screens panel lets you pick it again.
-
-## Which Pass 2 fixes should port to v2-channels
-
-- **U3 (missing `modal-title-row` CSS)**: v2 is where this rule actually lives —
-  it's v1 that was missing it (v1 never had this title+X layout until the Help
-  viewer was ported over from v2 this branch). Nothing to port; if anything, this
-  confirms v2's copy is the correct reference.
-- **U4 (remote commands fail silently)**: v2's remote (`remoteAssets.ts`) is a
-  shared/forked file — check whether its `cmd()` has the same bare, uncaught
-  `fetch()`. Very likely yes, since this predates the v1/v2 split. High-value port.
-- **U5 (no visibilitychange poll-on-resume)**: same file, same likely gap, same
-  high-value port.
-- **U6 (Next/Prev race)**: check v2's `App.tsx` for the same `advance()` shape
-  (read a ref, await, write the ref back) — v2's version may already differ since
-  it has Channels/follow-sync layered on top, so this one needs reading v2's actual
-  code rather than a mechanical port of the diff. The extracted `serialize.ts`
-  utility itself is framework-agnostic and portable as-is regardless.
-- **E1/E2 (Message dialog default target + X button)**: already ported to v2
-  directly in the `v2-port-v1-audit` branch (commit `15d5f19`) during that same
-  session, from Pass 1's suggestions — the default-target logic there was
-  deliberately *not* changed, since v2's Message button has its own tooltip stating
-  the stage-monitor default is intentional. Worth the owner's attention: v1 and v2
-  now disagree on purpose here, not by oversight.

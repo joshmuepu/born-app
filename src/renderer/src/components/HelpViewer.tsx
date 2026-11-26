@@ -4,7 +4,7 @@
  * the same modal/Esc pattern ScreensManager.tsx already uses so this adds no
  * new interaction model to learn.
  *
- * The manual itself (docs/manual/v2/*.md + images/) ships inside the app and
+ * The manual itself (docs/manual/v1/*.md + images/) ships inside the app and
  * is read entirely over IPC (see main/manual.ts) — no network request, no
  * renderer filesystem access. Markdown is rendered client-side with
  * markdown-it; every image's relative path is resolved to a data: URL before

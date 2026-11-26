@@ -2,9 +2,7 @@
 /**
  * docs-screenshots.mjs — regenerates the automatable screenshots in
  * docs/manual/v1/images/ from a live, running dev instance of BORN, over the
- * Chrome DevTools Protocol (CDP). Ported from v2-channels' script of the same
- * name, trimmed to what v1 actually has (no Channels, Outputs, Profiles,
- * automation API).
+ * Chrome DevTools Protocol (CDP).
  *
  * What this does NOT cover: real external displays, a real phone for the
  * mobile remote — those need real hardware this script can't fake, and must

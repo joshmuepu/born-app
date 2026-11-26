@@ -32,7 +32,7 @@ suggestion.
   lists what this specific e2e pass found.
 - This branch (`v1-e2e-hardening`) adds 3 new commits on top of that,
   detailed below. Nothing has been merged to `main`, nothing tagged,
-  nothing released. v2 was not touched.
+  nothing released.
 
 Earlier QA passes (`docs/qa/v1-qa-report.md`, `-2.md`, `-3.md`,
 `v1-ui-audit-report.md`, `remote-connectivity-report.md`) were read in full
@@ -376,7 +376,7 @@ detail above, several carried over honestly from every prior pass.
 
 **Confirmed:** nothing was merged, tagged, or released. No features or
 redesigns were added — every change in this pass is a fix to something that
-already existed and was supposed to work. v2-channels was not touched.
+already existed and was supposed to work.
 
 **Recommendation for the next v1 release: `v1.12.2`**, a patch release.
 Reasons: every fix in this pass (and the 3 carried-over ones underneath it)

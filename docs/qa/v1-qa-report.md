@@ -192,30 +192,6 @@ not a spec.
 
 ---
 
-## 5. Findings that likely also apply to v2-channels
-
-**Not verified directly — v2-channels was not touched, per this task's own
-setup rules — but flagged because the affected files
-(`App.tsx`, `SermonFollowView.tsx`, `BrowsePanel.tsx`) are core
-sermon-browsing code that predates the v2 multi-channel work and doesn't
-appear related to it:**
-
-- **F1 and F2** (the sermon-highlighting and on-screen-marker bugs) are very
-  likely present in v2-channels too, since the same `onScreenLoc`
-  computation, the same `SermonFollowView`/`BrowsePanel` on-screen matching,
-  and the same `refsOverlap` helper are shared ancestry, not something the
-  channels work would have had reason to touch. **Recommend porting both
-  fixes to v2-channels** (commits `d015966` and `bae5ccf` on this branch) —
-  they're small, self-contained, and each has a regression test that can
-  port with them.
-- **F3** (the amber button) does **not** need porting — v2-channels already
-  fixed this exact CSS bug independently (confirmed from this session's own
-  earlier work on that branch).
-- **F4, F5, F6** are minor/cosmetic and lower priority to port, but the same
-  reasoning applies if v2-channels shares the same code paths.
-
----
-
 ## 6. Security-sensitive findings
 
 None in this file, per the audit's instructions. Reported separately in

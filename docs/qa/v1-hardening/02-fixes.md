@@ -5,7 +5,7 @@ One small commit per bug. Every fix has a test (unless marked); the test failed 
 
 | # | Commit | What a person sees | Test |
 |---|---|---|---|
-| 1 | `1202540` | Esc that closes the manual, the Remote / Screens popover, the Import menu or the song key picker (or clears a search box) no longer also blanks the congregation screens. **Shift+Esc still always blanks.** The Import menu and key picker now close on Esc | `src/test/renderer/escBlank.test.tsx`, `escRule.test.ts`, `SongKeyPicker.test.tsx` (new `src/renderer/src/escRule.ts`, ported from v2) |
+| 1 | `1202540` | Esc that closes the manual, the Remote / Screens popover, the Import menu or the song key picker (or clears a search box) no longer also blanks the congregation screens. **Shift+Esc still always blanks.** The Import menu and key picker now close on Esc | `src/test/renderer/escBlank.test.tsx`, `escRule.test.ts`, `SongKeyPicker.test.tsx` (new `src/renderer/src/escRule.ts`) |
 | 2 | `c4ec79d` | Ctrl/Cmd+R (and +Shift) no longer reloads the operator window or the screens in the **installed** app (unpackaged dev builds keep it) | `src/test/shared/reloadChord.test.ts`; wiring read + documented Electron behaviour, see `06-verification.md` |
 | 3 | `7c396ea` | Help links to a section of another page open that page and scroll to the section (three links in the manual were dead) | `src/test/renderer/HelpViewer.test.tsx` |
 | 4 | `98d1133` | The manual cannot read a folder next to it that starts with the same name | `src/test/main/manual.test.ts` |
@@ -41,8 +41,8 @@ saved text (projector, stage monitor, queue row), so a service saved before the 
 Saved `.born` files and `queue.json` are not rewritten by this change (see the compat check in `06-verification.md`: output identical to `main`).
 
 ## Judgement calls (so you can redirect)
-- A–Z strip 28 → 44 px and search text 15 → 16 px: both are in your known list; 44 px matches v2's tap-size rule.
-- `/command` limit 256 KB (v2's number): a command is a few hundred bytes.
+- A–Z strip 28 → 44 px and search text 15 → 16 px: both are in your known list.
+- `/command` limit 256 KB: a command is a few hundred bytes.
 - Unknown queue item kinds get the label "Item" and the quote icon.
 - The Ctrl/Cmd+R guard is on only when the app is installed (`app.isPackaged`), so developers keep reload.
 - The "can't reach BORN" text in remote searches is plain text in the existing results area. No new screen, button or setting.

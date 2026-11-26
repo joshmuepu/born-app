@@ -38,7 +38,7 @@ describe('sameMajor', () => {
     expect(sameMajor('2.0.0-dev.1', '2.3.4')).toBe(true)
   })
 
-  it('is false across a major version — a v1 release is not an "update" for a v2 build, or vice versa', () => {
+  it('is false across a major version — a release of one major version is not an "update" for another', () => {
     expect(sameMajor('1.12.0', '2.0.0-dev.1')).toBe(false)
     expect(sameMajor('2.0.0-dev.1', '1.12.0')).toBe(false)
   })

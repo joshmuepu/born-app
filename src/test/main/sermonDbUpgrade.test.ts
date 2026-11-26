@@ -72,7 +72,7 @@ describe('a profile made before the paragraph rebuild gets the new library, and 
   })
 })
 
-describe('format 3 is the paragraph library (the same number means the same contents in v1 and v2)', () => {
+describe('format 3 is the paragraph library (the same number always means the same contents)', () => {
   it('the app and the build both name format 3', () => {
     expect(SERMON_DB_FORMAT).toBe(3)
     expect(readFileSync(join(__dirname, '../../../scripts/build-sermon-db.ts'), 'utf8')).toMatch(/user_version = \$\{SERMON_DB_FORMAT\}|user_version = 3/)
